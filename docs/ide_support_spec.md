@@ -27,6 +27,20 @@ Graphite の DSL (`graph_schema!` / `graph!`) を書くとき、VSCode 上で参
 (識別子が束縛として生き残らない) と「プロジェクト構成」(examples 除外) と
 「パーサの回復性」の 3 つで、いずれもスパン付け替えでは直らない。
 
+## 1.5 G1/G2 実装後の再計測 (2026-07-14、コミット `1268cba` / `c75d927`)
+
+| 操作 | 結果 |
+|---|---|
+| `graph!` エッジ内ノードキー → 定義 | ✅ 精密 (ノード宣言の `tanaka` トークンに着地) |
+| `graph!` ノードキー → 参照検索 | ✅ 宣言 + 全エッジ内出現を検出 (計3件を確認) |
+| `graph!` ノードキー → hover | ✅ トークン範囲で応答 (ローカル変数 `EmployeeId` として) |
+| examples/* の解析 | ✅ `Scene`/`SceneId` 等がワークスペースシンボルとして引ける。graph_schema! 内トークンへのスパンも機能 |
+| rename | ⚠️ 判定保留 — この環境では rust-analyzer の rename provider が**マクロと無関係な普通の関数でも**「Unexpected type」例外を投げるため、マクロ起因かどうか切り分け不能 (環境問題)。参照検索は全出現を正しく検出しているので、rename の土台となる名前解決は機能している |
+
+注意: `.vscode/settings.json` の `linkedProjects` 変更と proc-macro の変更は、
+`rust-analyzer: Restart Server` を実行するまで反映されないことがある
+(reloadWorkspace / rebuildProcMacros では不十分な場合を実測した)。
+
 ## 2. 仕様項目
 
 ### G1: `graph!` ノードキーの let 束縛化 (実装対象)
