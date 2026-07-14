@@ -35,6 +35,35 @@ Rust の技術的制約)。そのため `graphite-macros` (マクロ) と `graph
 `TokenStream` に変換して返す。これにより rust-analyzer 上でも該当箇所に赤波線が
 出て、通常のコンパイルエラーと同じ体験になる。
 
+## エラー回復パーサと `ParseBuffer` の Drop 落とし穴
+
+宣言単位でエラーを蓄積しつつ続行する回復パーサ (G4) を書くと、`syn::ParseBuffer`
+特有の罠を踏みやすい。`ParseBuffer` は drop 時に「デリミタ内に未消費トークンが
+残っていないか」を自動チェックし、残っていれば共有の `Unexpected` セルにその
+位置を記録する。この記録は `syn::parse::Parser::parse2`/`parse` が呼び出し全体の
+最終チェックで読み、**呼び出し元が最終的に `Ok` を返した場合にのみ**
+「unexpected token」という無関係な幽霊エラーとして再浮上させる。
+
+エラーが `?` でそのまま最後まで伝播する通常のパーサではこの問題は顕在化しない
+(その場合は呼び出し元も `Err` を返すため)。一方、内側の `Err` を握りつぶして
+次の境界まで読み飛ばし、パース全体としては `Ok` を返す回復パーサ (G4 のような
+設計) は、まさにこの状況を作り出す。
+
+対処: `parenthesized!`/`braced!`/`bracketed!` で開いた内側の `ParseBuffer`
+(`content`) について、`Err` を返す前に必ず中身を空にする (drain_rest)。
+
+```rust
+fn drain_rest(content: ParseStream) {
+    let _ = content.parse::<proc_macro2::TokenStream>();
+}
+```
+
+`content.parse::<proc_macro2::TokenStream>()` は残りトークンを丸ごと読み捨てる
+ので、これを `Err` を返す全ての分岐の直前に呼ぶ。分岐が多い関数では
+「本体を別関数に切り出し、呼び出し元がエラー時に一括で drain する」形にすると
+書き漏らしにくい (実例は `crates/graphite-macros/src/schema_dsl.rs` の
+`parse_fields_block`/`Multiplicity::parse` を参照)。
+
 ## スパンポリシー
 
 生成する識別子は必ず「由来するユーザートークンのスパン」を持たせる。これが

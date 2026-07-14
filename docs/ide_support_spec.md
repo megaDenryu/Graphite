@@ -41,6 +41,22 @@ Graphite の DSL (`graph_schema!` / `graph!`) を書くとき、VSCode 上で参
 `rust-analyzer: Restart Server` を実行するまで反映されないことがある
 (reloadWorkspace / rebuildProcMacros では不十分な場合を実測した)。
 
+## 1.6 G4 実装後の再計測 (2026-07-14、コミット `6e4b120`)
+
+壊れたノード宣言 (`node Employee { name String }`) + 正常な宣言 + 利用側コード
+を含むプローブファイルを VSCode で開いて実測:
+
+| 操作 | 結果 |
+|---|---|
+| 編集途中 (1宣言だけ構文エラー) の診断 | ✅ エラーはちょうど1件 (壊れたトークン位置の「expected `:`」のみ)。正常な宣言由来の型 (`Department`) の利用コード・`graph!` リテラルに二次エラーは0件 |
+| G6: `graph!` 内フィールド名位置の補完 | ❌ 0件 (rust-analyzer の関数様 proc-macro 入力内補完の制約。同ファイルの通常コード位置では補完が正常に返ることを確認済みなので、プロバイダの問題ではない) |
+| 副産物の発見 | ⚠️ ハンドシェイクマクロ `__graphite_check_edge_{Schema}!` が通常コード位置の補完候補に露出する (macro_rules のテキストスコープゆえ隠せない。G5 の名前空間汚染の具体的な現れ。実害は軽微だが記録する) |
+
+G6 の結論: 現状の rust-analyzer では関数様 proc-macro の入力トークン木内での
+補完は機能しない (speculative expansion がこの形には効かない)。これは Graphite
+側で直せる問題ではないため「制約の記録」とする。定義ジャンプ・参照検索・hover・
+診断が全て機能しているため、IDE 体験の主要導線は確保できている。
+
 ## 2. 仕様項目
 
 ### G1: `graph!` ノードキーの let 束縛化 (実装対象)
