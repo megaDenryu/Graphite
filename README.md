@@ -60,6 +60,22 @@ graphite::graph_schema! {
 | `(0..1)`  | 高々 1 本                   | `Option<&T>` (属性付きは `Option<(&T, &Attrs)>`) |
 | `(0..*)`  | 0 本以上                     | `Vec<&T>` (属性付きは `Vec<(&T, &Attrs)>`) |
 
+多重度 `(1)` のアクセサ (`{label}(&SrcId) -> &T`) は未知キーを渡すとパニック
+します (`Vec` の `v[i]` と同じ「呼び出し規約違反」の扱い)。パニックしない
+版として `try_{label}(&SrcId) -> Option<&T>` (属性付きなら
+`Option<(&T, &Attrs)>`) も併せて生成されます (`v.get(i)` に相当)。
+
+さらに、`match` パターンでのグラフクエリの代替として、各エッジ種別ごとに
+ペアイテレータ `{label}_pairs() -> impl Iterator<Item = (&SrcId, &DstId)>`
+(属性付きなら `(&SrcId, &DstId, &Attrs)`。多重度 `(0..*)` は全ペアへ展開)
+と、各ノード種別ごとにキー列挙 `{node_snake}_ids() -> impl Iterator<Item = &NodeId>`
+も生成されます。使用例は「3. アクセサ・アルゴリズムを使う」節を参照。
+
+ノード struct・エッジ属性 struct は `#[derive(Debug, Clone, PartialEq)]` のみ
+(`Eq` は付けません)。`f64` のように `Eq` を実装できないフィールド型も使える
+ようにするための設計判断です (newtype キー型は内部で `HashMap` のキーに
+使うため `Hash + Eq` を維持します)。
+
 ### 2. `graph!` でインスタンスを組み立てる
 
 ```rust
@@ -97,6 +113,22 @@ let g = graphite::graph!(OrgChart {
 let dept = g.belongs_to(&EmployeeId("tanaka".to_string())); // &Department (多重度 (1))
 let (boss, attrs) = g.boss(&EmployeeId("tanaka".to_string())).unwrap(); // Option<(&Employee, &BossAttrs)>
 let reports = g.reports(&EmployeeId("tanaka".to_string())); // Vec<&Employee>
+
+// try_{label}: 多重度 (1) の非パニック版。未知キーは None に落ちる。
+let dept_opt = g.try_belongs_to(&EmployeeId("no-such-id".to_string())); // None
+
+// {label}_pairs(): match パターンの代替。イテレータチェーンでクエリを書く。
+// 例: 相互に上司であるペア (A の boss が B かつ B の boss が A) を検出する。
+let all: Vec<(&EmployeeId, &EmployeeId)> =
+    g.boss_pairs().map(|(a, b, _attrs)| (a, b)).collect();
+let mutual_bosses: Vec<(&EmployeeId, &EmployeeId)> = all
+    .iter()
+    .copied()
+    .filter(|(a, b)| all.contains(&(b, a)))
+    .collect();
+
+// {node_snake}_ids(): ノード種別ごとの全キー列挙。
+let all_employee_ids: Vec<&EmployeeId> = g.employee_ids().collect();
 ```
 
 図式グラフ (`graph_schema!`) とは別に、ノード型が 1 種類の同種グラフ用に
@@ -152,40 +184,61 @@ cargo test
    ドメイン語で命名されていましたが、マクロはノード型名だけから引数名を
    導出する必要があり、自己参照エッジ (`Employee -> Employee`) では同名
    引数の衝突を避けられないため、常に `from`/`to` にしています。
-4. **内部ストレージの複数形フィールド名は素朴な英語複数形 (`+ "s"`)**。
-   不規則複数形 (`Category` → `Categorys` になってしまう等) には対応して
-   いません。この名前は非公開フィールドで利用者から見えないため機能上の
-   問題はありませんが、生成コードを `cargo expand` 等で目視する際は
-   注意してください。
+4. **内部ストレージの複数形フィールド名は既定では素朴な英語複数形
+   (`+ "s"`)**。不規則複数形 (`Category` → `Categorys` になってしまう等)
+   には自動対応していません。この名前は非公開フィールドで利用者から見えない
+   ため機能上の問題はありませんが、生成コードを `cargo expand` 等で目視する
+   際は注意してください。**フェーズ4で明示指定構文を追加済み**
+   (`node Category(categories) { name: String }` のように `node` 宣言に
+   `(識別子)` を付けると内部フィールド名を上書きできる)。詳細は後述の
+   「未決事項」節を参照。
 5. **導出エッジ (`colleagues` 等) はマクロが生成しない**。上記「使用例 3」
    参照。
 
 ## 未決事項 / フェーズ4があるとしたら
 
-- **多重度 `(1)` アクセサへ未知キーを渡した場合は v0 ではパニックとする**。
-  `Vec` の範囲外添字アクセスと同じ「呼び出し規約違反」として扱っています
-  (このスキーマが発行したキーだけを渡すことが呼び出し側の責務)。将来
-  `Result`/`Option` を返す設計に変える余地はありますが、多重度 `(1)` の
-  「必ず存在する」という保証と矛盾するため、現状は据え置いています。
-- **`match` パターンでのクエリは非対応**。Vertex 側で検討していた
+以下はフェーズ3終了時点での未決事項一覧でした。フェーズ4で 5 項目中 4 項目
+(残り 1 項目は設計判断として据え置き) に着手し、対応関係は以下の通りです。
+
+- **多重度 `(1)` アクセサへ未知キーを渡した場合は v0 ではパニックとする —
+  解決済み (フェーズ4)**。既存の `{label}(&SrcId) -> &T` (パニック版) は
+  「このスキーマが発行したキーだけを渡すことが呼び出し側の責務」という
+  設計のまま残しつつ、非パニック版 `try_{label}(&SrcId) -> Option<&T>`
+  (属性付きは `Option<(&T, &Attrs)>`) を追加生成しました。`Vec` の `v[i]`
+  (パニック) と `v.get(i)` (`Option`) の対と同じ関係です。
+- **`match` パターンでのクエリは非対応 — 一部緩和 (フェーズ4)、
+  `match` 構文そのものは引き続き非対応**。Vertex 側で検討していた
   `match g { @{ a -[boss]-> b, b -[boss]-> a } => ... }` のような辺ラベル
   付きパターンマッチは、Rust の安定版では `match` アーム位置に任意の
-  カスタム構文を注入できないため実装していません。メソッドチェーン
-  (`g.boss(id)` 等) と `if let` の組み合わせで妥協しています
-  (`../Bullet/docs/rust_graph_extension_sketch.md` の該当節を参照)。
-- **エッジの重複宣言・ノード型の重複宣言はエラーにするが、エッジ属性の
-  フィールド型に対する制約は特に検査していない**。例えば `Eq` を実装
-  できない型 (`f64` 等) をフィールドに使うと、生成された struct の
-  `#[derive(PartialEq, Eq)]` がコンパイルエラーになります。これは
-  Rust の通常の derive エラーとして表面化するため、マクロ側で追加の
-  検査は行っていません。
-- **`plural_field_name` の素朴な複数形化**。上記「差異」の 4 番を参照。
-  複数形化のルールをユーザーが上書きできる構文 (`node Employee(employees) { .. }`
-  のような明示的複数形指定) を足すのがフェーズ4の候補です。
-- **`graph!` のエラーメッセージ品質**。未宣言ノードキーの参照は独自の
-  `syn::Error` で親切なメッセージを出しますが、存在しないエッジ種別の
-  参照は rustc 標準の「メソッドが見つからない」に委ねています
-  (`tests/ui/graph_unknown_edge_label.stderr` 参照)。`graph!` にスキーマの
-  エッジ一覧を伝える仕組み (別マクロでの登録・トレイトオブジェクト経由の
-  イントロスペクション等) を作れば改善できますが、複雑さとのトレードオフ
-  です。
+  カスタム構文を注入できないため今後も実装しません。代わりに、各エッジ
+  種別ごとのペアイテレータ `{label}_pairs() -> impl Iterator<Item = (&SrcId, &DstId[, &Attrs])>`
+  と、各ノード種別ごとのキー列挙 `{node_snake}_ids()` を追加し、メソッド
+  チェーンで同種のクエリ (例: 相互上司の検出) を書けるようにしました
+  (独自パーサ・コンビネータ DSL は「独自パーサの再演になる」という
+  `../Bullet/docs/rust_graph_extension_sketch.md` の警告に従い採用して
+  いません)。
+- **エッジ属性のフィールド型に対する derive 制約 (`f64` 等が使えない問題)
+  — 解決済み (フェーズ4)**。生成するノード struct・エッジ属性 struct の
+  derive から `Eq` を外し `PartialEq` のみにしました。これにより `f64` の
+  ような `Eq` を実装できない型もフィールドに使えます (newtype キー型は
+  `HashMap` キーとして使うため `Hash + Eq` を維持しています)。
+- **`plural_field_name` の素朴な複数形化 — 解決済み (フェーズ4)**。
+  `node Category(categories) { .. }` のように `node` 宣言に省略可能な
+  `(識別子)` を付けると、内部ストレージのフィールド名をその識別子で
+  明示指定できるようにしました。省略時は従来通り素朴な `+ "s"` に
+  フォールバックします。
+- **`graph!` のエラーメッセージ品質 (未知エッジラベル) — 解決済み
+  (フェーズ4、ただしスコープ制約あり)**。`graph_schema!` が
+  `__graphite_check_edge_{Schema}!` という宣言的マクロを追加生成し、
+  既知のエッジラベルなら何もせず、未知のラベルには「利用可能なエッジ一覧」
+  付きの `compile_error!` を出すようにしました。`graph!` は各エッジ行の
+  脱糖時にスキーマ名からマクロ名を機械的に導出して呼ぶだけで、スキーマの
+  中身 (エッジ一覧) を知る必要はありません。ただし `macro_rules!` は既定で
+  テキストスコープ (定義箇所より後、同一クレート内でのみ利用可能) のため、
+  **`graph_schema!` と `graph!` を同一モジュール (同一ファイル) 内で使う
+  ケースが主な対象**です。別モジュール・別クレートから使う場合は
+  `#[macro_export]` や `pub(crate) use` によるスコープ調整が別途必要になり
+  ますが、そこまでは対応していません。また、親切なメッセージが出た後も
+  ビルダーに対する通常の Rust メソッド解決は引き続き走るため、rustc 標準の
+  「メソッドが見つからない」エラーも重ねて出ます (`tests/ui/graph_unknown_edge_label.stderr`
+  参照)。
