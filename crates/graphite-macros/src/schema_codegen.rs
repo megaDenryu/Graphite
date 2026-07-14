@@ -423,7 +423,9 @@ fn gen_schema_impl(
     quote! {
         impl #schema_name {
             /// builder をクロージャに貸し出し、戻ったら凍結して図式適合
-            /// (端点種別・多重度) を一括検査する。
+            /// (端点種別・多重度) を一括検査する。最初の1件の違反で `Err` に
+            /// なる (複数の違反を全件見たい場合は [`Self::create_collecting`]
+            /// を使う)。
             pub fn create<F>(f: F) -> Result<Self, #violation_ident>
             where
                 F: for<'b> FnOnce(&'b mut #builder_ident),
@@ -431,6 +433,20 @@ fn gen_schema_impl(
                 let mut builder = #builder_ident::new();
                 f(&mut builder);
                 builder.freeze()
+            }
+
+            /// 項目g (フェーズ5): `create` の複数違反収集版。builder を
+            /// クロージャに貸し出し、戻ったら凍結して図式適合を検査する点は
+            /// `create` と同じだが、最初の1件で打ち切らず全違反を
+            /// `Vec` に集めて返す。組織図の全違反を一覧表示するような
+            /// 検証系ユースケース向け。
+            pub fn create_collecting<F>(f: F) -> Result<Self, Vec<#violation_ident>>
+            where
+                F: for<'b> FnOnce(&'b mut #builder_ident),
+            {
+                let mut builder = #builder_ident::new();
+                f(&mut builder);
+                builder.freeze_collecting()
             }
 
             #(#node_accessors)*
@@ -525,6 +541,86 @@ fn gen_edge_pairs_iter(edge: &EdgeInfo<'_>) -> TokenStream {
     }
 }
 
+/// 項目d (フェーズ5): ID 版アクセサ。相手ノードの値ではなくキーを返す。
+/// 指揮系統チェーンのように「次のノードのキーへ辿ってまたそこから辿る」
+/// 処理をしたい場合に、値からキーを逆引きする追加コードを不要にする。
+/// 属性は既存の値アクセサ (`{label}`) で取得できるため ID 版には含めない
+/// (`docs/design_principles.md` 原則1: 型のstrictness — キーは newtype で
+/// 運び、値アクセサと役割を混在させない)。
+fn gen_edge_id_accessor(edge: &EdgeInfo<'_>) -> TokenStream {
+    let label = &edge.label;
+    let from_id = &edge.from_node.id_ident;
+    let to_id = &edge.to_node.id_ident;
+    let label_str = label.to_string();
+
+    let project_one = |expr: TokenStream| -> TokenStream {
+        match &edge.attrs_type_ident {
+            None => expr,
+            Some(_) => quote! { (#expr).map(|(to_id, _attrs)| to_id) },
+        }
+    };
+
+    match edge.decl.mult {
+        Multiplicity::One => {
+            let id_fn = format_ident!("{}_id", label);
+            let try_id_fn = format_ident!("try_{}_id", label);
+            let get_expr = project_one(quote! { self.#label.get(id) });
+            quote! {
+                /// 多重度 (1) の ID 版アクセサ。相手ノードの値ではなく
+                /// キーを返す。
+                ///
+                /// # Panics
+                /// `id` がこのグラフに存在しないキーの場合パニックする
+                /// (呼び出し規約違反。このグラフが発行したキーだけを渡すこと)。
+                pub fn #id_fn(&self, id: &#from_id) -> &#to_id {
+                    #get_expr.unwrap_or_else(|| {
+                        panic!(
+                            "{}_id: 未知のキーです (このグラフが発行したキーではありません): {:?}",
+                            #label_str, id
+                        )
+                    })
+                }
+
+                /// 上記の非パニック版。未知キーは (パニックせず) `None` を
+                /// 返す。
+                pub fn #try_id_fn(&self, id: &#from_id) -> Option<&#to_id> {
+                    #get_expr
+                }
+            }
+        }
+        Multiplicity::ZeroOrOne => {
+            let id_fn = format_ident!("{}_id", label);
+            let get_expr = project_one(quote! { self.#label.get(id) });
+            quote! {
+                /// 多重度 (0..1) の ID 版アクセサ。相手ノードの値ではなく
+                /// キーを `Option` で返す。未知キーも `None` に落ちる。
+                pub fn #id_fn(&self, id: &#from_id) -> Option<&#to_id> {
+                    #get_expr
+                }
+            }
+        }
+        Multiplicity::ZeroOrMany => {
+            let ids_fn = format_ident!("{}_ids", label);
+            let map_expr = match &edge.attrs_type_ident {
+                None => quote! { items.iter().collect() },
+                Some(_) => quote! { items.iter().map(|(to_id, _attrs)| to_id).collect() },
+            };
+            quote! {
+                /// 多重度 (0..*) の ID 版アクセサ。相手ノードの値ではなく
+                /// キーの列を返す。無い/未知キーはどちらも空。格納順
+                /// (構築時の追加順、`graph!` の場合はソース記述順) を保持する
+                /// (README「`(0..*)` エッジの順序保証」節参照)。
+                pub fn #ids_fn(&self, id: &#from_id) -> Vec<&#to_id> {
+                    match self.#label.get(id) {
+                        Some(items) => #map_expr,
+                        None => Vec::new(),
+                    }
+                }
+            }
+        }
+    }
+}
+
 fn gen_edge_accessor(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream {
     let label = &edge.label;
     let from_id = &edge.from_node.id_ident;
@@ -538,6 +634,7 @@ fn gen_edge_accessor(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream {
         Multiplicity::ZeroOrOne | Multiplicity::ZeroOrMany => quote! {},
     };
     let pairs_iter = gen_edge_pairs_iter(edge);
+    let id_accessor = gen_edge_id_accessor(edge);
 
     let main_accessor = match (&edge.decl.mult, &edge.attrs_type_ident) {
         (Multiplicity::One, None) => quote! {
@@ -610,6 +707,7 @@ fn gen_edge_accessor(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream {
     quote! {
         #main_accessor
         #try_accessor
+        #id_accessor
         #pairs_iter
     }
 }
@@ -732,7 +830,8 @@ fn gen_freeze_body(
             let mut #field: std::collections::HashMap<#id_ty, #ty> = std::collections::HashMap::new();
             for (id, value) in self.#field {
                 if #field.contains_key(&id) {
-                    return Err(#violation_ident::#dup_variant(id));
+                    __violations.push(#violation_ident::#dup_variant(id));
+                    continue;
                 }
                 #field.insert(id, value);
             }
@@ -745,18 +844,45 @@ fn gen_freeze_body(
     let edge_field_names = edges.iter().map(|e| &e.label);
 
     quote! {
-        fn freeze(self) -> Result<#schema_name, #violation_ident> {
+        /// 項目g (フェーズ5): 検証ロジックの実体。最初の1件で打ち切らず
+        /// 全違反を `Vec` に集めて返す。`freeze` (単一エラー版) はこちらに
+        /// 委譲し先頭の1件を取り出すだけの薄いラッパーにすることで、
+        /// 検証ロジックが二重実装にならないようにしている。
+        fn freeze_collecting(self) -> Result<#schema_name, Vec<#violation_ident>> {
+            let mut __violations: Vec<#violation_ident> = Vec::new();
+
             #(#node_map_builds)*
             #(#edge_blocks)*
+
+            if !__violations.is_empty() {
+                return Err(__violations);
+            }
 
             Ok(#schema_name {
                 #(#node_field_names,)*
                 #(#edge_field_names,)*
             })
         }
+
+        /// 最初の1件の違反で `Err` になる版。実装は
+        /// `freeze_collecting` に委譲する。
+        fn freeze(self) -> Result<#schema_name, #violation_ident> {
+            self.freeze_collecting().map_err(|mut violations| violations.remove(0))
+        }
     }
 }
 
+/// 項目g (フェーズ5): エッジ1本分の freeze 検査を「継続収集」スタイルで
+/// 生成する。以前の早期 `return Err(..)` は最初の1件で打ち切ってしまい
+/// `create_collecting` の全件収集ができないため、`__violations.push(..); continue;`
+/// (異常な行はスキップして次へ) に置き換えた。
+///
+/// 終点キーが未知の行を multiplicity のカウント対象から単純に除外すると、
+/// 「終点が壊れているだけ」の1つの根本原因から `UnknownTarget` と
+/// `Multiplicity` の2件の違反が二重に生えてしまう (始点は正当なのに
+/// 見かけ上0本になるため)。これを避けるため、始点が正当な行は終点の
+/// 正否に関わらず「試行された1本」としてカウントする
+/// (`#label` マップへの実際の格納は終点が正当な場合のみ)。
 fn gen_edge_freeze_block(violation_ident: &Ident, edge: &EdgeInfo<'_>) -> TokenStream {
     let label = &edge.label;
     let count_ident = format_ident!("{}_count", label);
@@ -772,65 +898,61 @@ fn gen_edge_freeze_block(violation_ident: &Ident, edge: &EdgeInfo<'_>) -> TokenS
     };
 
     match edge.decl.mult {
-        Multiplicity::One => {
+        Multiplicity::One | Multiplicity::ZeroOrOne => {
             let mult = edge.multiplicity_variant();
+            let post_check = match edge.decl.mult {
+                Multiplicity::One => quote! {
+                    for key in #from_field.keys() {
+                        let count = #count_ident.get(key).copied().unwrap_or(0);
+                        if count != 1 {
+                            __violations.push(#violation_ident::#mult {
+                                source: key.clone(),
+                                count,
+                            });
+                        }
+                    }
+                },
+                Multiplicity::ZeroOrOne => quote! {
+                    for (key, count) in &#count_ident {
+                        if *count > 1 {
+                            __violations.push(#violation_ident::#mult {
+                                source: key.clone(),
+                                count: *count,
+                            });
+                        }
+                    }
+                },
+                Multiplicity::ZeroOrMany => unreachable!("One/ZeroOrOneの分岐内なので到達しない"),
+            };
             quote! {
                 let mut #label: std::collections::HashMap<_, #value_ty> = std::collections::HashMap::new();
                 let mut #count_ident: std::collections::HashMap<_, usize> = std::collections::HashMap::new();
                 for #bind_pattern in self.#label {
                     if !#from_field.contains_key(&from) {
-                        return Err(#violation_ident::#unk_src { key: from });
+                        __violations.push(#violation_ident::#unk_src { key: from });
+                        continue;
                     }
                     if !#to_field.contains_key(&to) {
-                        return Err(#violation_ident::#unk_dst { key: to });
+                        __violations.push(#violation_ident::#unk_dst { key: to });
+                        *#count_ident.entry(from.clone()).or_insert(0) += 1;
+                        continue;
                     }
                     *#count_ident.entry(from.clone()).or_insert(0) += 1;
                     #label.insert(from, #push_value);
                 }
-                for key in #from_field.keys() {
-                    let count = #count_ident.get(key).copied().unwrap_or(0);
-                    if count != 1 {
-                        return Err(#violation_ident::#mult {
-                            source: key.clone(),
-                            count,
-                        });
-                    }
-                }
-            }
-        }
-        Multiplicity::ZeroOrOne => {
-            let mult = edge.multiplicity_variant();
-            quote! {
-                let mut #label: std::collections::HashMap<_, #value_ty> = std::collections::HashMap::new();
-                let mut #count_ident: std::collections::HashMap<_, usize> = std::collections::HashMap::new();
-                for #bind_pattern in self.#label {
-                    if !#from_field.contains_key(&from) {
-                        return Err(#violation_ident::#unk_src { key: from });
-                    }
-                    if !#to_field.contains_key(&to) {
-                        return Err(#violation_ident::#unk_dst { key: to });
-                    }
-                    *#count_ident.entry(from.clone()).or_insert(0) += 1;
-                    #label.insert(from, #push_value);
-                }
-                for (key, count) in &#count_ident {
-                    if *count > 1 {
-                        return Err(#violation_ident::#mult {
-                            source: key.clone(),
-                            count: *count,
-                        });
-                    }
-                }
+                #post_check
             }
         }
         Multiplicity::ZeroOrMany => quote! {
             let mut #label: std::collections::HashMap<_, #value_ty> = std::collections::HashMap::new();
             for #bind_pattern in self.#label {
                 if !#from_field.contains_key(&from) {
-                    return Err(#violation_ident::#unk_src { key: from });
+                    __violations.push(#violation_ident::#unk_src { key: from });
+                    continue;
                 }
                 if !#to_field.contains_key(&to) {
-                    return Err(#violation_ident::#unk_dst { key: to });
+                    __violations.push(#violation_ident::#unk_dst { key: to });
+                    continue;
                 }
                 #label.entry(from).or_default().push(#push_value);
             }

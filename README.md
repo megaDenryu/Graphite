@@ -71,6 +71,25 @@ graphite::graph_schema! {
 と、各ノード種別ごとにキー列挙 `{node_snake}_ids() -> impl Iterator<Item = &NodeId>`
 も生成されます。使用例は「3. アクセサ・アルゴリズムを使う」節を参照。
 
+**ID版アクセサ (フェーズ5)**: `{label}` 系アクセサは相手ノードの*値*
+(`&T`) を返しますが、指揮系統チェーンのように「次のノードのキーへ辿って
+またそこから辿る」処理には値ではなくキーが要ります。多重度ごとに以下の
+ID版が併せて生成されます (属性は既存の値アクセサで取得できるため、ID版
+には含めません):
+
+| 多重度     | ID版アクセサ                                        |
+|-----------|-----------------------------------------------------|
+| `(1)`     | `{label}_id(&SrcId) -> &DstId` (未知キーはパニック。`# Panics` 明記) + `try_{label}_id(&SrcId) -> Option<&DstId>` |
+| `(0..1)`  | `{label}_id(&SrcId) -> Option<&DstId>`               |
+| `(0..*)`  | `{label}_ids(&SrcId) -> Vec<&DstId>` (格納順を保持。後述「`(0..*)` エッジの順序保証」節参照) |
+
+**`create_collecting` (フェーズ5)**: `create` は最初の1件の違反で `Err`
+になりますが、組織図の全違反を一覧表示するような検証系ユースケースでは
+複数違反をまとめて見たいことがあります。`{Schema}::create_collecting(|b| { ... }) -> Result<Self, Vec<{Schema}Violation>>`
+が同じ builder クロージャを受け取り、freeze 検査を打ち切らず全違反を
+`Vec` に集めて返します。`create` はこの収集版に委譲し先頭の1件を返す
+薄いラッパーとして実装されています (検証ロジックの二重実装を避けるため)。
+
 ノード struct・エッジ属性 struct は `#[derive(Debug, Clone, PartialEq)]` のみ
 (`Eq` は付けません)。`f64` のように `Eq` を実装できないフィールド型も使える
 ようにするための設計判断です (newtype キー型は内部で `HashMap` のキーに
@@ -129,6 +148,17 @@ let mutual_bosses: Vec<(&EmployeeId, &EmployeeId)> = all
 
 // {node_snake}_ids(): ノード種別ごとの全キー列挙。
 let all_employee_ids: Vec<&EmployeeId> = g.employee_ids().collect();
+
+// {label}_id / {label}_ids: 値ではなくキーを返すID版アクセサ (フェーズ5)。
+// 指揮系統チェーンのように「キーのまま次のノードへ辿る」処理に使う。
+let dept_id: &DepartmentId = g.belongs_to_id(&EmployeeId("tanaka".to_string()));
+let boss_id: Option<&EmployeeId> = g.boss_id(&EmployeeId("sato".to_string()));
+let report_ids: Vec<&EmployeeId> = g.reports_ids(&EmployeeId("tanaka".to_string()));
+
+// create_collecting: 最初の1件で打ち切らず全違反を収集する (フェーズ5)。
+let result: Result<OrgChart, Vec<OrgChartViolation>> = OrgChart::create_collecting(|b| {
+    // ... 複数の違反を含みうる構築 ...
+});
 ```
 
 図式グラフ (`graph_schema!`) とは別に、ノード型が 1 種類の同種グラフ用に

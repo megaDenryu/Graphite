@@ -44,6 +44,12 @@
   辿る」処理をしたい場合、値ではなく ID (キー) が返る版のアクセサが必要
   になる。現状は値からキーを逆引きする追加コードが要る。
   (出典: `examples/org-analyzer`)
+  → **解決 (フェーズ5)**: 多重度ごとに ID 版アクセサを追加生成した。
+  `(1)`: `{label}_id(&SrcId) -> &DstId` (未知キーはパニック、`# Panics`
+  明記) + `try_{label}_id(&SrcId) -> Option<&DstId>`。`(0..1)`:
+  `{label}_id(&SrcId) -> Option<&DstId>`。`(0..*)`:
+  `{label}_ids(&SrcId) -> Vec<&DstId>` (格納順を保持)。属性は既存の
+  値アクセサで取れるため ID 版には含めない。
 - **(f) `filter_nodes` の述語がノード値のみを受け取り、キーを参照できない** —
   「特定の ID 群に含まれるノードだけ抽出する」ような、キーに依存する
   フィルタ処理ができない。述語にキーも渡す形が欲しい。
@@ -70,6 +76,13 @@
   即エラーになるのではなく、全違反を集めた `Vec<Violation>` を返すモードが
   欲しい。
   (出典: `examples/org-analyzer`)
+  → **解決 (フェーズ5)**: `{Schema}::create_collecting(|b| ...) ->
+  Result<Self, Vec<{Schema}Violation>>` を追加した。既存 `create` は温存
+  (最初の1件で `Err`) しつつ、内部で `freeze_collecting` に委譲する形に
+  リファクタし検証ロジックの二重実装を避けた。始点キーが正当だが終点キー
+  が未知の行は、多重度カウント上「試行された1本」として数える (終点が
+  壊れているだけの1つの根本原因から `UnknownTarget` と `Multiplicity` の
+  2件が二重に生えるのを防ぐため)。
 
 ## `graph!` / `graph_schema!` リテラルの名前空間・順序保証
 

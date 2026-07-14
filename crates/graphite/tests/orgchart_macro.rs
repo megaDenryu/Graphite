@@ -237,6 +237,107 @@ mod tests {
         assert_eq!(d.name, "営業");
     }
 
+    // 項目d (フェーズ5): ID版アクセサ。値ではなくキーを返す。
+
+    #[test]
+    fn belongs_to_idは多重度1でキーそのものを返す() {
+        let g = build_healthy_chart();
+        let dept_id: &DepartmentId = g.belongs_to_id(&emp("田中"));
+        assert_eq!(*dept_id, dept("営業部"));
+    }
+
+    #[test]
+    #[should_panic(expected = "belongs_to_id")]
+    fn belongs_to_idは未知キーでパニックする() {
+        let g = build_healthy_chart();
+        let _ = g.belongs_to_id(&emp("存在しない社員"));
+    }
+
+    #[test]
+    fn try_belongs_to_idは未知キーでnoneを返す() {
+        let g = build_healthy_chart();
+        assert!(g.try_belongs_to_id(&emp("存在しない社員")).is_none());
+        let dept_id = g
+            .try_belongs_to_id(&emp("田中"))
+            .expect("田中は営業部に所属しているはず");
+        assert_eq!(*dept_id, dept("営業部"));
+    }
+
+    #[test]
+    fn boss_idは多重度0か1でoptionのキーを返す() {
+        let g = build_healthy_chart();
+        let boss_id: Option<&EmployeeId> = g.boss_id(&emp("佐藤"));
+        assert_eq!(boss_id, Some(&emp("田中")));
+        assert_eq!(g.boss_id(&emp("田中")), None);
+    }
+
+    #[test]
+    fn reports_idsは多重度0以上でキーのvecを返す_かつ追加順を保持する() {
+        let g = OrgChart::create(|b| {
+            b.employee(emp("部長"), Employee { name: "部長".to_string(), id: 1 });
+            b.employee(emp("C"), Employee { name: "C".to_string(), id: 2 });
+            b.employee(emp("A"), Employee { name: "A".to_string(), id: 3 });
+            b.employee(emp("B"), Employee { name: "B".to_string(), id: 4 });
+            b.department(dept("営業部"), Department { name: "営業".to_string() });
+            b.belongs_to(emp("部長"), dept("営業部"));
+            b.belongs_to(emp("C"), dept("営業部"));
+            b.belongs_to(emp("A"), dept("営業部"));
+            b.belongs_to(emp("B"), dept("営業部"));
+            // 追加順は C, A, B (アルファベット順でもキー文字列順でもない)。
+            b.reports(emp("部長"), emp("C"));
+            b.reports(emp("部長"), emp("A"));
+            b.reports(emp("部長"), emp("B"));
+        })
+        .unwrap();
+
+        let ids: Vec<&EmployeeId> = g.reports_ids(&emp("部長"));
+        assert_eq!(ids, vec![&emp("C"), &emp("A"), &emp("B")]);
+
+        let none: Vec<&EmployeeId> = g.reports_ids(&emp("A"));
+        assert!(none.is_empty());
+    }
+
+    // 項目g (フェーズ5): create_collecting は全違反を収集して返す。
+
+    #[test]
+    fn create_collectingは複数の違反を全件収集する() {
+        let result = OrgChart::create_collecting(|b| {
+            b.employee(emp("鈴木"), Employee { name: "鈴木".to_string(), id: 3 });
+            b.employee(emp("田中"), Employee { name: "田中".to_string(), id: 1 });
+            b.employee(emp("佐藤"), Employee { name: "佐藤".to_string(), id: 2 });
+            b.department(dept("営業部"), Department { name: "営業".to_string() });
+            // 鈴木をどの部署にも所属させない (belongs_to 多重度違反その1)。
+            b.belongs_to(emp("田中"), dept("営業部"));
+            b.belongs_to(emp("佐藤"), dept("営業部"));
+            // 田中に上司を2人つける (boss 多重度違反その2、belongs_toとは
+            // 独立したエッジ種別)。
+            b.boss(emp("田中"), emp("佐藤"), BossAttrs { since: 2018 });
+            b.boss(emp("田中"), emp("鈴木"), BossAttrs { since: 2019 });
+        });
+
+        let violations = match result {
+            Err(violations) => violations,
+            Ok(_) => panic!("2件の違反が収集されるはず"),
+        };
+        assert_eq!(violations.len(), 2);
+        assert!(violations
+            .iter()
+            .any(|v| matches!(v, OrgChartViolation::BelongsToMultiplicity { .. })));
+        assert!(violations
+            .iter()
+            .any(|v| matches!(v, OrgChartViolation::BossMultiplicity { .. })));
+    }
+
+    #[test]
+    fn create_collectingは違反がなければokを返す() {
+        let result = OrgChart::create_collecting(|b| {
+            b.employee(emp("田中"), Employee { name: "田中".to_string(), id: 1 });
+            b.department(dept("営業部"), Department { name: "営業".to_string() });
+            b.belongs_to(emp("田中"), dept("営業部"));
+        });
+        assert!(result.is_ok());
+    }
+
     #[test]
     fn employee_idsで全キーを列挙できる() {
         let g = build_healthy_chart();
