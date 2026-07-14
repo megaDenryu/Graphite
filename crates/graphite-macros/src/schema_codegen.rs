@@ -286,10 +286,12 @@ fn gen_schema_impl(
         let field = &n.field_ident;
         let id_ty = &n.id_ident;
         let ty = &n.type_ident;
+        let ids_iter = gen_node_id_iter(n);
         quote! {
             pub fn #accessor(&self, id: &#id_ty) -> Option<&#ty> {
                 self.#field.get(id)
             }
+            #ids_iter
         }
     });
 
@@ -314,6 +316,92 @@ fn gen_schema_impl(
     }
 }
 
+/// ノード種別 1 つ分の、全キーを列挙するイテレータアクセサ (項目2: クエリAPI)。
+fn gen_node_id_iter(node: &NodeInfo<'_>) -> TokenStream {
+    let ids_ident = format_ident!("{}_ids", node.accessor_ident);
+    let field = &node.field_ident;
+    let id_ty = &node.id_ident;
+    quote! {
+        /// このノード種別の全キーを列挙する。
+        pub fn #ids_ident(&self) -> impl Iterator<Item = &#id_ty> {
+            self.#field.keys()
+        }
+    }
+}
+
+/// 多重度 (1) アクセサの非パニック版 (項目1)。`Vec` における `v[i]` (パニック
+/// する) と `v.get(i)` (`Option` を返す) の対の関係に相当する。
+fn gen_try_edge_accessor(edge: &EdgeInfo<'_>) -> TokenStream {
+    let label = &edge.label;
+    let try_ident = format_ident!("try_{}", label);
+    let from_id = &edge.from_node.id_ident;
+    let to_ty = &edge.to_node.type_ident;
+    let to_field = &edge.to_node.field_ident;
+
+    match &edge.attrs_type_ident {
+        None => quote! {
+            /// 多重度 (1) の非パニック版。未知キーは (パニックせず) `None` を
+            /// 返す。
+            pub fn #try_ident(&self, id: &#from_id) -> Option<&#to_ty> {
+                let to_id = self.#label.get(id)?;
+                Some(&self.#to_field[to_id])
+            }
+        },
+        Some(attrs_ty) => quote! {
+            /// 多重度 (1) + 属性ありの非パニック版。未知キーは (パニックせず)
+            /// `None` を返す。
+            pub fn #try_ident(&self, id: &#from_id) -> Option<(&#to_ty, &#attrs_ty)> {
+                let (to_id, attrs) = self.#label.get(id)?;
+                Some((&self.#to_field[to_id], attrs))
+            }
+        },
+    }
+}
+
+/// エッジ種別 1 つ分の (始点キー, 終点キー[, 属性]) ペアイテレータ (項目2:
+/// クエリAPI)。`match` パターンによるクエリ DSL の代替として、メソッド
+/// チェーンで検索・フィルタができるようにする。多重度 (0..*) は全ペアへ
+/// 展開する。
+fn gen_edge_pairs_iter(edge: &EdgeInfo<'_>) -> TokenStream {
+    let label = &edge.label;
+    let pairs_ident = format_ident!("{}_pairs", label);
+    let from_id = &edge.from_node.id_ident;
+    let to_id = &edge.to_node.id_ident;
+
+    match (&edge.decl.mult, &edge.attrs_type_ident) {
+        (Multiplicity::One, None) | (Multiplicity::ZeroOrOne, None) => quote! {
+            /// 全ての (始点キー, 終点キー) ペアを列挙する。
+            pub fn #pairs_ident(&self) -> impl Iterator<Item = (&#from_id, &#to_id)> {
+                self.#label.iter().map(|(from, to)| (from, to))
+            }
+        },
+        (Multiplicity::One, Some(attrs_ty)) | (Multiplicity::ZeroOrOne, Some(attrs_ty)) => quote! {
+            /// 全ての (始点キー, 終点キー, 属性) タプルを列挙する。
+            pub fn #pairs_ident(&self) -> impl Iterator<Item = (&#from_id, &#to_id, &#attrs_ty)> {
+                self.#label.iter().map(|(from, (to, attrs))| (from, to, attrs))
+            }
+        },
+        (Multiplicity::ZeroOrMany, None) => quote! {
+            /// 全ての (始点キー, 終点キー) ペアを列挙する
+            /// (多重度 0..* は始点ごとの複数終点へ展開する)。
+            pub fn #pairs_ident(&self) -> impl Iterator<Item = (&#from_id, &#to_id)> {
+                self.#label
+                    .iter()
+                    .flat_map(|(from, tos)| tos.iter().map(move |to| (from, to)))
+            }
+        },
+        (Multiplicity::ZeroOrMany, Some(attrs_ty)) => quote! {
+            /// 全ての (始点キー, 終点キー, 属性) タプルを列挙する
+            /// (多重度 0..* は始点ごとの複数終点へ展開する)。
+            pub fn #pairs_ident(&self) -> impl Iterator<Item = (&#from_id, &#to_id, &#attrs_ty)> {
+                self.#label
+                    .iter()
+                    .flat_map(|(from, items)| items.iter().map(move |(to, attrs)| (from, to, attrs)))
+            }
+        },
+    }
+}
+
 fn gen_edge_accessor(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream {
     let label = &edge.label;
     let from_id = &edge.from_node.id_ident;
@@ -322,7 +410,13 @@ fn gen_edge_accessor(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream {
     let label_str = label.to_string();
     let schema_name_str = schema_name.to_string();
 
-    match (&edge.decl.mult, &edge.attrs_type_ident) {
+    let try_accessor = match edge.decl.mult {
+        Multiplicity::One => gen_try_edge_accessor(edge),
+        Multiplicity::ZeroOrOne | Multiplicity::ZeroOrMany => quote! {},
+    };
+    let pairs_iter = gen_edge_pairs_iter(edge);
+
+    let main_accessor = match (&edge.decl.mult, &edge.attrs_type_ident) {
         (Multiplicity::One, None) => quote! {
             /// 多重度 (1) -> 参照そのものを返す。
             ///
@@ -388,6 +482,12 @@ fn gen_edge_accessor(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream {
                 }
             }
         },
+    };
+
+    quote! {
+        #main_accessor
+        #try_accessor
+        #pairs_iter
     }
 }
 

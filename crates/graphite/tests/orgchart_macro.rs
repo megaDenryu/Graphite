@@ -224,6 +224,81 @@ mod tests {
     }
 
     #[test]
+    fn try_belongs_toは未知キーでnoneを返す() {
+        let g = build_healthy_chart();
+        assert!(g.try_belongs_to(&emp("存在しない社員")).is_none());
+        let d = g
+            .try_belongs_to(&emp("田中"))
+            .expect("田中は営業部に所属しているはず");
+        assert_eq!(d.name, "営業");
+    }
+
+    #[test]
+    fn employee_idsで全キーを列挙できる() {
+        let g = build_healthy_chart();
+        let mut ids: Vec<String> = g.employee_ids().map(|id| id.0.clone()).collect();
+        ids.sort();
+        assert_eq!(ids, vec!["佐藤".to_string(), "田中".to_string()]);
+    }
+
+    #[test]
+    fn boss_pairsで相互上司ペアを検出できる() {
+        let g = OrgChart::create(|b| {
+            b.employee(
+                emp("田中"),
+                Employee {
+                    name: "田中".to_string(),
+                    id: 1,
+                },
+            );
+            b.employee(
+                emp("佐藤"),
+                Employee {
+                    name: "佐藤".to_string(),
+                    id: 2,
+                },
+            );
+            b.employee(
+                emp("鈴木"),
+                Employee {
+                    name: "鈴木".to_string(),
+                    id: 3,
+                },
+            );
+            b.department(
+                dept("営業部"),
+                Department {
+                    name: "営業".to_string(),
+                },
+            );
+            b.belongs_to(emp("田中"), dept("営業部"));
+            b.belongs_to(emp("佐藤"), dept("営業部"));
+            b.belongs_to(emp("鈴木"), dept("営業部"));
+            // 田中と佐藤は相互に上司 (お互いがお互いの boss)。
+            b.boss(emp("田中"), emp("佐藤"), BossAttrs { since: 2020 });
+            b.boss(emp("佐藤"), emp("田中"), BossAttrs { since: 2019 });
+            // 鈴木は上司なし (相互ペアには現れない)。
+        })
+        .unwrap();
+
+        // match パターン (`match g { @{ a -[boss]-> b, b -[boss]-> a } => ... }`)
+        // の代替として、ペアイテレータ + メソッドチェーンで同じクエリを書ける
+        // ことを実証する。
+        let all: Vec<(&EmployeeId, &EmployeeId)> =
+            g.boss_pairs().map(|(a, b, _attrs)| (a, b)).collect();
+        let mutual: Vec<(&EmployeeId, &EmployeeId)> = all
+            .iter()
+            .copied()
+            .filter(|(a, b)| all.contains(&(b, a)))
+            .collect();
+
+        assert_eq!(mutual.len(), 2);
+        assert!(mutual.contains(&(&emp("田中"), &emp("佐藤"))));
+        assert!(mutual.contains(&(&emp("佐藤"), &emp("田中"))));
+        assert!(!mutual.iter().any(|(a, _)| *a == &emp("鈴木")));
+    }
+
+    #[test]
     fn colleagues_は同じ部署の他の社員を返す() {
         let g = OrgChart::create(|b| {
             b.employee(
