@@ -56,6 +56,9 @@ pub struct BossEdge {
 // - `label: Type` の `Type` は「辺1本ごとが運ぶペイロードの型」です。
 //   属性なしエッジ (`belongs_to`) は何も運ばず、属性ありエッジ
 //   (`boss: BossEdge`) は `BossEdge` の値を辺1本ごとに1つ持ちます。
+//   (この `label: Type` という書き方は schema 宣言だけの話です。schema は
+//   常に `:` — 型付け — を使います。次の §3 で見る `graph!` リテラルは
+//   これとは対照的に常に `=` — 代入 — を使います。)
 // - 多重度 `(1)`/`(0..1)`/`(0..*)` は矢印の外側に書きます (辺そのものの
 //   属性ではなく「本数の制約」だからです)。
 
@@ -82,17 +85,22 @@ fn main() {
 fn section3() {
     println!("=== §3 graph! で組み立てて、多重度ごとにアクセスする ===\n");
 
+    // `graph!` リテラルは常に `=` (代入) を使います (§2 の schema 宣言の
+    // `:` (型付け) と対照的です)。`alice = Person { .. }` の右辺は任意の
+    // Rust の式で、値の型はマクロではなく rustc が推論します
+    // (`docs/graph_literal_v3.md` §3)。属性ありエッジも同様に
+    // `-[boss = BossEdge { .. }]->` という「ラベル = 式」の形です。
     #[rustfmt::skip]
     let g = graphite::graph!(Org {
-        alice: Person { name: "Alice".into() },
-        bob:   Person { name: "Bob".into() },
-        carol: Person { name: "Carol".into() },
-        eng:   Team { name: "Engineering".into() },
+        alice = Person { name: "Alice".into() },
+        bob   = Person { name: "Bob".into() },
+        carol = Person { name: "Carol".into() },
+        eng   = Team { name: "Engineering".into() },
 
         alice -[belongs_to]-> eng,
         bob   -[belongs_to]-> eng,
         carol -[belongs_to]-> eng,
-        bob   -[boss { since: 2021 }]-> alice,
+        bob   -[boss = BossEdge { since: 2021 }]-> alice,
         alice -[reports]-> bob,
         alice -[reports]-> carol,
     })
@@ -169,9 +177,9 @@ fn section3() {
 // 実際のエラー (コメントを外して `cargo build` した際に採取):
 //
 //   error[E0425]: cannot find value `boss` in this scope
-//      --> src\main.rs:166:13
+//      --> src\main.rs:174:13
 //       |
-//   166 |     let _ = boss.since;
+//   174 |     let _ = boss.since;
 //       |             ^^^^ not found in this scope
 
 // --- 4.2 フィールドに直接アクセスしようとする (メソッド呼び出しを忘れる) ---
@@ -192,11 +200,11 @@ fn section3() {
 // 実際のエラー (コメントを外して `cargo build` した際に採取):
 //
 //   error[E0308]: mismatched types
-//      --> src\main.rs:184:5
+//      --> src\main.rs:197:5
 //       |
-//   183 | fn section4_2(g: &Org) -> Person {
+//   196 | fn section4_2(g: &Org) -> Person {
 //       |                           ------ expected `Person` because of return type
-//   184 |     g.boss
+//   197 |     g.boss
 //       |     ^^^^^^ expected `Person`, found `HashMap<PersonId, (PersonId, BossEdge)>`
 //       |
 //       = note: expected struct `Person`
@@ -210,45 +218,33 @@ fn section3() {
 
 // --- 4.3 存在しないエッジラベルを graph! に書く ---
 //
-// `graph!` は `graph_schema!` が生成したハンドシェイクマクロ経由でラベルを
-// 検査するため、未知のラベルには「利用可能なエッジ一覧」付きの
-// `compile_error!` が出ます。
+// v3 (`docs/graph_literal_v3.md` §4) でハンドシェイクマクロを全廃したため、
+// 未知のラベルは素の rustc メソッド解決 (E0599) だけで検出されます
+// (「利用可能なエッジ一覧」付きの親切な compile_error! は無くなりました。
+// これは意図した trade-off です)。
 //
 // fn section4_3() {
 //     #[rustfmt::skip]
 //     let _ = graphite::graph!(Org {
-//         alice: Person { name: "Alice".into() },
-//         eng: Team { name: "Engineering".into() },
+//         alice = Person { name: "Alice".into() },
+//         eng = Team { name: "Engineering".into() },
 //         alice -[no_such_label]-> eng,
 //     });
 // }
 //
-// 実際のエラー (コメントを外して `cargo build` した際に採取。ハンドシェイク
-// マクロの `compile_error!` と、それに続く rustc 標準の「メソッドが
-// 見つからない」エラーの2つが重ねて出ます):
+// 実際のエラー (コメントを外して `cargo build` した際に採取):
 //
-//   error: スキーマ Org にエッジ `no_such_label` は存在しません。利用可能: belongs_to, boss, reports
-//      --> src\main.rs:63:1
+//   error[E0599]: no method named `no_such_label` found for mutable reference `&mut OrgBuilder` in the current scope
+//      --> src\main.rs:231:17
 //       |
-//    63 | / graphite::graph_schema! {
-//    64 | |     schema Org {
-//       | ...
-//    72 | | }
-//       | |_^
-//   ...
-//   205 |       let _ = graphite::graph!(Org {
+//   228 |       let _ = graphite::graph!(Org {
 //       |  _____________-
-//   ...
-//   208 | |         alice -[no_such_label]-> eng,
-//   209 | |     });
-//       | |______- in this macro invocation
-//
-//   error[E0599]: no method named `no_such_label` found for mutable reference
-//   `&mut OrgBuilder` in the current scope
-//      --> src\main.rs:208:17
-//       |
-//   208 | |         alice -[no_such_label]-> eng,
+//   229 | |         alice = Person { name: "Alice".into() },
+//   230 | |         eng = Team { name: "Engineering".into() },
+//   231 | |         alice -[no_such_label]-> eng,
 //       | |                -^^^^^^^^^^^^^ method not found in `&mut OrgBuilder`
+//       | |________________|
+//       |
 
 // --- 4.4 端点の型を間違えたエッジを graph! に書く ---
 //
@@ -259,8 +255,8 @@ fn section3() {
 // fn section4_4() {
 //     #[rustfmt::skip]
 //     let _ = graphite::graph!(Org {
-//         alice: Person { name: "Alice".into() },
-//         bob: Person { name: "Bob".into() },
+//         alice = Person { name: "Alice".into() },
+//         bob = Person { name: "Bob".into() },
 //         alice -[belongs_to]-> bob,
 //     });
 // }
@@ -268,22 +264,31 @@ fn section3() {
 // 実際のエラー (コメントを外して `cargo build` した際に採取):
 //
 //   error[E0308]: mismatched types
-//      --> src\main.rs:228:13
+//      --> src\main.rs:252:13
 //       |
-//   228 |       let _ = graphite::graph!(Org {
+//   252 |       let _ = graphite::graph!(Org {
 //       |  _____________^
-//   229 | |         alice: Person { name: "Alice".into() },
-//   230 | |         bob: Person { name: "Bob".into() },
-//   231 | |         alice -[belongs_to]-> bob,
+//   253 | |         alice = Person { name: "Alice".into() },
+//   254 | |         bob = Person { name: "Bob".into() },
+//   255 | |         alice -[belongs_to]-> bob,
 //       | |                 ---------- arguments to this method are incorrect
-//   232 | |     });
+//   256 | |     });
 //       | |______^ expected `TeamId`, found `PersonId`
 //       |
 //   note: method defined here
-//      --> src\main.rs:68:23
+//      --> src\main.rs:71:23
 //       |
-//    68 | |         edge Person -[belongs_to]-> Team (1);
+//    66 | / graphite::graph_schema! {
+//    67 | |     schema Org {
+//    68 | |         node Person;
+//    69 | |         node Team;
+//    70 | |
+//    71 | |         edge Person -[belongs_to]-> Team (1);
 //       | |                       ^^^^^^^^^^
+//   ...   |
+//    75 | | }
+//       | |_-
+//       = note: this error originates in the macro `graphite::graph` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 #[cfg(test)]
 mod tests {
@@ -292,15 +297,15 @@ mod tests {
     fn build() -> Org {
         #[rustfmt::skip]
         let g = graphite::graph!(Org {
-            alice: Person { name: "Alice".into() },
-            bob:   Person { name: "Bob".into() },
-            carol: Person { name: "Carol".into() },
-            eng:   Team { name: "Engineering".into() },
+            alice = Person { name: "Alice".into() },
+            bob   = Person { name: "Bob".into() },
+            carol = Person { name: "Carol".into() },
+            eng   = Team { name: "Engineering".into() },
 
             alice -[belongs_to]-> eng,
             bob   -[belongs_to]-> eng,
             carol -[belongs_to]-> eng,
-            bob   -[boss { since: 2021 }]-> alice,
+            bob   -[boss = BossEdge { since: 2021 }]-> alice,
             alice -[reports]-> bob,
             alice -[reports]-> carol,
         });

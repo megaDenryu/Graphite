@@ -71,7 +71,7 @@ newtype キー (`PersonId`) と `{node_snake}_ids()` (`person_ids()`) が
 | 全エッジをイテレータで走査する | できる | `g.boss_pairs()` (`(&PersonId, &PersonId, &BossEdge)` の3つ組) |
 | `boss` を値として (`boss.since`) 読む | **できない** | `error[E0425]: cannot find value \`boss\` in this scope` (§4.1) |
 | `g.boss` とフィールドのように書いて `Person` を得る | **できない** | `error[E0308]: mismatched types` (中身は `HashMap`。§4.2) |
-| `graph!` に存在しないエッジラベルを書く | **できない** | ハンドシェイクマクロの `error: スキーマ Org にエッジ \`...\` は存在しません。利用可能: ...` (§4.3) |
+| `graph!` に存在しないエッジラベルを書く | **できない** | `error[E0599]: no method named \`no_such_label\` found ...` (v3 でハンドシェイクマクロを全廃したため、素の rustc method-not-found のみ。§4.3) |
 | `graph!` のエッジ端点に間違ったノード型を渡す | **できない** | `error[E0308]: mismatched types` (`expected TeamId, found PersonId`。§4.4) |
 
 実際のエラー全文は `src/main.rs` の §4 に、コメントアウトしたコードと
