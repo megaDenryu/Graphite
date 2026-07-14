@@ -1,20 +1,67 @@
 # Graphite
 
-Graphite は、自作言語 [Vertex](../Bullet) のグラフ機能の設計検討から派生した、
-独立した Rust プロジェクトです。Vertex 本体とは切り離されており、Vertex 言語
-処理系のコードには一切依存しません。
+型付きの図式グラフ (ノード種別・ラベル付きエッジ・多重度) を Rust の型システムに
+乗せる proc-macro DSL + ランタイムです。
 
-Vertex 側では「グラフ指向」を独立言語の構文・型システムとして実装する道を
-選びましたが、その設計を壁打ちする過程で「グラフはあくまで既存言語 (Rust) の
-型システムと所有権に乗るデータ構造として実装でき、DSL 部分だけを proc マクロ
+> **実験的プロジェクトです (v0)。API は予告なく変わります。**
+
+自作言語 Vertex のグラフ機能の設計検討から派生した、独立した Rust プロジェクトです
+(Vertex 本体とは切り離されており、Vertex 言語処理系のコードには一切依存しません)。
+Vertex 側では「グラフ指向」を独立言語の構文・型システムとして実装する道を選び
+ましたが、その設計を壁打ちする過程で「グラフはあくまで既存言語 (Rust) の型
+システムと所有権に乗るデータ構造として実装でき、DSL 部分だけを proc マクロ
 + ライブラリとして切り出せるのではないか」という仮説が生まれました。Graphite
-はその仮説を検証するプロジェクトです。設計の系譜:
+はその仮説を検証するプロジェクトです。設計の系譜 (Vertex 側リポジトリの
+ドキュメントであり、このリポジトリには含まれません):
 
-- `../Bullet/docs/graph_design_sketches.md` — グラフ型そのものの設計決定
+- `graph_design_sketches.md` — グラフ型そのものの設計決定
   (ノード同一性、可変性、矢印記法、多重度検査、可視性、型推論)
-- `../Bullet/docs/rust_graph_extension_sketch.md` — 上記の決定を Rust の
+- `rust_graph_extension_sketch.md` — 上記の決定を Rust の
   proc マクロ + ライブラリとしてどう実現するかの一次資料。`graph_schema!`/
   `graph!` の展開イメージはここで最初に書かれた
+
+## 最小の例
+
+`examples/hello-graph` から抜粋した最小の例です (ノード型2種・属性なしエッジ・
+属性ありエッジを1本ずつ)。
+
+```rust
+// ノード型・エッジ属性型は普通の Rust struct として宣言する。
+// graph_schema! はこれらの型を生成せず、参照するだけ。
+pub struct Person { pub name: String }
+pub struct Team { pub name: String }
+pub struct BossEdge { pub since: i32 }
+
+graphite::graph_schema! {
+    schema Org {
+        node Person;
+        node Team;
+
+        edge Person -[belongs_to]-> Team (1);
+        edge Person -[boss: BossEdge]-> Person (0..1);
+    }
+}
+
+#[rustfmt::skip]
+let g = graphite::graph!(Org {
+    alice: Person { name: "Alice".into() },
+    bob:   Person { name: "Bob".into() },
+    eng:   Team { name: "Engineering".into() },
+
+    alice -[belongs_to]-> eng,
+    bob   -[belongs_to]-> eng,
+    bob   -[boss { since: 2021 }]-> alice,
+})?;
+
+let team: &Team = g.belongs_to(&PersonId("alice".to_string()));
+let (boss, attrs) = g.boss(&PersonId("bob".to_string())).unwrap(); // (&Person, &BossEdge)
+```
+
+`graph_schema!` が何を生成するか (newtype キー・builder・アクセサ・違反 enum)、
+多重度ごとにアクセサが何を返すかは下記「使用例」節で詳しく説明します。
+「ラベルとは値なのか関数なのか、何ができて何ができないのか」を実際のコンパイル
+エラー付きで1つずつ確認したい場合は、まず `examples/hello-graph` を読んでみて
+ください (下記「実践例」節参照)。
 
 ## 2 クレート構成
 
@@ -314,23 +361,6 @@ let result: Result<OrgChart, Vec<OrgChartViolation>> = OrgChart::create_collecti
 がその場でコンパイルエラーとして報告されます
 (`crates/graphite/tests/ui/graph_duplicate_node_key.rs` 参照)。
 
-## テスト
-
-```powershell
-cargo build 2> build_errors.txt; Get-Content build_errors.txt -Head 50
-cargo test
-```
-
-- `crates/graphite/tests/orgchart_handwritten.rs` — フェーズ2で手書きした
-  `OrgChart` (`graph_schema!` が生成すべきコードの目標形。テンプレートとして
-  残置)
-- `crates/graphite/tests/orgchart_macro.rs` — `graph_schema!` で `OrgChart`
-  を宣言し直した同等テスト、および `graph!` リテラルのテスト
-- `crates/graphite/tests/compile_fail.rs` + `tests/ui/*.rs` —
-  [`trybuild`](https://docs.rs/trybuild) によるコンパイルエラー系テスト
-  (未宣言ノード型を端点に指定 / 不正な多重度 / `graph!` で存在しないエッジ
-  種別)。stderr の再生成は `TRYBUILD=overwrite cargo test --test compile_fail`
-
 ## 実践例 (`examples/`)
 
 `graphite` を実際のアプリケーションから使う例として、`examples/` 配下に
@@ -371,6 +401,23 @@ cargo test
 
 各ディレクトリの詳細な使い方・サブコマンド一覧は、それぞれの `README.md` を
 参照してください。
+
+## テスト
+
+```powershell
+cargo build 2> build_errors.txt; Get-Content build_errors.txt -Head 50
+cargo test
+```
+
+- `crates/graphite/tests/orgchart_handwritten.rs` — フェーズ2で手書きした
+  `OrgChart` (`graph_schema!` が生成すべきコードの目標形。テンプレートとして
+  残置)
+- `crates/graphite/tests/orgchart_macro.rs` — `graph_schema!` で `OrgChart`
+  を宣言し直した同等テスト、および `graph!` リテラルのテスト
+- `crates/graphite/tests/compile_fail.rs` + `tests/ui/*.rs` —
+  [`trybuild`](https://docs.rs/trybuild) によるコンパイルエラー系テスト
+  (未宣言ノード型を端点に指定 / 不正な多重度 / `graph!` で存在しないエッジ
+  種別)。stderr の再生成は `TRYBUILD=overwrite cargo test --test compile_fail`
 
 ## IDE サポート (rust-analyzer)
 
@@ -475,3 +522,7 @@ cargo test
   ビルダーに対する通常の Rust メソッド解決は引き続き走るため、rustc 標準の
   「メソッドが見つからない」エラーも重ねて出ます (`tests/ui/graph_unknown_edge_label.stderr`
   参照)。
+
+## ライセンス
+
+ライセンス未定 (TBD)。
