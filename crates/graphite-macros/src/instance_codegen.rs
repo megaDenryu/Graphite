@@ -1,10 +1,42 @@
 //! `graph!` のコード生成本体。
 //!
-//! `SchemaName::create(|b| { ... })` の呼び出し列へ脱糖する。`graph!` は
-//! スキーマの中身を知らないので、ここで使う名前 (builder メソッド名・
+//! `SchemaName::create(|__graphite_b| { ... })` の呼び出し列へ脱糖する。
+//! `graph!` はスキーマの中身を知らないので、ここで使う名前 (builder メソッド名・
 //! newtype キー型名・属性型名) は `graph_schema!` (`schema_codegen.rs`) と
 //! 全く同じ命名規則 (`crate::naming`) から機械的に導出する。両者がずれると
 //! ここで生成した呼び出しがコンパイルエラーになる (メソッドが見つからない等)。
+//!
+//! ## 展開形 (項目G1、`docs/ide_support_spec.md` 参照)
+//!
+//! ノードキーはその場で文字列化せず、キーごとに 1 つの `let` 束縛を作り、
+//! 以後は識別子参照で運ぶ。これにより rust-analyzer 上でノードキーの
+//! 定義ジャンプ・rename・参照検索・hover が「普通のローカル変数」として
+//! 機能する:
+//!
+//! ```text
+//! OrgChart::create(|__graphite_b| {
+//!     // (1) 全ノード宣言 (記述順)
+//!     let tanaka = EmployeeId("tanaka".to_string()); // ← ノード宣言の出現スパン
+//!     __graphite_b.employee(tanaka.clone(), Employee { .. });
+//!     let sales = DepartmentId("sales".to_string());
+//!     __graphite_b.department(sales.clone(), Department { .. });
+//!     // (2) 全エッジ (記述順)
+//!     __graphite_check_edge_OrgChart!(belongs_to);
+//!     __graphite_b.belongs_to(tanaka.clone(), sales.clone()); // ← 各エッジでの出現スパン
+//! })
+//! ```
+//!
+//! `graph!` は従来エッジをノード宣言より先に書けたが (キー→型の逆引き表は
+//! 全項目を先に走査して作るため)、`let` 束縛は使用より前に定義されている
+//! 必要があるので、展開は「全ノード → 全エッジ」の2段に並べ替える
+//! (builder の検証は freeze 時なので意味論は変わらない)。`(0..*)` エッジ
+//! 同士の記述順保持 (README「`(0..*)` エッジの順序保証」節) はエッジ列内の
+//! 相対順序なので、この並べ替えの影響を受けない。
+//!
+//! builder のクロージャ引数名は `b` ではなく `__graphite_b` にする。ユーザーが
+//! `b` というノードキーを書いたときに生成する `let b = ..;` が builder を
+//! 隠してしまう衝突を避けるため (proc macro の入力トークンは call site
+//! ハイジーンなので、名前が同じなら実際に衝突する)。
 
 use std::collections::HashMap;
 
@@ -51,24 +83,36 @@ pub fn generate(input: &GraphInput) -> syn::Result<TokenStream> {
     // key (識別子の文字列) -> 宣言時のノード型名。edge が端点の型を逆引きするための表。
     let key_types = build_key_types(&input.items)?;
 
-    let mut calls: Vec<TokenStream> = Vec::new();
+    // 項目G1: 「全ノード → 全エッジ」の2段に並べ替えるため、生成する
+    // トークン列を別々の Vec に集めておき、最後に結合する。
+    let mut node_calls: Vec<TokenStream> = Vec::new();
+    let mut edge_calls: Vec<TokenStream> = Vec::new();
+
     for item in &input.items {
         match item {
             GraphItem::Node(node) => {
                 let builder_method = format_ident!("{}", to_snake_case(&node.type_name.to_string()));
                 let id_type = format_ident!("{}Id", node.type_name);
+                // スパン規約: let の束縛識別子はノード宣言に書かれた出現の
+                // Ident をそのまま使う (文字列から作り直さない)。
+                let key_ident = node.key.clone();
                 let key_str = node.key.to_string();
                 let type_name = &node.type_name;
                 let field_tokens = fields_to_tokens(&node.fields);
-                calls.push(quote! {
-                    b.#builder_method(
-                        #id_type(#key_str.to_string()),
+                node_calls.push(quote! {
+                    let #key_ident = #id_type(#key_str.to_string());
+                    __graphite_b.#builder_method(
+                        #key_ident.clone(),
                         #type_name { #(#field_tokens),* }
                     );
                 });
             }
             GraphItem::Edge(edge) => {
-                let from_type = key_types.get(&edge.from.to_string()).ok_or_else(|| {
+                // 端点キーがノードとして宣言されているかどうかの検証。
+                // 検証にのみ使い、コード生成自体はノード側で作った let
+                // 束縛への識別子参照 (edge.from / edge.to) で足りるので、
+                // 逆引きした型名そのものはここでは使わない。
+                key_types.get(&edge.from.to_string()).ok_or_else(|| {
                     syn::Error::new_spanned(
                         &edge.from,
                         format!(
@@ -77,7 +121,7 @@ pub fn generate(input: &GraphInput) -> syn::Result<TokenStream> {
                         ),
                     )
                 })?;
-                let to_type = key_types.get(&edge.to.to_string()).ok_or_else(|| {
+                key_types.get(&edge.to.to_string()).ok_or_else(|| {
                     syn::Error::new_spanned(
                         &edge.to,
                         format!(
@@ -87,14 +131,11 @@ pub fn generate(input: &GraphInput) -> syn::Result<TokenStream> {
                     )
                 })?;
 
-                let from_id_type = format_ident!("{}Id", from_type);
-                let to_id_type = format_ident!("{}Id", to_type);
-                let from_key_str = edge.from.to_string();
-                let to_key_str = edge.to.to_string();
+                // スパン規約: エッジ呼び出しの引数はエッジに書かれた出現の
+                // Ident をそのまま使う (from/to それぞれの出現スパン)。
+                let from_ident = edge.from.clone();
+                let to_ident = edge.to.clone();
                 let label = &edge.label;
-
-                let from_expr = quote! { #from_id_type(#from_key_str.to_string()) };
-                let to_expr = quote! { #to_id_type(#to_key_str.to_string()) };
 
                 // 項目5 (フェーズ4): `graph_schema!` が生成したハンドシェイク
                 // 用マクロを呼び、未知のエッジラベルを親切なメッセージで検出
@@ -105,20 +146,20 @@ pub fn generate(input: &GraphInput) -> syn::Result<TokenStream> {
 
                 match &edge.attrs {
                     None => {
-                        calls.push(quote! {
+                        edge_calls.push(quote! {
                             #check_macro!(#label);
-                            b.#label(#from_expr, #to_expr);
+                            __graphite_b.#label(#from_ident.clone(), #to_ident.clone());
                         });
                     }
                     Some(attr_fields) => {
                         let attrs_type =
                             format_ident!("{}Attrs", to_pascal_case(&label.to_string()));
                         let attr_tokens = fields_to_tokens(attr_fields);
-                        calls.push(quote! {
+                        edge_calls.push(quote! {
                             #check_macro!(#label);
-                            b.#label(
-                                #from_expr,
-                                #to_expr,
+                            __graphite_b.#label(
+                                #from_ident.clone(),
+                                #to_ident.clone(),
                                 #attrs_type { #(#attr_tokens),* }
                             );
                         });
@@ -129,8 +170,9 @@ pub fn generate(input: &GraphInput) -> syn::Result<TokenStream> {
     }
 
     Ok(quote! {
-        #schema_name::create(|b| {
-            #(#calls)*
+        #schema_name::create(|__graphite_b| {
+            #(#node_calls)*
+            #(#edge_calls)*
         })
     })
 }

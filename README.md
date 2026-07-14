@@ -109,12 +109,39 @@ let g = graphite::graph!(OrgChart {
 })?; // Result<OrgChart, OrgChartViolation>
 ```
 
-`graph!` は `OrgChart::create(|b| { ... })` の呼び出し列へ脱糖するだけで、
-スキーマの中身 (どのエッジが存在するか等) は一切知りません。ノード宣言行
-`key: Type { .. }` の型名から builder メソッド名・newtype キー型名を
+`graph!` は `OrgChart::create(|__graphite_b| { ... })` の呼び出し列へ脱糖する
+だけで、スキーマの中身 (どのエッジが存在するか等) は一切知りません。ノード
+宣言行 `key: Type { .. }` の型名から builder メソッド名・newtype キー型名を
 `graph_schema!` と同じ命名規則 (snake_case / `{Type}Id`) で機械的に導出し、
 辺の端点キーの型はその場で作った「識別子 → 宣言時の型名」対応表から逆引き
 します。
+
+ノードキーはその場で文字列化するのではなく、キーごとに `let` 束縛を1つ作り、
+以後はその識別子への参照として運びます (IDE サポート項目G1、
+`docs/ide_support_spec.md` 参照)。展開結果はおおよそ次の形になります:
+
+```rust
+OrgChart::create(|__graphite_b| {
+    // (1) 全ノード宣言 (記述順)
+    let tanaka = EmployeeId("tanaka".to_string());
+    __graphite_b.employee(tanaka.clone(), Employee { .. });
+    let sales = DepartmentId("sales".to_string());
+    __graphite_b.department(sales.clone(), Department { .. });
+    // (2) 全エッジ (記述順)
+    __graphite_check_edge_OrgChart!(belongs_to);
+    __graphite_b.belongs_to(tanaka.clone(), sales.clone());
+})
+```
+
+これにより rust-analyzer 上でノードキー識別子への定義ジャンプ・rename・
+参照検索・hover が「普通のローカル変数」として機能します。`graph!` は
+従来エッジをノード宣言より前に書くこともできますが (キー→型の逆引き表は
+全項目を先に走査して作るため)、`let` 束縛は使用より前に必要なので、
+展開そのものは記述順によらず「全ノード → 全エッジ」の2段に並べ替えます
+(builder の検証は freeze 時に行われるため意味論は変わりません)。builder の
+クロージャ引数名が `b` ではなく `__graphite_b` なのは、ノードキーに `b` を
+使ったときに生成される `let b = ..;` が builder 変数を隠してしまう衝突を
+避けるためです。
 
 `-[label]->` の向きは「`from` = 辺ラベルの builder 引数の 1 番目、`to` = 2
 番目」に対応します。上の例の `edge boss: Employee -> Employee` は手書き

@@ -522,4 +522,58 @@ mod graph_literal_tests {
             Err(OrgChartViolation::BelongsToMultiplicity { .. })
         ));
     }
+
+    // 項目G1 (`docs/ide_support_spec.md`): `graph!` の展開をノードキーごとの
+    // `let` 束縛方式に変更した際の回帰テスト2件。
+
+    #[test]
+    #[rustfmt::skip]
+    fn ノードキーにbを使っても_builder変数と衝突しない() {
+        // 展開後のクロージャ引数は `__graphite_b` (`b` ではない) なので、
+        // ノードキー `b` から生成される `let b = ..;` が builder 変数を
+        // 隠してしまうことはない。もし引数名が `b` のままなら、この
+        // graph! はビルダーメソッド呼び出しが `String` に対する呼び出し
+        // として解釈されてコンパイルエラーになっていたはず。
+        let g = graphite::graph!(OrgChart {
+            b: Employee { name: "B社員".into(), id: 10 },
+            sales: Department { name: "営業".into() },
+
+            b -[belongs_to]-> sales,
+        })
+        .expect("ノードキー b を使った graph! も構築に成功するはず");
+
+        assert_eq!(
+            g.employee(&EmployeeId("b".to_string())).unwrap().name,
+            "B社員"
+        );
+        let d: &Department = g.belongs_to(&EmployeeId("b".to_string()));
+        assert_eq!(d.name, "営業");
+    }
+
+    #[test]
+    #[rustfmt::skip]
+    fn エッジをノード宣言より先に書いても構築できる() {
+        // let束縛は使用より前に必要なため、展開時に「全ノード宣言(記述順)
+        // → 全エッジ(記述順)」の2段に並べ替えている。この並べ替えが正しく
+        // 機能し、記述順に依存せず構築できることを確認する。
+        let g = graphite::graph!(OrgChart {
+            tanaka -[belongs_to]-> sales,
+            sato -[belongs_to]-> sales,
+            tanaka -[boss { since: 2020 }]-> sato,
+
+            tanaka: Employee { name: "田中".into(), id: 1 },
+            sato: Employee { name: "佐藤".into(), id: 2 },
+            sales: Department { name: "営業".into() },
+        })
+        .expect("エッジをノード宣言より先に書いても構築できるはず");
+
+        let d: &Department = g.belongs_to(&EmployeeId("tanaka".to_string()));
+        assert_eq!(d.name, "営業");
+
+        let (boss_emp, attrs) = g
+            .boss(&EmployeeId("tanaka".to_string()))
+            .expect("田中の上司は佐藤のはず");
+        assert_eq!(boss_emp.name, "佐藤");
+        assert_eq!(attrs.since, 2020);
+    }
 }
