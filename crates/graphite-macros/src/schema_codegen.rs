@@ -120,10 +120,14 @@ pub fn generate(schema: &SchemaInput) -> TokenStream {
                 label: edge.label.clone(),
                 from_node,
                 to_node,
-                attrs_type_ident: edge
-                    .attrs
-                    .as_ref()
-                    .map(|_| format_ident!("{}Attrs", to_pascal_case(&edge.label.to_string()))),
+                attrs_type_ident: edge.attrs.as_ref().map(|_| {
+                    // G3 スパンポリシー: String 補間はスパン継承が働かないため明示
+                    format_ident!(
+                        "{}Attrs",
+                        to_pascal_case(&edge.label.to_string()),
+                        span = edge.label.span()
+                    )
+                }),
             }
         })
         .collect();

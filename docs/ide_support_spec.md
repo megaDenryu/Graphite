@@ -35,7 +35,7 @@ Graphite の DSL (`graph_schema!` / `graph!`) を書くとき、VSCode 上で参
 | `graph!` ノードキー → 参照検索 | ✅ 宣言 + 全エッジ内出現を検出 (計3件を確認) |
 | `graph!` ノードキー → hover | ✅ トークン範囲で応答 (ローカル変数 `EmployeeId` として) |
 | examples/* の解析 | ✅ `Scene`/`SceneId` 等がワークスペースシンボルとして引ける。graph_schema! 内トークンへのスパンも機能 |
-| rename | ⚠️ 判定保留 — この環境では rust-analyzer の rename provider が**マクロと無関係な普通の関数でも**「Unexpected type」例外を投げるため、マクロ起因かどうか切り分け不能 (環境問題)。参照検索は全出現を正しく検出しているので、rename の土台となる名前解決は機能している |
+| rename | ✅ その後 VSCode UI (F2) での rename は機能することを確認した。schema エッジラベルの rename は派生名 (`{label}_pairs` 等) の参照側までカスケードする。ただし `{Label}Attrs` (エッジ属性型) だけは `format_ident!` が String のみを補間しておりスパン継承が働かないため取り残される欠陥が見つかり、本コミットで修正した (`span = edge.label.span()` を明示) |
 
 注意: `.vscode/settings.json` の `linkedProjects` 変更と proc-macro の変更は、
 `rust-analyzer: Restart Server` を実行するまで反映されないことがある

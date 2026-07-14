@@ -110,7 +110,12 @@ pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<Token
     for item in &input.items {
         match item {
             GraphItem::Node(node) => {
-                let builder_method = format_ident!("{}", to_snake_case(&node.type_name.to_string()));
+                // G3 スパンポリシー: String 補間はスパン継承が働かないため明示
+                let builder_method = format_ident!(
+                    "{}",
+                    to_snake_case(&node.type_name.to_string()),
+                    span = node.type_name.span()
+                );
                 let id_type = format_ident!("{}Id", node.type_name);
                 // スパン規約: let の束縛識別子はノード宣言に書かれた出現の
                 // Ident をそのまま使う (文字列から作り直さない)。
@@ -173,8 +178,12 @@ pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<Token
                         });
                     }
                     Some(attr_fields) => {
-                        let attrs_type =
-                            format_ident!("{}Attrs", to_pascal_case(&label.to_string()));
+                        // G3 スパンポリシー: String 補間はスパン継承が働かないため明示
+                        let attrs_type = format_ident!(
+                            "{}Attrs",
+                            to_pascal_case(&label.to_string()),
+                            span = label.span()
+                        );
                         let attr_tokens = fields_to_tokens(attr_fields);
                         edge_calls.push(quote! {
                             #check_macro!(#label);
