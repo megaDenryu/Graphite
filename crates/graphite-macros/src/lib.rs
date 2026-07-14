@@ -47,17 +47,26 @@ use syn::parse::Parser;
 /// builder・違反 enum) を生成する。
 ///
 /// ```text
+/// pub struct Employee { pub name: String, pub id: u32 }
+/// pub struct Department { pub name: String }
+/// pub struct BossEdge { pub since: i32 }
+///
 /// graphite::graph_schema! {
 ///     schema OrgChart {
-///         node Employee { name: String, id: u32 }
-///         node Department { name: String }
+///         node Employee;
+///         node Department;
 ///
-///         edge belongs_to: Employee -> Department (1);
-///         edge boss:       Employee -> Employee   (0..1) { since: i32 };
-///         edge reports:    Employee -> Employee   (0..*);
+///         edge Employee -[belongs_to]-> Department (1);
+///         edge Employee -[boss: BossEdge]-> Employee (0..1);
+///         edge Employee -[reports]-> Employee (0..*);
 ///     }
 /// }
 /// ```
+///
+/// `Employee`/`Department`/`BossEdge` はいずれもこのマクロの外でユーザーが
+/// 宣言した普通の struct への参照であり、このマクロは値の型そのものを一切
+/// 生成しない (`docs/edge_syntax_v2.md` 参照)。生成するのはグラフ機械
+/// (newtype キー・ストレージ・builder・アクセサ・違反 enum) だけ。
 #[proc_macro]
 pub fn graph_schema(input: TokenStream) -> TokenStream {
     // G4a: ヘッダ (`schema Name {`) 自体が壊れている場合はここで Err になり、

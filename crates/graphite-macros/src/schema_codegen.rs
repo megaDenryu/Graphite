@@ -11,15 +11,19 @@
 
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use syn::Ident;
+use syn::{Ident, Path};
 
 use crate::naming::{plural_field_name, to_pascal_case, to_snake_case};
 use crate::schema_dsl::{EdgeDecl, Multiplicity, NodeDecl, SchemaInput};
 
 /// ノード宣言 1 つ分の、生成コードで使う識別子一式。
-struct NodeInfo<'a> {
-    decl: &'a NodeDecl,
-    /// ノード値の型名 (`Employee`)。
+///
+/// ノード値の型 (`Employee` 等) はユーザーが `graph_schema!` の外で宣言した
+/// 普通の struct への参照であり、このマクロは生成しない
+/// (`docs/edge_syntax_v2.md` 参照)。マクロが生成するのはグラフ機械
+/// (newtype キー・ストレージ・builder・アクセサ・違反 enum) だけ。
+struct NodeInfo {
+    /// ノード値の型名 (`Employee`)。ユーザー宣言型への参照。
     type_ident: Ident,
     /// newtype キー型名 (`EmployeeId`)。
     id_ident: Ident,
@@ -29,20 +33,18 @@ struct NodeInfo<'a> {
     accessor_ident: Ident,
 }
 
-impl<'a> NodeInfo<'a> {
-    fn new(decl: &'a NodeDecl) -> Self {
+impl NodeInfo {
+    fn new(decl: &NodeDecl) -> Self {
         let type_name = decl.name.to_string();
         let span = decl.name.span();
-        // 項目4 (フェーズ4): `node Type(plural) { .. }` で明示指定があれば
-        // それを内部ストレージのフィールド名に使う。省略時は素朴な複数形化
-        // (`+ "s"`) にフォールバックする (README「手書きテンプレートとの
-        // 差異」節参照)。
+        // `node Type(plural);` で明示指定があればそれを内部ストレージの
+        // フィールド名に使う。省略時は素朴な複数形化 (`+ "s"`) に
+        // フォールバックする (README「手書きテンプレートとの差異」節参照)。
         let field_ident = match &decl.plural {
             Some(plural) => Ident::new(&plural.to_string(), plural.span()),
             None => Ident::new(&plural_field_name(&type_name), span),
         };
         NodeInfo {
-            decl,
             type_ident: decl.name.clone(),
             id_ident: format_ident!("{}Id", decl.name, span = span),
             field_ident,
@@ -64,9 +66,12 @@ impl<'a> NodeInfo<'a> {
 struct EdgeInfo<'a> {
     decl: &'a EdgeDecl,
     label: Ident,
-    from_node: &'a NodeInfo<'a>,
-    to_node: &'a NodeInfo<'a>,
-    attrs_type_ident: Option<Ident>,
+    from_node: &'a NodeInfo,
+    to_node: &'a NodeInfo,
+    /// エッジ属性型への参照 (`edge From -[label: Ty]-> To (mult);` の
+    /// `Ty`)。ユーザーがマクロの外で宣言した型を指すだけで、このマクロは
+    /// 属性型そのものを生成しない (`docs/edge_syntax_v2.md` 参照)。
+    attrs_ty: Option<Path>,
 }
 
 impl<'a> EdgeInfo<'a> {
@@ -120,20 +125,12 @@ pub fn generate(schema: &SchemaInput) -> TokenStream {
                 label: edge.label.clone(),
                 from_node,
                 to_node,
-                attrs_type_ident: edge.attrs.as_ref().map(|_| {
-                    // G3 スパンポリシー: String 補間はスパン継承が働かないため明示
-                    format_ident!(
-                        "{}Attrs",
-                        to_pascal_case(&edge.label.to_string()),
-                        span = edge.label.span()
-                    )
-                }),
+                attrs_ty: edge.attrs_ty.clone(),
             }
         })
         .collect();
 
-    let node_struct_defs = gen_node_structs(&node_infos);
-    let attrs_struct_defs = gen_attrs_structs(&edge_infos);
+    let node_id_defs = gen_node_id_types(&node_infos);
     let violation_def = gen_violation_enum(&violation_ident, &node_infos, &edge_infos);
     let schema_struct_def = gen_schema_struct(schema_name, &node_infos, &edge_infos);
     let schema_impl = gen_schema_impl(
@@ -151,104 +148,108 @@ pub fn generate(schema: &SchemaInput) -> TokenStream {
         &node_infos,
         &edge_infos,
     );
-    let edge_check_macro = gen_edge_check_macro(schema_name, &edge_infos);
+    let edge_handshake_macro = gen_edge_handshake_macro(schema_name, &edge_infos);
 
     quote! {
-        #(#node_struct_defs)*
-        #(#attrs_struct_defs)*
+        #(#node_id_defs)*
         #violation_def
         #schema_struct_def
         #schema_impl
         #builder_struct_def
         #builder_impl
-        #edge_check_macro
+        #edge_handshake_macro
     }
 }
 
-/// 項目5 (フェーズ4): `graph!` が未知のエッジラベルを親切なエラーで検出する
-/// ためのハンドシェイク用宣言的マクロを生成する。`graph_schema!` はスキーマの
-/// エッジ一覧を知っているのでここで列挙し、`graph!` はスキーマの中身を
-/// 知らないまま「スキーマ名からマクロ名を機械的に導出して呼ぶ」だけで済む。
+/// `graph!` のためのハンドシェイク用宣言的マクロを生成する
+/// (`docs/edge_syntax_v2.md` 3.1)。`graph_schema!` はスキーマのエッジ一覧・
+/// 各エッジの属性型を知っているのでここで列挙し、`graph!` はスキーマの中身を
+/// 一切知らないまま「スキーマ名からマクロ名を機械的に導出して呼ぶ」だけで
+/// 済むようにする。1つの `macro_rules!` に2つの役割を持たせている:
+///
+/// - `(check $label)`: 存在するエッジラベルなら何もせず、存在しなければ
+///   利用可能なエッジ一覧付きの `compile_error!` を出す。
+/// - `(attrs $label { $($f:ident : $v:expr),* })`: `$label` の属性型の
+///   struct リテラルへ展開する式。属性を持たないエッジに対して呼ばれた
+///   場合や、存在しないラベルに対して呼ばれた場合も、親切な
+///   `compile_error!` を返す (呼び出し側は式位置で使うため、
+///   `compile_error!` も式として埋め込む)。
 ///
 /// `macro_rules!` は既定でテキストスコープ (定義箇所より後、同一クレート内
 /// でのみ利用可能。モジュール境界は無視されるが、`mod foo;` で外部ファイルを
 /// 読み込む場合や別クレートからは `#[macro_export]` や `pub(crate) use` が
 /// 必要) のため、同一モジュール (同一ファイル) 内での利用が主ケースとなる
 /// (README「未決事項」節に制約を明記)。
-fn gen_edge_check_macro(schema_name: &Ident, edges: &[EdgeInfo<'_>]) -> TokenStream {
-    let macro_ident = format_ident!("__graphite_check_edge_{}", schema_name);
+fn gen_edge_handshake_macro(schema_name: &Ident, edges: &[EdgeInfo<'_>]) -> TokenStream {
+    let macro_ident = format_ident!("__graphite_edge_{}", schema_name);
     let labels: Vec<&Ident> = edges.iter().map(|e| &e.label).collect();
     let label_strs: Vec<String> = labels.iter().map(|l| l.to_string()).collect();
     let available = label_strs.join(", ");
     let schema_name_str = schema_name.to_string();
 
+    let attrs_arms: Vec<TokenStream> = edges
+        .iter()
+        .map(|e| {
+            let label = &e.label;
+            let label_str = label.to_string();
+            match &e.attrs_ty {
+                Some(ty) => quote! {
+                    (attrs #label { $($f:ident : $v:expr),* $(,)? }) => {
+                        #ty { $($f: $v),* }
+                    };
+                },
+                None => quote! {
+                    (attrs #label { $($f:ident : $v:expr),* $(,)? }) => {
+                        compile_error!(concat!(
+                            "エッジ `", #label_str, "` は属性を持ちません。`-[",
+                            #label_str, "]->` の形式で書いてください (属性ブロック `{ .. }` は不要です)"
+                        ))
+                    };
+                },
+            }
+        })
+        .collect();
+
     quote! {
-        /// `graph!` マクロが各エッジ行の脱糖時に呼び出す検査用マクロ。
-        /// 存在するエッジラベルなら何もせず、存在しなければ
-        /// `compile_error!` で親切なメッセージを出す。利用者が直接呼ぶことは
-        /// 想定しない。
+        /// `graph!` マクロが各エッジ行の脱糖時に呼び出すハンドシェイク用
+        /// マクロ。利用者が直接呼ぶことは想定しない。
         #[doc(hidden)]
         #[allow(unused_macros)]
         macro_rules! #macro_ident {
-            #( (#labels) => {}; )*
-            ($other:ident) => {
+            #( (check #labels) => {}; )*
+            (check $other:ident) => {
                 compile_error!(concat!(
                     "スキーマ ", #schema_name_str, " にエッジ `",
                     stringify!($other),
                     "` は存在しません。利用可能: ", #available
                 ));
             };
+            #(#attrs_arms)*
+            (attrs $other:ident { $($f:ident : $v:expr),* $(,)? }) => {
+                compile_error!(concat!(
+                    "スキーマ ", #schema_name_str, " にエッジ `",
+                    stringify!($other),
+                    "` は存在しません。利用可能: ", #available
+                ))
+            };
         }
     }
 }
 
-fn gen_node_structs(nodes: &[NodeInfo<'_>]) -> Vec<TokenStream> {
+/// ノード値の型 (`Employee` 等) はユーザー宣言への参照なので生成しない。
+/// ここで生成するのは newtype キー型だけ (`EmployeeId(pub String)`)。
+/// このキー型は内部で `HashMap` のキーとして使うため `Hash + Eq` を要求する
+/// (ノード値の型自体には macro からの trait 要求は一切無い。README
+/// 「エッジ属性型に対する trait 要求」節と対の説明を参照)。
+fn gen_node_id_types(nodes: &[NodeInfo]) -> Vec<TokenStream> {
     nodes
         .iter()
         .map(|n| {
-            let ty = &n.type_ident;
             let id_ty = &n.id_ident;
-            let field_defs = n.decl.fields.iter().map(|f| {
-                let name = &f.name;
-                let field_ty = &f.ty;
-                quote! { pub #name: #field_ty }
-            });
             quote! {
-                // 項目3 (フェーズ4): `Eq` は付けない。ノードのフィールド型に
-                // `f64` のような `Eq` を実装できない型を使えるようにするため
-                // (newtype キー `#id_ty` は内部で HashMap キーとして使うため
-                // `Hash + Eq` を維持する)。
-                #[derive(Debug, Clone, PartialEq)]
-                pub struct #ty {
-                    #(#field_defs),*
-                }
-
                 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
                 pub struct #id_ty(pub String);
             }
-        })
-        .collect()
-}
-
-fn gen_attrs_structs(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
-    edges
-        .iter()
-        .filter_map(|e| {
-            let attrs_ty = e.attrs_type_ident.as_ref()?;
-            let attr_fields = e.decl.attrs.as_ref().unwrap();
-            let field_defs = attr_fields.iter().map(|f| {
-                let name = &f.name;
-                let field_ty = &f.ty;
-                quote! { pub #name: #field_ty }
-            });
-            Some(quote! {
-                // 項目3 (フェーズ4): ノード struct と同様に `Eq` は付けない
-                // (`f64` 等の属性フィールドを許容するため)。
-                #[derive(Debug, Clone, PartialEq)]
-                pub struct #attrs_ty {
-                    #(#field_defs),*
-                }
-            })
         })
         .collect()
 }
@@ -268,7 +269,7 @@ fn gen_attrs_structs(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
 /// とは共存させない。
 fn gen_violation_enum(
     violation_ident: &Ident,
-    nodes: &[NodeInfo<'_>],
+    nodes: &[NodeInfo],
     edges: &[EdgeInfo<'_>],
 ) -> TokenStream {
     let dup_variants = nodes.iter().map(|n| {
@@ -364,7 +365,7 @@ fn gen_violation_enum(
 /// エッジ 1 本分の格納値の型 (属性の有無・多重度で分岐)。
 fn edge_stored_value_type(edge: &EdgeInfo<'_>) -> TokenStream {
     let to_id = &edge.to_node.id_ident;
-    match (&edge.decl.mult, &edge.attrs_type_ident) {
+    match (&edge.decl.mult, &edge.attrs_ty) {
         (Multiplicity::One, None) => quote! { #to_id },
         (Multiplicity::One, Some(attrs)) => quote! { (#to_id, #attrs) },
         (Multiplicity::ZeroOrOne, None) => quote! { #to_id },
@@ -376,7 +377,7 @@ fn edge_stored_value_type(edge: &EdgeInfo<'_>) -> TokenStream {
 
 fn gen_schema_struct(
     schema_name: &Ident,
-    nodes: &[NodeInfo<'_>],
+    nodes: &[NodeInfo],
     edges: &[EdgeInfo<'_>],
 ) -> TokenStream {
     let node_fields = nodes.iter().map(|n| {
@@ -405,7 +406,7 @@ fn gen_schema_impl(
     schema_name: &Ident,
     violation_ident: &Ident,
     builder_ident: &Ident,
-    nodes: &[NodeInfo<'_>],
+    nodes: &[NodeInfo],
     edges: &[EdgeInfo<'_>],
 ) -> TokenStream {
     let node_accessors = nodes.iter().map(|n| {
@@ -460,7 +461,7 @@ fn gen_schema_impl(
 }
 
 /// ノード種別 1 つ分の、全キーを列挙するイテレータアクセサ (項目2: クエリAPI)。
-fn gen_node_id_iter(node: &NodeInfo<'_>) -> TokenStream {
+fn gen_node_id_iter(node: &NodeInfo) -> TokenStream {
     let ids_ident = format_ident!("{}_ids", node.accessor_ident);
     let field = &node.field_ident;
     let id_ty = &node.id_ident;
@@ -481,7 +482,7 @@ fn gen_try_edge_accessor(edge: &EdgeInfo<'_>) -> TokenStream {
     let to_ty = &edge.to_node.type_ident;
     let to_field = &edge.to_node.field_ident;
 
-    match &edge.attrs_type_ident {
+    match &edge.attrs_ty {
         None => quote! {
             /// 多重度 (1) の非パニック版。未知キーは (パニックせず) `None` を
             /// 返す。
@@ -511,7 +512,7 @@ fn gen_edge_pairs_iter(edge: &EdgeInfo<'_>) -> TokenStream {
     let from_id = &edge.from_node.id_ident;
     let to_id = &edge.to_node.id_ident;
 
-    match (&edge.decl.mult, &edge.attrs_type_ident) {
+    match (&edge.decl.mult, &edge.attrs_ty) {
         (Multiplicity::One, None) | (Multiplicity::ZeroOrOne, None) => quote! {
             /// 全ての (始点キー, 終点キー) ペアを列挙する。
             pub fn #pairs_ident(&self) -> impl Iterator<Item = (&#from_id, &#to_id)> {
@@ -568,7 +569,7 @@ fn gen_edge_id_accessor(edge: &EdgeInfo<'_>) -> TokenStream {
     let label_str = label.to_string();
 
     let project_one = |expr: TokenStream| -> TokenStream {
-        match &edge.attrs_type_ident {
+        match &edge.attrs_ty {
             None => expr,
             Some(_) => quote! { (#expr).map(|(to_id, _attrs)| to_id) },
         }
@@ -615,7 +616,7 @@ fn gen_edge_id_accessor(edge: &EdgeInfo<'_>) -> TokenStream {
         }
         Multiplicity::ZeroOrMany => {
             let ids_fn = format_ident!("{}_ids", label);
-            let map_expr = match &edge.attrs_type_ident {
+            let map_expr = match &edge.attrs_ty {
                 None => quote! { items.iter().collect() },
                 Some(_) => quote! { items.iter().map(|(to_id, _attrs)| to_id).collect() },
             };
@@ -650,7 +651,7 @@ fn gen_edge_accessor(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream {
     let pairs_iter = gen_edge_pairs_iter(edge);
     let id_accessor = gen_edge_id_accessor(edge);
 
-    let main_accessor = match (&edge.decl.mult, &edge.attrs_type_ident) {
+    let main_accessor = match (&edge.decl.mult, &edge.attrs_ty) {
         (Multiplicity::One, None) => quote! {
             /// 多重度 (1) -> 参照そのものを返す。
             ///
@@ -739,7 +740,7 @@ fn gen_edge_accessor(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream {
 fn edge_builder_value_tuple_type(edge: &EdgeInfo<'_>) -> TokenStream {
     let from_id = &edge.from_node.id_ident;
     let to_id = &edge.to_node.id_ident;
-    match &edge.attrs_type_ident {
+    match &edge.attrs_ty {
         None => quote! { (#from_id, #to_id) },
         Some(attrs) => quote! { (#from_id, #to_id, #attrs) },
     }
@@ -747,7 +748,7 @@ fn edge_builder_value_tuple_type(edge: &EdgeInfo<'_>) -> TokenStream {
 
 fn gen_builder_struct(
     builder_ident: &Ident,
-    nodes: &[NodeInfo<'_>],
+    nodes: &[NodeInfo],
     edges: &[EdgeInfo<'_>],
 ) -> TokenStream {
     let node_fields = nodes.iter().map(|n| {
@@ -775,7 +776,7 @@ fn gen_builder_impl(
     schema_name: &Ident,
     builder_ident: &Ident,
     violation_ident: &Ident,
-    nodes: &[NodeInfo<'_>],
+    nodes: &[NodeInfo],
     edges: &[EdgeInfo<'_>],
 ) -> TokenStream {
     let node_field_inits = nodes.iter().map(|n| {
@@ -804,7 +805,7 @@ fn gen_builder_impl(
         let label = &e.label;
         let from_id = &e.from_node.id_ident;
         let to_id = &e.to_node.id_ident;
-        match &e.attrs_type_ident {
+        match &e.attrs_ty {
             None => quote! {
                 pub fn #label(&mut self, from: #from_id, to: #to_id) -> &mut Self {
                     self.#label.push((from, to));
@@ -842,7 +843,7 @@ fn gen_builder_impl(
 fn gen_freeze_body(
     schema_name: &Ident,
     violation_ident: &Ident,
-    nodes: &[NodeInfo<'_>],
+    nodes: &[NodeInfo],
     edges: &[EdgeInfo<'_>],
 ) -> TokenStream {
     let node_map_builds = nodes.iter().map(|n| {
@@ -916,7 +917,7 @@ fn gen_edge_freeze_block(violation_ident: &Ident, edge: &EdgeInfo<'_>) -> TokenS
     let unk_dst = edge.unknown_target_variant();
     let value_ty = edge_stored_value_type(edge);
 
-    let (bind_pattern, push_value) = match &edge.attrs_type_ident {
+    let (bind_pattern, push_value) = match &edge.attrs_ty {
         None => (quote! { (from, to) }, quote! { to }),
         Some(_) => (quote! { (from, to, attrs) }, quote! { (to, attrs) }),
     };

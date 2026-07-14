@@ -1,63 +1,39 @@
 //! `graph_schema!` の入力 DSL のパース (構文木を組み立てるだけで、
 //! ノード型の重複や未宣言参照といった意味検査は `schema_validate.rs` で行う)。
 //!
-//! 対応する文法 (`docs/rust_graph_extension_sketch.md` 水準2相当節):
+//! 対応する文法 (`docs/edge_syntax_v2.md` 参照):
 //!
 //! ```text
-//! schema OrgChart {
-//!     node Employee { name: String, id: u32 }
-//!     node Department { name: String }
+//! pub struct Employee { pub name: String, pub id: u32 }
+//! pub struct Department { pub name: String }
+//! pub struct BossEdge { pub since: i32 }
 //!
-//!     edge belongs_to: Employee -> Department (1);
-//!     edge boss:       Employee -> Employee   (0..1) { since: i32 };
-//!     edge reports:    Employee -> Employee   (0..*);
+//! graphite::graph_schema! {
+//!     schema OrgChart {
+//!         node Employee;
+//!         node Department;
+//!
+//!         edge Employee -[belongs_to]-> Department (1);
+//!         edge Employee -[boss: BossEdge]-> Employee (0..1);
+//!         edge Employee -[reports]-> Employee (0..*);
+//!     }
 //! }
 //! ```
+//!
+//! ノード型・エッジ属性型はいずれも `graph_schema!` の外でユーザーが普通の
+//! struct として宣言したものを参照するだけで、このマクロは生成しない。
+//! ノード型名は端点照合に使うため単純 `Ident` のみ (モジュール修飾したい
+//! 場合は `use` で名前をこのスコープに持ち込む)。エッジ属性型は照合には
+//! 使わず参照するだけなので `syn::Path` (モジュール修飾可) を許す。
 
 use proc_macro2::TokenTree;
 use syn::parse::{Parse, ParseStream};
-use syn::punctuated::Punctuated;
-use syn::{braced, parenthesized, Ident, LitInt, Token, Type};
+use syn::{braced, bracketed, parenthesized, Ident, LitInt, Path, Token};
 
 mod kw {
     syn::custom_keyword!(schema);
     syn::custom_keyword!(node);
     syn::custom_keyword!(edge);
-}
-
-/// `name: Type` の 1 フィールド (ノードのフィールド / エッジ属性の両方で使う)。
-pub struct FieldDecl {
-    pub name: Ident,
-    pub ty: Type,
-}
-
-impl Parse for FieldDecl {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let name: Ident = input.parse()?;
-        input.parse::<Token![:]>()?;
-        let ty: Type = input.parse()?;
-        Ok(FieldDecl { name, ty })
-    }
-}
-
-fn parse_fields_block(input: ParseStream) -> syn::Result<Vec<FieldDecl>> {
-    let content;
-    braced!(content in input);
-    match Punctuated::<FieldDecl, Token![,]>::parse_terminated(&content) {
-        Ok(fields) => Ok(fields.into_iter().collect()),
-        Err(e) => {
-            // G4a: `content` (このフィールドブロックの中身) がエラー時点で
-            // 全部消費されているとは限らない。読み捨てずに `Err` を返すと、
-            // `content` が drop されるタイミングで syn の「未消費トークン」
-            // 検知 (`ParseBuffer::drop` が共有の `Unexpected` セルへ書き込む
-            // 仕組み) が働き、後続の宣言単位の回復パースが正常終了しても
-            // `Parser::parse2` の最終チェックで無関係な "unexpected token"
-            // エラーが幽霊のように再浮上する。それを防ぐため、エラーを返す
-            // 前に残りトークンを丸ごと読み捨てて `content` を空にする。
-            drain_rest(&content);
-            Err(e)
-        }
-    }
 }
 
 /// 残りのトークンを丸ごと読み捨てて `ParseStream` を空にする。
@@ -69,27 +45,33 @@ fn parse_fields_block(input: ParseStream) -> syn::Result<Vec<FieldDecl>> {
 /// `Parse` 実装がデリミタの途中でエラーを返した後もそのデリミタの中身が
 /// 未消費のまま残ることがあり、これを放置すると「回復して続行したはず」の
 /// 箇所で無関係な "unexpected token" が幽霊のように出る。そのため、
-/// デリミタ内 (`{ .. }`/`( .. )`) でエラーを返す全ての箇所は、返す前に
+/// デリミタ内 (`( .. )`/`[ .. ]`) でエラーを返す全ての箇所は、返す前に
 /// この関数で中身を空にしておく。
 fn drain_rest(content: ParseStream) {
     let _ = content.parse::<proc_macro2::TokenStream>();
 }
 
-/// `node Employee { name: String, id: u32 }`
-/// `node Category(categories) { name: String }` — `(識別子)` は内部ストレージの
-/// 複数形フィールド名を明示指定する省略可能な構文 (項目4)。省略時は素朴な
-/// `+ "s"` (`crate::naming::plural_field_name`) にフォールバックする。
+/// `node Employee;`
+/// `node Category(categories);` — `(識別子)` は内部ストレージの複数形
+/// フィールド名を明示指定する省略可能な構文。省略時は素朴な `+ "s"`
+/// (`crate::naming::plural_field_name`) にフォールバックする。
+///
+/// `Employee`/`Category` はユーザーが `graph_schema!` の外で宣言した普通の
+/// struct への参照であり、このマクロは生成しない (`docs/edge_syntax_v2.md`
+/// 参照)。型名は単純 `Ident` のみを受け付ける (エッジ端点の型名照合に文字列
+/// 比較で使うため、`syn::Path` にすると `crate::Employee` と `Employee` を
+/// 同一視できず照合が破綻する。モジュール修飾したい場合は `use` でこの
+/// スコープに名前を持ち込むのが Rust の作法どおりの解決)。
 pub struct NodeDecl {
     pub name: Ident,
     pub plural: Option<Ident>,
-    pub fields: Vec<FieldDecl>,
 }
 
 /// `node Type(plural)` の `(plural)` 部分の中身。単一の識別子のみを許す。
 fn parse_plural_paren_body(content: ParseStream) -> syn::Result<Ident> {
     let plural_ident: Ident = content.parse()?;
     if !content.is_empty() {
-        return Err(content.error("複数形指定は識別子ひとつのみ指定してください: `node Type(plural) { .. }`"));
+        return Err(content.error("複数形指定は識別子ひとつのみ指定してください: `node Type(plural);`"));
     }
     Ok(plural_ident)
 }
@@ -113,12 +95,8 @@ impl Parse for NodeDecl {
         } else {
             None
         };
-        let fields = parse_fields_block(input)?;
-        Ok(NodeDecl {
-            name,
-            plural,
-            fields,
-        })
+        input.parse::<Token![;]>()?;
+        Ok(NodeDecl { name, plural })
     }
 }
 
@@ -183,39 +161,66 @@ fn parse_multiplicity_body(content: ParseStream) -> syn::Result<Multiplicity> {
     }
 }
 
-/// `edge belongs_to: Employee -> Department (1);`
-/// `edge boss: Employee -> Employee (0..1) { since: i32 };`
+/// `edge Employee -[belongs_to]-> Department (1);`
+/// `edge Employee -[boss: BossEdge]-> Employee (0..1);`
+///
+/// 属性型 (`BossEdge` 等) はユーザーが `graph_schema!` の外で宣言した普通の
+/// struct への参照であり、このマクロは生成しない (`docs/edge_syntax_v2.md`
+/// 参照)。
 pub struct EdgeDecl {
     pub label: Ident,
     pub from: Ident,
     pub to: Ident,
     pub mult: Multiplicity,
-    pub attrs: Option<Vec<FieldDecl>>,
+    pub attrs_ty: Option<Path>,
 }
 
 impl Parse for EdgeDecl {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         input.parse::<kw::edge>()?;
-        let label: Ident = input.parse()?;
-        input.parse::<Token![:]>()?;
         let from: Ident = input.parse()?;
+        input.parse::<Token![-]>()?;
+        let bracket_content;
+        bracketed!(bracket_content in input);
+        let (label, attrs_ty) = match parse_edge_bracket_body(&bracket_content) {
+            Ok(v) => v,
+            Err(e) => {
+                // G4a: drain_rest のコメント参照。
+                drain_rest(&bracket_content);
+                return Err(e);
+            }
+        };
         input.parse::<Token![->]>()?;
         let to: Ident = input.parse()?;
         let mult: Multiplicity = input.parse()?;
-        let attrs = if input.peek(syn::token::Brace) {
-            Some(parse_fields_block(input)?)
-        } else {
-            None
-        };
         input.parse::<Token![;]>()?;
         Ok(EdgeDecl {
             label,
             from,
             to,
             mult,
-            attrs,
+            attrs_ty,
         })
     }
+}
+
+/// `-[label]->` / `-[label: 型パス]->` の `[ .. ]` の中身。
+/// 型パスは `syn::Path` として受けるため `edges::BossEdge` のような
+/// モジュール修飾も許す (ノード型名と違い端点照合に使わないため、単純
+/// `Ident` に制限する必要がない)。
+fn parse_edge_bracket_body(content: ParseStream) -> syn::Result<(Ident, Option<Path>)> {
+    let label: Ident = content.parse()?;
+    let attrs_ty = if content.peek(Token![:]) {
+        content.parse::<Token![:]>()?;
+        let path: Path = content.parse()?;
+        Some(path)
+    } else {
+        None
+    };
+    if !content.is_empty() {
+        return Err(content.error("`-[label]->` または `-[label: 型パス]->` の形式で指定してください"));
+    }
+    Ok((label, attrs_ty))
 }
 
 /// `schema OrgChart { ... }` 全体。
@@ -246,16 +251,13 @@ impl SchemaInput {
     ///   まで読み飛ばして続行する。
     /// - **境界の定義**: ボディの `ParseStream` からトークン木を1つずつ
     ///   読み飛ばし、次に `node`/`edge` キーワードが先頭に現れるか入力が
-    ///   尽きるまで進める。proc_macro2 では `{ .. }`/`( .. )` がまるごと
-    ///   1つの `Group` トークン木として扱われるため、これは「ブレース
-    ///   深度0での次の境界まで」を手動の深度カウンタ無しで実現できる
-    ///   (フィールド一覧や多重度の中身にどんなトークンがあっても、
-    ///   Group 単位で一括に読み飛ばされるので誤って途中で止まらない)。
-    ///   `;` 区切りでの境界定義 (仕様書が挙げるもう一つの案) も検討したが、
-    ///   `node` 宣言は `;` で終わらず `}` で終わる (末尾がフィールド
-    ///   ブロック) ため `node`/`edge` を跨いで統一的な境界にならない。
-    ///   一方キーワード探索は両方の宣言に共通して使え、実装も単純で
-    ///   誤爆しにくいためこちらを採用した。
+    ///   尽きるまで進める。`node`/`edge` いずれの宣言も `;` で終わるため
+    ///   `;` 区切りの境界定義も選べるが、キーワード探索は proc_macro2 の
+    ///   `( .. )`/`[ .. ]` がまるごと1つの `Group` トークン木として扱われる
+    ///   性質にただ乗りできる (多重度・エッジラベルの中身にどんなトークンが
+    ///   あっても、Group 単位で一括に読み飛ばされるので誤って途中で止まらない)
+    ///   うえ、両宣言に共通して使え実装も単純で誤爆しにくいためこちらを
+    ///   採用した。
     pub fn parse_recovering(input: ParseStream) -> syn::Result<SchemaParse> {
         input.parse::<kw::schema>()?;
         let schema_name: Ident = input.parse()?;

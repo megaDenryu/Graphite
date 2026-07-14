@@ -30,7 +30,9 @@ pub fn to_snake_case(ident: &str) -> String {
 /// `snake_case` の識別子を `PascalCase` に変換する。
 ///
 /// 例: `boss` -> `Boss`, `belongs_to` -> `BelongsTo`。
-/// エッジ種別名から属性 struct 名 (`{PascalCase}Attrs`) を導出するのに使う。
+/// エッジ種別名から違反 enum のバリアント名
+/// (`{PascalCase}Multiplicity`/`{PascalCase}UnknownSource` 等) を導出するのに
+/// 使う。
 pub fn to_pascal_case(ident: &str) -> String {
     ident
         .split('_')

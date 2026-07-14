@@ -21,7 +21,7 @@
 //!     let sales = DepartmentId("sales".to_string());
 //!     __graphite_b.department(sales.clone(), Department { .. });
 //!     // (2) 全エッジ (記述順)
-//!     __graphite_check_edge_OrgChart!(belongs_to);
+//!     __graphite_edge_OrgChart!(check belongs_to);
 //!     __graphite_b.belongs_to(tanaka.clone(), sales.clone()); // ← 各エッジでの出現スパン
 //! })
 //! ```
@@ -57,7 +57,7 @@ use quote::{format_ident, quote};
 use syn::Ident;
 
 use crate::instance_dsl::{FieldValue, GraphInput, GraphItem};
-use crate::naming::{to_pascal_case, to_snake_case};
+use crate::naming::to_snake_case;
 
 /// 項目h (フェーズ5): `graph!` 内のノード識別子はノード型を跨いで単一の
 /// 平坦な名前空間 (README「名前空間に関する制約」節参照。型ごとに分ける
@@ -163,34 +163,30 @@ pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<Token
                 let to_ident = edge.to.clone();
                 let label = &edge.label;
 
-                // 項目5 (フェーズ4): `graph_schema!` が生成したハンドシェイク
-                // 用マクロを呼び、未知のエッジラベルを親切なメッセージで検出
-                // する。`graph!` はスキーマの中身を知らないので、スキーマ名
-                // から名前を機械的に導出して呼ぶだけで済む
-                // (`schema_codegen.rs::gen_edge_check_macro` 参照)。
-                let check_macro = format_ident!("__graphite_check_edge_{}", schema_name);
+                // `graph_schema!` が生成したハンドシェイク用マクロを呼ぶ。
+                // `graph!` はスキーマの中身 (エッジ一覧・属性型) を一切
+                // 知らないので、スキーマ名から名前を機械的に導出して呼ぶ
+                // だけで済む (`schema_codegen.rs::gen_edge_handshake_macro`
+                // 参照)。`check` アームは未知のエッジラベルを親切な
+                // メッセージで検出し、`attrs` アームは属性の struct
+                // リテラルへの式展開を担う (`docs/edge_syntax_v2.md` 3.1)。
+                let edge_macro = format_ident!("__graphite_edge_{}", schema_name);
 
                 match &edge.attrs {
                     None => {
                         edge_calls.push(quote! {
-                            #check_macro!(#label);
+                            #edge_macro!(check #label);
                             __graphite_b.#label(#from_ident.clone(), #to_ident.clone());
                         });
                     }
                     Some(attr_fields) => {
-                        // G3 スパンポリシー: String 補間はスパン継承が働かないため明示
-                        let attrs_type = format_ident!(
-                            "{}Attrs",
-                            to_pascal_case(&label.to_string()),
-                            span = label.span()
-                        );
                         let attr_tokens = fields_to_tokens(attr_fields);
                         edge_calls.push(quote! {
-                            #check_macro!(#label);
+                            #edge_macro!(check #label);
                             __graphite_b.#label(
                                 #from_ident.clone(),
                                 #to_ident.clone(),
-                                #attrs_type { #(#attr_tokens),* }
+                                #edge_macro!(attrs #label { #(#attr_tokens),* })
                             );
                         });
                     }
