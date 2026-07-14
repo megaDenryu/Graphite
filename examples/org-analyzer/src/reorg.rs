@@ -12,7 +12,9 @@
 //! 対象部署がどのプロジェクトもスポンサーしていなければ何も起こらず
 //! `Ok` になるが、スポンサーしていた場合は `sponsors` 辺が存在しない部署
 //! キーを参照したまま `OrgChart::create` に渡り、`freeze` 検証が
-//! `OrgChartViolation::UnknownDepartment` を返してエラーになる。
+//! `OrgChartViolation::SponsorsUnknownSource` (フェーズ5でエッジ単位の
+//! 型付きバリアントに変わった。以前は `UnknownDepartment` という
+//! ノード単位の汎用バリアントだった) を返してエラーになる。
 //! 「可変 API が存在しないので、参照が壊れたら気づかず放置される」のでは
 //! なく「再構築 = 一括検証」なので**壊れていれば必ずその場で `Err` になる**、
 //! という Graphite の設計意図を実地で確認できる。

@@ -225,13 +225,18 @@ cargo test
    版は `SchemaViolation` という固定名でしたが、複数のスキーマを同じモジュール
    に宣言したときに型名が衝突しないよう、スキーマ名をプレフィックスにして
    います。
-2. **`MultiplicityViolation` の違反キーは `source: String` (`Debug` 表現)**。
-   手書き版は `employee: EmployeeId` と型付きでしたが、一般のスキーマでは
-   エッジごとに始点ノード型が異なりうる (例: `A -> B` と `C -> D` が両方
-   `MultiplicityViolation` を返しうる) ため、型を 1 つに固定できません。
-   `format!("{:?}", key)` で妥協しています。型安全性は下がりますが、
-   `edge` フィールド (`&'static str`) で「どのエッジ種別の違反か」は判別
-   できます。
+2. **違反 enum のバリアントはエッジ単位で型付き生成される
+   (`{Label}Multiplicity` / `{Label}UnknownSource` / `{Label}UnknownTarget`)**。
+   手書き版は `MultiplicityViolation { employee: EmployeeId, .. }` という
+   スキーマ共通の 1 バリアントでしたが、一般のスキーマではエッジごとに
+   始点/終点ノード型が異なりうる (例: `A -> B` と `C -> D` が両方多重度
+   違反を起こしうる) ため、エッジごとに専用バリアントを生成することで型を
+   `String` に落とさず固定できるようにしています (フェーズ5、「型の
+   strictness」原則。`docs/design_principles.md` 原則1 参照)。例:
+   `edge belongs_to: Employee -> Department (1)` からは
+   `BelongsToMultiplicity { source: EmployeeId, count: usize }` /
+   `BelongsToUnknownSource { key: EmployeeId }` /
+   `BelongsToUnknownTarget { key: DepartmentId }` が生成されます。
 3. **builder のエッジ追加メソッドの引数名は汎用的に `from`/`to`**。手書き版
    は `boss(employee, boss, attrs)`・`reports(manager, report)` のように
    ドメイン語で命名されていましたが、マクロはノード型名だけから引数名を

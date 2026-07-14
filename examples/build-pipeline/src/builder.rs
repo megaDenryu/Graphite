@@ -15,9 +15,10 @@ use std::collections::BTreeSet;
 ///
 /// 図式適合検査 (`BuildPipeline::create` 内部の freeze) は以下を検出する:
 /// - `task` 行の名前が重複している (`DuplicateTask`)
-/// - `produces`/`consumes` 行が指す `task` 名が未宣言 (`UnknownTask`)
-///   (成果物側は本関数が全パスを事前登録するので `UnknownArtifact` は
-///   通常経路では発生しない)
+/// - `produces`/`consumes` 行が指す `task` 名が未宣言
+///   (`ProducesUnknownSource` / `ConsumesUnknownSource`。フェーズ5でエッジ
+///   単位の型付きバリアントに変わった。成果物側は本関数が全パスを事前登録
+///   するので `*UnknownTarget` は通常経路では発生しない)
 ///
 /// これ以外のドメイン上の妥当性 (孤児成果物・二重生成・循環依存) は
 /// 図式適合の範囲外であり、`analysis::validate` が別途検査する。
@@ -96,7 +97,7 @@ typo_task produces target/core.rlib
         let result = build_graph(&parsed);
         assert!(matches!(
             result,
-            Err(BuildPipelineViolation::UnknownTask(_))
+            Err(BuildPipelineViolation::ProducesUnknownSource { .. })
         ));
     }
 

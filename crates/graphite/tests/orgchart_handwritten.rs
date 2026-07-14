@@ -1,6 +1,15 @@
 //! これは `graph_schema!` が生成する想定のコードを手で書いたもの。
 //! マクロ実装のテンプレート。
 //!
+//! **フェーズ5での注記**: フェーズ5でマクロ生成側の違反 enum の形が進化し
+//! (項目k: `MultiplicityViolation { employee: EmployeeId, .. }` という単一の
+//! 共通バリアントから、エッジ単位の型付きバリアント
+//! `{Label}Multiplicity` / `{Label}UnknownSource` / `{Label}UnknownTarget`
+//! へ置き換え)、この手書きテンプレートとの間に差異が生まれている。
+//! このファイルは歴史的テンプレートとしてそのまま残しているので、
+//! 最新の生成コードの形は `crates/graphite/tests/orgchart_macro.rs` 側を
+//! 参照すること。
+//!
 //! 元になるスキーマ (`docs/rust_graph_extension_sketch.md` の「水準2相当」節):
 //!
 //! ```text

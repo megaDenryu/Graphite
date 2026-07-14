@@ -53,10 +53,6 @@ impl<'a> NodeInfo<'a> {
     fn dup_variant(&self) -> Ident {
         format_ident!("Duplicate{}", self.type_ident)
     }
-
-    fn unknown_variant(&self) -> Ident {
-        format_ident!("Unknown{}", self.type_ident)
-    }
 }
 
 /// エッジ宣言 1 つ分の、生成コードで使う識別子一式。
@@ -71,6 +67,33 @@ struct EdgeInfo<'a> {
     from_node: &'a NodeInfo<'a>,
     to_node: &'a NodeInfo<'a>,
     attrs_type_ident: Option<Ident>,
+}
+
+impl<'a> EdgeInfo<'a> {
+    /// エッジラベルの PascalCase 化 (違反 enum バリアント名の基底)。
+    fn pascal(&self) -> String {
+        to_pascal_case(&self.label.to_string())
+    }
+
+    /// 項目k (フェーズ5): 多重度違反のバリアント名。エッジ単位で型付けする
+    /// (`{Label}Multiplicity { source: FromId, count: usize }`)。
+    /// `(0..*)` には多重度違反という概念自体が無いので呼び出し元は
+    /// `Multiplicity::One` / `ZeroOrOne` のときだけこれを使うこと。
+    fn multiplicity_variant(&self) -> Ident {
+        format_ident!("{}Multiplicity", self.pascal(), span = self.label.span())
+    }
+
+    /// 項目k (フェーズ5): 未知の始点キー参照のバリアント名
+    /// (`{Label}UnknownSource { key: FromId }`)。
+    fn unknown_source_variant(&self) -> Ident {
+        format_ident!("{}UnknownSource", self.pascal(), span = self.label.span())
+    }
+
+    /// 項目k (フェーズ5): 未知の終点キー参照のバリアント名
+    /// (`{Label}UnknownTarget { key: ToId }`)。
+    fn unknown_target_variant(&self) -> Ident {
+        format_ident!("{}UnknownTarget", self.pascal(), span = self.label.span())
+    }
 }
 
 pub fn generate(schema: &SchemaInput) -> TokenStream {
@@ -107,7 +130,7 @@ pub fn generate(schema: &SchemaInput) -> TokenStream {
 
     let node_struct_defs = gen_node_structs(&node_infos);
     let attrs_struct_defs = gen_attrs_structs(&edge_infos);
-    let violation_def = gen_violation_enum(&violation_ident, &node_infos);
+    let violation_def = gen_violation_enum(&violation_ident, &node_infos, &edge_infos);
     let schema_struct_def = gen_schema_struct(schema_name, &node_infos, &edge_infos);
     let schema_impl = gen_schema_impl(
         schema_name,
@@ -226,18 +249,29 @@ fn gen_attrs_structs(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
         .collect()
 }
 
-fn gen_violation_enum(violation_ident: &Ident, nodes: &[NodeInfo<'_>]) -> TokenStream {
+/// 違反 enum を生成する。
+///
+/// 項目k (フェーズ5、破壊的変更): 以前は多重度違反のキーを `source: String`
+/// (`Debug` 表現) に落とす妥協をしていたが、原則1 (型の strictness /
+/// stringly-typed API 禁止) に反するため廃止し、エッジごとに型付きの
+/// バリアントを生成する形へ置き換えた
+/// (`docs/design_principles.md` 原則1 参照)。ノード重複 (`Duplicate{Node}`)
+/// はエッジと無関係な純粋ノード単位の概念なのでノードごとのバリアントを
+/// 維持するが、未知キー参照・多重度違反はどのエッジで起きたかが本質的な
+/// 情報のため、エッジ単位の専用バリアント (`{Label}UnknownSource` /
+/// `{Label}UnknownTarget` / `{Label}Multiplicity`) に置き換え、旧来の
+/// ノード単位の汎用 `Unknown{Node}` / 文字列キー `MultiplicityViolation`
+/// とは共存させない。
+fn gen_violation_enum(
+    violation_ident: &Ident,
+    nodes: &[NodeInfo<'_>],
+    edges: &[EdgeInfo<'_>],
+) -> TokenStream {
     let dup_variants = nodes.iter().map(|n| {
         let v = n.dup_variant();
         let id = &n.id_ident;
         quote! { #v(#id) }
     });
-    let unknown_variants = nodes.iter().map(|n| {
-        let v = n.unknown_variant();
-        let id = &n.id_ident;
-        quote! { #v(#id) }
-    });
-
     let dup_display_arms = nodes.iter().map(|n| {
         let v = n.dup_variant();
         let type_name_str = n.type_ident.to_string();
@@ -245,40 +279,76 @@ fn gen_violation_enum(violation_ident: &Ident, nodes: &[NodeInfo<'_>]) -> TokenS
             #violation_ident::#v(id) => write!(f, "{}のキーが重複しています: {:?}", #type_name_str, id)
         }
     });
-    let unknown_display_arms = nodes.iter().map(|n| {
-        let v = n.unknown_variant();
-        let type_name_str = n.type_ident.to_string();
-        quote! {
-            #violation_ident::#v(id) => write!(f, "未知の{}キーが参照されています: {:?}", #type_name_str, id)
+
+    let mut edge_variants: Vec<TokenStream> = Vec::new();
+    let mut edge_display_arms: Vec<TokenStream> = Vec::new();
+
+    for edge in edges {
+        let label_str = edge.label.to_string();
+        let from_id = &edge.from_node.id_ident;
+        let to_id = &edge.to_node.id_ident;
+        let from_type_str = edge.from_node.type_ident.to_string();
+        let to_type_str = edge.to_node.type_ident.to_string();
+
+        let unk_src = edge.unknown_source_variant();
+        edge_variants.push(quote! {
+            /// このエッジ種別が未知の始点キーを参照している。
+            #unk_src { key: #from_id }
+        });
+        edge_display_arms.push(quote! {
+            #violation_ident::#unk_src { key } => write!(
+                f,
+                "未知のキーが参照されています (エッジ `{}` の始点, {}): {:?}",
+                #label_str, #from_type_str, key
+            )
+        });
+
+        let unk_dst = edge.unknown_target_variant();
+        edge_variants.push(quote! {
+            /// このエッジ種別が未知の終点キーを参照している。
+            #unk_dst { key: #to_id }
+        });
+        edge_display_arms.push(quote! {
+            #violation_ident::#unk_dst { key } => write!(
+                f,
+                "未知のキーが参照されています (エッジ `{}` の終点, {}): {:?}",
+                #label_str, #to_type_str, key
+            )
+        });
+
+        let expected_str = match edge.decl.mult {
+            Multiplicity::One => Some("ちょうど1"),
+            Multiplicity::ZeroOrOne => Some("0または1"),
+            Multiplicity::ZeroOrMany => None,
+        };
+        if let Some(expected_str) = expected_str {
+            let mult = edge.multiplicity_variant();
+            edge_variants.push(quote! {
+                /// このエッジ種別の多重度違反。
+                #mult { source: #from_id, count: usize }
+            });
+            edge_display_arms.push(quote! {
+                #violation_ident::#mult { source, count } => write!(
+                    f,
+                    "多重度違反: エッジ `{}` は {} {:?} について多重度 {} を期待しますが実際は {} 本です",
+                    #label_str, #from_type_str, source, #expected_str, count
+                )
+            });
         }
-    });
+    }
 
     quote! {
         #[derive(Debug, Clone, PartialEq, Eq)]
         pub enum #violation_ident {
             #(#dup_variants,)*
-            #(#unknown_variants,)*
-            /// 多重度違反。`source` は違反した側キーの `Debug` 表現
-            /// (エッジによって始点ノード型が異なりうるため、型を固定できず
-            /// 文字列に落としている。手書きテンプレートとの差異の一つ)。
-            MultiplicityViolation {
-                edge: &'static str,
-                source: String,
-                expected: &'static str,
-                actual: usize,
-            },
+            #(#edge_variants,)*
         }
 
         impl std::fmt::Display for #violation_ident {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 match self {
                     #(#dup_display_arms,)*
-                    #(#unknown_display_arms,)*
-                    #violation_ident::MultiplicityViolation { edge, source, expected, actual } => write!(
-                        f,
-                        "多重度違反: エッジ種別 `{}` はキー {} について多重度 {} を期待しますが実際は {} 本です",
-                        edge, source, expected, actual
-                    ),
+                    #(#edge_display_arms,)*
                 }
             }
         }
@@ -689,12 +759,11 @@ fn gen_freeze_body(
 
 fn gen_edge_freeze_block(violation_ident: &Ident, edge: &EdgeInfo<'_>) -> TokenStream {
     let label = &edge.label;
-    let label_str = label.to_string();
     let count_ident = format_ident!("{}_count", label);
     let from_field = &edge.from_node.field_ident;
     let to_field = &edge.to_node.field_ident;
-    let from_unknown = edge.from_node.unknown_variant();
-    let to_unknown = edge.to_node.unknown_variant();
+    let unk_src = edge.unknown_source_variant();
+    let unk_dst = edge.unknown_target_variant();
     let value_ty = edge_stored_value_type(edge);
 
     let (bind_pattern, push_value) = match &edge.attrs_type_ident {
@@ -703,63 +772,65 @@ fn gen_edge_freeze_block(violation_ident: &Ident, edge: &EdgeInfo<'_>) -> TokenS
     };
 
     match edge.decl.mult {
-        Multiplicity::One => quote! {
-            let mut #label: std::collections::HashMap<_, #value_ty> = std::collections::HashMap::new();
-            let mut #count_ident: std::collections::HashMap<_, usize> = std::collections::HashMap::new();
-            for #bind_pattern in self.#label {
-                if !#from_field.contains_key(&from) {
-                    return Err(#violation_ident::#from_unknown(from));
+        Multiplicity::One => {
+            let mult = edge.multiplicity_variant();
+            quote! {
+                let mut #label: std::collections::HashMap<_, #value_ty> = std::collections::HashMap::new();
+                let mut #count_ident: std::collections::HashMap<_, usize> = std::collections::HashMap::new();
+                for #bind_pattern in self.#label {
+                    if !#from_field.contains_key(&from) {
+                        return Err(#violation_ident::#unk_src { key: from });
+                    }
+                    if !#to_field.contains_key(&to) {
+                        return Err(#violation_ident::#unk_dst { key: to });
+                    }
+                    *#count_ident.entry(from.clone()).or_insert(0) += 1;
+                    #label.insert(from, #push_value);
                 }
-                if !#to_field.contains_key(&to) {
-                    return Err(#violation_ident::#to_unknown(to));
-                }
-                *#count_ident.entry(from.clone()).or_insert(0) += 1;
-                #label.insert(from, #push_value);
-            }
-            for key in #from_field.keys() {
-                let count = #count_ident.get(key).copied().unwrap_or(0);
-                if count != 1 {
-                    return Err(#violation_ident::MultiplicityViolation {
-                        edge: #label_str,
-                        source: format!("{:?}", key),
-                        expected: "ちょうど1",
-                        actual: count,
-                    });
-                }
-            }
-        },
-        Multiplicity::ZeroOrOne => quote! {
-            let mut #label: std::collections::HashMap<_, #value_ty> = std::collections::HashMap::new();
-            let mut #count_ident: std::collections::HashMap<_, usize> = std::collections::HashMap::new();
-            for #bind_pattern in self.#label {
-                if !#from_field.contains_key(&from) {
-                    return Err(#violation_ident::#from_unknown(from));
-                }
-                if !#to_field.contains_key(&to) {
-                    return Err(#violation_ident::#to_unknown(to));
-                }
-                *#count_ident.entry(from.clone()).or_insert(0) += 1;
-                #label.insert(from, #push_value);
-            }
-            for (key, count) in &#count_ident {
-                if *count > 1 {
-                    return Err(#violation_ident::MultiplicityViolation {
-                        edge: #label_str,
-                        source: format!("{:?}", key),
-                        expected: "0または1",
-                        actual: *count,
-                    });
+                for key in #from_field.keys() {
+                    let count = #count_ident.get(key).copied().unwrap_or(0);
+                    if count != 1 {
+                        return Err(#violation_ident::#mult {
+                            source: key.clone(),
+                            count,
+                        });
+                    }
                 }
             }
-        },
+        }
+        Multiplicity::ZeroOrOne => {
+            let mult = edge.multiplicity_variant();
+            quote! {
+                let mut #label: std::collections::HashMap<_, #value_ty> = std::collections::HashMap::new();
+                let mut #count_ident: std::collections::HashMap<_, usize> = std::collections::HashMap::new();
+                for #bind_pattern in self.#label {
+                    if !#from_field.contains_key(&from) {
+                        return Err(#violation_ident::#unk_src { key: from });
+                    }
+                    if !#to_field.contains_key(&to) {
+                        return Err(#violation_ident::#unk_dst { key: to });
+                    }
+                    *#count_ident.entry(from.clone()).or_insert(0) += 1;
+                    #label.insert(from, #push_value);
+                }
+                for (key, count) in &#count_ident {
+                    if *count > 1 {
+                        return Err(#violation_ident::#mult {
+                            source: key.clone(),
+                            count: *count,
+                        });
+                    }
+                }
+            }
+        }
         Multiplicity::ZeroOrMany => quote! {
             let mut #label: std::collections::HashMap<_, #value_ty> = std::collections::HashMap::new();
             for #bind_pattern in self.#label {
                 if !#from_field.contains_key(&from) {
-                    return Err(#violation_ident::#from_unknown(from));
+                    return Err(#violation_ident::#unk_src { key: from });
                 }
                 if !#to_field.contains_key(&to) {
-                    return Err(#violation_ident::#to_unknown(to));
+                    return Err(#violation_ident::#unk_dst { key: to });
                 }
                 #label.entry(from).or_default().push(#push_value);
             }

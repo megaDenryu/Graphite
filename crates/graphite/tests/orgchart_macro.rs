@@ -3,9 +3,13 @@
 //!
 //! 手書き版との既知の差異 (README.md「手書きテンプレートとの差異」節も参照):
 //! - 違反 enum 名は `OrgChartViolation` (手書き版は共通の `SchemaViolation`)。
-//! - `MultiplicityViolation` の違反キーは `source: String` (`Debug` 表現)。
-//!   手書き版は `employee: EmployeeId` と型付きだったが、エッジごとに始点
-//!   ノード型が異なりうる一般のスキーマに対応するため型を固定できない。
+//! - 多重度違反・未知キー参照はエッジ単位の型付きバリアント
+//!   (`BelongsToMultiplicity { source: EmployeeId, count: usize }` /
+//!   `BelongsToUnknownSource { key: EmployeeId }` 等) として生成される
+//!   (フェーズ5、項目k)。手書き版は `MultiplicityViolation { employee: EmployeeId, .. }`
+//!   という1つの共通バリアントだったが、一般のスキーマではエッジごとに
+//!   始点/終点ノード型が異なりうるため、エッジごとに専用バリアントを生成する
+//!   ことで型を固定できるようにしている。
 //! - builder のエッジ追加メソッドの引数名は汎用的に `from`/`to`
 //!   (手書き版は `employee`/`boss`、`manager`/`report` のようにドメイン語)。
 //! - 導出エッジ (`colleagues`) はマクロが生成しない。生成された `OrgChart`
@@ -146,11 +150,9 @@ mod tests {
         match result {
             Err(violation) => assert_eq!(
                 violation,
-                OrgChartViolation::MultiplicityViolation {
-                    edge: "belongs_to",
-                    source: format!("{:?}", emp("鈴木")),
-                    expected: "ちょうど1",
-                    actual: 0,
+                OrgChartViolation::BelongsToMultiplicity {
+                    source: emp("鈴木"),
+                    count: 0,
                 }
             ),
             Ok(_) => panic!("多重度違反が検出されるはず"),
@@ -197,7 +199,7 @@ mod tests {
 
         assert!(matches!(
             result,
-            Err(OrgChartViolation::MultiplicityViolation { edge: "boss", .. })
+            Err(OrgChartViolation::BossMultiplicity { .. })
         ));
     }
 
@@ -217,7 +219,9 @@ mod tests {
         match result {
             Err(violation) => assert_eq!(
                 violation,
-                OrgChartViolation::UnknownDepartment(dept("存在しない部署"))
+                OrgChartViolation::BelongsToUnknownTarget {
+                    key: dept("存在しない部署")
+                }
             ),
             Ok(_) => panic!("未知の部署参照はエラーになるはず"),
         }
@@ -405,7 +409,7 @@ mod graph_literal_tests {
 
         assert!(matches!(
             result,
-            Err(OrgChartViolation::MultiplicityViolation { edge: "belongs_to", .. })
+            Err(OrgChartViolation::BelongsToMultiplicity { .. })
         ));
     }
 }
