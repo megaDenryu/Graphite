@@ -115,10 +115,26 @@ let g = OrgChart::create(|__graphite_b| {
 
 `BossEdge { since: 2020 }` がユーザーの書いたトークンそのまま
 (`__graphite_edge_OrgChart!(attrs boss { .. })` のような中間呼び出しを経由
-せず) `.boss(..)` の第3引数に直接埋め込まれている。これにより
-`since` フィールドの定義ジャンプは (proc-macro 展開後の) 普通の struct
-リテラルのフィールドへの参照として機能する余地が生まれる (rust-analyzer
-での実測は次回セッションで行う)。
+せず) `.boss(..)` の第3引数に直接埋め込まれている。
+
+rust-analyzer での実測 (2026-07-15、`orgchart_macro.rs` の
+`tanaka -[boss = BossEdge { since: 2020 }]-> sato` 行):
+
+| リテラル内トークン | 結果 |
+|---|---|
+| `since` → 定義 | ✅ ユーザー struct の `pub since: i32` に精密着地 (§1.7 の二段展開制約の解消を実測確認) |
+| `BossEdge` → 定義 | ✅ ユーザーの `struct BossEdge` 宣言に精密着地 |
+| `boss` → 定義 | ✅ schema の `-[boss: BossEdge]` の `boss` トークンに精密着地 |
+
+これで DSL 内の全トークン種 (ノードキー・ノード型・エッジラベル・属性型・
+属性フィールド) が定義解決可能になった。
+
+既知の軽微な回帰 (実測で発見): エッジに使われない孤立ノード
+(`suzuki = Employee { .. }` のみで辺を張らない) に rustc の
+「unused variable: `suzuki`」警告が出る。v3 の脱糖
+`let suzuki = __graphite_b.insert(..)` の束縛が後続で読まれないため。
+孤立ノードは正当なグラフなので、生成する `let` に
+`#[allow(unused_variables)]` を付けて抑制する (修正済み)。
 
 同様に §1.6 で記録した「ハンドシェイクマクロが補完候補に露出する」副産物
 (項目G4 再計測の表) も、ハンドシェイクマクロ自体が存在しなくなったため

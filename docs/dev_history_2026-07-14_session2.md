@@ -97,14 +97,78 @@ v2 後の実測 (仕様書 §1.7): schema 内の型参照・`attrs.since` はユ
 精密ジャンプ (改善)。既知の制約: `graph!` リテラル内の属性フィールドは二段マクロ
 展開 (proc-macro → macro_rules) を RA が追跡できず定義解決不能 (コンパイルは正常)。
 
+## 3.6 リテラル構文 v3
+
+v2 実装直後の実測 (§3.5 末尾) で「`graph!` リテラル内の属性フィールドは
+二段マクロ展開 (proc-macro → macro_rules) を RA が追跡できず定義解決不能」
+という制約が判明した。この状態でユーザーから構文自体への提案が来た。
+
+> グラフインスタンスの中のノードインスタンスなのだから、`alice: Person { .. }`
+> ではなく `alice = Person { .. }` のほうが自然。そうすればグラフの外で
+> `let alice1 = Person { .. };` と作ってから `alice = alice1` のような変数渡し
+> もできる。
+
+→ **リテラル構文 v3** (`docs/graph_literal_v3.md`) を策定・実装:
+
+- ノード項を `key: Type { .. }` から `key = 式` へ変更。属性ありエッジも
+  `-[label { fields }]->` から `-[label = 式]->` (式ペイロード) へ変更。
+  式は任意の Rust 式なので、グラフの外で構築済みの値をそのまま move できる
+  (ユーザー提案の後半を満たす)。
+- ハンドシェイクマクロ (`__graphite_edge_{Schema}!`、check/attrs 2アーム)
+  を**完全に削除**。未知ラベルは `__graphite_b.#label(..)` の呼び出しが
+  そのまま rustc の method-not-found (E0599) に落ちることで検出する
+  (自前の「利用可能一覧」診断は失うが、健全性には関与しないためユーザー
+  決定により許容)。
+- 型解決は `graph_schema!` が生成する `{Schema}Node` trait と builder の
+  総称 `insert` メソッド (`fn insert<N: OrgNode>(&mut self, key: impl
+  Into<String>, value: N) -> N::Id`) に委譲する。マクロは値の型名を
+  一切トークンとして読まない (旧実装は型名から `to_snake_case` で builder
+  メソッド名を機械導出していたが、型名自体が構文から消えたため不可能に
+  なった、というより本質的には「マクロが型推論をエミュレートするのを
+  やめて rustc に投げる」という設計転換)。
+- 効果 (実測済み、`docs/ide_support_spec.md` §1.7/§1.8):
+  - 二段マクロ展開が構造的に消滅したことで、`since`/`BossEdge`/`boss` の
+    定義ジャンプが復活 (v2 で失っていた導線の復旧)。
+  - `graph_schema!`/`graph!` の同一ファイル制約 (旧 G5) も同時に消滅。
+    ハンドシェイクマクロがテキストスコープの macro_rules だったための
+    制約だったため、そのマクロ自体を削除したことで根から解消した。
+    別モジュールの schema に対して `graph!` が動くことを
+    `crates/graphite/tests/graph_cross_module.rs` で証明した。
+  - ハンドシェイクマクロが補完候補に露出する副産物 (G5 副産物) も、
+    マクロ自体の消滅により消えた。
+  - 実測で新たに発見した軽微な副作用: エッジに使われない孤立ノードの
+    let 束縛 (`let suzuki = __graphite_b.insert(..)`) が読まれないため
+    rustc の `unused variable` 警告が出る。孤立ノードは正当なグラフなので
+    これはノイズと判断し、本セッションの後続タスクで
+    `#[allow(unused_variables)]` により抑制した
+    (`crates/graphite-macros/src/instance_codegen.rs`、回帰テスト
+    `crates/graphite/tests/orphan_node_no_warning.rs`)。
+- この改訂で「**schema は `:` (型付け)、リテラルは `=` (代入)**」という
+  言語規則が確立した。schema 側 (`docs/edge_syntax_v2.md`) は型を宣言する
+  ので `:`、graph! リテラル側は値をキーに束縛するので `=` という対応が、
+  文法上も一貫した形で言語全体に定着した。
+
+コミット (このサブセッション分、古→新): `ed42b1e` (v3設計文書) →
+`b434c48` (v3実装: instance_dsl/instance_codegen) → `3389ab9` (テストv3移行
++ 外部値渡し・別モジュール利用テスト追加) → `de07098` (examples v3移行、
+hello-graph §4引用再採取) → `a1fb360` (README/仕様書のv3反映) →
+`51cd679` (孤立ノードのunused variable警告をallow属性で抑制) →
+(本ファイル更新の docs コミットが続く)。
+
 ## 4. 現在の状態
 
-- テスト: コア65 + examples 3本 (32/11/14)、全通過。構文は v2 のみ
+- テスト: コア68 + examples 4本 (build-pipeline 32 / org-analyzer 11 /
+  dialogue-engine 14 / hello-graph 5)、全通過。構文は v3 のみ (v1/v2 は
+  検出・移行診断なしで完全廃止)
 - コミット (このセッション分、古→新): `c75d927` (G2/G3+仕様書) → `1268cba` (G1) →
   `67f6d7f` (docs) → `6e4b120` (G4) → `6f7643f` (docs) → `1c7d76d` (Attrsスパン修正) →
   `e824f12` (docs: renameの壁) → `9de33b7` (v2設計文書) → `75f597e` (v2実装) →
-  `86b715a` (v2移行) → (本ファイル更新の docs コミットが続く)
-- リモート未設定 (ローカルのみ)
+  `86b715a` (v2移行) → `ed42b1e` (v3設計文書) → `b434c48` (v3実装) →
+  `3389ab9` (v3テスト移行) → `de07098` (v3 examples移行) → `a1fb360`
+  (v3 README/仕様書反映) → `51cd679` (孤立ノード警告抑制) →
+  (本ファイル更新の docs コミットが続く)
+- リモート: `origin/main` に本セッション分を push 予定 (このセッションの
+  最終タスク)
 
 ## 5. 未着手の種 (次セッション候補)
 
