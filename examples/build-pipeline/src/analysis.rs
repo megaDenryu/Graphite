@@ -67,8 +67,9 @@ pub enum DomainIssue {
         artifact: ArtifactId,
         producers: Vec<TaskId>,
     },
-    /// タスク依存グラフに循環がある。
-    CyclicDependency { task: TaskId },
+    /// タスク依存グラフに循環がある。`cycle` は循環を構成するタスク列
+    /// (`cycle[0]` から辿って `cycle[0]` に戻る)。
+    CyclicDependency { cycle: Vec<TaskId> },
 }
 
 impl fmt::Display for DomainIssue {
@@ -100,10 +101,14 @@ impl fmt::Display for DomainIssue {
                     .collect::<Vec<_>>()
                     .join(", ")
             ),
-            DomainIssue::CyclicDependency { task } => write!(
+            DomainIssue::CyclicDependency { cycle } => write!(
                 f,
-                "循環依存: タスク {} を経由する依存の循環が検出されました",
-                task.0
+                "循環依存: {} を経由する依存の循環が検出されました",
+                cycle
+                    .iter()
+                    .map(|t| t.0.as_str())
+                    .collect::<Vec<_>>()
+                    .join(" -> ")
             ),
         }
     }
@@ -157,8 +162,8 @@ pub fn validate(g: &BuildPipeline) -> Vec<DomainIssue> {
 
     // 3. タスク依存の循環 (汎用 Graph<TaskId> へ射影して has_cycle 相当の検査)。
     let dep_graph = task_dependency_graph(g);
-    if let Err(CycleError { node }) = dep_graph.topological_sort() {
-        issues.push(DomainIssue::CyclicDependency { task: node });
+    if let Err(CycleError { cycle }) = dep_graph.topological_sort() {
+        issues.push(DomainIssue::CyclicDependency { cycle });
     }
 
     issues
@@ -253,8 +258,13 @@ impl CriticalPath {
 ///
 /// トポロジカル順序に沿って `dist[v] = max(dist[v], dist[u] + secs(v))`
 /// (`u -> v` の辺ごと) と緩和していく DAG 上の最長経路 DP。`Graph::out_neighbors`
-/// だけで書けるため (`Graph` は in-neighbors を公開していない)、常に
-/// 「順方向に伝播する」形にしているのがポイント。
+/// だけで書けるため、常に「順方向に伝播する」形にしているのがポイント
+/// (`Graph::in_neighbors` はフェーズ5で追加されたが、この DP は前進伝播で
+/// 完結するため使っていない)。同種の計算を汎用的に行いたいだけなら
+/// `graphite::Graph::critical_path_by` (フェーズ5追加) に委譲することも
+/// できるが、`total_work_secs`/`parallelism` などこのアプリ固有の付随
+/// データを持つ [`CriticalPath`] を組み立てる都合上、ここでは専用の DP
+/// を保持している。
 pub fn critical_path(g: &BuildPipeline) -> Result<CriticalPath, CycleError<TaskId>> {
     let dep_graph = task_dependency_graph(g);
     let order = dep_graph.topological_sort()?;

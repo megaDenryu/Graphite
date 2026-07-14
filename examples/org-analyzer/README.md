@@ -165,12 +165,12 @@ cargo run -- anomalies --seed 7 --inject-anomalies
 - **相互上司ペア**: `boss_pairs()` で全ペアを集めておき、`(a, b)` かつ
   `(b, a)` が両方存在するものを拾う (README (Graphite本体) に載っている手法
   そのもの)。
-- **上司循環**: `boss` エッジを汎用 `graphite::Graph<EmployeeId, (),
-  EmployeeId>` に射影し、`has_cycle()`/`topological_sort()` で検出する。
-  `topological_sort()` の `CycleError` は循環メンバーを1つしか教えてくれない
-  ので、「各社員の boss 辺は高々1本」という関数グラフの性質を使ってそこから
-  辿り、循環の全メンバーを復元している。長さ2の循環 (相互上司) は上の項目と
-  重複するのでここには含めない。
+- **上司循環**: `boss` エッジを `Graph::from_edges` (フェーズ5追加) で汎用
+  `graphite::Graph<(), (), EmployeeId>` に射影し、`topological_sort()` で
+  検出する。`CycleError::cycle` (フェーズ5から循環メンバー全体を返す形に拡張)
+  をそのまま使えるので、以前のような「boss辺を手で辿って復元する」処理は
+  不要になった。長さ2の循環 (相互上司) は上の項目と重複するのでここには
+  含めない。
 - **部署跨ぎ上司**: `belongs_to_pairs()` で作った所属索引と `boss_pairs()`
   を突き合わせ、上司と部下の部署が異なるものを拾う。
 - **無人プロジェクト / スポンサー無しプロジェクト**: `assigned_pairs()` /
@@ -320,11 +320,18 @@ tests/
   では `CycleError` から循環の全メンバーを機械的に復元する手段が無い。
   `find_cycle() -> Option<Vec<K>>` のような、循環そのものを返すAPIが
   あると `anomalies` 型のコマンドがもっと素直に書けたはず。
+  → **解決 (フェーズ5)**: `CycleError<K>` が `cycle: Vec<K>` (循環メンバー
+  全体、`cycle[0]` から辿って `cycle[0]` に戻る閉路) を返すように拡張された。
+  `detect_boss_cycles` の自前 `boss_of` 復元コードは不要になり削除した。
 - **`filter_nodes` の述語がノード「値」しか見られない**ため、ノード「キー」
   で絞り込みたいとき (今回の「見つけた循環のメンバーをキーで除外する」)は
   ノード値にキーの複製を持たせる、というやや不自然な回避策が要る。
   `filter_nodes_by_key(|k| ...)` のような、キーに対する述語版があると
   素直に書ける。
+  → **解決 (フェーズ5)**: `filter_nodes_with_key(|k, v| ...)` /
+  `map_nodes_with_key(|k, v| ...)` が追加された。`detect_boss_cycles` は
+  ノード値をキーの複製にする回避策をやめ、`Graph<(), (), EmployeeId>` +
+  `Graph::from_edges` + `filter_nodes_with_key` に書き直した。
 - **`OrgChartViolation` に複数件の違反をまとめて返す手段がない**
   (`freeze` は最初に見つかった1件で即 `Err` を返す)。`reorg`
   コマンドの「違反レポート」節でも、実際には1回のシミュレーションにつき

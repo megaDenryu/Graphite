@@ -133,10 +133,30 @@ let all_employee_ids: Vec<&EmployeeId> = g.employee_ids().collect();
 
 図式グラフ (`graph_schema!`) とは別に、ノード型が 1 種類の同種グラフ用に
 ジェネリックな `graphite::Graph<N, E, K>` (水準1相当、petgraph の薄い
-ラッパー) も用意しています。`has_cycle`/`topological_sort`/`reachable_from`/
-`path`/`map_nodes`/`filter_nodes` などのアルゴリズムはこちらに実装されて
-おり、`graph_schema!` が生成する図式グラフとは独立した別 API です
-(`crates/graphite/src/graph.rs`)。
+ラッパー) も用意しています。`has_cycle`/`topological_sort`/
+`topological_levels`/`critical_path_by`/`reachable_from`/`path`/
+`out_neighbors`/`in_neighbors`/`map_nodes`/`map_nodes_with_key`/
+`filter_nodes`/`filter_nodes_with_key`/`from_edges` などのアルゴリズム・
+ヘルパーはこちらに実装されており、`graph_schema!` が生成する図式グラフ
+とは独立した別 API です (`crates/graphite/src/graph.rs`)。
+
+- `in_neighbors(&K) -> Vec<&K>` — `out_neighbors` と対称 (入ってくる辺の
+  始点キー一覧)。
+- `Graph::<(), (), K>::from_edges(nodes, edges) -> Result<Self, GraphError<K>>` —
+  ノードキー集合と `(from, to)` の列から値なしの構造グラフを作る射影用
+  ヘルパー。`{label}_pairs()` から汎用アルゴリズムへ射影する定型操作向け。
+- `topological_levels() -> Result<Vec<Vec<&K>>, CycleError<K>>` — 依存の
+  ないノードから順にレベル (波) 分割したトポロジカルソート (レベル内は
+  挿入順で決定的)。
+- `critical_path_by(node_weight) -> Result<(Vec<&K>, W), CycleError<K>>` —
+  ノード重み付き最長経路 (クリティカルパス)。空グラフは
+  `(vec![], W::default())`。
+- `filter_nodes_with_key`/`map_nodes_with_key` — 既存の `filter_nodes`/
+  `map_nodes` のキー付き版。述語/変換関数がノード値だけでなくキーも
+  参照できる。
+- `CycleError<K>` は循環検出時、循環を構成するノードキー列全体
+  (`cycle: Vec<K>`。`cycle[0]` から辿って `cycle[0]` に戻る閉路) を返す
+  (フェーズ5で `node: K` (代表ノード1つ) から拡張した破壊的変更)。
 
 導出エッジ (保存されない計算結果、例: 同じ部署の同僚一覧) は `graph_schema!`
 の DSLには含めていません。生成された struct は同一モジュール内であれば

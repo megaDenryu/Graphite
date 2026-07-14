@@ -14,12 +14,18 @@
   都度組む必要があった。`out_neighbors` 相当があるなら対になる
   `in_neighbors` も欲しい。
   (出典: `examples/build-pipeline`)
+  → **解決 (フェーズ5)**: `Graph::in_neighbors(&K) -> Vec<&K>` を追加
+  (`petgraph::Direction::Incoming` で実装、`out_neighbors` と対称)。
 - **(c) 重み付き最長経路・レベル分割トポロジカルソートが頻出** —
   クリティカルパス (重み付き最長経路) と、依存のない先頭ノードから順に
   「波」に分けるレベル分割トポロジカルソートは、この種のパイプライン/
   DAG 系アプリで繰り返し必要になる。ライブラリ側にアルゴリズムとして
   持たせる候補。
   (出典: `examples/build-pipeline`)
+  → **解決 (フェーズ5)**: `Graph::topological_levels() -> Result<Vec<Vec<&K>>,
+  CycleError<K>>` (レベル内は挿入順で決定的) と `Graph::critical_path_by(node_weight)
+  -> Result<(Vec<&K>, W), CycleError<K>>` (ノード重み付き最長経路 DP、空グラフは
+  `(vec![], W::default())`) を追加。
 
 ## `graph_schema!` が生成するアクセサまわり
 
@@ -29,6 +35,10 @@
   なりやすかった。定型的な「ペアイテレータ→汎用 Graph」変換のための
   ヘルパー関数/メソッドがあると詰まりにくい。
   (出典: `examples/build-pipeline`)
+  → **解決 (フェーズ5)**: `Graph<(), (), K>::from_edges(nodes, edges)` を
+  追加。`{label}_pairs()` が返す `&K` は `.cloned()`/`.clone()` で渡す
+  (doc例を用意)。`examples/org-analyzer` の `detect_boss_cycles` をこれで
+  簡潔化した。
 - **(d) 多重度 `(1)`/`(0..1)` アクセサが相手ノードの値だけを返し、ID を
   返さない** — 指揮系統チェーンのように「次のノードへ辿ってまたそこから
   辿る」処理をしたい場合、値ではなく ID (キー) が返る版のアクセサが必要
@@ -38,12 +48,23 @@
   「特定の ID 群に含まれるノードだけ抽出する」ような、キーに依存する
   フィルタ処理ができない。述語にキーも渡す形が欲しい。
   (出典: `examples/org-analyzer`)
+  → **解決 (フェーズ5)**: `filter_nodes_with_key(|k, v| ...)` /
+  `map_nodes_with_key(|k, v| ...)` を追加 (既存の `filter_nodes`/`map_nodes`
+  は温存し、それぞれこちらへ委譲する形にリファクタ)。
 
 ## エラー/違反の表現まわり
 
 - **(e) `CycleError` が循環メンバーを1つしか返さない** — 循環検出エラーの
   デバッグ・報告には循環を構成するノード全体 (経路) が要る。
   (出典: `examples/org-analyzer`)
+  → **解決 (フェーズ5、破壊的変更)**: `CycleError<K> { node: K }` を
+  `CycleError<K> { cycle: Vec<K> }` (循環を構成するノード列全体、
+  `cycle[0]` から辿って `cycle[0]` に戻る閉路) に変更。`tarjan_scc` で
+  強連結成分を求め、成分内の反復 DFS で単純閉路を復元する。
+  `topological_sort`/`topological_levels`/`critical_path_by` 全てがこの形で
+  返す。`examples/build-pipeline` (`DomainIssue::CyclicDependency`) と
+  `examples/org-analyzer` (`detect_boss_cycles` の自前 `boss_of` 復元コード
+  を削除) を追従させた。
 - **(g) Violation が最初の1件で `Err` になり、複数違反の一括収集ができない** —
   検証系のユースケース (例: 組織図の全違反を一覧表示) では、最初の1件で
   即エラーになるのではなく、全違反を集めた `Vec<Violation>` を返すモードが

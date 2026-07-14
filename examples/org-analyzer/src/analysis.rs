@@ -6,7 +6,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use graphite::Graph;
+use graphite::{CycleError, Graph};
 
 use crate::dataset::MANAGER_GRADE_THRESHOLD;
 use crate::schema::{DepartmentId, EmployeeId, OrgChart, ProjectId};
@@ -295,69 +295,34 @@ fn detect_mutual_boss_pairs(org: &OrgChart) -> Vec<(EmployeeId, EmployeeId)> {
 /// 上司関係の循環検出。
 ///
 /// `boss` エッジ (Employee -> Employee, 多重度 0..1) を汎用
-/// `graphite::Graph<EmployeeId, (), EmployeeId>` に射影し、`has_cycle`/
-/// `topological_sort` で検出する。`topological_sort` が返す `CycleError` は
-/// 循環に含まれるノードを1つしか教えてくれないため、そこから
-/// 「各社員のboss辺は高々1本」という関数グラフの性質を使って辿り、循環の
-/// 全メンバーを復元する。1つの循環を見つけたら `filter_nodes` でその
-/// メンバーを取り除いた部分グラフに対して再度検出し、複数の循環があっても
-/// 全て拾えるようにしている。
+/// `graphite::Graph<(), (), EmployeeId>` に射影する (`Graph::from_edges` が
+/// `{label}_pairs()` からの定型的な射影をまとめてくれる)。`topological_sort`
+/// が返す `CycleError::cycle` はフェーズ5から循環メンバー全体を返すように
+/// なったため、以前のような「boss辺を手で辿って復元する」処理は不要になった。
+/// 1つの循環を見つけたら `filter_nodes_with_key` でそのメンバーを取り除いた
+/// 部分グラフに対して再度検出し、複数の循環があっても全て拾えるようにして
+/// いる。
 fn detect_boss_cycles(org: &OrgChart) -> Vec<Vec<EmployeeId>> {
-    let boss_of: HashMap<EmployeeId, EmployeeId> = org
-        .boss_pairs()
-        .map(|(sub, boss, _attrs)| (sub.clone(), boss.clone()))
-        .collect();
-
-    // ノード値にもキーと同じ EmployeeId を持たせておく (filter_nodes は
-    // ノード「値」に対する述語しか取れないため、値をキーの複製にしておくと
-    // 「このノードを除外する」という操作がしやすい)。
-    let nodes: Vec<(EmployeeId, EmployeeId)> =
-        org.employee_ids().map(|id| (id.clone(), id.clone())).collect();
-    let edges: Vec<(EmployeeId, EmployeeId, ())> = org
-        .boss_pairs()
-        .map(|(a, b, _attrs)| (a.clone(), b.clone(), ()))
-        .collect();
-
-    let mut graph: Graph<EmployeeId, (), EmployeeId> = Graph::build(nodes, edges)
-        .expect("employee_idsは重複せず、boss_pairsの端点は全てemployee_idsに含まれるはず");
+    let mut graph: Graph<(), (), EmployeeId> = Graph::from_edges(
+        org.employee_ids().cloned(),
+        org.boss_pairs().map(|(a, b, _attrs)| (a.clone(), b.clone())),
+    )
+    .expect("employee_idsは重複せず、boss_pairsの端点は全てemployee_idsに含まれるはず");
 
     let mut cycles: Vec<Vec<EmployeeId>> = Vec::new();
 
-    loop {
-        if !graph.has_cycle() {
-            break;
-        }
-        let start = match graph.topological_sort() {
-            Ok(_) => break, // has_cycleがtrueなら本来ここには来ないはずの安全弁
-            Err(cycle_err) => cycle_err.node,
-        };
-
-        // start から boss_of を辿って循環メンバー全員を復元する。
-        let mut members = vec![start.clone()];
-        let mut cur = start.clone();
-        loop {
-            let next = boss_of
-                .get(&cur)
-                .expect("循環に含まれる社員には必ずboss辺があるはず")
-                .clone();
-            if next == start {
-                break;
-            }
-            members.push(next.clone());
-            cur = next;
-        }
-
-        let members_set: HashSet<EmployeeId> = members.iter().cloned().collect();
+    while let Err(CycleError { cycle }) = graph.topological_sort() {
+        let members_set: HashSet<EmployeeId> = cycle.iter().cloned().collect();
         // 長さ2の循環 (相互上司) は「相互上司ペア」で別途報告済みなので
         // ここには含めない (2つのレポート項目が同じ事実を重複して指す
         // のを避ける)。ここでの関心は「3人以上」の循環。
-        if members.len() >= 3 {
-            cycles.push(members);
+        if cycle.len() >= 3 {
+            cycles.push(cycle);
         }
 
         // 見つけた循環のメンバーを除いた部分グラフで再検出する
         // (残りに別の独立した循環があるケースに備える)。
-        graph = graph.filter_nodes(|v| !members_set.contains(v));
+        graph = graph.filter_nodes_with_key(|k, _| !members_set.contains(k));
     }
 
     cycles
