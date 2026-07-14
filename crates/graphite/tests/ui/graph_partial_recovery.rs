@@ -10,12 +10,21 @@
 //   エラーは出ない
 // - sales (Department) は正常に生成され続ける
 
+pub struct Employee {
+    pub name: String,
+    pub id: u32,
+}
+
+pub struct Department {
+    pub name: String,
+}
+
 graphite::graph_schema! {
     schema OrgChart {
-        node Employee { name: String, id: u32 }
-        node Department { name: String }
+        node Employee;
+        node Department;
 
-        edge belongs_to: Employee -> Department (1);
+        edge Employee -[belongs_to]-> Department (1);
     }
 }
 

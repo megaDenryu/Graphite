@@ -1,5 +1,5 @@
-error: expected `:`
-  --> tests/ui/schema_partial_recovery.rs:16:30
+error: expected `;`
+  --> tests/ui/schema_partial_recovery.rs:21:23
    |
-16 |         node Employee { name String }
-   |                              ^^^^^^
+21 |         node Employee extra_token;
+   |                       ^^^^^^^^^^^

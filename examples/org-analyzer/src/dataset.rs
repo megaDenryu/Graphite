@@ -6,7 +6,7 @@
 //! が拾うべき既知の異常を意図的に埋め込む。
 
 use crate::schema::{
-    AssignedAttrs, BossAttrs, Department, DepartmentId, Employee, EmployeeId, OrgChart, Project,
+    AssignedEdge, BossEdge, Department, DepartmentId, Employee, EmployeeId, OrgChart, Project,
     ProjectId,
 };
 
@@ -235,7 +235,7 @@ pub fn generate(seed: u64, inject_anomalies: bool) -> GeneratedOrg {
     // --- boss 辺: 部署内で grade の高い人を上司候補としてランダムに選ぶ。
     // 「自分より厳密に grade が高い人だけを候補にする」ため、部署ごとに見ると
     // 森 (forest) 構造になり、通常運転では循環も相互上司も原理的に発生しない。
-    let mut boss_edges: Vec<(EmployeeId, EmployeeId, BossAttrs)> = Vec::new();
+    let mut boss_edges: Vec<(EmployeeId, EmployeeId, BossEdge)> = Vec::new();
     for dept_idx in 0..DEPARTMENT_COUNT {
         let members: Vec<usize> = (0..EMPLOYEE_COUNT)
             .filter(|&i| dept_of_employee[i] == dept_idx)
@@ -253,12 +253,12 @@ pub fn generate(seed: u64, inject_anomalies: bool) -> GeneratedOrg {
             }
             let chosen = candidates[rng.next_range(candidates.len())];
             let since = rng.next_range_inclusive(2014, 2023) as i32;
-            boss_edges.push((employee_id(i), employee_id(chosen), BossAttrs { since }));
+            boss_edges.push((employee_id(i), employee_id(chosen), BossEdge { since }));
         }
     }
 
     // --- assigned 辺 (社員 -> プロジェクト、0〜3件の兼務) --------------
-    let mut assigned_edges: Vec<(EmployeeId, ProjectId, AssignedAttrs)> = Vec::new();
+    let mut assigned_edges: Vec<(EmployeeId, ProjectId, AssignedEdge)> = Vec::new();
     let mut seen_assignment: std::collections::HashSet<(usize, usize)> =
         std::collections::HashSet::new();
     for i in 0..EMPLOYEE_COUNT {
@@ -269,7 +269,7 @@ pub fn generate(seed: u64, inject_anomalies: bool) -> GeneratedOrg {
                 continue; // 同じプロジェクトへの重複アサインは避ける
             }
             let role = ROLES[rng.next_range(ROLES.len())].to_string();
-            assigned_edges.push((employee_id(i), project_id(proj_idx), AssignedAttrs { role }));
+            assigned_edges.push((employee_id(i), project_id(proj_idx), AssignedEdge { role }));
         }
     }
 
@@ -288,15 +288,15 @@ pub fn generate(seed: u64, inject_anomalies: bool) -> GeneratedOrg {
         let mutual_a = employee_id(0);
         let mutual_b = employee_id(1);
         boss_edges.retain(|(from, _, _)| *from != mutual_a && *from != mutual_b);
-        boss_edges.push((mutual_a.clone(), mutual_b.clone(), BossAttrs { since: 2021 }));
-        boss_edges.push((mutual_b.clone(), mutual_a.clone(), BossAttrs { since: 2020 }));
+        boss_edges.push((mutual_a.clone(), mutual_b.clone(), BossEdge { since: 2021 }));
+        boss_edges.push((mutual_b.clone(), mutual_a.clone(), BossEdge { since: 2020 }));
 
         // 2. 上司循環: E003 -> E004 -> E005 -> E003
         let cycle: Vec<EmployeeId> = vec![employee_id(2), employee_id(3), employee_id(4)];
         boss_edges.retain(|(from, _, _)| !cycle.contains(from));
         for k in 0..cycle.len() {
             let next = cycle[(k + 1) % cycle.len()].clone();
-            boss_edges.push((cycle[k].clone(), next, BossAttrs { since: 2019 + k as i32 }));
+            boss_edges.push((cycle[k].clone(), next, BossEdge { since: 2019 + k as i32 }));
         }
 
         // 3. スポンサー無しプロジェクト強制: P01 を指す sponsors 辺を全て除去

@@ -19,17 +19,38 @@ use graphite::Graph;
 //
 // node Scene:  1 場面。話者と本文を持つ。
 // node Ending: 1 エンディング。タイトルとエピローグ本文を持つ。
-// edge choice: Scene -> Scene (0..*)  { label: String } — 選択肢。
-//              多重度 0..* = 1 シーンから何本でも選択肢を出せる。
+// edge choice: Scene -> Scene (0..*)  属性 ChoiceEdge { label: String } —
+//              選択肢。多重度 0..* = 1 シーンから何本でも選択肢を出せる。
 // edge finale: Scene -> Ending (0..1) — エンディングへの到達。
 //              多重度 0..1 = 1 シーンにつき高々 1 つの結末。
+
+/// ノード型。`graph_schema!` はこの型を生成せず参照するだけ。
+#[derive(Debug, Clone, PartialEq)]
+pub struct Scene {
+    pub speaker: String,
+    pub text: String,
+}
+
+/// ノード型。
+#[derive(Debug, Clone, PartialEq)]
+pub struct Ending {
+    pub title: String,
+    pub epilogue: String,
+}
+
+/// `choice` エッジの属性 (選択肢のラベル文字列)。
+#[derive(Debug, Clone, PartialEq)]
+pub struct ChoiceEdge {
+    pub label: String,
+}
+
 graphite::graph_schema! {
     schema DialogueGraph {
-        node Scene { speaker: String, text: String }
-        node Ending { title: String, epilogue: String }
+        node Scene;
+        node Ending;
 
-        edge choice: Scene -> Scene (0..*) { label: String };
-        edge finale: Scene -> Ending (0..1);
+        edge Scene -[choice: ChoiceEdge]-> Scene (0..*);
+        edge Scene -[finale]-> Ending (0..1);
     }
 }
 

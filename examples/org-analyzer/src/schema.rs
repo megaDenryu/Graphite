@@ -16,16 +16,50 @@
 //! すべて `dataset.rs` の合成生成器 (`OrgChart::create` の builder 呼び出し)
 //! から組み立てるため `graph!` リテラルは使わない。
 
+/// ノード型。`graph_schema!` はこの型を生成せず参照するだけ。
+#[derive(Debug, Clone, PartialEq)]
+pub struct Employee {
+    pub name: String,
+    pub title: String,
+    pub grade: u8,
+}
+
+/// ノード型。`reorg.rs` が部署を再構築する際に値を `.clone()` するため
+/// `Clone` を derive している。
+#[derive(Debug, Clone, PartialEq)]
+pub struct Department {
+    pub name: String,
+}
+
+/// ノード型。
+#[derive(Debug, Clone, PartialEq)]
+pub struct Project {
+    pub name: String,
+    pub priority: u8,
+}
+
+/// `boss` エッジの属性。`graph_schema!` はこの型を生成せず参照するだけ。
+#[derive(Debug, Clone, PartialEq)]
+pub struct BossEdge {
+    pub since: i32,
+}
+
+/// `assigned` エッジの属性。
+#[derive(Debug, Clone, PartialEq)]
+pub struct AssignedEdge {
+    pub role: String,
+}
+
 #[rustfmt::skip]
 graphite::graph_schema! {
     schema OrgChart {
-        node Employee { name: String, title: String, grade: u8 }
-        node Department { name: String }
-        node Project { name: String, priority: u8 }
+        node Employee;
+        node Department;
+        node Project;
 
-        edge belongs_to: Employee -> Department (1);
-        edge boss:       Employee -> Employee   (0..1) { since: i32 };
-        edge assigned:   Employee -> Project    (0..*) { role: String };
-        edge sponsors:   Department -> Project  (0..1);
+        edge Employee   -[belongs_to]-> Department (1);
+        edge Employee   -[boss: BossEdge]-> Employee (0..1);
+        edge Employee   -[assigned: AssignedEdge]-> Project (0..*);
+        edge Department -[sponsors]-> Project (0..1);
     }
 }

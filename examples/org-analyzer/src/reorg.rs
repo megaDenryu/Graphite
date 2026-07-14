@@ -20,7 +20,7 @@
 //! という Graphite の設計意図を実地で確認できる。
 
 use crate::schema::{
-    AssignedAttrs, BossAttrs, Department, DepartmentId, Employee, EmployeeId, OrgChart,
+    AssignedEdge, BossEdge, Department, DepartmentId, Employee, EmployeeId, OrgChart,
     OrgChartViolation, Project, ProjectId,
 };
 
@@ -95,11 +95,11 @@ pub fn simulate_reorg(org: &OrgChart, target: &DepartmentId) -> Option<ReorgRepo
 
     // boss / assigned は Employee が両端 (or 片端) なので部署削除の影響を
     // 受けない。素通しで良い。
-    let boss_edges: Vec<(EmployeeId, EmployeeId, BossAttrs)> = org
+    let boss_edges: Vec<(EmployeeId, EmployeeId, BossEdge)> = org
         .boss_pairs()
         .map(|(a, b, attrs)| (a.clone(), b.clone(), attrs.clone()))
         .collect();
-    let assigned_edges: Vec<(EmployeeId, ProjectId, AssignedAttrs)> = org
+    let assigned_edges: Vec<(EmployeeId, ProjectId, AssignedEdge)> = org
         .assigned_pairs()
         .map(|(e, p, attrs)| (e.clone(), p.clone(), attrs.clone()))
         .collect();

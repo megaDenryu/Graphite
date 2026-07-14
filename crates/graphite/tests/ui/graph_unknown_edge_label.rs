@@ -1,16 +1,24 @@
-// フェーズ4 項目5: `graph_schema!` が生成するハンドシェイク用マクロ
-// (`__graphite_check_edge_OrgChart!`) により、存在しないエッジ種別の参照は
-// まず親切な compile_error! で報告される。`graph!` はスキーマの中身を
-// 知らないままなので、加えてビルダーに対する通常の Rust メソッド解決も
-// 走り、`no method named ...` という rustc 標準のエラーも重ねて出る
-// (両方が stderr に現れる)。
+// `graph_schema!` が生成するハンドシェイク用マクロ (`__graphite_edge_OrgChart!`)
+// により、存在しないエッジ種別の参照はまず親切な compile_error! で報告される。
+// `graph!` はスキーマの中身を知らないままなので、加えてビルダーに対する通常の
+// Rust メソッド解決も走り、`no method named ...` という rustc 標準のエラーも
+// 重ねて出る (両方が stderr に現れる)。
+
+pub struct Employee {
+    pub name: String,
+    pub id: u32,
+}
+
+pub struct Department {
+    pub name: String,
+}
 
 graphite::graph_schema! {
     schema OrgChart {
-        node Employee { name: String, id: u32 }
-        node Department { name: String }
+        node Employee;
+        node Department;
 
-        edge belongs_to: Employee -> Department (1);
+        edge Employee -[belongs_to]-> Department (1);
     }
 }
 

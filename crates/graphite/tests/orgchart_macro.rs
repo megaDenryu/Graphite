@@ -5,27 +5,49 @@
 //! - 違反 enum 名は `OrgChartViolation` (手書き版は共通の `SchemaViolation`)。
 //! - 多重度違反・未知キー参照はエッジ単位の型付きバリアント
 //!   (`BelongsToMultiplicity { source: EmployeeId, count: usize }` /
-//!   `BelongsToUnknownSource { key: EmployeeId }` 等) として生成される
-//!   (フェーズ5、項目k)。手書き版は `MultiplicityViolation { employee: EmployeeId, .. }`
-//!   という1つの共通バリアントだったが、一般のスキーマではエッジごとに
-//!   始点/終点ノード型が異なりうるため、エッジごとに専用バリアントを生成する
-//!   ことで型を固定できるようにしている。
+//!   `BelongsToUnknownSource { key: EmployeeId }` 等) として生成される。
+//!   手書き版は `MultiplicityViolation { employee: EmployeeId, .. }` という
+//!   1つの共通バリアントだったが、一般のスキーマではエッジごとに始点/終点
+//!   ノード型が異なりうるため、エッジごとに専用バリアントを生成することで
+//!   型を固定できるようにしている。
 //! - builder のエッジ追加メソッドの引数名は汎用的に `from`/`to`
 //!   (手書き版は `employee`/`boss`、`manager`/`report` のようにドメイン語)。
 //! - 導出エッジ (`colleagues`) はマクロが生成しない。生成された `OrgChart`
 //!   に同一モジュール内で `impl` を追記すれば手書き版と同じことができる
 //!   (下記参照。私有フィールドへのアクセスは同一モジュールツリー内なら可能、
 //!   という通常の Rust 可視性規則をそのまま使っている)。
+//! - ノード型 (`Employee`/`Department`) とエッジ属性型 (`BossEdge`) は
+//!   いずれも `graph_schema!` の外で普通の struct として宣言し、schema には
+//!   参照させるだけ (下記参照。`docs/edge_syntax_v2.md` 参照)。
+
+/// ノード型。`graph_schema!` はこの型を生成せず参照するだけ。
+#[derive(Debug, Clone, PartialEq)]
+pub struct Employee {
+    pub name: String,
+    pub id: u32,
+}
+
+/// ノード型。
+#[derive(Debug, Clone, PartialEq)]
+pub struct Department {
+    pub name: String,
+}
+
+/// `boss` エッジの属性。`graph_schema!` はこの型を生成せず参照するだけ。
+#[derive(Debug, Clone, PartialEq)]
+pub struct BossEdge {
+    pub since: i32,
+}
 
 #[rustfmt::skip]
 graphite::graph_schema! {
     schema OrgChart {
-        node Employee { name: String, id: u32 }
-        node Department { name: String }
+        node Employee;
+        node Department;
 
-        edge belongs_to: Employee -> Department (1);
-        edge boss:       Employee -> Employee   (0..1) { since: i32 };
-        edge reports:    Employee -> Employee   (0..*);
+        edge Employee -[belongs_to]-> Department (1);
+        edge Employee -[boss: BossEdge]-> Employee (0..1);
+        edge Employee -[reports]-> Employee (0..*);
     }
 }
 
@@ -83,7 +105,7 @@ mod tests {
 
             b.belongs_to(emp("田中"), dept("営業部"));
             b.belongs_to(emp("佐藤"), dept("営業部"));
-            b.boss(emp("佐藤"), emp("田中"), BossAttrs { since: 2020 });
+            b.boss(emp("佐藤"), emp("田中"), BossEdge { since: 2020 });
             b.reports(emp("田中"), emp("佐藤"));
         })
         .expect("正常な組織図は構築に成功するはず")
@@ -107,12 +129,12 @@ mod tests {
     fn boss_は_option_を返す() {
         let g = build_healthy_chart();
 
-        let b: Option<(&Employee, &BossAttrs)> = g.boss(&emp("佐藤"));
+        let b: Option<(&Employee, &BossEdge)> = g.boss(&emp("佐藤"));
         let (boss_emp, attrs) = b.expect("佐藤の上司は田中のはず");
         assert_eq!(boss_emp.name, "田中");
         assert_eq!(attrs.since, 2020);
 
-        let no_boss: Option<(&Employee, &BossAttrs)> = g.boss(&emp("田中"));
+        let no_boss: Option<(&Employee, &BossEdge)> = g.boss(&emp("田中"));
         assert!(no_boss.is_none());
     }
 
@@ -193,8 +215,8 @@ mod tests {
             b.belongs_to(emp("佐藤"), dept("営業部"));
             b.belongs_to(emp("鈴木"), dept("営業部"));
             // 田中に上司を2人つける (多重度 0..1 違反)
-            b.boss(emp("田中"), emp("佐藤"), BossAttrs { since: 2018 });
-            b.boss(emp("田中"), emp("鈴木"), BossAttrs { since: 2019 });
+            b.boss(emp("田中"), emp("佐藤"), BossEdge { since: 2018 });
+            b.boss(emp("田中"), emp("鈴木"), BossEdge { since: 2019 });
         });
 
         assert!(matches!(
@@ -320,8 +342,8 @@ mod tests {
             b.belongs_to(emp("佐藤"), dept("営業部"));
             // 田中に上司を2人つける (boss 多重度違反その2、belongs_toとは
             // 独立したエッジ種別)。
-            b.boss(emp("田中"), emp("佐藤"), BossAttrs { since: 2018 });
-            b.boss(emp("田中"), emp("鈴木"), BossAttrs { since: 2019 });
+            b.boss(emp("田中"), emp("佐藤"), BossEdge { since: 2018 });
+            b.boss(emp("田中"), emp("鈴木"), BossEdge { since: 2019 });
         });
 
         let violations = match result {
@@ -389,8 +411,8 @@ mod tests {
             b.belongs_to(emp("佐藤"), dept("営業部"));
             b.belongs_to(emp("鈴木"), dept("営業部"));
             // 田中と佐藤は相互に上司 (お互いがお互いの boss)。
-            b.boss(emp("田中"), emp("佐藤"), BossAttrs { since: 2020 });
-            b.boss(emp("佐藤"), emp("田中"), BossAttrs { since: 2019 });
+            b.boss(emp("田中"), emp("佐藤"), BossEdge { since: 2020 });
+            b.boss(emp("佐藤"), emp("田中"), BossEdge { since: 2019 });
             // 鈴木は上司なし (相互ペアには現れない)。
         })
         .unwrap();

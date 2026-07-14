@@ -1,5 +1,5 @@
 error: エッジ `belongs_to` の端点 `Department` は宣言されていないノード型です。宣言済みノード一覧: [Employee]
- --> tests/ui/unknown_node_endpoint.rs:9:42
-  |
-9 |             edge belongs_to: Employee -> Department (1);
-  |                                          ^^^^^^^^^^
+  --> tests/ui/unknown_node_endpoint.rs:13:43
+   |
+13 |             edge Employee -[belongs_to]-> Department (1);
+   |                                           ^^^^^^^^^^

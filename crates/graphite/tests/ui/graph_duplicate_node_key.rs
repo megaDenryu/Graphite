@@ -9,12 +9,21 @@
 // 大量に出てしまうため、あえて文(statement)位置で呼び出している
 // (`graph_unknown_edge_label.rs` は生成が成功する経路なので式位置のまま)。
 
+pub struct Employee {
+    pub name: String,
+    pub id: u32,
+}
+
+pub struct Department {
+    pub name: String,
+}
+
 graphite::graph_schema! {
     schema OrgChart {
-        node Employee { name: String, id: u32 }
-        node Department { name: String }
+        node Employee;
+        node Department;
 
-        edge belongs_to: Employee -> Department (1);
+        edge Employee -[belongs_to]-> Department (1);
     }
 }
 

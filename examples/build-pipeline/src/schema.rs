@@ -9,14 +9,28 @@
 //! あるため (README「未決事項」節参照)、テスト用の固定サンプルを組み立てる
 //! `sample_fixed_pipeline` もこのファイルに同居させている。
 
+/// ノード型。`graph_schema!` はこの型を生成せず参照するだけ。
+#[derive(Debug, Clone, PartialEq)]
+pub struct Task {
+    pub name: String,
+    pub cmd: String,
+    pub secs: u32,
+}
+
+/// ノード型。
+#[derive(Debug, Clone, PartialEq)]
+pub struct Artifact {
+    pub path: String,
+}
+
 #[rustfmt::skip]
 graphite::graph_schema! {
     schema BuildPipeline {
-        node Task { name: String, cmd: String, secs: u32 }
-        node Artifact { path: String }
+        node Task;
+        node Artifact;
 
-        edge produces: Task -> Artifact (0..*);
-        edge consumes: Task -> Artifact (0..*);
+        edge Task -[produces]-> Artifact (0..*);
+        edge Task -[consumes]-> Artifact (0..*);
     }
 }
 

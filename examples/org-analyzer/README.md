@@ -11,16 +11,22 @@ CLI ツールの実用example。
 ## スキーマ
 
 ```rust
+pub struct Employee { pub name: String, pub title: String, pub grade: u8 }
+pub struct Department { pub name: String }
+pub struct Project { pub name: String, pub priority: u8 }
+pub struct BossEdge { pub since: i32 }
+pub struct AssignedEdge { pub role: String }
+
 graphite::graph_schema! {
     schema OrgChart {
-        node Employee { name: String, title: String, grade: u8 }
-        node Department { name: String }
-        node Project { name: String, priority: u8 }
+        node Employee;
+        node Department;
+        node Project;
 
-        edge belongs_to: Employee -> Department (1);
-        edge boss:       Employee -> Employee   (0..1) { since: i32 };
-        edge assigned:   Employee -> Project    (0..*) { role: String };
-        edge sponsors:   Department -> Project  (0..1);
+        edge Employee   -[belongs_to]-> Department (1);
+        edge Employee   -[boss: BossEdge]-> Employee (0..1);
+        edge Employee   -[assigned: AssignedEdge]-> Project (0..*);
+        edge Department -[sponsors]-> Project (0..1);
     }
 }
 ```
@@ -121,7 +127,7 @@ cargo run -- chain E003 --seed 7 --inject-anomalies
 [警告] 循環を検出したため打ち切りました (社員 E003 まで戻っています)
 ```
 
-`boss` アクセサ (多重度 0..1) は `Option<(&Employee, &BossAttrs)>` を返すだけで
+`boss` アクセサ (多重度 0..1) は `Option<(&Employee, &BossEdge)>` を返すだけで
 上司の ID そのものは含まないため、`boss_pairs()` から `EmployeeId -> (EmployeeId,
 since)` の索引を作ってから辿っている。訪問済み集合を持ちながら辿ることで、
 途中で循環に入った場合も無限ループせず検出・打ち切りできる。
@@ -246,7 +252,7 @@ $ cargo run -- reorg D03
 といった不整合が **実行時に静かに** 残り得る。`belongs_to_pairs()` を毎回
 自分で数えて検査するコードを書かない限り気づけない。
 
-Graphiteでは `edge belongs_to: Employee -> Department (1)` と宣言した時点で、
+Graphiteでは `edge Employee -[belongs_to]-> Department (1)` と宣言した時点で、
 `OrgChart::create()` が全社員について「ちょうど1本」であることを一括検査し、
 満たさなければ `OrgChartViolation::MultiplicityViolation` で構築自体が失敗
 する。本アプリの合成データ生成器 (`dataset.rs`) がバグって所属漏れの社員を
@@ -268,8 +274,8 @@ Graphiteには可変な削除APIが存在せず、「新しいノード集合と
 ### 3. 型付きアクセサによる誤り耐性
 
 `g.belongs_to(&emp_id)` は `&Department` を、`g.boss(&emp_id)` は
-`Option<(&Employee, &BossAttrs)>` を、`g.assigned(&emp_id)` は
-`Vec<(&Project, &AssignedAttrs)>` を返す — 多重度がそのまま戻り値の型
+`Option<(&Employee, &BossEdge)>` を、`g.assigned(&emp_id)` は
+`Vec<(&Project, &AssignedEdge)>` を返す — 多重度がそのまま戻り値の型
 (直接返却 / `Option` / `Vec`) に反映されている。生HashMap実装で
 `HashMap<EmployeeId, Vec<DepartmentId>>` のように多重度を型で表現し忘れると、
 「本当は1つのはずの部署が複数入っている」バグを型システムが教えてくれない。
@@ -308,10 +314,10 @@ tests/
 ## Graphite APIで不足を感じた点 (フェーズ5の種として)
 
 - **`boss()` のような多重度(0..1)アクセサが相手ノードのIDを返さない**。
-  `Option<(&Employee, &BossAttrs)>` は値は取れるが「その上司のキーは何か」
+  `Option<(&Employee, &BossEdge)>` は値は取れるが「その上司のキーは何か」
   が分からないため、`chain` コマンドのようにチェーンを辿る用途では結局
   `boss_pairs()` から自前でインデックス (`HashMap<EmployeeId, (EmployeeId,
-  BossAttrs)>`) を作り直す必要があった。`{label}_target(&SrcId) ->
+  BossEdge)>`) を作り直す必要があった。`{label}_target(&SrcId) ->
   Option<&DstId>` のような「相手キーだけを返す」アクセサがあると、
   グラフを辿るタイプの処理 (経路探索・チェーン追跡) がもう一段書きやすい。
 - **`Graph<N, E, K>::topological_sort()` の `CycleError` が循環メンバーを

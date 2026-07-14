@@ -179,7 +179,7 @@ pub struct ChainResult {
 
 /// 指定した社員から `boss` 辺を根 (トップ層) まで辿る。
 ///
-/// `boss` アクセサ (多重度 0..1) は `Option<(&Employee, &BossAttrs)>` を
+/// `boss` アクセサ (多重度 0..1) は `Option<(&Employee, &BossEdge)>` を
 /// 返すだけで上司の `EmployeeId` そのものは含まないため、辿るには
 /// `boss_pairs()` から `EmployeeId -> (EmployeeId, since)` の索引を先に
 /// 作っておく必要がある。

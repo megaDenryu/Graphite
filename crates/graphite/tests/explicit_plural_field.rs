@@ -1,18 +1,30 @@
-//! フェーズ4 項目4: ノード宣言に内部ストレージの複数形フィールド名を
-//! 明示指定できることを確認する (`node Category(categories) { .. }`)。
+//! ノード宣言に内部ストレージの複数形フィールド名を明示指定できることを
+//! 確認する (`node Category(categories);`)。
 //!
 //! `plural_field_name` の素朴な `+ "s"` 複数形化では `Category` は
 //! `Categorys` になってしまう (README「手書きテンプレートとの差異」節・
 //! 「未決事項」節)。省略可能な `(識別子)` 構文でこれを上書きできるように
 //! した。
 
+/// ノード型。`graph_schema!` はこの型を生成せず参照するだけ。
+#[derive(Debug, Clone, PartialEq)]
+pub struct Category {
+    pub name: String,
+}
+
+/// ノード型。
+#[derive(Debug, Clone, PartialEq)]
+pub struct Item {
+    pub name: String,
+}
+
 #[rustfmt::skip]
 graphite::graph_schema! {
     schema Catalog {
-        node Category(categories) { name: String }
-        node Item { name: String }
+        node Category(categories);
+        node Item;
 
-        edge belongs_to: Item -> Category (1);
+        edge Item -[belongs_to]-> Category (1);
     }
 }
 
