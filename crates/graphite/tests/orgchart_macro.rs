@@ -295,6 +295,15 @@ mod tests {
 
         let none: Vec<&EmployeeId> = g.reports_ids(&emp("A"));
         assert!(none.is_empty());
+
+        // 項目i (フェーズ5): 値アクセサ `reports` も同じ順序保証を持つ
+        // (README「`(0..*)` エッジの順序保証」節)。
+        let names: Vec<&str> = g
+            .reports(&emp("部長"))
+            .into_iter()
+            .map(|e| e.name.as_str())
+            .collect();
+        assert_eq!(names, vec!["C", "A", "B"]);
     }
 
     // 項目g (フェーズ5): create_collecting は全違反を収集して返す。

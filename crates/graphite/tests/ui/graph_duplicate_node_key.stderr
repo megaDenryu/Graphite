@@ -1,0 +1,11 @@
+error: 識別子 `tanaka` は既に宣言されています
+  --> tests/ui/graph_duplicate_node_key.rs:26:9
+   |
+26 |         tanaka: Employee { name: "田中2".into(), id: 2 },
+   |         ^^^^^^
+
+error: 最初の宣言はこちら
+  --> tests/ui/graph_duplicate_node_key.rs:24:9
+   |
+24 |         tanaka: Employee { name: "田中".into(), id: 1 },
+   |         ^^^^^^

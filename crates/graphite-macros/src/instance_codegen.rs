@@ -15,16 +15,41 @@ use syn::Ident;
 use crate::instance_dsl::{FieldValue, GraphInput, GraphItem};
 use crate::naming::{to_pascal_case, to_snake_case};
 
+/// 項目h (フェーズ5): `graph!` 内のノード識別子はノード型を跨いで単一の
+/// 平坦な名前空間 (README「名前空間に関する制約」節参照。型ごとに分ける
+/// 再設計はフェーズ5では見送った)。この制約下では「同じ識別子を2回ノード
+/// 宣言する」ミスが起きやすいため、`HashMap::insert` で黙って上書きする
+/// のではなく、2回目の宣言をその場で `syn::Error` として報告する。
+/// 最初の宣言の span も添えて「どこが最初か」を示す
+/// (`schema_validate.rs::validate_unique_node_names` と同じパターン)。
+fn build_key_types(items: &[GraphItem]) -> syn::Result<HashMap<String, Ident>> {
+    let mut key_types: HashMap<String, Ident> = HashMap::new();
+    let mut key_spans: HashMap<String, proc_macro2::Span> = HashMap::new();
+
+    for item in items {
+        if let GraphItem::Node(node) = item {
+            let key_str = node.key.to_string();
+            if let Some(&prev_span) = key_spans.get(&key_str) {
+                let mut err = syn::Error::new(
+                    node.key.span(),
+                    format!("識別子 `{key_str}` は既に宣言されています"),
+                );
+                err.combine(syn::Error::new(prev_span, "最初の宣言はこちら"));
+                return Err(err);
+            }
+            key_spans.insert(key_str.clone(), node.key.span());
+            key_types.insert(key_str, node.type_name.clone());
+        }
+    }
+
+    Ok(key_types)
+}
+
 pub fn generate(input: &GraphInput) -> syn::Result<TokenStream> {
     let schema_name = &input.schema_name;
 
     // key (識別子の文字列) -> 宣言時のノード型名。edge が端点の型を逆引きするための表。
-    let mut key_types: HashMap<String, Ident> = HashMap::new();
-    for item in &input.items {
-        if let GraphItem::Node(node) = item {
-            key_types.insert(node.key.to_string(), node.type_name.clone());
-        }
-    }
+    let key_types = build_key_types(&input.items)?;
 
     let mut calls: Vec<TokenStream> = Vec::new();
     for item in &input.items {

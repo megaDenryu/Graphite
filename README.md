@@ -195,6 +195,33 @@ let result: Result<OrgChart, Vec<OrgChartViolation>> = OrgChart::create_collecti
 のように後から普通のメソッドとして追記してください
 (`crates/graphite/tests/orgchart_macro.rs` に実例あり)。
 
+### 4. `(0..*)` エッジの順序保証 (項目i、フェーズ5)
+
+多重度 `(0..*)` のエッジは内部で `HashMap<SrcId, Vec<DstId>>` (属性付きは
+`Vec<(DstId, Attrs)>`) として格納されます。**同一始点キーに対する複数
+終点の相対順序は、構築時の追加順 (builder の呼び出し順。`graph!` の場合は
+ソース中の記述順) をそのまま保持することを仕様として保証します。** これは
+実装詳細ではなく、`{label}`/`{label}_ids`/`{label}_pairs()` いずれの
+アクセサでも成り立つ保証です (`crates/graphite/tests/orgchart_macro.rs`
+の `reports_ids` 順序テスト参照)。分岐ノベルの選択肢表示順のように、
+順序そのものが意味を持つ場面で安心して依存できます。
+
+ただし、これは「同一始点キー内での順序」の保証であり、`{label}_pairs()`
+が異なる始点キーをまたいで列挙する順序までは保証しません (始点キーの
+集合は `HashMap` で管理されているため)。
+
+### 名前空間に関する制約 (`graph!`)
+
+`graph!` 内のノード識別子 (`tanaka: Employee { .. }` の `tanaka` の部分) は
+**ノード型を跨いで単一の平坦な名前空間**です。異なるノード型 (例:
+`Scene` と `Ending`) であっても同じ識別子を2回使うと衝突するため、
+命名規約 (プレフィックス等) で回避する必要があります。これは設計上の
+既知の制約であり、型ごとに名前空間を分ける再設計はフェーズ5では見送り
+ました (`docs/phase5_candidates.md` 項目h)。代わりに、同じ識別子を2回
+ノード宣言した場合は `syn::Error` (「識別子 `X` は既に宣言されています」)
+がその場でコンパイルエラーとして報告されます
+(`crates/graphite/tests/ui/graph_duplicate_node_key.rs` 参照)。
+
 ## テスト
 
 ```powershell

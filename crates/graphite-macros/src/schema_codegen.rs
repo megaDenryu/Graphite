@@ -523,6 +523,11 @@ fn gen_edge_pairs_iter(edge: &EdgeInfo<'_>) -> TokenStream {
         (Multiplicity::ZeroOrMany, None) => quote! {
             /// 全ての (始点キー, 終点キー) ペアを列挙する
             /// (多重度 0..* は始点ごとの複数終点へ展開する)。
+            ///
+            /// 順序保証 (項目i、フェーズ5): 同一始点キーに対する複数終点の
+            /// 相対順序は、構築時の追加順 (`graph!` の場合はソース中の
+            /// 記述順) を保持する。ただし始点キーをまたぐ列挙順は
+            /// 保証しない (内部ストレージが `HashMap` のため)。
             pub fn #pairs_ident(&self) -> impl Iterator<Item = (&#from_id, &#to_id)> {
                 self.#label
                     .iter()
@@ -532,6 +537,11 @@ fn gen_edge_pairs_iter(edge: &EdgeInfo<'_>) -> TokenStream {
         (Multiplicity::ZeroOrMany, Some(attrs_ty)) => quote! {
             /// 全ての (始点キー, 終点キー, 属性) タプルを列挙する
             /// (多重度 0..* は始点ごとの複数終点へ展開する)。
+            ///
+            /// 順序保証 (項目i、フェーズ5): 同一始点キーに対する複数終点の
+            /// 相対順序は、構築時の追加順 (`graph!` の場合はソース中の
+            /// 記述順) を保持する。ただし始点キーをまたぐ列挙順は
+            /// 保証しない (内部ストレージが `HashMap` のため)。
             pub fn #pairs_ident(&self) -> impl Iterator<Item = (&#from_id, &#to_id, &#attrs_ty)> {
                 self.#label
                     .iter()
@@ -683,6 +693,12 @@ fn gen_edge_accessor(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream {
         },
         (Multiplicity::ZeroOrMany, None) => quote! {
             /// 多重度 (0..*) -> `Vec<&T>`。無い/未知キーはどちらも空。
+            ///
+            /// 順序保証 (項目i、フェーズ5): 格納が `Vec` ベースであり、
+            /// 構築時の追加順 (`graph!` の場合はソース中の記述順) を
+            /// そのまま保持する。選択肢の表示順のように順序が意味を持つ
+            /// 場面で依存してよい (README「`(0..*)` エッジの順序保証」節
+            /// 参照)。
             pub fn #label(&self, id: &#from_id) -> Vec<&#to_ty> {
                 match self.#label.get(id) {
                     Some(ids) => ids.iter().map(|to_id| &self.#to_field[to_id]).collect(),
@@ -692,6 +708,10 @@ fn gen_edge_accessor(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream {
         },
         (Multiplicity::ZeroOrMany, Some(attrs_ty)) => quote! {
             /// 多重度 (0..*) + 属性あり -> `Vec<(&T, &Attrs)>`。
+            ///
+            /// 順序保証 (項目i、フェーズ5): 格納が `Vec` ベースであり、
+            /// 構築時の追加順 (`graph!` の場合はソース中の記述順) を
+            /// そのまま保持する。
             pub fn #label(&self, id: &#from_id) -> Vec<(&#to_ty, &#attrs_ty)> {
                 match self.#label.get(id) {
                     Some(items) => items
