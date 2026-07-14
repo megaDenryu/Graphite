@@ -77,6 +77,20 @@ G6 の結論: 現状の rust-analyzer では関数様 proc-macro の入力トー
 側で直せる問題ではないため「制約の記録」とする。定義ジャンプ・参照検索・hover・
 診断が全て機能しているため、IDE 体験の主要導線は確保できている。
 
+## 1.7 スキーマ宣言構文 v2 実装後の再計測 (2026-07-14、コミット `75f597e`/`86b715a`)
+
+構文 v2 (`docs/edge_syntax_v2.md`: ノード型・エッジ属性型を外部 struct 参照化)
+の実装後、`crates/graphite/tests/orgchart_macro.rs` で再計測:
+
+| 操作 | 結果 |
+|---|---|
+| schema 内の属性型 (`-[boss: BossEdge]`) → 定義 | ✅ ユーザー宣言の `struct BossEdge` に精密着地 |
+| `node Employee;` → 定義 | ✅ ユーザー宣言の `struct Employee` に着地 (schema 内アンカーと併せて2件提示) |
+| 使用側アクセサ (`g.boss(..)`) → 定義 | ✅ schema の `-[boss: ..]` の `boss` トークンに精密着地 (v1 と同等) |
+| 属性フィールド使用 (`attrs.since`) → 定義 | ✅ ユーザー struct の `pub since: i32` フィールドに直行 (v1 では schema 内の無名ブロックだった。本物のフィールド宣言に飛ぶようになり改善) |
+| `graph!` リテラル内の属性フィールド (`-[boss { since: .. }]` の `since`) → 定義 | ❌ 解決不能。`graph!` (proc-macro) → `__graphite_edge_{Schema}!` (macro_rules) → `BossEdge { .. }` という**二段マクロ展開を rust-analyzer が追跡できない**。コンパイル・ラベル照合は正しく機能しており、IDE ナビゲーションのみの制約。RA 側の進化を待って再計測する |
+| rename への効果 | 属性型・ノード型がユーザートークンになったため、型の rename は普通の struct rename (ケース変換の壁 §1.5 の主要ケースが構造的に消滅)。ラベル rename は型に触れない |
+
 ## 2. 仕様項目
 
 ### G1: `graph!` ノードキーの let 束縛化 (実装対象)
