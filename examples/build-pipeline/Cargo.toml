@@ -1,0 +1,10 @@
+[workspace]
+
+[package]
+name = "build-pipeline"
+version = "0.1.0"
+edition = "2021"
+description = "Graphite を使ったビルドパイプライン・オーケストレータの実践example"
+
+[dependencies]
+graphite = { path = "../../crates/graphite" }

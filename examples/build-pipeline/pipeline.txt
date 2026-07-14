@@ -1,0 +1,123 @@
+# ビルドパイプライン定義ファイル (簡易行形式)
+#
+# 文法:
+#   task <名前>: <コマンド...> (<秒数>s)      タスク定義 (実行想定秒数つき)
+#   <タスク名> produces <パス>                そのタスクが生成する成果物
+#   <タスク名> consumes <パス>                そのタスクが読み込む成果物
+#
+# `#` 始まりの行と空行は無視される。行番号はエラー報告に使われるため、
+# 手で編集する際もこの構造を崩さないこと。
+#
+# 現実の Rust プロジェクトのビルドパイプラインを模した多段構成:
+# fetch -> codegen -> build -> test / lint -> doc -> package -> deploy
+
+# --- fetch ---
+task fetch_deps: cargo fetch (30s)
+fetch_deps produces vendor/registry-index
+
+# --- codegen ---
+task codegen_proto: cargo run -p xtask -- codegen-proto (45s)
+codegen_proto consumes vendor/registry-index
+codegen_proto produces src/generated/proto.rs
+
+task codegen_grpc: cargo run -p xtask -- codegen-grpc (40s)
+codegen_grpc consumes vendor/registry-index
+codegen_grpc produces src/generated/grpc.rs
+
+# --- build ---
+task build_core: cargo build -p core (120s)
+build_core consumes src/generated/proto.rs
+build_core produces target/core.rlib
+
+task build_net: cargo build -p net (90s)
+build_net consumes src/generated/grpc.rs
+build_net consumes target/core.rlib
+build_net produces target/net.rlib
+
+task build_util: cargo build -p util (60s)
+build_util consumes target/core.rlib
+build_util produces target/util.rlib
+
+task build_api: cargo build -p api (100s)
+build_api consumes target/net.rlib
+build_api consumes target/util.rlib
+build_api produces target/api.rlib
+
+task build_cli: cargo build -p cli (80s)
+build_cli consumes target/api.rlib
+build_cli produces target/cli.exe
+
+task build_server: cargo build -p server (110s)
+build_server consumes target/api.rlib
+build_server produces target/server.exe
+
+# --- test (build_core/net/util/api の各枝と並列可能) ---
+task test_core: cargo test -p core (70s)
+test_core consumes target/core.rlib
+test_core produces target/test-results/core.xml
+
+task test_net: cargo test -p net (65s)
+test_net consumes target/net.rlib
+test_net produces target/test-results/net.xml
+
+task test_util: cargo test -p util (40s)
+test_util consumes target/util.rlib
+test_util produces target/test-results/util.xml
+
+task test_api: cargo test -p api (85s)
+test_api consumes target/api.rlib
+test_api produces target/test-results/api.xml
+
+task test_integration: cargo test --test integration (150s)
+test_integration consumes target/cli.exe
+test_integration consumes target/server.exe
+test_integration produces target/test-results/integration.xml
+
+# --- lint (build 成果物にのみ依存し test とは独立に並列実行可能) ---
+task lint_clippy: cargo clippy --all-targets --all-features (95s)
+lint_clippy consumes target/core.rlib
+lint_clippy consumes target/net.rlib
+lint_clippy consumes target/util.rlib
+lint_clippy consumes target/api.rlib
+lint_clippy produces target/lint/clippy-report.json
+
+task lint_fmt: cargo fmt --check (15s)
+lint_fmt consumes src/generated/proto.rs
+lint_fmt consumes src/generated/grpc.rs
+lint_fmt produces target/lint/fmt-report.txt
+
+# --- doc ---
+task doc_build: cargo doc --no-deps -p api -p cli -p server (60s)
+doc_build consumes target/api.rlib
+doc_build consumes target/cli.exe
+doc_build consumes target/server.exe
+doc_build produces target/doc/index.html
+
+# --- package ---
+task package_cli: cargo run -p xtask -- package-cli (20s)
+package_cli consumes target/cli.exe
+package_cli consumes target/test-results/integration.xml
+package_cli produces dist/cli-package.tar.gz
+
+task package_server: cargo run -p xtask -- package-server (35s)
+package_server consumes target/server.exe
+package_server consumes target/test-results/integration.xml
+package_server produces dist/server-image.tar
+
+task package_docs: cargo run -p xtask -- package-docs (10s)
+package_docs consumes target/doc/index.html
+package_docs produces dist/docs-bundle.tar.gz
+
+# --- deploy ---
+task deploy_staging: cargo run -p xtask -- deploy staging (25s)
+deploy_staging consumes dist/cli-package.tar.gz
+deploy_staging consumes dist/server-image.tar
+deploy_staging produces deploy/staging-manifest.json
+
+task deploy_prod: cargo run -p xtask -- deploy prod (30s)
+deploy_prod consumes deploy/staging-manifest.json
+deploy_prod produces deploy/prod-manifest.json
+
+task publish_docs: cargo run -p xtask -- publish-docs (12s)
+publish_docs consumes dist/docs-bundle.tar.gz
+publish_docs produces deploy/docs-published.flag
