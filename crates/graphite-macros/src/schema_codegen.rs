@@ -33,11 +33,19 @@ impl<'a> NodeInfo<'a> {
     fn new(decl: &'a NodeDecl) -> Self {
         let type_name = decl.name.to_string();
         let span = decl.name.span();
+        // 項目4 (フェーズ4): `node Type(plural) { .. }` で明示指定があれば
+        // それを内部ストレージのフィールド名に使う。省略時は素朴な複数形化
+        // (`+ "s"`) にフォールバックする (README「手書きテンプレートとの
+        // 差異」節参照)。
+        let field_ident = match &decl.plural {
+            Some(plural) => Ident::new(&plural.to_string(), plural.span()),
+            None => Ident::new(&plural_field_name(&type_name), span),
+        };
         NodeInfo {
             decl,
             type_ident: decl.name.clone(),
             id_ident: format_ident!("{}Id", decl.name, span = span),
-            field_ident: Ident::new(&plural_field_name(&type_name), span),
+            field_ident,
             accessor_ident: Ident::new(&to_snake_case(&type_name), span),
         }
     }
@@ -140,7 +148,11 @@ fn gen_node_structs(nodes: &[NodeInfo<'_>]) -> Vec<TokenStream> {
                 quote! { pub #name: #field_ty }
             });
             quote! {
-                #[derive(Debug, Clone, PartialEq, Eq)]
+                // 項目3 (フェーズ4): `Eq` は付けない。ノードのフィールド型に
+                // `f64` のような `Eq` を実装できない型を使えるようにするため
+                // (newtype キー `#id_ty` は内部で HashMap キーとして使うため
+                // `Hash + Eq` を維持する)。
+                #[derive(Debug, Clone, PartialEq)]
                 pub struct #ty {
                     #(#field_defs),*
                 }
@@ -164,7 +176,9 @@ fn gen_attrs_structs(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
                 quote! { pub #name: #field_ty }
             });
             Some(quote! {
-                #[derive(Debug, Clone, PartialEq, Eq)]
+                // 項目3 (フェーズ4): ノード struct と同様に `Eq` は付けない
+                // (`f64` 等の属性フィールドを許容するため)。
+                #[derive(Debug, Clone, PartialEq)]
                 pub struct #attrs_ty {
                     #(#field_defs),*
                 }

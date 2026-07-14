@@ -47,8 +47,12 @@ fn parse_fields_block(input: ParseStream) -> syn::Result<Vec<FieldDecl>> {
 }
 
 /// `node Employee { name: String, id: u32 }`
+/// `node Category(categories) { name: String }` — `(識別子)` は内部ストレージの
+/// 複数形フィールド名を明示指定する省略可能な構文 (項目4)。省略時は素朴な
+/// `+ "s"` (`crate::naming::plural_field_name`) にフォールバックする。
 pub struct NodeDecl {
     pub name: Ident,
+    pub plural: Option<Ident>,
     pub fields: Vec<FieldDecl>,
 }
 
@@ -56,8 +60,23 @@ impl Parse for NodeDecl {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         input.parse::<kw::node>()?;
         let name: Ident = input.parse()?;
+        let plural = if input.peek(syn::token::Paren) {
+            let content;
+            parenthesized!(content in input);
+            let plural_ident: Ident = content.parse()?;
+            if !content.is_empty() {
+                return Err(content.error("複数形指定は識別子ひとつのみ指定してください: `node Type(plural) { .. }`"));
+            }
+            Some(plural_ident)
+        } else {
+            None
+        };
         let fields = parse_fields_block(input)?;
-        Ok(NodeDecl { name, fields })
+        Ok(NodeDecl {
+            name,
+            plural,
+            fields,
+        })
     }
 }
 
