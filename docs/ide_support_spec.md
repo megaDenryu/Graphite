@@ -35,7 +35,27 @@ Graphite の DSL (`graph_schema!` / `graph!`) を書くとき、VSCode 上で参
 | `graph!` ノードキー → 参照検索 | ✅ 宣言 + 全エッジ内出現を検出 (計3件を確認) |
 | `graph!` ノードキー → hover | ✅ トークン範囲で応答 (ローカル変数 `EmployeeId` として) |
 | examples/* の解析 | ✅ `Scene`/`SceneId` 等がワークスペースシンボルとして引ける。graph_schema! 内トークンへのスパンも機能 |
-| rename | ✅ その後 VSCode UI (F2) での rename は機能することを確認した。schema エッジラベルの rename は派生名 (`{label}_pairs` 等) の参照側までカスケードする。ただし `{Label}Attrs` (エッジ属性型) だけは `format_ident!` が String のみを補間しておりスパン継承が働かないため取り残される欠陥が見つかり、本コミットで修正した (`span = edge.label.span()` を明示) |
+| rename | ⚠️ VSCode UI (F2) での rename は機能する。schema エッジラベルの rename は派生名 (`{label}_pairs`、アクセサ、builder メソッド) の**参照側までカスケードする**が、**大文字小文字変換を挟む派生名には追従しない** (下記「rename カスケードの境界条件」) |
+
+### rename カスケードの境界条件 (2026-07-14 実測、コミット `1c7d76d` 後に再確認)
+
+rust-analyzer の rename は、派生名の中にリネーム対象トークンが**そのままの文字**で
+含まれる場合のみ、その部分を置換してカスケードできる:
+
+- ✅ `boss` → `boss_edge`: `boss_pairs()` の呼び出し側が `boss_edge_pairs()` に、
+  `g.boss(..)` / `b.boss(..)` が `g.boss_edge(..)` / `b.boss_edge(..)` に一括で変わる
+- ❌ 同 rename で `BossAttrs` (属性型) の参照側は取り残される。`boss` が PascalCase
+  変換された「Boss」としてしか現れず、RA は「boss_edge → BossEdge」という
+  ケース変換込みの新名を計算できないため。**スパンは正しく effect している**
+  (`AssignedAttrs` → schema の `assigned` トークンへの定義ジャンプは精密) ので、
+  これはスパンでは解決できない RA 側の構造的制約である
+- 同じ理屈で、ケース変換を挟む他の派生名も追従しないと予測される:
+  違反バリアント (`{Label}Multiplicity` 等)、ノード型 rename 時の snake_case
+  アクセサ/builder メソッド (`Employee` → `employee()`)
+
+実害の評価: 取り残しは「unresolved import `BossAttrs`」のような**正確な位置の
+コンパイルエラー**として即座に現れるため、静かな破壊は起きない (rename 後に
+エラー箇所を手修正すれば完了)。緩和策の候補は §2 G7 を参照。
 
 注意: `.vscode/settings.json` の `linkedProjects` 変更と proc-macro の変更は、
 `rust-analyzer: Restart Server` を実行するまで反映されないことがある
@@ -190,6 +210,21 @@ G4 実装後に vscode-lsp-mcp の completion プロバイダで実測する:
 - `graph!` ノード宣言のフィールド名位置で、ノード struct のフィールドが補完されるか
 - エッジラベル位置 (`-[` の後) の補完は原理的に難しい (トークン木の中の自由識別子)。
   効かない場合は G5 同様「制約の記録」とする。
+
+### G7: rename のケース変換取り残しへの緩和策 (検討・未着手)
+
+§1.5「rename カスケードの境界条件」の通り、ケース変換を挟む派生名
+(`{Label}Attrs` 等) は RA の rename に追従できない。検討した緩和策:
+
+- (a) 属性型名の明示構文 — `edge boss: Employee -> Employee (0..1) { since: i32 }`
+  に対し、属性型名をユーザーが書ける構文 (例: `{ since: i32 } as BossAttrs`) を
+  足す。`BossAttrs` がユーザー自身のトークンになるため、ラベル rename と独立に
+  なり (ラベルを変えても型名は変わらない = 取り残し自体が起きない)、型名の
+  rename は型名のトークンで直接 F2 できる。原則1 (明示) とも整合。
+- (b) 現状維持 + 文書化 — 取り残しは正確なコンパイルエラーとして現れるため
+  静かな破壊はない。rename 後の手修正 2〜3 箇所を許容する。
+- 判断: 当面 (b)。(a) は構文追加のコストに対して「rename の後始末が消える」
+  だけの利得なので、実利用で取り残しが頻出するようなら再訪する。
 
 ## 3. 実装順序
 
