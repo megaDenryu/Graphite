@@ -1,0 +1,414 @@
+//! 集計 (`summary`)・管理チェーン追跡 (`chain`)・構造異常検出 (`anomalies`)
+//! のロジック。
+//!
+//! CLI からの呼び出しと表示整形 (`report.rs`) を分離し、この module は
+//! 「`OrgChart` を読んで構造化データを返す」ことだけに専念する。
+
+use std::collections::{HashMap, HashSet};
+
+use graphite::Graph;
+
+use crate::dataset::MANAGER_GRADE_THRESHOLD;
+use crate::schema::{DepartmentId, EmployeeId, OrgChart, ProjectId};
+
+// ============================================================
+// summary
+// ============================================================
+
+/// 部署別の在籍人数。
+#[derive(Debug, Clone, PartialEq)]
+pub struct DeptCount {
+    pub department: DepartmentId,
+    pub name: String,
+    pub count: usize,
+}
+
+/// grade 別の人数分布。
+#[derive(Debug, Clone, PartialEq)]
+pub struct GradeCount {
+    pub grade: u8,
+    pub count: usize,
+}
+
+/// span of control (直属部下数) の統計。
+#[derive(Debug, Clone, PartialEq)]
+pub struct SpanOfControlStats {
+    /// 管理職 (grade >= `MANAGER_GRADE_THRESHOLD`) 全員を母数にした
+    /// 直属部下数の平均 (部下0人の管理職も含めて平均する)。
+    pub average: f64,
+    pub max: usize,
+    pub max_manager: Option<(EmployeeId, String)>,
+    /// 部下が1人もいない管理職一覧 (`(id, name, title)`)。
+    pub zero_report_managers: Vec<(EmployeeId, String, String)>,
+}
+
+/// プロジェクト別のアサイン人数。
+#[derive(Debug, Clone, PartialEq)]
+pub struct ProjectAssignmentCount {
+    pub project: ProjectId,
+    pub name: String,
+    pub count: usize,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SummaryReport {
+    pub total_employees: usize,
+    pub dept_counts: Vec<DeptCount>,
+    pub grade_counts: Vec<GradeCount>,
+    pub span_of_control: SpanOfControlStats,
+    pub project_assignments: Vec<ProjectAssignmentCount>,
+}
+
+pub fn summarize(org: &OrgChart) -> SummaryReport {
+    let total_employees = org.employee_ids().count();
+
+    // 部署別人数: belongs_to_pairs (多重度1、社員ごとにちょうど1本) を
+    // 部署キーで集計する。
+    let mut dept_counter: HashMap<DepartmentId, usize> = HashMap::new();
+    for (_, dept_id) in org.belongs_to_pairs() {
+        *dept_counter.entry(dept_id.clone()).or_insert(0) += 1;
+    }
+    let mut dept_counts: Vec<DeptCount> = org
+        .department_ids()
+        .map(|id| DeptCount {
+            department: id.clone(),
+            name: org.department(id).expect("department_idsから得たキーは必ず存在する").name.clone(),
+            count: dept_counter.get(id).copied().unwrap_or(0),
+        })
+        .collect();
+    dept_counts.sort_by(|a, b| a.department.cmp(&b.department));
+
+    // grade 分布
+    let mut grade_counter: HashMap<u8, usize> = HashMap::new();
+    for id in org.employee_ids() {
+        let grade = org.employee(id).expect("employee_idsから得たキーは必ず存在する").grade;
+        *grade_counter.entry(grade).or_insert(0) += 1;
+    }
+    let mut grade_counts: Vec<GradeCount> = grade_counter
+        .into_iter()
+        .map(|(grade, count)| GradeCount { grade, count })
+        .collect();
+    grade_counts.sort_by_key(|g| g.grade);
+
+    // span of control: boss_pairs から「boss -> 直属部下数」を集計する。
+    let mut direct_reports: HashMap<EmployeeId, usize> = HashMap::new();
+    for (_sub, boss_id, _attrs) in org.boss_pairs() {
+        *direct_reports.entry(boss_id.clone()).or_insert(0) += 1;
+    }
+
+    let managers: Vec<EmployeeId> = org
+        .employee_ids()
+        .filter(|id| org.employee(id).unwrap().grade >= MANAGER_GRADE_THRESHOLD)
+        .cloned()
+        .collect();
+
+    let mut max: usize = 0;
+    let mut max_manager: Option<(EmployeeId, String)> = None;
+    let mut zero_report_managers: Vec<(EmployeeId, String, String)> = Vec::new();
+    let mut sum: usize = 0;
+    for id in &managers {
+        let count = direct_reports.get(id).copied().unwrap_or(0);
+        sum += count;
+        let emp = org.employee(id).unwrap();
+        if count > max {
+            max = count;
+            max_manager = Some((id.clone(), emp.name.clone()));
+        }
+        if count == 0 {
+            zero_report_managers.push((id.clone(), emp.name.clone(), emp.title.clone()));
+        }
+    }
+    zero_report_managers.sort_by(|a, b| a.0.cmp(&b.0));
+    let average = if managers.is_empty() {
+        0.0
+    } else {
+        sum as f64 / managers.len() as f64
+    };
+
+    // プロジェクト別アサイン人数
+    let mut project_counter: HashMap<ProjectId, usize> = HashMap::new();
+    for (_emp, proj_id, _attrs) in org.assigned_pairs() {
+        *project_counter.entry(proj_id.clone()).or_insert(0) += 1;
+    }
+    let mut project_assignments: Vec<ProjectAssignmentCount> = org
+        .project_ids()
+        .map(|id| ProjectAssignmentCount {
+            project: id.clone(),
+            name: org.project(id).unwrap().name.clone(),
+            count: project_counter.get(id).copied().unwrap_or(0),
+        })
+        .collect();
+    project_assignments.sort_by(|a, b| a.project.cmp(&b.project));
+
+    SummaryReport {
+        total_employees,
+        dept_counts,
+        grade_counts,
+        span_of_control: SpanOfControlStats {
+            average,
+            max,
+            max_manager,
+            zero_report_managers,
+        },
+        project_assignments,
+    }
+}
+
+// ============================================================
+// chain
+// ============================================================
+
+/// 管理チェーン中の 1 エントリ。
+#[derive(Debug, Clone, PartialEq)]
+pub struct ChainEntry {
+    /// 起点からの深さ (起点自身は0)。
+    pub depth: usize,
+    pub employee: EmployeeId,
+    pub name: String,
+    pub title: String,
+    /// このエントリの上司との在任年 (起点自身は `None`)。
+    pub since: Option<i32>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ChainResult {
+    pub entries: Vec<ChainEntry>,
+    /// 途中で循環を検出して打ち切った場合 `Some(戻り先のキー)`。
+    pub cycle_back_to: Option<EmployeeId>,
+}
+
+/// 指定した社員から `boss` 辺を根 (トップ層) まで辿る。
+///
+/// `boss` アクセサ (多重度 0..1) は `Option<(&Employee, &BossAttrs)>` を
+/// 返すだけで上司の `EmployeeId` そのものは含まないため、辿るには
+/// `boss_pairs()` から `EmployeeId -> (EmployeeId, since)` の索引を先に
+/// 作っておく必要がある。
+///
+/// 訪問済み集合を持ちながら辿ることで循環を検出する。循環に突入したら
+/// そこで打ち切り、`cycle_back_to` にループの戻り先キーを記録する
+/// (`anomalies` コマンドの循環検出とは独立した、チェーン単体での安全対策)。
+pub fn management_chain(org: &OrgChart, start: &EmployeeId) -> Option<ChainResult> {
+    let start_employee = org.employee(start)?;
+
+    let boss_of: HashMap<EmployeeId, (EmployeeId, i32)> = org
+        .boss_pairs()
+        .map(|(sub, boss, attrs)| (sub.clone(), (boss.clone(), attrs.since)))
+        .collect();
+
+    let mut entries = vec![ChainEntry {
+        depth: 0,
+        employee: start.clone(),
+        name: start_employee.name.clone(),
+        title: start_employee.title.clone(),
+        since: None,
+    }];
+    let mut visited: HashSet<EmployeeId> = HashSet::new();
+    visited.insert(start.clone());
+
+    let mut current = start.clone();
+    let mut depth = 1usize;
+    let mut cycle_back_to = None;
+
+    loop {
+        match boss_of.get(&current) {
+            None => break, // トップ層に到達 (これ以上の上司なし)
+            Some((boss_id, since)) => {
+                if visited.contains(boss_id) {
+                    cycle_back_to = Some(boss_id.clone());
+                    break;
+                }
+                let boss_employee = org
+                    .employee(boss_id)
+                    .expect("boss_pairsの終点は必ずemployeeに存在するはず");
+                entries.push(ChainEntry {
+                    depth,
+                    employee: boss_id.clone(),
+                    name: boss_employee.name.clone(),
+                    title: boss_employee.title.clone(),
+                    since: Some(*since),
+                });
+                visited.insert(boss_id.clone());
+                current = boss_id.clone();
+                depth += 1;
+            }
+        }
+    }
+
+    Some(ChainResult {
+        entries,
+        cycle_back_to,
+    })
+}
+
+// ============================================================
+// anomalies
+// ============================================================
+
+/// 部署を跨いだ上司関係 (上司と部下が異なる部署に所属している)。
+#[derive(Debug, Clone, PartialEq)]
+pub struct CrossDepartmentBoss {
+    pub employee: EmployeeId,
+    pub employee_name: String,
+    pub employee_dept: DepartmentId,
+    pub boss: EmployeeId,
+    pub boss_name: String,
+    pub boss_dept: DepartmentId,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AnomalyReport {
+    /// 相互上司ペア (正規化済み: 同じペアが2回出ないよう `(小さい方, 大きい方)` に統一)。
+    pub mutual_boss_pairs: Vec<(EmployeeId, EmployeeId)>,
+    /// 上司関係の循環。各要素は循環に含まれる社員キーの並び。
+    pub boss_cycles: Vec<Vec<EmployeeId>>,
+    pub cross_department_bosses: Vec<CrossDepartmentBoss>,
+    pub unstaffed_projects: Vec<ProjectId>,
+    pub sponsorless_projects: Vec<ProjectId>,
+}
+
+pub fn detect_anomalies(org: &OrgChart) -> AnomalyReport {
+    AnomalyReport {
+        mutual_boss_pairs: detect_mutual_boss_pairs(org),
+        boss_cycles: detect_boss_cycles(org),
+        cross_department_bosses: detect_cross_department_bosses(org),
+        unstaffed_projects: detect_unstaffed_projects(org),
+        sponsorless_projects: detect_sponsorless_projects(org),
+    }
+}
+
+/// 相互上司ペアの検出。README に載っている手法そのもの:
+/// 全ペアを集めておき、`(a, b)` かつ `(b, a)` が両方存在するものを拾う。
+fn detect_mutual_boss_pairs(org: &OrgChart) -> Vec<(EmployeeId, EmployeeId)> {
+    let all: Vec<(&EmployeeId, &EmployeeId)> =
+        org.boss_pairs().map(|(a, b, _attrs)| (a, b)).collect();
+
+    let mut result: Vec<(EmployeeId, EmployeeId)> = Vec::new();
+    for (a, b) in &all {
+        if a < b && all.contains(&(b, a)) {
+            result.push(((*a).clone(), (*b).clone()));
+        }
+    }
+    result.sort();
+    result
+}
+
+/// 上司関係の循環検出。
+///
+/// `boss` エッジ (Employee -> Employee, 多重度 0..1) を汎用
+/// `graphite::Graph<EmployeeId, (), EmployeeId>` に射影し、`has_cycle`/
+/// `topological_sort` で検出する。`topological_sort` が返す `CycleError` は
+/// 循環に含まれるノードを1つしか教えてくれないため、そこから
+/// 「各社員のboss辺は高々1本」という関数グラフの性質を使って辿り、循環の
+/// 全メンバーを復元する。1つの循環を見つけたら `filter_nodes` でその
+/// メンバーを取り除いた部分グラフに対して再度検出し、複数の循環があっても
+/// 全て拾えるようにしている。
+fn detect_boss_cycles(org: &OrgChart) -> Vec<Vec<EmployeeId>> {
+    let boss_of: HashMap<EmployeeId, EmployeeId> = org
+        .boss_pairs()
+        .map(|(sub, boss, _attrs)| (sub.clone(), boss.clone()))
+        .collect();
+
+    // ノード値にもキーと同じ EmployeeId を持たせておく (filter_nodes は
+    // ノード「値」に対する述語しか取れないため、値をキーの複製にしておくと
+    // 「このノードを除外する」という操作がしやすい)。
+    let nodes: Vec<(EmployeeId, EmployeeId)> =
+        org.employee_ids().map(|id| (id.clone(), id.clone())).collect();
+    let edges: Vec<(EmployeeId, EmployeeId, ())> = org
+        .boss_pairs()
+        .map(|(a, b, _attrs)| (a.clone(), b.clone(), ()))
+        .collect();
+
+    let mut graph: Graph<EmployeeId, (), EmployeeId> = Graph::build(nodes, edges)
+        .expect("employee_idsは重複せず、boss_pairsの端点は全てemployee_idsに含まれるはず");
+
+    let mut cycles: Vec<Vec<EmployeeId>> = Vec::new();
+
+    loop {
+        if !graph.has_cycle() {
+            break;
+        }
+        let start = match graph.topological_sort() {
+            Ok(_) => break, // has_cycleがtrueなら本来ここには来ないはずの安全弁
+            Err(cycle_err) => cycle_err.node,
+        };
+
+        // start から boss_of を辿って循環メンバー全員を復元する。
+        let mut members = vec![start.clone()];
+        let mut cur = start.clone();
+        loop {
+            let next = boss_of
+                .get(&cur)
+                .expect("循環に含まれる社員には必ずboss辺があるはず")
+                .clone();
+            if next == start {
+                break;
+            }
+            members.push(next.clone());
+            cur = next;
+        }
+
+        let members_set: HashSet<EmployeeId> = members.iter().cloned().collect();
+        // 長さ2の循環 (相互上司) は「相互上司ペア」で別途報告済みなので
+        // ここには含めない (2つのレポート項目が同じ事実を重複して指す
+        // のを避ける)。ここでの関心は「3人以上」の循環。
+        if members.len() >= 3 {
+            cycles.push(members);
+        }
+
+        // 見つけた循環のメンバーを除いた部分グラフで再検出する
+        // (残りに別の独立した循環があるケースに備える)。
+        graph = graph.filter_nodes(|v| !members_set.contains(v));
+    }
+
+    cycles
+}
+
+/// 部署跨ぎの上司関係 (上司と部下が異なる部署)。
+fn detect_cross_department_bosses(org: &OrgChart) -> Vec<CrossDepartmentBoss> {
+    let dept_of: HashMap<&EmployeeId, &DepartmentId> = org.belongs_to_pairs().collect();
+
+    let mut result: Vec<CrossDepartmentBoss> = org
+        .boss_pairs()
+        .filter_map(|(emp_id, boss_id, _attrs)| {
+            let emp_dept = *dept_of.get(emp_id)?;
+            let boss_dept = *dept_of.get(boss_id)?;
+            if emp_dept == boss_dept {
+                return None;
+            }
+            Some(CrossDepartmentBoss {
+                employee: emp_id.clone(),
+                employee_name: org.employee(emp_id).unwrap().name.clone(),
+                employee_dept: emp_dept.clone(),
+                boss: boss_id.clone(),
+                boss_name: org.employee(boss_id).unwrap().name.clone(),
+                boss_dept: boss_dept.clone(),
+            })
+        })
+        .collect();
+    result.sort_by(|a, b| a.employee.cmp(&b.employee));
+    result
+}
+
+/// 誰もアサインされていないプロジェクト。
+fn detect_unstaffed_projects(org: &OrgChart) -> Vec<ProjectId> {
+    let staffed: HashSet<&ProjectId> = org.assigned_pairs().map(|(_, p, _)| p).collect();
+    let mut result: Vec<ProjectId> = org
+        .project_ids()
+        .filter(|p| !staffed.contains(p))
+        .cloned()
+        .collect();
+    result.sort();
+    result
+}
+
+/// どの部署からもスポンサーされていないプロジェクト。
+fn detect_sponsorless_projects(org: &OrgChart) -> Vec<ProjectId> {
+    let sponsored: HashSet<&ProjectId> = org.sponsors_pairs().map(|(_, p)| p).collect();
+    let mut result: Vec<ProjectId> = org
+        .project_ids()
+        .filter(|p| !sponsored.contains(p))
+        .cloned()
+        .collect();
+    result.sort();
+    result
+}

@@ -1,0 +1,10 @@
+[workspace]
+
+[package]
+name = "org-analyzer"
+version = "0.1.0"
+edition = "2021"
+description = "Graphite (graph_schema!) を使った組織分析ツールの実用example"
+
+[dependencies]
+graphite = { path = "../../crates/graphite" }
