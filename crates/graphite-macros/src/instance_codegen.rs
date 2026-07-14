@@ -1,10 +1,16 @@
 //! `graph!` のコード生成本体。
 //!
 //! `SchemaName::create(|__graphite_b| { ... })` の呼び出し列へ脱糖する。
-//! `graph!` はスキーマの中身を知らないので、ここで使う名前 (builder メソッド名・
-//! newtype キー型名・属性型名) は `graph_schema!` (`schema_codegen.rs`) と
-//! 全く同じ命名規則 (`crate::naming`) から機械的に導出する。両者がずれると
-//! ここで生成した呼び出しがコンパイルエラーになる (メソッドが見つからない等)。
+//!
+//! v3 (`docs/graph_literal_v3.md`): ノード項・エッジ属性の値はいずれも
+//! ユーザーの式トークンをそのまま埋め込むだけで、値の型はマクロが一切
+//! パースしない (旧版はノード項の型名から `to_snake_case` でビルダー
+//! メソッド名を機械的に導出していたが、v3 ではノード項の型名自体が
+//! 構文から消えたためこの導出が出来なくなった)。代わりに `graph_schema!`
+//! が生成した総称 `insert` メソッド (`schema_codegen.rs::gen_node_trait_and_impls`
+//! 参照) にキー文字列と値の式をそのまま渡し、`N::Id` の型推論を rustc に
+//! 委ねる。エッジも同様にビルダーの型名付きメソッド (`b.label(from, to, 式)`)
+//! へ式を素通しするだけになる。
 //!
 //! ## 展開形 (項目G1、`docs/ide_support_spec.md` 参照)
 //!
@@ -16,12 +22,9 @@
 //! ```text
 //! OrgChart::create(|__graphite_b| {
 //!     // (1) 全ノード宣言 (記述順)
-//!     let tanaka = EmployeeId("tanaka".to_string()); // ← ノード宣言の出現スパン
-//!     __graphite_b.employee(tanaka.clone(), Employee { .. });
-//!     let sales = DepartmentId("sales".to_string());
-//!     __graphite_b.department(sales.clone(), Department { .. });
+//!     let tanaka = __graphite_b.insert("tanaka", Employee { .. }); // ← ノード宣言の出現スパン
+//!     let sales = __graphite_b.insert("sales", Department { .. });
 //!     // (2) 全エッジ (記述順)
-//!     __graphite_edge_OrgChart!(check belongs_to);
 //!     __graphite_b.belongs_to(tanaka.clone(), sales.clone()); // ← 各エッジでの出現スパン
 //! })
 //! ```
@@ -38,6 +41,19 @@
 //! 隠してしまう衝突を避けるため (proc macro の入力トークンは call site
 //! ハイジーンなので、名前が同じなら実際に衝突する)。
 //!
+//! ## v3 でのハンドシェイクマクロ全廃 (`docs/graph_literal_v3.md` §4)
+//!
+//! v2 まではエッジ行ごとに `__graphite_edge_{Schema}!(check label)` を
+//! 埋め込み、未知ラベルを親切な `compile_error!` で検出していた。v3 は
+//! 属性ペイロードが式渡しになったため、この二段マクロ展開 (proc-macro →
+//! macro_rules) 自体が不要になった。未知ラベルは
+//! `__graphite_b.#label(..)` の呼び出しがそのまま rustc の method-not-found
+//! (E0599) に落ちることで検出される (診断の「利用可能一覧」は失うが、
+//! 健全性には関与しないためユーザー決定により許容: `docs/graph_literal_v3.md`
+//! §4)。この全廃により、`graph_schema!`/`graph!` の同一ファイル制約 (G5、
+//! `docs/ide_support_spec.md`) も構造的に消滅した (`graph!` が参照するのは
+//! 通常の型・メソッドだけになったため、別モジュールから `use` すれば足りる)。
+//!
 //! ## エラー回復との関係 (項目G4b、`docs/ide_support_spec.md` 参照)
 //!
 //! `lib.rs` は `instance_dsl::GraphInput::parse_recovering` で項目単位の
@@ -53,21 +69,23 @@
 use std::collections::HashMap;
 
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote};
-use syn::Ident;
+use quote::quote;
 
-use crate::instance_dsl::{FieldValue, GraphInput, GraphItem};
-use crate::naming::to_snake_case;
+use crate::instance_dsl::{GraphInput, GraphItem};
 
 /// 項目h (フェーズ5): `graph!` 内のノード識別子はノード型を跨いで単一の
 /// 平坦な名前空間 (README「名前空間に関する制約」節参照。型ごとに分ける
 /// 再設計はフェーズ5では見送った)。この制約下では「同じ識別子を2回ノード
-/// 宣言する」ミスが起きやすいため、`HashMap::insert` で黙って上書きする
-/// のではなく、2回目の宣言をその場で `syn::Error` として報告する。
-/// 最初の宣言の span も添えて「どこが最初か」を示す
+/// 宣言する」ミスが起きやすいため、`HashSet` で黙って無視するのではなく、
+/// 2回目の宣言をその場で `syn::Error` として報告する。最初の宣言の span も
+/// 添えて「どこが最初か」を示す
 /// (`schema_validate.rs::validate_unique_node_names` と同じパターン)。
-fn build_key_types(items: &[GraphItem]) -> syn::Result<HashMap<String, Ident>> {
-    let mut key_types: HashMap<String, Ident> = HashMap::new();
+///
+/// v3 では値の型をここで追跡する必要が無くなったため (`insert` が rustc の
+/// 型推論に委ねる)、戻り値は「宣言済みキー文字列の集合」だけで足りる
+/// (v2 までは `HashMap<String, Ident>` でキー→型名を持っていた)。
+fn collect_declared_keys(items: &[GraphItem]) -> syn::Result<std::collections::HashSet<String>> {
+    let mut declared: std::collections::HashSet<String> = std::collections::HashSet::new();
     let mut key_spans: HashMap<String, proc_macro2::Span> = HashMap::new();
 
     for item in items {
@@ -82,11 +100,11 @@ fn build_key_types(items: &[GraphItem]) -> syn::Result<HashMap<String, Ident>> {
                 return Err(err);
             }
             key_spans.insert(key_str.clone(), node.key.span());
-            key_types.insert(key_str, node.type_name.clone());
+            declared.insert(key_str);
         }
     }
 
-    Ok(key_types)
+    Ok(declared)
 }
 
 /// `has_parse_errors`: G4b (`docs/ide_support_spec.md` 参照)。呼び出し元
@@ -94,13 +112,13 @@ fn build_key_types(items: &[GraphItem]) -> syn::Result<HashMap<String, Ident>> {
 /// 場合に `true` を渡す。このとき「エッジ端点が未宣言」という検証エラーは
 /// 出さず、そのエッジを黙って生成対象から除外する (壊れた項目由来の二次
 /// 噴出を避けるため)。`false` (パースエラー0件) のときは現行通り `Err` で
-/// 全体を中断する。なお `build_key_types` の重複キー診断は
+/// 全体を中断する。なお `collect_declared_keys` の重複キー診断は
 /// `has_parse_errors` に関わらず常にハード失敗のまま (現行維持)。
 pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<TokenStream> {
     let schema_name = &input.schema_name;
 
-    // key (識別子の文字列) -> 宣言時のノード型名。edge が端点の型を逆引きするための表。
-    let key_types = build_key_types(&input.items)?;
+    // 宣言済みノードキー文字列の集合。edge が端点を検証するための表。
+    let declared_keys = collect_declared_keys(&input.items)?;
 
     // 項目G1: 「全ノード → 全エッジ」の2段に並べ替えるため、生成する
     // トークン列を別々の Vec に集めておき、最後に結合する。
@@ -110,34 +128,19 @@ pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<Token
     for item in &input.items {
         match item {
             GraphItem::Node(node) => {
-                // G3 スパンポリシー: String 補間はスパン継承が働かないため明示
-                let builder_method = format_ident!(
-                    "{}",
-                    to_snake_case(&node.type_name.to_string()),
-                    span = node.type_name.span()
-                );
-                let id_type = format_ident!("{}Id", node.type_name);
                 // スパン規約: let の束縛識別子はノード宣言に書かれた出現の
                 // Ident をそのまま使う (文字列から作り直さない)。
                 let key_ident = node.key.clone();
                 let key_str = node.key.to_string();
-                let type_name = &node.type_name;
-                let field_tokens = fields_to_tokens(&node.fields);
+                let value = &node.value;
                 node_calls.push(quote! {
-                    let #key_ident = #id_type(#key_str.to_string());
-                    __graphite_b.#builder_method(
-                        #key_ident.clone(),
-                        #type_name { #(#field_tokens),* }
-                    );
+                    let #key_ident = __graphite_b.insert(#key_str, #value);
                 });
             }
             GraphItem::Edge(edge) => {
                 // 端点キーがノードとして宣言されているかどうかの検証。
-                // 検証にのみ使い、コード生成自体はノード側で作った let
-                // 束縛への識別子参照 (edge.from / edge.to) で足りるので、
-                // 逆引きした型名そのものはここでは使わない。
-                let from_known = key_types.contains_key(&edge.from.to_string());
-                let to_known = key_types.contains_key(&edge.to.to_string());
+                let from_known = declared_keys.contains(&edge.from.to_string());
+                let to_known = declared_keys.contains(&edge.to.to_string());
                 if !from_known || !to_known {
                     if has_parse_errors {
                         // G4b: 二次エラー抑制。他の項目が既にパース失敗して
@@ -163,30 +166,21 @@ pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<Token
                 let to_ident = edge.to.clone();
                 let label = &edge.label;
 
-                // `graph_schema!` が生成したハンドシェイク用マクロを呼ぶ。
-                // `graph!` はスキーマの中身 (エッジ一覧・属性型) を一切
-                // 知らないので、スキーマ名から名前を機械的に導出して呼ぶ
-                // だけで済む (`schema_codegen.rs::gen_edge_handshake_macro`
-                // 参照)。`check` アームは未知のエッジラベルを親切な
-                // メッセージで検出し、`attrs` アームは属性の struct
-                // リテラルへの式展開を担う (`docs/edge_syntax_v2.md` 3.1)。
-                let edge_macro = format_ident!("__graphite_edge_{}", schema_name);
-
+                // v3 (`docs/graph_literal_v3.md` §4): ハンドシェイクマクロは
+                // 全廃した。未知ラベルは `__graphite_b.#label(..)` がそのまま
+                // rustc の method-not-found (E0599) に落ちることで検出される。
                 match &edge.attrs {
                     None => {
                         edge_calls.push(quote! {
-                            #edge_macro!(check #label);
                             __graphite_b.#label(#from_ident.clone(), #to_ident.clone());
                         });
                     }
-                    Some(attr_fields) => {
-                        let attr_tokens = fields_to_tokens(attr_fields);
+                    Some(attrs_expr) => {
                         edge_calls.push(quote! {
-                            #edge_macro!(check #label);
                             __graphite_b.#label(
                                 #from_ident.clone(),
                                 #to_ident.clone(),
-                                #edge_macro!(attrs #label { #(#attr_tokens),* })
+                                #attrs_expr
                             );
                         });
                     }
@@ -201,15 +195,4 @@ pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<Token
             #(#edge_calls)*
         })
     })
-}
-
-fn fields_to_tokens(fields: &[FieldValue]) -> Vec<TokenStream> {
-    fields
-        .iter()
-        .map(|f| {
-            let name = &f.name;
-            let value = &f.value;
-            quote! { #name: #value }
-        })
-        .collect()
 }

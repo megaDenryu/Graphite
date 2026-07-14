@@ -105,6 +105,11 @@ pub fn generate(schema: &SchemaInput) -> TokenStream {
     let schema_name = &schema.schema_name;
     let violation_ident = format_ident!("{}Violation", schema_name);
     let builder_ident = format_ident!("{}Builder", schema_name);
+    // v3 (`docs/graph_literal_v3.md` §3): `graph!` が値の型名を一切知らずに
+    // 済むようにするための、ノード挿入用トレイト。名前は schema ごとに
+    // ユニークにする (`node_trait_ident`/`insert_into` の命名判断は
+    // `gen_node_trait_and_impls` のドキュメントコメント参照)。
+    let node_trait_ident = format_ident!("{}Node", schema_name);
 
     let node_infos: Vec<NodeInfo> = schema.nodes.iter().map(NodeInfo::new).collect();
 
@@ -145,10 +150,12 @@ pub fn generate(schema: &SchemaInput) -> TokenStream {
         schema_name,
         &builder_ident,
         &violation_ident,
+        &node_trait_ident,
         &node_infos,
         &edge_infos,
     );
-    let edge_handshake_macro = gen_edge_handshake_macro(schema_name, &edge_infos);
+    let node_trait_and_impls =
+        gen_node_trait_and_impls(&node_trait_ident, &builder_ident, &node_infos);
 
     quote! {
         #(#node_id_defs)*
@@ -156,83 +163,90 @@ pub fn generate(schema: &SchemaInput) -> TokenStream {
         #schema_struct_def
         #schema_impl
         #builder_struct_def
+        #node_trait_and_impls
         #builder_impl
-        #edge_handshake_macro
     }
 }
 
-/// `graph!` のためのハンドシェイク用宣言的マクロを生成する
-/// (`docs/edge_syntax_v2.md` 3.1)。`graph_schema!` はスキーマのエッジ一覧・
-/// 各エッジの属性型を知っているのでここで列挙し、`graph!` はスキーマの中身を
-/// 一切知らないまま「スキーマ名からマクロ名を機械的に導出して呼ぶ」だけで
-/// 済むようにする。1つの `macro_rules!` に2つの役割を持たせている:
+/// v3 (`docs/graph_literal_v3.md` §3, §4) が要求する「ノード挿入用トレイト」
+/// とその各ノード型への impl を生成する。
 ///
-/// - `(check $label)`: 存在するエッジラベルなら何もせず、存在しなければ
-///   利用可能なエッジ一覧付きの `compile_error!` を出す。
-/// - `(attrs $label { $($f:ident : $v:expr),* })`: `$label` の属性型の
-///   struct リテラルへ展開する式。属性を持たないエッジに対して呼ばれた
-///   場合や、存在しないラベルに対して呼ばれた場合も、親切な
-///   `compile_error!` を返す (呼び出し側は式位置で使うため、
-///   `compile_error!` も式として埋め込む)。
+/// ## 背景: なぜこのトレイトが必要か
 ///
-/// `macro_rules!` は既定でテキストスコープ (定義箇所より後、同一クレート内
-/// でのみ利用可能。モジュール境界は無視されるが、`mod foo;` で外部ファイルを
-/// 読み込む場合や別クレートからは `#[macro_export]` や `pub(crate) use` が
-/// 必要) のため、同一モジュール (同一ファイル) 内での利用が主ケースとなる
-/// (README「未決事項」節に制約を明記)。
-fn gen_edge_handshake_macro(schema_name: &Ident, edges: &[EdgeInfo<'_>]) -> TokenStream {
-    let macro_ident = format_ident!("__graphite_edge_{}", schema_name);
-    let labels: Vec<&Ident> = edges.iter().map(|e| &e.label).collect();
-    let label_strs: Vec<String> = labels.iter().map(|l| l.to_string()).collect();
-    let available = label_strs.join(", ");
-    let schema_name_str = schema_name.to_string();
+/// v2 までの `graph!` はノード項を `key: Type { .. }` と書かせていたため、
+/// `Type` という型名トークンから `to_snake_case` でビルダーメソッド名
+/// (`b.person(..)`) を機械的に導出できていた。v3 (`docs/graph_literal_v3.md`)
+/// はノード項を `key = 式` に変え、値の型をマクロが一切パースしなくなる
+/// (式の型は rustc の型推論に委ねる、という設計上の決定)。その結果
+/// `graph!` はもはや「どのビルダーメソッドを呼ぶべきか」を型名から逆引き
+/// できないため、値の型さえ分かれば正しい内部ストレージへ振り分けられる
+/// **総称メソッド**が要る。この trait 境界を介した単相化がそれを実現する
+/// (実行時のリフレクション・型判別・`dyn` ディスパッチは一切無い。
+/// 原則5: ゼロコスト志向)。
+///
+/// ## 命名判断 (原則3: std 命名規約準拠) — variance の理由を明記
+///
+/// `docs/graph_literal_v3.md` §3 のイメージでは trait 名 `OrgNode`・
+/// メソッド名 `insert_into` が示されていた。ここでは:
+///
+/// - **trait 名は `{Schema}Node` とした** (イメージの `OrgNode` から
+///   `OrgChartNode` のようにスキーマ名を冠する形に変更)。理由:
+///   同一モジュール内に複数の schema が存在するとき、両方が同じ
+///   `NodeTrait` という名前を使おうとして衝突する。README「同一モジュール
+///   内で複数 schema がノード型を共有する場合の制約」で `{Node}Id` の
+///   衝突は既知の制約として明記済みだが、trait 名はモジュール単位で必ず
+///   1つしか存在できないただの識別子なので、schema 名を含めておけば
+///   この衝突は最初から起きない (キー型と同じ理由でスキーマ名を
+///   プレフィックスにする、というこのファイル全体の既存の命名方針
+///   `{Schema}Violation`/`{Schema}Builder` と揃える)。
+/// - **メソッド名は `insert_into` のままイメージを採用**。`Into<T>` の
+///   `into(self) -> T` は純粋な変換だが、ここでは「`self` を builder に
+///   格納し、発行されたキーを返す」という副作用を伴う操作であり、単純な
+///   変換ではない。それでも「target.insert_into(dest)」という読み方
+///   (「self をどこに insert するか」を引数で示す) は Rust の既存の
+///   `*_into` 命名慣習 (`Write::write_all` 等ではなく、
+///   むしろ `TryInto`/`Cow::into_owned` のような「変換先を明示する」系より
+///   `HashMap::insert` の「格納先のメソッドとして呼ぶ」系に近い) からやや
+///   外れるが、`{Builder}::insert` という総称メソッド名と対応が付く
+///   (`insert` が最終的に呼ぶのが `insert_into`) 分かりやすさを優先し、
+///   イメージ通りとした。
+/// - **`{Builder}::insert` はイメージ通り採用**。`HashMap::insert`/
+///   `Vec::insert` と同じ動詞であり、利用者が Rust の直感で予測できる。
+fn gen_node_trait_and_impls(
+    node_trait_ident: &Ident,
+    builder_ident: &Ident,
+    nodes: &[NodeInfo],
+) -> TokenStream {
+    let node_impls = nodes.iter().map(|n| {
+        let ty = &n.type_ident;
+        let id_ty = &n.id_ident;
+        let accessor = &n.accessor_ident;
+        quote! {
+            impl #node_trait_ident for #ty {
+                type Id = #id_ty;
 
-    let attrs_arms: Vec<TokenStream> = edges
-        .iter()
-        .map(|e| {
-            let label = &e.label;
-            let label_str = label.to_string();
-            match &e.attrs_ty {
-                Some(ty) => quote! {
-                    (attrs #label { $($f:ident : $v:expr),* $(,)? }) => {
-                        #ty { $($f: $v),* }
-                    };
-                },
-                None => quote! {
-                    (attrs #label { $($f:ident : $v:expr),* $(,)? }) => {
-                        compile_error!(concat!(
-                            "エッジ `", #label_str, "` は属性を持ちません。`-[",
-                            #label_str, "]->` の形式で書いてください (属性ブロック `{ .. }` は不要です)"
-                        ))
-                    };
-                },
+                fn insert_into(self, b: &mut #builder_ident, key: String) -> Self::Id {
+                    let id = #id_ty(key);
+                    b.#accessor(id.clone(), self);
+                    id
+                }
             }
-        })
-        .collect();
+        }
+    });
 
     quote! {
-        /// `graph!` マクロが各エッジ行の脱糖時に呼び出すハンドシェイク用
-        /// マクロ。利用者が直接呼ぶことは想定しない。
-        #[doc(hidden)]
-        #[allow(unused_macros)]
-        macro_rules! #macro_ident {
-            #( (check #labels) => {}; )*
-            (check $other:ident) => {
-                compile_error!(concat!(
-                    "スキーマ ", #schema_name_str, " にエッジ `",
-                    stringify!($other),
-                    "` は存在しません。利用可能: ", #available
-                ));
-            };
-            #(#attrs_arms)*
-            (attrs $other:ident { $($f:ident : $v:expr),* $(,)? }) => {
-                compile_error!(concat!(
-                    "スキーマ ", #schema_name_str, " にエッジ `",
-                    stringify!($other),
-                    "` は存在しません。利用可能: ", #available
-                ))
-            };
+        /// `graph!` の `insert` 経由のノード挿入で使うトレイト境界。
+        /// 利用者がこの trait のメソッドを直接呼ぶことは想定しない
+        /// (`{Builder}::insert` 経由で使う)。命名判断はこの関数
+        /// (`gen_node_trait_and_impls`) のドキュメントコメント参照。
+        pub trait #node_trait_ident: Sized {
+            type Id;
+            /// `self` を `b` の対応する内部ストレージへ格納し、発行された
+            /// キーを返す。
+            fn insert_into(self, b: &mut #builder_ident, key: String) -> Self::Id;
         }
+
+        #(#node_impls)*
     }
 }
 
@@ -776,6 +790,7 @@ fn gen_builder_impl(
     schema_name: &Ident,
     builder_ident: &Ident,
     violation_ident: &Ident,
+    node_trait_ident: &Ident,
     nodes: &[NodeInfo],
     edges: &[EdgeInfo<'_>],
 ) -> TokenStream {
@@ -834,6 +849,17 @@ fn gen_builder_impl(
 
             #(#node_methods)*
             #(#edge_methods)*
+
+            /// v3 (`docs/graph_literal_v3.md` §3): 型名付きメソッド
+            /// (`b.#accessor(id, value)` 群、上記 `#node_methods`) の総称版。
+            /// `graph!` はノード項の値の型を一切パースしないため
+            /// (`key = 式` の「式」でしかない)、このメソッドで値の型
+            /// (`N: #node_trait_ident`) から正しい内部ストレージへの
+            /// 振り分けを rustc の型推論任せにする。命名判断・trait の形は
+            /// `gen_node_trait_and_impls` のドキュメントコメント参照。
+            pub fn insert<N: #node_trait_ident>(&mut self, key: impl Into<String>, value: N) -> N::Id {
+                value.insert_into(self, key.into())
+            }
 
             #freeze_body
         }
