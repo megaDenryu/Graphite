@@ -272,6 +272,15 @@ cargo test
 各ディレクトリの詳細な使い方・サブコマンド一覧は、それぞれの `README.md` を
 参照してください。
 
+## IDE サポート (rust-analyzer)
+
+`examples/` 配下はルート Cargo workspace から独立したスタンドアロンクレート
+ですが、`.vscode/settings.json` の `rust-analyzer.linkedProjects` で明示的に
+リンクしているため、VSCode で開けば通常のクレートと同様に rust-analyzer の
+解析対象になります。今後 example を追加したときは `linkedProjects` に 1 行
+足すことを運用ルールとします。詳細は `docs/ide_support_spec.md` を参照して
+ください。
+
 ## 手書きテンプレートとの差異
 
 `graph_schema!` は基本的に `orgchart_handwritten.rs` と同じ形を生成します

@@ -35,6 +35,22 @@ Rust の技術的制約)。そのため `graphite-macros` (マクロ) と `graph
 `TokenStream` に変換して返す。これにより rust-analyzer 上でも該当箇所に赤波線が
 出て、通常のコンパイルエラーと同じ体験になる。
 
+## スパンポリシー
+
+生成する識別子は必ず「由来するユーザートークンのスパン」を持たせる。これが
+rust-analyzer の definition provider (F12 の着地点) の精度を決める。
+
+- 型名・フィールド名は `decl.name` 系のスパンを継承する。エッジ派生名
+  (`try_belongs_to`, `*_id`, `*_ids` 等) は `edge.label` のスパンを継承する。
+- `format_ident!` は最初に補間された `Ident` のスパンを継承する
+  (rust-analyzer の definition provider で実測確認済み、2026-07-14)。
+  補間引数が `String`/`&str` のみの場合はこの継承が働かないため、
+  `span = ..` を明示すること (例: `to_pascal_case` した文字列から
+  `{Label}Attrs` のような型名を作る場合)。
+- 新しいコード生成を追加したら、definition provider の
+  `targetSelectionRange` がユーザートークンに着地することを確認する。
+  計測には vscode-lsp-mcp が使える。
+
 ## 展開結果の確認手段
 
 - マクロ展開後の実際のコードを目視で確認したいときは `cargo expand` を使う
