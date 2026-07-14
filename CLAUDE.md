@@ -61,6 +61,8 @@ cargo test
 ## リポジトリ固有のルール
 
 - **コミットメッセージは日本語**
+- 新機能・API設計で判断に迷ったら `docs/design_principles.md` (Rust的な精神・
+  型のstrictnessを具体化した6原則) を必ず参照する
 
 ## 運用ポリシー (重要): モデル委譲
 
