@@ -1,0 +1,12 @@
+[workspace]
+# 空の [workspace] テーブルを置くことで、ルートの Cargo workspace から
+# このクレートを独立させる (スタンドアロン example)。
+
+[package]
+name = "hello-graph"
+version = "0.1.0"
+edition = "2021"
+description = "Graphite の graph_schema!/graph! の意味論を最小構成で確認する入門用example"
+
+[dependencies]
+graphite = { path = "../../crates/graphite" }

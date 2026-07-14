@@ -1,6 +1,7 @@
 {
   "rust-analyzer.linkedProjects": [
     "Cargo.toml",
+    "examples/hello-graph/Cargo.toml",
     "examples/build-pipeline/Cargo.toml",
     "examples/org-analyzer/Cargo.toml",
     "examples/dialogue-engine/Cargo.toml"

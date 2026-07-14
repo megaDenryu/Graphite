@@ -334,11 +334,19 @@ cargo test
 ## 実践例 (`examples/`)
 
 `graphite` を実際のアプリケーションから使う例として、`examples/` 配下に
-3 本のスタンドアロンクレートを用意しています。いずれも `Cargo.toml` 先頭に
+4 本のスタンドアロンクレートを用意しています。いずれも `Cargo.toml` 先頭に
 空の `[workspace]` テーブルを置いてルートの Cargo workspace から独立させた、
 `graphite` のみに依存する単体アプリです (ルート `cargo test` の対象には
 含まれないため、個別に `cd` してビルド・実行します)。
 
+- **`examples/hello-graph/`** — **まずこれ**。入門用の教材example。
+  アプリとしての面白さは無く、「ラベルとは何なのか (変数か関数か)」
+  「多重度ごとにアクセサは何を返すのか」「何ができて何ができないのか
+  (実際のコンパイルエラー付き)」を最小の題材で1つずつ確認する。
+  ```powershell
+  cd examples/hello-graph
+  cargo run
+  ```
 - **`examples/build-pipeline/`** — ビルドパイプライン・オーケストレータ。
   `pipeline.txt` (23 タスク) をパースして `Graph` に取り込み、循環検出・
   クリティカルパス計算・波 (wave) 分割・Mermaid 図出力を行う。
