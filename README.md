@@ -162,6 +162,39 @@ cargo test
   (未宣言ノード型を端点に指定 / 不正な多重度 / `graph!` で存在しないエッジ
   種別)。stderr の再生成は `TRYBUILD=overwrite cargo test --test compile_fail`
 
+## 実践例 (`examples/`)
+
+`graphite` を実際のアプリケーションから使う例として、`examples/` 配下に
+3 本のスタンドアロンクレートを用意しています。いずれも `Cargo.toml` 先頭に
+空の `[workspace]` テーブルを置いてルートの Cargo workspace から独立させた、
+`graphite` のみに依存する単体アプリです (ルート `cargo test` の対象には
+含まれないため、個別に `cd` してビルド・実行します)。
+
+- **`examples/build-pipeline/`** — ビルドパイプライン・オーケストレータ。
+  `pipeline.txt` (23 タスク) をパースして `Graph` に取り込み、循環検出・
+  クリティカルパス計算・波 (wave) 分割・Mermaid 図出力を行う。
+  ```powershell
+  cd examples/build-pipeline
+  cargo run -- plan
+  ```
+- **`examples/org-analyzer/`** — 組織分析ツール。LCG で合成した社員 120 人分の
+  組織データから、サマリ統計・指揮系統チェーン・異常検知・組織再編シミュレー
+  ションを行う。
+  ```powershell
+  cd examples/org-analyzer
+  cargo run -- summary
+  ```
+- **`examples/dialogue-engine/`** — 分岐ノベルエンジン。`graph!` リテラルで
+  30 シーン・4 エンディング・56 選択肢のシナリオを組み立て、プレイ・検証・
+  マップ表示・最短ルート探索・統計を行う。
+  ```powershell
+  cd examples/dialogue-engine
+  cargo run -- validate
+  ```
+
+各ディレクトリの詳細な使い方・サブコマンド一覧は、それぞれの `README.md` を
+参照してください。
+
 ## 手書きテンプレートとの差異
 
 `graph_schema!` は基本的に `orgchart_handwritten.rs` と同じ形を生成します
