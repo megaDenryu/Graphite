@@ -133,7 +133,13 @@ pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<Token
                 let key_ident = node.key.clone();
                 let key_str = node.key.to_string();
                 let value = &node.value;
+                // 孤立ノード (どのエッジにも参照されないノード) は正当な
+                // グラフであり、この let 束縛はマクロの実装詳細 (G1) に
+                // 過ぎない。エッジで使われない場合 rustc は
+                // `unused variable` を出すが、これはユーザーのグラフ設計
+                // の問題ではなくノイズなので抑制する。
                 node_calls.push(quote! {
+                    #[allow(unused_variables)]
                     let #key_ident = __graphite_b.insert(#key_str, #value);
                 });
             }
