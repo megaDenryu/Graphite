@@ -497,13 +497,13 @@ mod graph_literal_tests {
     #[rustfmt::skip]
     fn graphリテラルで組織図を構築できる() {
         let g = graphite::graph!(OrgChart {
-            tanaka: Employee { name: "田中".into(), id: 1 },
-            sato: Employee { name: "佐藤".into(), id: 2 },
-            sales: Department { name: "営業".into() },
+            tanaka = Employee { name: "田中".into(), id: 1 },
+            sato = Employee { name: "佐藤".into(), id: 2 },
+            sales = Department { name: "営業".into() },
 
             tanaka -[belongs_to]-> sales,
             sato -[belongs_to]-> sales,
-            tanaka -[boss { since: 2020 }]-> sato,
+            tanaka -[boss = BossEdge { since: 2020 }]-> sato,
         })
         .expect("正常な graph! リテラルは構築に成功するはず");
 
@@ -534,8 +534,8 @@ mod graph_literal_tests {
     #[rustfmt::skip]
     fn graphリテラルの多重度違反はresultのerrになる() {
         let result = graphite::graph!(OrgChart {
-            suzuki: Employee { name: "鈴木".into(), id: 3 },
-            sales: Department { name: "営業".into() },
+            suzuki = Employee { name: "鈴木".into(), id: 3 },
+            sales = Department { name: "営業".into() },
             // 鈴木を意図的にどの部署にも所属させない (belongs_to 多重度(1)違反)
         });
 
@@ -557,8 +557,8 @@ mod graph_literal_tests {
         // graph! はビルダーメソッド呼び出しが `String` に対する呼び出し
         // として解釈されてコンパイルエラーになっていたはず。
         let g = graphite::graph!(OrgChart {
-            b: Employee { name: "B社員".into(), id: 10 },
-            sales: Department { name: "営業".into() },
+            b = Employee { name: "B社員".into(), id: 10 },
+            sales = Department { name: "営業".into() },
 
             b -[belongs_to]-> sales,
         })
@@ -581,11 +581,11 @@ mod graph_literal_tests {
         let g = graphite::graph!(OrgChart {
             tanaka -[belongs_to]-> sales,
             sato -[belongs_to]-> sales,
-            tanaka -[boss { since: 2020 }]-> sato,
+            tanaka -[boss = BossEdge { since: 2020 }]-> sato,
 
-            tanaka: Employee { name: "田中".into(), id: 1 },
-            sato: Employee { name: "佐藤".into(), id: 2 },
-            sales: Department { name: "営業".into() },
+            tanaka = Employee { name: "田中".into(), id: 1 },
+            sato = Employee { name: "佐藤".into(), id: 2 },
+            sales = Department { name: "営業".into() },
         })
         .expect("エッジをノード宣言より先に書いても構築できるはず");
 
@@ -597,5 +597,35 @@ mod graph_literal_tests {
             .expect("田中の上司は佐藤のはず");
         assert_eq!(boss_emp.name, "佐藤");
         assert_eq!(attrs.since, 2020);
+    }
+
+    // v3 (`docs/graph_literal_v3.md`): ノード項・エッジ属性はいずれも任意の
+    // 式なので、graph! の外で構築済みの値をそのまま move で渡せる。
+    #[test]
+    #[rustfmt::skip]
+    fn 外で構築した値をそのままgraphリテラルに渡せる() {
+        let tanaka_value = Employee { name: "田中".to_string(), id: 1 };
+        let promotion = BossEdge { since: 2021 };
+
+        let g = graphite::graph!(OrgChart {
+            tanaka = tanaka_value,
+            sato = Employee { name: "佐藤".into(), id: 2 },
+            sales = Department { name: "営業".into() },
+
+            tanaka -[belongs_to]-> sales,
+            sato -[belongs_to]-> sales,
+            sato -[boss = promotion]-> tanaka,
+        })
+        .expect("外で構築した値を渡した graph! も構築に成功するはず");
+
+        assert_eq!(
+            g.employee(&EmployeeId("tanaka".to_string())).unwrap().name,
+            "田中"
+        );
+        let (boss_emp, attrs) = g
+            .boss(&EmployeeId("sato".to_string()))
+            .expect("佐藤の上司は田中のはず");
+        assert_eq!(boss_emp.name, "田中");
+        assert_eq!(attrs.since, 2021);
     }
 }

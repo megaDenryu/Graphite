@@ -1,33 +1,12 @@
-error: スキーマ OrgChart にエッジ `not_a_real_edge` は存在しません。利用可能: belongs_to
-  --> tests/ui/graph_unknown_edge_label.rs:16:1
-   |
-16 | / graphite::graph_schema! {
-17 | |     schema OrgChart {
-18 | |         node Employee;
-19 | |         node Department;
-...  |
-23 | | }
-   | |_^
-...
-27 |       let _ = graphite::graph!(OrgChart {
-   |  _____________-
-28 | |         tanaka: Employee { name: "田中".into(), id: 1 },
-29 | |         sales: Department { name: "営業".into() },
-...  |
-32 | |     });
-   | |______- in this macro invocation
-   |
-   = note: this error originates in the macro `__graphite_edge_OrgChart` which comes from the expansion of the macro `graphite::graph` (in Nightly builds, run with -Z macro-backtrace for more info)
-
 error[E0599]: no method named `not_a_real_edge` found for mutable reference `&mut OrgChartBuilder` in the current scope
-  --> tests/ui/graph_unknown_edge_label.rs:31:18
+  --> tests/ui/graph_unknown_edge_label.rs:32:18
    |
-27 |       let _ = graphite::graph!(OrgChart {
+28 |       let _ = graphite::graph!(OrgChart {
    |  _____________-
-28 | |         tanaka: Employee { name: "田中".into(), id: 1 },
-29 | |         sales: Department { name: "営業".into() },
-30 | |
-31 | |         tanaka -[not_a_real_edge]-> sales,
+29 | |         tanaka = Employee { name: "田中".into(), id: 1 },
+30 | |         sales = Department { name: "営業".into() },
+31 | |
+32 | |         tanaka -[not_a_real_edge]-> sales,
    | |                 -^^^^^^^^^^^^^^^ method not found in `&mut OrgChartBuilder`
    | |_________________|
    |

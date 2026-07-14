@@ -30,9 +30,9 @@ graphite::graph_schema! {
 fn main() {
     #[rustfmt::skip]
     graphite::graph!(OrgChart {
-        tanaka: Employee { name: "田中".into(), id: 1 },
-        sales: Department { name: "営業".into() },
-        tanaka: Employee { name: "田中2".into(), id: 2 },
+        tanaka = Employee { name: "田中".into(), id: 1 },
+        sales = Department { name: "営業".into() },
+        tanaka = Employee { name: "田中2".into(), id: 2 },
 
         tanaka -[belongs_to]-> sales,
     });
