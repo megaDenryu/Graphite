@@ -8,23 +8,26 @@
 //! いずれも `syn::Error::new_spanned`/`syn::Error::new` で元トークンの span を
 //! 保ったまま返す (`.claude/skills/proc-macro-dev/SKILL.md` の方針通り、
 //! panic は使わない)。
+//!
+//! ## G4a (宣言単位のエラー回復) との関係
+//!
+//! `SchemaInput` 全体ではなく `&[NodeDecl]`/`&[EdgeDecl]` というスライスを
+//! 受け取るシグネチャにしているのは、`lib.rs` 側がパース回復で「壊れた宣言を
+//! 除いた残り」だけを検証にかけられるようにするため。特に
+//! `validate_edge_endpoints` は、パース済みの宣言が1件でも壊れていた場合に
+//! `lib.rs` が直接は呼ばず、代わりに [`filter_edges_with_known_endpoints`] で
+//! 未知端点のエッジを黙って除外する (二次エラー抑制)。重複ノード名・重複
+//! エッジラベルの診断は回復の有無によらず常に実行する (現行維持)。
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use quote::ToTokens;
 
-use crate::schema_dsl::SchemaInput;
+use crate::schema_dsl::{EdgeDecl, NodeDecl};
 
-pub fn validate(schema: &SchemaInput) -> syn::Result<()> {
-    validate_unique_node_names(schema)?;
-    validate_edge_endpoints(schema)?;
-    validate_unique_edge_labels(schema)?;
-    Ok(())
-}
-
-fn validate_unique_node_names(schema: &SchemaInput) -> syn::Result<()> {
+pub fn validate_unique_node_names(nodes: &[NodeDecl]) -> syn::Result<()> {
     let mut seen: HashMap<String, proc_macro2::Span> = HashMap::new();
-    for node in &schema.nodes {
+    for node in nodes {
         let name = node.name.to_string();
         if let Some(&prev_span) = seen.get(&name) {
             let mut err = syn::Error::new(
@@ -39,9 +42,9 @@ fn validate_unique_node_names(schema: &SchemaInput) -> syn::Result<()> {
     Ok(())
 }
 
-fn validate_unique_edge_labels(schema: &SchemaInput) -> syn::Result<()> {
+pub fn validate_unique_edge_labels(edges: &[EdgeDecl]) -> syn::Result<()> {
     let mut seen: HashMap<String, proc_macro2::Span> = HashMap::new();
-    for edge in &schema.edges {
+    for edge in edges {
         let name = edge.label.to_string();
         if let Some(&prev_span) = seen.get(&name) {
             let mut err = syn::Error::new(
@@ -56,12 +59,11 @@ fn validate_unique_edge_labels(schema: &SchemaInput) -> syn::Result<()> {
     Ok(())
 }
 
-fn validate_edge_endpoints(schema: &SchemaInput) -> syn::Result<()> {
-    let declared: Vec<String> = schema.nodes.iter().map(|n| n.name.to_string()).collect();
-    let declared_set: std::collections::HashSet<&str> =
-        declared.iter().map(|s| s.as_str()).collect();
+pub fn validate_edge_endpoints(nodes: &[NodeDecl], edges: &[EdgeDecl]) -> syn::Result<()> {
+    let declared: Vec<String> = nodes.iter().map(|n| n.name.to_string()).collect();
+    let declared_set: HashSet<&str> = declared.iter().map(|s| s.as_str()).collect();
 
-    for edge in &schema.edges {
+    for edge in edges {
         for endpoint in [&edge.from, &edge.to] {
             if !declared_set.contains(endpoint.to_string().as_str()) {
                 return Err(syn::Error::new_spanned(
@@ -77,4 +79,21 @@ fn validate_edge_endpoints(schema: &SchemaInput) -> syn::Result<()> {
         }
     }
     Ok(())
+}
+
+/// G4a (二次エラーの抑制): パース回復により1件以上の壊れた宣言があった
+/// ときに、`lib.rs` が [`validate_edge_endpoints`] の代わりに呼ぶ。
+/// 端点が未宣言のノード型を指すエッジをエラーにはせず、黙って生成対象から
+/// 除外する。壊れたノード宣言をたまたま参照しているだけの可能性が高く、
+/// そのまま `validate_edge_endpoints` を呼ぶと「壊れた宣言由来の
+/// compile_error!」1件のはずが「未知端点エラー」まで重ねて出てしまう
+/// (二次噴出) ため。
+pub fn filter_edges_with_known_endpoints(nodes: &[NodeDecl], edges: Vec<EdgeDecl>) -> Vec<EdgeDecl> {
+    let declared: HashSet<String> = nodes.iter().map(|n| n.name.to_string()).collect();
+    edges
+        .into_iter()
+        .filter(|edge| {
+            declared.contains(&edge.from.to_string()) && declared.contains(&edge.to.to_string())
+        })
+        .collect()
 }

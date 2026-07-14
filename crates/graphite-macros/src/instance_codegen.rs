@@ -37,6 +37,18 @@
 //! `b` というノードキーを書いたときに生成する `let b = ..;` が builder を
 //! 隠してしまう衝突を避けるため (proc macro の入力トークンは call site
 //! ハイジーンなので、名前が同じなら実際に衝突する)。
+//!
+//! ## エラー回復との関係 (項目G4b、`docs/ide_support_spec.md` 参照)
+//!
+//! `lib.rs` は `instance_dsl::GraphInput::parse_recovering` で項目単位の
+//! 回復パースを行い、パースに失敗した項目を除いた残りをここに渡す。
+//! `generate` の `has_parse_errors` 引数はそのとき1件以上パースエラーが
+//! あったかどうかを伝える。パースエラーがある状態では「エッジ端点が
+//! 未宣言」という検証エラーを出さずそのエッジを黙って落とす (二次エラー
+//! 抑制)。一方 `build_key_types` の重複キー診断はパースエラーの有無に
+//! 関わらず常にハード失敗のまま (現行維持) — これは意図的な設計判断で、
+//! 「同じキーの二重宣言」は回復パース由来の巻き添えとは考えにくく、
+//! 単純に握りつぶすとむしろ紛らわしいと判断したため。
 
 use std::collections::HashMap;
 
@@ -77,7 +89,14 @@ fn build_key_types(items: &[GraphItem]) -> syn::Result<HashMap<String, Ident>> {
     Ok(key_types)
 }
 
-pub fn generate(input: &GraphInput) -> syn::Result<TokenStream> {
+/// `has_parse_errors`: G4b (`docs/ide_support_spec.md` 参照)。呼び出し元
+/// (`lib.rs`) が項目単位の回復パースで1件以上のパースエラーを蓄積していた
+/// 場合に `true` を渡す。このとき「エッジ端点が未宣言」という検証エラーは
+/// 出さず、そのエッジを黙って生成対象から除外する (壊れた項目由来の二次
+/// 噴出を避けるため)。`false` (パースエラー0件) のときは現行通り `Err` で
+/// 全体を中断する。なお `build_key_types` の重複キー診断は
+/// `has_parse_errors` に関わらず常にハード失敗のまま (現行維持)。
+pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<TokenStream> {
     let schema_name = &input.schema_name;
 
     // key (識別子の文字列) -> 宣言時のノード型名。edge が端点の型を逆引きするための表。
@@ -112,24 +131,26 @@ pub fn generate(input: &GraphInput) -> syn::Result<TokenStream> {
                 // 検証にのみ使い、コード生成自体はノード側で作った let
                 // 束縛への識別子参照 (edge.from / edge.to) で足りるので、
                 // 逆引きした型名そのものはここでは使わない。
-                key_types.get(&edge.from.to_string()).ok_or_else(|| {
-                    syn::Error::new_spanned(
-                        &edge.from,
+                let from_known = key_types.contains_key(&edge.from.to_string());
+                let to_known = key_types.contains_key(&edge.to.to_string());
+                if !from_known || !to_known {
+                    if has_parse_errors {
+                        // G4b: 二次エラー抑制。他の項目が既にパース失敗して
+                        // いる状態では、この「未宣言キー参照」は壊れた項目の
+                        // 巻き添えの可能性が高い。エラーにはせず、このエッジ
+                        // を黙って生成対象から除外して次の項目へ進む。
+                        continue;
+                    }
+                    // 現行維持: パースエラーが無ければ通常通りエラーにする。
+                    let bad = if !from_known { &edge.from } else { &edge.to };
+                    return Err(syn::Error::new_spanned(
+                        bad,
                         format!(
                             "`{}` はこの graph! 呼び出し内でノードとして宣言されていません",
-                            edge.from
+                            bad
                         ),
-                    )
-                })?;
-                key_types.get(&edge.to.to_string()).ok_or_else(|| {
-                    syn::Error::new_spanned(
-                        &edge.to,
-                        format!(
-                            "`{}` はこの graph! 呼び出し内でノードとして宣言されていません",
-                            edge.to
-                        ),
-                    )
-                })?;
+                    ));
+                }
 
                 // スパン規約: エッジ呼び出しの引数はエッジに書かれた出現の
                 // Ident をそのまま使う (from/to それぞれの出現スパン)。

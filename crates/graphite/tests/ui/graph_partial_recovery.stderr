@@ -1,0 +1,5 @@
+error: expected `,`
+  --> tests/ui/graph_partial_recovery.rs:25:46
+   |
+25 |         tanaka: Employee { name: "田中".into() id: 1 },
+   |                                                ^^
