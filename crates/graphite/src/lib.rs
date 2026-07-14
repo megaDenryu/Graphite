@@ -4,8 +4,9 @@
 //! `graphite-macros` (proc-macro クレート) の内容を re-export する
 //! (serde/serde_derive と同じ 2 クレート構成)。
 //!
-//! フェーズ2時点で、水準1相当のジェネリックグラフ [`Graph`] を実装済み。
-//! `graph_schema!`/`graph!` などのマクロはまだ無い。
+//! 水準1相当のジェネリックグラフ [`Graph`] (フェーズ2) に加え、フェーズ3で
+//! 水準2相当の図式グラフスキーマを宣言する `graph_schema!` と、インスタンス
+//! リテラル `graph!` を実装した (`graphite-macros` から re-export)。
 //! 設計の一次資料:
 //! - `../../../Bullet/docs/rust_graph_extension_sketch.md`
 //! - `../../../Bullet/docs/graph_design_sketches.md`
@@ -14,5 +15,4 @@ mod graph;
 
 pub use graph::{CycleError, Graph, GraphBuilder, GraphError};
 
-// graphite-macros が proc-macro を持つようになったらここで re-export する。
-// 例: pub use graphite_macros::{graph, graph_schema};
+pub use graphite_macros::{graph, graph_schema};
