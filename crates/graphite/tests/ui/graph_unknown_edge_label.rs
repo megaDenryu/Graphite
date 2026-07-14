@@ -1,6 +1,9 @@
-// graph! はスキーマの中身を知らないため、存在しないエッジ種別を参照した場合の
-// 検査はビルダーに対する通常の Rust メソッド解決に委ねられる (`no method
-// named ...` という rustc 標準のエラーになる)。
+// フェーズ4 項目5: `graph_schema!` が生成するハンドシェイク用マクロ
+// (`__graphite_check_edge_OrgChart!`) により、存在しないエッジ種別の参照は
+// まず親切な compile_error! で報告される。`graph!` はスキーマの中身を
+// 知らないままなので、加えてビルダーに対する通常の Rust メソッド解決も
+// 走り、`no method named ...` という rustc 標準のエラーも重ねて出る
+// (両方が stderr に現れる)。
 
 graphite::graph_schema! {
     schema OrgChart {

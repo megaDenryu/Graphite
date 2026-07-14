@@ -71,9 +71,17 @@ pub fn generate(input: &GraphInput) -> syn::Result<TokenStream> {
                 let from_expr = quote! { #from_id_type(#from_key_str.to_string()) };
                 let to_expr = quote! { #to_id_type(#to_key_str.to_string()) };
 
+                // 項目5 (フェーズ4): `graph_schema!` が生成したハンドシェイク
+                // 用マクロを呼び、未知のエッジラベルを親切なメッセージで検出
+                // する。`graph!` はスキーマの中身を知らないので、スキーマ名
+                // から名前を機械的に導出して呼ぶだけで済む
+                // (`schema_codegen.rs::gen_edge_check_macro` 参照)。
+                let check_macro = format_ident!("__graphite_check_edge_{}", schema_name);
+
                 match &edge.attrs {
                     None => {
                         calls.push(quote! {
+                            #check_macro!(#label);
                             b.#label(#from_expr, #to_expr);
                         });
                     }
@@ -82,6 +90,7 @@ pub fn generate(input: &GraphInput) -> syn::Result<TokenStream> {
                             format_ident!("{}Attrs", to_pascal_case(&label.to_string()));
                         let attr_tokens = fields_to_tokens(attr_fields);
                         calls.push(quote! {
+                            #check_macro!(#label);
                             b.#label(
                                 #from_expr,
                                 #to_expr,

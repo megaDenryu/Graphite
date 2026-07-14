@@ -124,6 +124,7 @@ pub fn generate(schema: &SchemaInput) -> TokenStream {
         &node_infos,
         &edge_infos,
     );
+    let edge_check_macro = gen_edge_check_macro(schema_name, &edge_infos);
 
     quote! {
         #(#node_struct_defs)*
@@ -133,6 +134,44 @@ pub fn generate(schema: &SchemaInput) -> TokenStream {
         #schema_impl
         #builder_struct_def
         #builder_impl
+        #edge_check_macro
+    }
+}
+
+/// 項目5 (フェーズ4): `graph!` が未知のエッジラベルを親切なエラーで検出する
+/// ためのハンドシェイク用宣言的マクロを生成する。`graph_schema!` はスキーマの
+/// エッジ一覧を知っているのでここで列挙し、`graph!` はスキーマの中身を
+/// 知らないまま「スキーマ名からマクロ名を機械的に導出して呼ぶ」だけで済む。
+///
+/// `macro_rules!` は既定でテキストスコープ (定義箇所より後、同一クレート内
+/// でのみ利用可能。モジュール境界は無視されるが、`mod foo;` で外部ファイルを
+/// 読み込む場合や別クレートからは `#[macro_export]` や `pub(crate) use` が
+/// 必要) のため、同一モジュール (同一ファイル) 内での利用が主ケースとなる
+/// (README「未決事項」節に制約を明記)。
+fn gen_edge_check_macro(schema_name: &Ident, edges: &[EdgeInfo<'_>]) -> TokenStream {
+    let macro_ident = format_ident!("__graphite_check_edge_{}", schema_name);
+    let labels: Vec<&Ident> = edges.iter().map(|e| &e.label).collect();
+    let label_strs: Vec<String> = labels.iter().map(|l| l.to_string()).collect();
+    let available = label_strs.join(", ");
+    let schema_name_str = schema_name.to_string();
+
+    quote! {
+        /// `graph!` マクロが各エッジ行の脱糖時に呼び出す検査用マクロ。
+        /// 存在するエッジラベルなら何もせず、存在しなければ
+        /// `compile_error!` で親切なメッセージを出す。利用者が直接呼ぶことは
+        /// 想定しない。
+        #[doc(hidden)]
+        #[allow(unused_macros)]
+        macro_rules! #macro_ident {
+            #( (#labels) => {}; )*
+            ($other:ident) => {
+                compile_error!(concat!(
+                    "スキーマ ", #schema_name_str, " にエッジ `",
+                    stringify!($other),
+                    "` は存在しません。利用可能: ", #available
+                ));
+            };
+        }
     }
 }
 

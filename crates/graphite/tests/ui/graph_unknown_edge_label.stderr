@@ -1,12 +1,33 @@
-error[E0599]: no method named `not_a_real_edge` found for mutable reference `&mut OrgChartBuilder` in the current scope
-  --> tests/ui/graph_unknown_edge_label.rs:20:18
+error: スキーマ OrgChart にエッジ `not_a_real_edge` は存在しません。利用可能: belongs_to
+  --> tests/ui/graph_unknown_edge_label.rs:8:1
    |
-16 |       let _ = graphite::graph!(OrgChart {
+ 8 | / graphite::graph_schema! {
+ 9 | |     schema OrgChart {
+10 | |         node Employee { name: String, id: u32 }
+11 | |         node Department { name: String }
+...  |
+15 | | }
+   | |_^
+...
+19 |       let _ = graphite::graph!(OrgChart {
    |  _____________-
-17 | |         tanaka: Employee { name: "田中".into(), id: 1 },
-18 | |         sales: Department { name: "営業".into() },
-19 | |
-20 | |         tanaka -[not_a_real_edge]-> sales,
+20 | |         tanaka: Employee { name: "田中".into(), id: 1 },
+21 | |         sales: Department { name: "営業".into() },
+...  |
+24 | |     });
+   | |______- in this macro invocation
+   |
+   = note: this error originates in the macro `__graphite_check_edge_OrgChart` which comes from the expansion of the macro `graphite::graph` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0599]: no method named `not_a_real_edge` found for mutable reference `&mut OrgChartBuilder` in the current scope
+  --> tests/ui/graph_unknown_edge_label.rs:23:18
+   |
+19 |       let _ = graphite::graph!(OrgChart {
+   |  _____________-
+20 | |         tanaka: Employee { name: "田中".into(), id: 1 },
+21 | |         sales: Department { name: "営業".into() },
+22 | |
+23 | |         tanaka -[not_a_real_edge]-> sales,
    | |                 -^^^^^^^^^^^^^^^ method not found in `&mut OrgChartBuilder`
    | |_________________|
    |
