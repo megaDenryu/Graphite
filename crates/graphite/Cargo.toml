@@ -1,0 +1,9 @@
+[package]
+name = "graphite"
+version = "0.1.0"
+edition = "2021"
+description = "グラフ指向データ構造のランタイムライブラリ (procマクロは graphite-macros に分離)"
+
+[dependencies]
+petgraph = { workspace = true }
+graphite-macros = { path = "../graphite-macros", version = "0.1.0" }

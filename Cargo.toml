@@ -1,0 +1,12 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/graphite",
+    "crates/graphite-macros",
+]
+
+[workspace.dependencies]
+petgraph = "0.6"
+syn = { version = "2", features = ["full"] }
+quote = "1"
+proc-macro2 = "1"
