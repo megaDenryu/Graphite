@@ -7,3 +7,6 @@ description = "グラフ指向データ構造のランタイムライブラリ (
 [dependencies]
 petgraph = { workspace = true }
 graphite-macros = { path = "../graphite-macros", version = "0.1.0" }
+
+[dev-dependencies]
+trybuild = "1"

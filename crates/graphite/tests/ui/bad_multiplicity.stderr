@@ -1,0 +1,5 @@
+error: 多重度は (1) / (0..1) / (0..*) のいずれかのみサポートします
+ --> tests/ui/bad_multiplicity.rs:9:54
+  |
+9 |             edge belongs_to: Employee -> Department (2..5);
+  |                                                      ^
