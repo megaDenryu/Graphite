@@ -1,0 +1,12 @@
+[workspace]
+# 空の [workspace] テーブルを置くことで、ルートの Cargo workspace から
+# このクレートを独立させる (スタンドアロン example)。
+
+[package]
+name = "state-machine"
+version = "0.1.0"
+edition = "2021"
+description = "Graphite (graph_schema!/graph!) でステートマシン地獄 (bool フラグ / enum+match 散在) を倒す実証example"
+
+[dependencies]
+graphite = { path = "../../crates/graphite" }
