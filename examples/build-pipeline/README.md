@@ -34,8 +34,8 @@ graphite::graph_schema! {
         node Task;
         node Artifact;
 
-        edge Task -[produces]-> Artifact (0..*);
-        edge Task -[consumes]-> Artifact (0..*);
+        edge produces: Task -> Artifact (0..*);
+        edge consumes: Task -> Artifact (0..*);
     }
 }
 ```

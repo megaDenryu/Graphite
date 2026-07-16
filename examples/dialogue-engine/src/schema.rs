@@ -20,7 +20,7 @@ use graphite::Graph;
 //
 // node Scene:  1 場面。話者と本文を持つ。
 // node Ending: 1 エンディング。タイトルとエピローグ本文を持つ。
-// edge choice: Scene -> Scene (0..*)  属性 ChoiceEdge { label: String } —
+// edge choice: Scene -[ChoiceEdge { label: String }]-> Scene (0..*) —
 //              選択肢。多重度 0..* = 1 シーンから何本でも選択肢を出せる。
 // edge finale: Scene -> Ending (0..1) — エンディングへの到達。
 //              多重度 0..1 = 1 シーンにつき高々 1 つの結末。
@@ -50,8 +50,8 @@ graphite::graph_schema! {
         node Scene;
         node Ending;
 
-        edge Scene -[choice: ChoiceEdge]-> Scene (0..*);
-        edge Scene -[finale]-> Ending (0..1);
+        edge choice: Scene -[ChoiceEdge]-> Scene (0..*);
+        edge finale: Scene -> Ending (0..1);
     }
 }
 

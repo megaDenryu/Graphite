@@ -37,8 +37,8 @@ graphite::graph_schema! {
         node Person;
         node Team;
 
-        edge Person -[belongs_to]-> Team (1);
-        edge Person -[boss: BossEdge]-> Person (0..1);
+        edge belongs_to: Person -> Team (1);
+        edge boss:       Person -[BossEdge]-> Person (0..1);
     }
 }
 
@@ -107,9 +107,9 @@ graphite::graph_schema! {
         node Employee;
         node Department;
 
-        edge Employee -[belongs_to]-> Department (1);
-        edge Employee -[boss: BossEdge]-> Employee (0..1);
-        edge Employee -[reports]-> Employee (0..*);
+        edge belongs_to: Employee -> Department (1);
+        edge boss:       Employee -[BossEdge]-> Employee (0..1);
+        edge reports:    Employee -> Employee (0..*);
     }
 }
 ```
@@ -119,16 +119,23 @@ graphite::graph_schema! {
 生成しないので)。省略可能な `node 型名(複数形);` で内部ストレージの複数形
 フィールド名を明示指定できます (後述)。
 
-エッジ宣言の矢印の中はラベル (属性なし、例: `belongs_to`) または
-`ラベル: 型パス` (属性あり、例: `boss: BossEdge`)。属性型は `edges::BossEdge`
-のようなモジュール修飾付きパスも書けますが、**ノード型名は単純な識別子のみ**
-です (`node Employee;` の `Employee` にモジュール修飾は書けません)。理由は
-用途の違いです — ノード型名はエッジの `from`/`to` 端点の型名と文字列として
-照合される (`Employee` という同じトークンが `node` 宣言と `edge` 宣言の両方に
-現れて初めて同一ノード種別だと判定できる) ため、`crate::Employee` のような
-パスにすると単純トークン `Employee` と同一視できず照合が破綻します。
-モジュール修飾したい場合は `use` でこのスコープに名前を持ち込んでください。
-多重度は矢印の外側 (辺そのものではなく制約なので) に置きます。
+エッジ宣言は `ラベル: From -> To (多重度);` (属性なし、例: `belongs_to:
+Employee -> Department (1)`) または `ラベル: From -[型パス]-> To (多重度);`
+(属性あり、例: `boss: Employee -[BossEdge]-> Employee (0..1)`) の形です。
+**`label:` の右側全体がそのラベルの関係型**というのが読み方の要点で、Rust の
+関数型 `f: impl Fn(A) -> B` と同じ構図です (`boss` の型は「`Employee` から
+`Employee` へ、`BossEdge` を運ぶ、高々1本の関係」)。矢印の中に置くのは
+**積み荷 (属性型) だけ**で、属性なしエッジは矢印の中に何も書かない素の `->`
+になります (「何も運ばない」ことが見た目にそのまま出ます)。属性型は
+`edges::BossEdge` のようなモジュール修飾付きパスも書けますが、**ノード型名
+は単純な識別子のみ**です (`node Employee;` の `Employee` にモジュール修飾は
+書けません)。理由は用途の違いです — ノード型名はエッジの `from`/`to` 端点の
+型名と文字列として照合される (`Employee` という同じトークンが `node` 宣言と
+`edge` 宣言の両方に現れて初めて同一ノード種別だと判定できる) ため、
+`crate::Employee` のようなパスにすると単純トークン `Employee` と同一視でき
+ず照合が破綻します。モジュール修飾したい場合は `use` でこのスコープに名前を
+持ち込んでください。多重度は矢印の外側 (辺そのものではなく制約なので) に
+置きます。
 
 これでノード種別ごとの newtype キー (`EmployeeId`/`DepartmentId`)・
 スキーマ struct (`OrgChart`, フィールドは非公開)・builder
@@ -299,7 +306,7 @@ v2 まではエッジ行ごとにハンドシェイク用の宣言的マクロ
 `crates/graphite/tests/graph_cross_module.rs`)。
 
 `-[label]->` の向きは「`from` = 辺ラベルの builder 引数の 1 番目、`to` = 2
-番目」に対応します。上の例の `edge Employee -[boss: BossEdge]-> Employee`
+番目」に対応します。上の例の `edge boss: Employee -[BossEdge]-> Employee`
 は手書きテンプレートの `boss(employee, boss, attrs)` という引数順を踏襲
 しているため、
 `tanaka -[boss]-> sato` は「田中の上司は佐藤」を意味します (向きを取り違え
@@ -490,7 +497,7 @@ cargo test
    違反を起こしうる) ため、エッジごとに専用バリアントを生成することで型を
    `String` に落とさず固定できるようにしています (フェーズ5、「型の
    strictness」原則。`docs/design_principles.md` 原則1 参照)。例:
-   `edge Employee -[belongs_to]-> Department (1)` からは
+   `edge belongs_to: Employee -> Department (1)` からは
    `BelongsToMultiplicity { source: EmployeeId, count: usize }` /
    `BelongsToUnknownSource { key: EmployeeId }` /
    `BelongsToUnknownTarget { key: DepartmentId }` が生成されます。
@@ -512,7 +519,7 @@ cargo test
    宣言し、マクロは参照するだけ**。手書き版は `pub struct Employee { .. }` /
    `pub struct BossAttrs { pub since: i32 }` をテンプレート内に直接書いて
    いましたが、マクロはこれらの型を一切生成せず、スキーマ宣言
-   (`node Employee;` / `edge Employee -[boss: BossEdge]-> Employee (0..1);`)
+   (`node Employee;` / `edge boss: Employee -[BossEdge]-> Employee (0..1);`)
    に書かれた型をそのまま参照します。派生する trait 要求も無い (上記
    「ノード値の型・エッジ属性型に対する trait 要求」参照) ため、derive する
    かどうかも含めて完全に利用者の自由です。

@@ -23,10 +23,10 @@ graphite::graph_schema! {
         node Department;
         node Project;
 
-        edge Employee   -[belongs_to]-> Department (1);
-        edge Employee   -[boss: BossEdge]-> Employee (0..1);
-        edge Employee   -[assigned: AssignedEdge]-> Project (0..*);
-        edge Department -[sponsors]-> Project (0..1);
+        edge belongs_to: Employee -> Department (1);
+        edge boss:       Employee -[BossEdge]-> Employee (0..1);
+        edge assigned:   Employee -[AssignedEdge]-> Project (0..*);
+        edge sponsors:   Department -> Project (0..1);
     }
 }
 ```
@@ -252,7 +252,7 @@ $ cargo run -- reorg D03
 といった不整合が **実行時に静かに** 残り得る。`belongs_to().iter()` を毎回
 自分で数えて検査するコードを書かない限り気づけない。
 
-Graphiteでは `edge Employee -[belongs_to]-> Department (1)` と宣言した時点で、
+Graphiteでは `edge belongs_to: Employee -> Department (1)` と宣言した時点で、
 `OrgChart::create()` が全社員について「ちょうど1本」であることを一括検査し、
 満たさなければ `OrgChartViolation::MultiplicityViolation` で構築自体が失敗
 する。本アプリの合成データ生成器 (`dataset.rs`) がバグって所属漏れの社員を

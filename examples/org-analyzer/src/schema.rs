@@ -57,9 +57,9 @@ graphite::graph_schema! {
         node Department;
         node Project;
 
-        edge Employee   -[belongs_to]-> Department (1);
-        edge Employee   -[boss: BossEdge]-> Employee (0..1);
-        edge Employee   -[assigned: AssignedEdge]-> Project (0..*);
-        edge Department -[sponsors]-> Project (0..1);
+        edge belongs_to: Employee -> Department (1);
+        edge boss:       Employee -[BossEdge]-> Employee (0..1);
+        edge assigned:   Employee -[AssignedEdge]-> Project (0..*);
+        edge sponsors:   Department -> Project (0..1);
     }
 }

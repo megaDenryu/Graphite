@@ -20,7 +20,7 @@
 // ============================================================
 //
 // `graph_schema!` はこれらの型を**生成せず、参照するだけ**です
-// (README「使用例」節、`docs/edge_syntax_v2.md` 参照)。derive・可視性・
+// (README「使用例」節、`docs/edge_syntax_v3.md` 参照)。derive・可視性・
 // 追加のメソッドは全部ふつうの Rust の話であり、Graphite 固有のルールは
 // ありません。
 
@@ -52,26 +52,38 @@ pub struct ReviewEdge {
 // §2 schema 宣言
 // ============================================================
 //
-// `edge From -[label]-> To (多重度);` の読み方:
+// `edge label: From -> To (多重度);` (属性なし) / `edge label: From -[Attrs]->
+// To (多重度);` (属性あり) の読み方:
 //
-// - `label` は「エッジ種別の宣言」です。struct のフィールド名に相当する
-//   1トークンで、ここから `{label}()` という**ビューを返す1個のメソッド**
-//   だけが機械的に命名・生成されます (旧版にあった `try_{label}`/
-//   `{label}_id(s)`/`{label}_pairs` という導出名の合成は行いません)。
-//   ビューが持つ操作の語彙 (`of`/`get`/`id_of`/`get_id`/`ids_of`/`iter`/
-//   `len`/`is_empty`) は全ラベル・全スキーマ共通で、graphite ランタイム側
-//   (`EdgeOne`/`EdgeOption`/`EdgeMany` 等) に1回だけ定義されています。
-//   つまり `label` は「値」ではなく「これから生成されるビュー返却メソッド
-//   1個の名前の元になる識別子」です。値のように読み書きできる変数では
-//   ありません (§4 で実際に確認します)。
-// - `label: Type` の `Type` は「辺1本ごとが運ぶペイロードの型」です。
-//   属性なしエッジ (`belongs_to`・`reports`) は何も運ばず、属性ありエッジ
-//   (`boss: BossEdge`・`reviewed_by: ReviewEdge`) はその型の値を辺1本ごとに
-//   1つ持ちます。(この `label: Type` という書き方は schema 宣言だけの話
-//   です。schema は常に `:` — 型付け — を使います。次の §3 で見る `graph!`
+// - **`label:` の右側全体が、そのラベルの型 (関係型) です。** 読み方は Rust
+//   の関数型 `f: impl Fn(A) -> B` と同じ構図です — 「`名前: A -> B` は写像の
+//   型宣言」という、Rust に既にある読解をそのまま借ります。`boss` の型は
+//   「`Person` から `Person` へ、`BossEdge` を運ぶ、高々1本の関係」です。
+//   (以前の構文案 `edge Person -[boss: BossEdge]-> Person` は `boss:
+//   BossEdge` がフィールド宣言 `name: Type` の顔をしていたのに、実際には
+//   **`boss` の型は `BossEdge` ではない** という構文の嘘があった —
+//   `BossEdge` は `boss` という関係が運ぶ積み荷でしかない。ラベルを矢印の
+//   外へ出し `label:` の右側全体を関係型として読ませることでこれを解消した
+//   のが今の形です。経緯は `docs/edge_syntax_v3.md` 参照。)
+// - **矢印の中 (`-[..]->` または `->`) はその関係が運ぶ積み荷 (ペイロード
+//   の型) だけです。** 属性ありエッジ (`boss: Person -[BossEdge]-> Person`)
+//   は辺1本ごとに `BossEdge` の値を1つ運びます。属性なしエッジ
+//   (`belongs_to`・`reports`) は矢印の中に何も書かない素の `->` になり、
+//   「何も運ばない」ことがそのまま見た目に出ます。
+// - ラベル (`boss` 等) 自体は「エッジ種別の宣言」です。struct のフィールド
+//   名に相当する1トークンで、ここから `{label}()` という**ビューを返す
+//   1個のメソッド**だけが機械的に命名・生成されます (旧版にあった
+//   `try_{label}`/`{label}_id(s)`/`{label}_pairs` という導出名の合成は
+//   行いません)。ビューが持つ操作の語彙 (`of`/`get`/`id_of`/`get_id`/
+//   `ids_of`/`iter`/`len`/`is_empty`) は全ラベル・全スキーマ共通で、
+//   graphite ランタイム側 (`EdgeOne`/`EdgeOption`/`EdgeMany` 等) に1回だけ
+//   定義されています。つまり `label` は「値」ではなく「これから生成される
+//   ビュー返却メソッド1個の名前の元になる識別子」です。値のように読み書き
+//   できる変数ではありません (§4 で実際に確認します)。
+// - 多重度 `(1)`/`(0..1)`/`(0..*)` は関係型のさらに外側に書きます (辺その
+//   ものが運ぶものではなく「本数の制約」だからです)。
+// - (schema 宣言は常に `:` — 型付け — を使います。次の §3 で見る `graph!`
 //   リテラルはこれとは対照的に常に `=` — 代入 — を使います。)
-// - 多重度 `(1)`/`(0..1)`/`(0..*)` は矢印の外側に書きます (辺そのものの
-//   属性ではなく「本数の制約」だからです)。
 //
 // 4本のエッジは「多重度 × 属性の有無」の組み合わせを一通り確かめられる
 // ように選んであります:
@@ -89,10 +101,10 @@ graphite::graph_schema! {
         node Person;
         node Team;
 
-        edge Person -[belongs_to]-> Team (1);
-        edge Person -[boss: BossEdge]-> Person (0..1);
-        edge Person -[reports]-> Person (0..*);
-        edge Person -[reviewed_by: ReviewEdge]-> Person (0..*);
+        edge belongs_to:  Person -> Team (1);
+        edge boss:        Person -[BossEdge]-> Person (0..1);
+        edge reports:     Person -> Person (0..*);
+        edge reviewed_by: Person -[ReviewEdge]-> Person (0..*);
     }
 }
 
@@ -596,9 +608,9 @@ fn create_collectingで全違反を集める() {
 // 実際のエラー (コメントを外して `cargo build` した際に採取):
 //
 //   error[E0425]: cannot find value `boss` in this scope
-//      --> src\main.rs:593:13
+//      --> src\main.rs:605:13
 //       |
-//   593 |     let _ = boss.since;
+//   605 |     let _ = boss.since;
 //       |             ^^^^ not found in this scope
 
 // --- 4.2 フィールドに直接アクセスしようとする (メソッド呼び出しを忘れる) ---
@@ -619,11 +631,11 @@ fn create_collectingで全違反を集める() {
 // 実際のエラー (コメントを外して `cargo build` した際に採取):
 //
 //   error[E0308]: mismatched types
-//      --> src\main.rs:616:5
+//      --> src\main.rs:628:5
 //       |
-//   615 | fn section4_2(g: &Org) -> Person {
+//   627 | fn section4_2(g: &Org) -> Person {
 //       |                           ------ expected `Person` because of return type
-//   616 |     g.boss
+//   628 |     g.boss
 //       |     ^^^^^^ expected `Person`, found `HashMap<PersonId, (PersonId, BossEdge)>`
 //       |
 //       = note: expected struct `Person`
@@ -654,20 +666,20 @@ fn create_collectingで全違反を集める() {
 // 実際のエラー (コメントを外して `cargo build` した際に採取):
 //
 //   error[E0599]: no method named `no_such_label` found for mutable reference `&mut OrgBuilder` in the current scope
-//      --> src\main.rs:650:17
+//      --> src\main.rs:662:17
 //       |
-//   647 |       let _ = graphite::graph!(Org {
+//   659 |       let _ = graphite::graph!(Org {
 //       |  _____________-
-//   648 | |         alice = Person { name: "Alice".into() },
-//   649 | |         eng = Team { name: "Engineering".into() },
-//   650 | |         alice -[no_such_label]-> eng,
+//   660 | |         alice = Person { name: "Alice".into() },
+//   661 | |         eng = Team { name: "Engineering".into() },
+//   662 | |         alice -[no_such_label]-> eng,
 //       | |                -^^^^^^^^^^^^^ method not found in `&mut OrgBuilder`
 //       | |________________|
 //       |
 
 // --- 4.4 端点の型を間違えたエッジを graph! に書く ---
 //
-// `belongs_to` は `Person -[belongs_to]-> Team` として宣言されているので、
+// `belongs_to` は `belongs_to: Person -> Team` として宣言されているので、
 // from/to は Person/Team でなければなりません。両方を Person にすると
 // 型不一致になります。
 //
@@ -683,29 +695,29 @@ fn create_collectingで全違反を集める() {
 // 実際のエラー (コメントを外して `cargo build` した際に採取):
 //
 //   error[E0308]: mismatched types
-//      --> src\main.rs:676:13
+//      --> src\main.rs:688:13
 //       |
-//   676 |       let _ = graphite::graph!(Org {
+//   688 |       let _ = graphite::graph!(Org {
 //       |  _____________^
-//   677 | |         alice = Person { name: "Alice".into() },
-//   678 | |         bob = Person { name: "Bob".into() },
-//   679 | |         alice -[belongs_to]-> bob,
+//   689 | |         alice = Person { name: "Alice".into() },
+//   690 | |         bob = Person { name: "Bob".into() },
+//   691 | |         alice -[belongs_to]-> bob,
 //       | |                 ---------- arguments to this method are incorrect
-//   680 | |     });
+//   692 | |     });
 //       | |______^ expected `TeamId`, found `PersonId`
 //       |
 //   note: method defined here
-//      --> src\main.rs:92:23
+//      --> src\main.rs:104:14
 //       |
-//    87 | / graphite::graph_schema! {
-//    88 | |     schema Org {
-//    89 | |         node Person;
-//    90 | |         node Team;
-//    91 | |
-//    92 | |         edge Person -[belongs_to]-> Team (1);
-//       | |                       ^^^^^^^^^^
+//    99 | / graphite::graph_schema! {
+//   100 | |     schema Org {
+//   101 | |         node Person;
+//   102 | |         node Team;
+//   103 | |
+//   104 | |         edge belongs_to:  Person -> Team (1);
+//       | |              ^^^^^^^^^^
 //   ...   |
-//    97 | | }
+//   109 | | }
 //       | |_-
 //       = note: this error originates in the macro `graphite::graph` (in Nightly builds, run with -Z macro-backtrace for more info)
 

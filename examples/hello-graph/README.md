@@ -36,10 +36,17 @@ cargo run
 
 ## ラベルは何者か
 
-`edge Person -[boss: BossEdge]-> Person (0..1);` の `boss` は、**値でも
+`edge boss: Person -[BossEdge]-> Person (0..1);` の `boss` は、**値でも
 変数でもなく、これから生成される「ビューを返す1個のメソッド」の名前の
 元になる識別子**です。`graph_schema!` はこの1トークンから以下を機械的に
-命名・生成します (`boss` の場合の実例つき):
+命名・生成します (`boss` の場合の実例つき)。
+
+なお `label:` の右側全体 (`Person -[BossEdge]-> Person`) が `boss` という
+ラベルの型 (関係型) であり、`BossEdge` はその関係が運ぶ積み荷でしかあり
+ません。`boss` 自身の型が `BossEdge` というわけではない点に注意してください
+(以前の構文案で生まれていた「`boss: BossEdge` に見えるのに `boss` の型は
+`BossEdge` ではない」という読み違いは、ラベルを矢印の外に出す現行の構文で
+解消されています。詳細は `docs/edge_syntax_v3.md` 参照)。
 
 | 生成されるもの | 命名規則 | `boss` の場合 |
 |---|---|---|
