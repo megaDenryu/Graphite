@@ -415,7 +415,7 @@ let result: Result<OrgChart, Vec<OrgChartViolation>> = OrgChart::create_collecti
 ## 実践例 (`examples/`)
 
 `graphite` を実際のアプリケーションから使う例として、`examples/` 配下に
-4 本のスタンドアロンクレートを用意しています。いずれも `Cargo.toml` 先頭に
+7 本のスタンドアロンクレートを用意しています。いずれも `Cargo.toml` 先頭に
 空の `[workspace]` テーブルを置いてルートの Cargo workspace から独立させた、
 `graphite` のみに依存する単体アプリです (ルート `cargo test` の対象には
 含まれないため、個別に `cd` してビルド・実行します)。
@@ -448,6 +448,39 @@ let result: Result<OrgChart, Vec<OrgChartViolation>> = OrgChart::create_collecti
   ```powershell
   cd examples/dialogue-engine
   cargo run -- validate
+  ```
+
+### グラフ構文が倒す三つの敵
+
+以下の 3 本は、いずれも同じ型の変換を行っている実証example群です:
+**暗黙の制御フローで表現されていた構造を、宣言されたグラフデータに変え、
+性質の検証 (循環・到達性・順序) をグラフアルゴリズムに任せる。**
+
+- **`examples/state-machine/`** — ステートマシン地獄 (bool フラグの組合せ
+  爆発、または enum + match の散在) を、状態=ノード・**イベント=エッジ
+  種別**・決定性=多重度 `(0..1)` として再定式化する。到達不能状態・行き
+  止まり状態を `reachable_from`/`out_neighbors` で検出する。
+  ```powershell
+  cd examples/state-machine
+  cargo run
+  ```
+- **`examples/async-dag/`** — 非同期オーケストレーション地獄 (`.await` の
+  順序や `spawn` の配線に依存関係が暗黙に溶け込む) を、依存=`depends_on`
+  エッジとして宣言し、循環はハングではなく構築時の `CycleError` に変え、
+  `topological_levels` が導く「波」を `std::thread::scope` で実際に並列
+  実行する (波分割により実測 1.59 倍の高速化)。
+  ```powershell
+  cd examples/async-dag
+  cargo run
+  ```
+- **`examples/reactive-cells/`** — リアクティブスパゲッティ (observer
+  パターンのグリッチ・無限ループ・登録順依存の非決定性) を、依存=エッジ
+  として宣言し、`topological_sort` が導く glitch-free な再計算順で解決
+  する。アンチパターン実装 (`antipattern.rs`) をグラフ版と並置して問題を
+  実際に再現する。
+  ```powershell
+  cd examples/reactive-cells
+  cargo run
   ```
 
 各ディレクトリの詳細な使い方・サブコマンド一覧は、それぞれの `README.md` を

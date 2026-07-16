@@ -4,6 +4,9 @@
     "examples/hello-graph/Cargo.toml",
     "examples/build-pipeline/Cargo.toml",
     "examples/org-analyzer/Cargo.toml",
-    "examples/dialogue-engine/Cargo.toml"
+    "examples/dialogue-engine/Cargo.toml",
+    "examples/state-machine/Cargo.toml",
+    "examples/async-dag/Cargo.toml",
+    "examples/reactive-cells/Cargo.toml"
   ]
 }
