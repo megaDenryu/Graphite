@@ -1,0 +1,10 @@
+[workspace]
+
+[package]
+name = "async-dag"
+version = "0.1.0"
+edition = "2021"
+description = "Graphite (topological_levels + std::thread::scope) でマイクロサービス起動オーケストレーションの並行実行地獄を倒す実践example"
+
+[dependencies]
+graphite = { path = "../../crates/graphite" }
