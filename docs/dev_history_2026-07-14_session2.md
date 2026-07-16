@@ -155,18 +155,99 @@ hello-graph §4引用再採取) → `a1fb360` (README/仕様書のv3反映) →
 `51cd679` (孤立ノードのunused variable警告をallow属性で抑制) →
 (本ファイル更新の docs コミットが続く)。
 
+## 3.7 エッジアクセスのビュー方式化
+
+ユーザーからエッジアクセサ群 (`try_{label}`/`{label}_id(s)`/`{label}_pairs`
+等の導出名) の複雑さについて指摘があった。
+
+> (生成APIは) テンプレート文字列みたいなもんじゃないですか？…これを
+> 読まないと無理ですし、覚えることが多すぎて複雑すぎる
+
+→ 対処: ラベル1個につき生成するのはビューを返すメソッド `{label}()` の
+1個だけにする。ビューが持つ語彙 (`of`/`get`/`id_of`/`ids_of`/`get_id`/
+`iter`/`len`) はランタイム側に `EdgeOne`/`EdgeOneWith`/`EdgeOption`/
+`EdgeOptionWith`/`EdgeMany`/`EdgeManyWith` (多重度×属性有無で6種) として
+固定し、ラベルごとの導出名の合成メソッド群は全廃した。効果: 覚える語彙が
+「ビューの呼び方1つ」+「共通6語彙」に縮退し、補完2回で全APIに到達できる。
+ラベル rename もこの1メソッドへのカスケードだけで完結し、生成コード量も
+削減された。
+
+コミット: `5013315` (設計) → `779bdb9` (ランタイム実装) → `4325798`
+(マクロ側をビュー返却へ全面移行) → `b95e244` (examples/docs移行)。
+
+## 3.8 エッジ宣言 v3 (ラベルの型としての矢印式)
+
+ユーザーから宣言構文の可読性について指摘があった。
+
+> 『boss の型が BossEdge』ではないの部分を何とか解決したい。BossEdgeは
+> bossの何なのか？が宣言的に書けるようになってないといけない
+
+→ 対処: `edge boss: Person -[BossEdge]-> Person (0..1);` という形に改めた。
+Rust の関数型 `f: impl Fn(A) -> B` の読み方を借用し、「`label:` の右側全体
+がそのラベルの関係型」と読める構文にした。矢印の中に置くのは積み荷
+(属性型) だけで、属性なしエッジは矢印内に何も書かない素の `->` になる。
+対案の `boss<BossEdge>` (`Vec<T>` 類推) も検討したが、`snake_case<T>` が
+Rust に実在しない形であるため棄却した。
+
+コミット: `424a83a` (設計文書) → `ec76188` (マクロ実装、破壊的変更) →
+`4959d8e` (examples/README/hello-graphの構文説明移行)。
+
+## 3.9 三大敵の実証examples
+
+ユーザーからexampleの方針指示があった。
+
+> グラフ構文が倒すべき重大な既存の敵として、ステートマシンと非同期
+> プログラミングとリアクティブスパゲッティを挙げる。実際にある問題と
+> ベストプラクティスとして提示し、プログラムとして動作するところまで
+
+→ 3本を並列実装した。共通の型は「暗黙の制御フローで表現されていた構造を、
+宣言されたグラフデータに変え、性質の検証 (循環・到達性・順序) をグラフ
+アルゴリズムに任せる」。
+
+- **state-machine** (注文ライフサイクルFSM): イベント=エッジ種別、
+  決定性=多重度 `(0..1)`。到達不能状態・行き止まり状態を
+  `reachable_from`/`out_neighbors` で検出
+- **async-dag** (マイクロサービス起動オーケストレータ): 循環依存=構築時
+  `CycleError` (ハングではない)、`topological_levels` が導く「波」を
+  `std::thread::scope` で実際に並列実行し、実測 1.59 倍の高速化を確認
+- **reactive-cells** (ミニスプレッドシート/見積書): `topological_sort` =
+  glitch-free な再計算順。observerパターンのアンチパターン実装
+  (`antipattern.rs`) をグラフ版と並置してグリッチ・無限ループ・非決定性
+  を実際に再現し、グラフ版が構造的に解決する様を対比する
+
+3本は独立クレートとして並列実装され、統合作業 (root README・
+`.vscode/settings.json` の `linkedProjects`・本ファイルの追記) は後続の
+統合エージェントが担当した。並行してオーケストレータ側では Fudaba 札
+#1〜#6 (ノード宣言の対称化・違反enum命名・複数schema名前空間・キー設計・
+クエリ層・本examples方針) で未決の設計論点を記録しており、これまでの
+設計変遷は読み物Artifact「ラベルは何者か — Graphite 設計の足跡」にも
+まとめられている。
+
+コミット: `6bc33cc` (state-machine) → `2887ca9` (async-dag) → `c444aef`
+(reactive-cells) → (本統合コミット)。
+
 ## 4. 現在の状態
 
-- テスト: コア68 + examples 4本 (build-pipeline 32 / org-analyzer 11 /
-  dialogue-engine 14 / hello-graph 5)、全通過。構文は v3 のみ (v1/v2 は
-  検出・移行診断なしで完全廃止)
+- テスト (実測): コア82 (`crates/graphite` 単体41 + 統合36
+  [`compile_fail`1・`explicit_plural_field`1・`f64_attrs`1・
+  `graph_cross_module`1・`orgchart_handwritten`8・`orgchart_macro`23・
+  `orphan_node_no_warning`1] + `graphite-macros`単体3 + doctest2) +
+  examples 7本 (hello-graph 14 / build-pipeline 32 / org-analyzer 11 /
+  dialogue-engine 14 / state-machine 15 / async-dag 15 / reactive-cells 23)、
+  合計 206、全通過。構文は v3 のみ (v1/v2 は検出・移行診断なしで完全廃止)
 - コミット (このセッション分、古→新): `c75d927` (G2/G3+仕様書) → `1268cba` (G1) →
   `67f6d7f` (docs) → `6e4b120` (G4) → `6f7643f` (docs) → `1c7d76d` (Attrsスパン修正) →
   `e824f12` (docs: renameの壁) → `9de33b7` (v2設計文書) → `75f597e` (v2実装) →
   `86b715a` (v2移行) → `ed42b1e` (v3設計文書) → `b434c48` (v3実装) →
   `3389ab9` (v3テスト移行) → `de07098` (v3 examples移行) → `a1fb360`
-  (v3 README/仕様書反映) → `51cd679` (孤立ノード警告抑制) →
-  (本ファイル更新の docs コミットが続く)
+  (v3 README/仕様書反映) → `51cd679` (孤立ノード警告抑制) → `bf6042d`
+  (docs: v3実測+本ファイルテスト数更新) → `f92661a` (examples: hello-graph
+  クックブック形式化) → `5013315` (§3.7設計) → `779bdb9` (§3.7ランタイム
+  実装) → `4325798` (§3.7マクロ移行) → `b95e244` (§3.7 examples/docs移行) →
+  `424a83a` (§3.8設計) → `ec76188` (§3.8マクロ実装) → `4959d8e`
+  (§3.8 examples/README移行) → `6bc33cc` (§3.9 state-machine) → `2887ca9`
+  (§3.9 async-dag) → `c444aef` (§3.9 reactive-cells) → (本ファイル更新+
+  README/.vscode統合の docs/examples コミットが続く)
 - リモート: `origin/main` に本セッション分を push 予定 (このセッションの
   最終タスク)
 
