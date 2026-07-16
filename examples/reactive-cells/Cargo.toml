@@ -1,0 +1,10 @@
+[workspace]
+
+[package]
+name = "reactive-cells"
+version = "0.1.0"
+edition = "2021"
+description = "Graphite (graph_schema!/graph!) でリアクティブプログラミングのスパゲッティ (グリッチ・無限ループ・非決定な更新順序) を倒す実証example"
+
+[dependencies]
+graphite = { path = "../../crates/graphite" }
