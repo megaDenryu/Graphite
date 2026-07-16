@@ -33,8 +33,8 @@ mod schema {
             node Employee;
             node Department;
 
-            edge Employee -[belongs_to]-> Department (1);
-            edge Employee -[boss: BossEdge]-> Employee (0..1);
+            edge belongs_to: Employee -> Department (1);
+            edge boss:       Employee -[BossEdge]-> Employee (0..1);
         }
     }
 }

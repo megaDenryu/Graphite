@@ -23,7 +23,7 @@ graphite::graph_schema! {
         node Employee;
         node Department;
 
-        edge Employee -[belongs_to]-> Department (1);
+        edge belongs_to: Employee -> Department (1);
     }
 }
 

@@ -56,16 +56,16 @@ use syn::parse::Parser;
 ///         node Employee;
 ///         node Department;
 ///
-///         edge Employee -[belongs_to]-> Department (1);
-///         edge Employee -[boss: BossEdge]-> Employee (0..1);
-///         edge Employee -[reports]-> Employee (0..*);
+///         edge belongs_to: Employee -> Department (1);
+///         edge boss:       Employee -[BossEdge]-> Employee (0..1);
+///         edge reports:    Employee -> Employee (0..*);
 ///     }
 /// }
 /// ```
 ///
 /// `Employee`/`Department`/`BossEdge` はいずれもこのマクロの外でユーザーが
 /// 宣言した普通の struct への参照であり、このマクロは値の型そのものを一切
-/// 生成しない (`docs/edge_syntax_v2.md` 参照)。生成するのはグラフ機械
+/// 生成しない (`docs/edge_syntax_v3.md` 参照)。生成するのはグラフ機械
 /// (newtype キー・ストレージ・builder・アクセサ・違反 enum) だけ。
 #[proc_macro]
 pub fn graph_schema(input: TokenStream) -> TokenStream {

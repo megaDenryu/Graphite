@@ -14,7 +14,7 @@ fn main() {
             node Employee;
             node Department;
 
-            edge Employee -[belongs_to]-> Department (2..5);
+            edge belongs_to: Employee -> Department (2..5);
         }
     }
 }

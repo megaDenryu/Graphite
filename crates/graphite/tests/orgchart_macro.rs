@@ -18,7 +18,7 @@
 //!   という通常の Rust 可視性規則をそのまま使っている)。
 //! - ノード型 (`Employee`/`Department`) とエッジ属性型 (`BossEdge`) は
 //!   いずれも `graph_schema!` の外で普通の struct として宣言し、schema には
-//!   参照させるだけ (下記参照。`docs/edge_syntax_v2.md` 参照)。
+//!   参照させるだけ (下記参照。`docs/edge_syntax_v3.md` 参照)。
 
 /// ノード型。`graph_schema!` はこの型を生成せず参照するだけ。
 #[derive(Debug, Clone, PartialEq)]
@@ -45,9 +45,9 @@ graphite::graph_schema! {
         node Employee;
         node Department;
 
-        edge Employee -[belongs_to]-> Department (1);
-        edge Employee -[boss: BossEdge]-> Employee (0..1);
-        edge Employee -[reports]-> Employee (0..*);
+        edge belongs_to: Employee -> Department (1);
+        edge boss:       Employee -[BossEdge]-> Employee (0..1);
+        edge reports:    Employee -> Employee (0..*);
     }
 }
 

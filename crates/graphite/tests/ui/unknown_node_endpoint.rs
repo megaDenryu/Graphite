@@ -10,7 +10,7 @@ fn main() {
         schema Broken {
             node Employee;
 
-            edge Employee -[belongs_to]-> Department (1);
+            edge belongs_to: Employee -> Department (1);
         }
     }
 }

@@ -24,7 +24,7 @@ graphite::graph_schema! {
         node Category(categories);
         node Item;
 
-        edge Item -[belongs_to]-> Category (1);
+        edge belongs_to: Item -> Category (1);
     }
 }
 

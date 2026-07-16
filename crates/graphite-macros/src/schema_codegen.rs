@@ -20,7 +20,7 @@ use crate::schema_dsl::{EdgeDecl, Multiplicity, NodeDecl, SchemaInput};
 ///
 /// ノード値の型 (`Employee` 等) はユーザーが `graph_schema!` の外で宣言した
 /// 普通の struct への参照であり、このマクロは生成しない
-/// (`docs/edge_syntax_v2.md` 参照)。マクロが生成するのはグラフ機械
+/// (`docs/edge_syntax_v3.md` 参照)。マクロが生成するのはグラフ機械
 /// (newtype キー・ストレージ・builder・アクセサ・違反 enum) だけ。
 struct NodeInfo {
     /// ノード値の型名 (`Employee`)。ユーザー宣言型への参照。
@@ -68,9 +68,9 @@ struct EdgeInfo<'a> {
     label: Ident,
     from_node: &'a NodeInfo,
     to_node: &'a NodeInfo,
-    /// エッジ属性型への参照 (`edge From -[label: Ty]-> To (mult);` の
+    /// エッジ属性型への参照 (`edge label: From -[Ty]-> To (mult);` の
     /// `Ty`)。ユーザーがマクロの外で宣言した型を指すだけで、このマクロは
-    /// 属性型そのものを生成しない (`docs/edge_syntax_v2.md` 参照)。
+    /// 属性型そのものを生成しない (`docs/edge_syntax_v3.md` 参照)。
     attrs_ty: Option<Path>,
 }
 

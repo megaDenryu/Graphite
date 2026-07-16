@@ -1,7 +1,7 @@
 //! `graph_schema!` の入力 DSL のパース (構文木を組み立てるだけで、
 //! ノード型の重複や未宣言参照といった意味検査は `schema_validate.rs` で行う)。
 //!
-//! 対応する文法 (`docs/edge_syntax_v2.md` 参照):
+//! 対応する文法 (`docs/edge_syntax_v3.md` 参照):
 //!
 //! ```text
 //! pub struct Employee { pub name: String, pub id: u32 }
@@ -13,9 +13,9 @@
 //!         node Employee;
 //!         node Department;
 //!
-//!         edge Employee -[belongs_to]-> Department (1);
-//!         edge Employee -[boss: BossEdge]-> Employee (0..1);
-//!         edge Employee -[reports]-> Employee (0..*);
+//!         edge belongs_to: Employee -> Department (1);
+//!         edge boss:       Employee -[BossEdge]-> Employee (0..1);
+//!         edge reports:    Employee -> Employee (0..*);
 //!     }
 //! }
 //! ```
@@ -25,6 +25,11 @@
 //! ノード型名は端点照合に使うため単純 `Ident` のみ (モジュール修飾したい
 //! 場合は `use` で名前をこのスコープに持ち込む)。エッジ属性型は照合には
 //! 使わず参照するだけなので `syn::Path` (モジュール修飾可) を許す。
+//!
+//! エッジ宣言は `label: From -> To (mult);` (属性なし) または
+//! `label: From -[Attrs]-> To (mult);` (属性あり) の形。`label:` の右側
+//! 全体が関係型 (Rust の `f: impl Fn(A) -> B` と同じ読み方)、矢印内は
+//! 積み荷 (属性型) のみという v3 の設計 (`docs/edge_syntax_v3.md` 参照)。
 
 use proc_macro2::TokenTree;
 use syn::parse::{Parse, ParseStream};
@@ -161,11 +166,11 @@ fn parse_multiplicity_body(content: ParseStream) -> syn::Result<Multiplicity> {
     }
 }
 
-/// `edge Employee -[belongs_to]-> Department (1);`
-/// `edge Employee -[boss: BossEdge]-> Employee (0..1);`
+/// `edge belongs_to: Employee -> Department (1);`
+/// `edge boss: Employee -[BossEdge]-> Employee (0..1);`
 ///
 /// 属性型 (`BossEdge` 等) はユーザーが `graph_schema!` の外で宣言した普通の
-/// struct への参照であり、このマクロは生成しない (`docs/edge_syntax_v2.md`
+/// struct への参照であり、このマクロは生成しない (`docs/edge_syntax_v3.md`
 /// 参照)。
 pub struct EdgeDecl {
     pub label: Ident,
@@ -178,19 +183,30 @@ pub struct EdgeDecl {
 impl Parse for EdgeDecl {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         input.parse::<kw::edge>()?;
+        let label: Ident = input.parse()?;
+        input.parse::<Token![:]>()?;
         let from: Ident = input.parse()?;
-        input.parse::<Token![-]>()?;
-        let bracket_content;
-        bracketed!(bracket_content in input);
-        let (label, attrs_ty) = match parse_edge_bracket_body(&bracket_content) {
-            Ok(v) => v,
-            Err(e) => {
-                // G4a: drain_rest のコメント参照。
-                drain_rest(&bracket_content);
-                return Err(e);
-            }
+        // `->` (属性なし) か `-[Attrs]->` (属性あり) かは、まず素の `->`
+        // (単一の複合トークン) を先読みして判定する。`-[` は `-` と `[..]`
+        // の2トークンなので `->` と誤って先読みマッチすることはない。
+        let attrs_ty = if input.peek(Token![->]) {
+            input.parse::<Token![->]>()?;
+            None
+        } else {
+            input.parse::<Token![-]>()?;
+            let bracket_content;
+            bracketed!(bracket_content in input);
+            let attrs_ty = match parse_edge_bracket_body(&bracket_content) {
+                Ok(v) => v,
+                Err(e) => {
+                    // G4a: drain_rest のコメント参照。
+                    drain_rest(&bracket_content);
+                    return Err(e);
+                }
+            };
+            input.parse::<Token![->]>()?;
+            Some(attrs_ty)
         };
-        input.parse::<Token![->]>()?;
         let to: Ident = input.parse()?;
         let mult: Multiplicity = input.parse()?;
         input.parse::<Token![;]>()?;
@@ -204,23 +220,15 @@ impl Parse for EdgeDecl {
     }
 }
 
-/// `-[label]->` / `-[label: 型パス]->` の `[ .. ]` の中身。
-/// 型パスは `syn::Path` として受けるため `edges::BossEdge` のような
-/// モジュール修飾も許す (ノード型名と違い端点照合に使わないため、単純
-/// `Ident` に制限する必要がない)。
-fn parse_edge_bracket_body(content: ParseStream) -> syn::Result<(Ident, Option<Path>)> {
-    let label: Ident = content.parse()?;
-    let attrs_ty = if content.peek(Token![:]) {
-        content.parse::<Token![:]>()?;
-        let path: Path = content.parse()?;
-        Some(path)
-    } else {
-        None
-    };
+/// `-[型パス]->` の `[ .. ]` の中身。`syn::Path` として受けるため
+/// `edges::BossEdge` のようなモジュール修飾も許す (ノード型名と違い端点照合
+/// に使わないため、単純 `Ident` に制限する必要がない)。
+fn parse_edge_bracket_body(content: ParseStream) -> syn::Result<Path> {
+    let path: Path = content.parse()?;
     if !content.is_empty() {
-        return Err(content.error("`-[label]->` または `-[label: 型パス]->` の形式で指定してください"));
+        return Err(content.error("`-[型パス]->` の形式で指定してください"));
     }
-    Ok((label, attrs_ty))
+    Ok(path)
 }
 
 /// `schema OrgChart { ... }` 全体。
