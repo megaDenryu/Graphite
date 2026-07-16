@@ -121,7 +121,7 @@ mod tests {
     #[test]
     fn belongs_to_は参照そのものを返す() {
         let g = build_healthy_chart();
-        let d: &Department = g.belongs_to(&emp("田中"));
+        let d: &Department = g.belongs_to().of(&emp("田中"));
         assert_eq!(d.name, "営業");
     }
 
@@ -129,12 +129,12 @@ mod tests {
     fn boss_は_option_を返す() {
         let g = build_healthy_chart();
 
-        let b: Option<(&Employee, &BossEdge)> = g.boss(&emp("佐藤"));
+        let b: Option<(&Employee, &BossEdge)> = g.boss().of(&emp("佐藤"));
         let (boss_emp, attrs) = b.expect("佐藤の上司は田中のはず");
         assert_eq!(boss_emp.name, "田中");
         assert_eq!(attrs.since, 2020);
 
-        let no_boss: Option<(&Employee, &BossEdge)> = g.boss(&emp("田中"));
+        let no_boss: Option<(&Employee, &BossEdge)> = g.boss().of(&emp("田中"));
         assert!(no_boss.is_none());
     }
 
@@ -142,11 +142,11 @@ mod tests {
     fn reports_は_vec_を返す() {
         let g = build_healthy_chart();
 
-        let subordinates: Vec<&Employee> = g.reports(&emp("田中"));
+        let subordinates: Vec<&Employee> = g.reports().of(&emp("田中"));
         assert_eq!(subordinates.len(), 1);
         assert_eq!(subordinates[0].name, "佐藤");
 
-        let none: Vec<&Employee> = g.reports(&emp("佐藤"));
+        let none: Vec<&Employee> = g.reports().of(&emp("佐藤"));
         assert!(none.is_empty());
     }
 
@@ -250,51 +250,53 @@ mod tests {
     }
 
     #[test]
-    fn try_belongs_toは未知キーでnoneを返す() {
+    fn getは未知キーでnoneを返す() {
         let g = build_healthy_chart();
-        assert!(g.try_belongs_to(&emp("存在しない社員")).is_none());
+        assert!(g.belongs_to().get(&emp("存在しない社員")).is_none());
         let d = g
-            .try_belongs_to(&emp("田中"))
+            .belongs_to()
+            .get(&emp("田中"))
             .expect("田中は営業部に所属しているはず");
         assert_eq!(d.name, "営業");
     }
 
-    // 項目d (フェーズ5): ID版アクセサ。値ではなくキーを返す。
+    // 項目d (フェーズ5)・ビュー方式移行後 (docs/edge_view_api.md): id_of/get_id/ids_of。
 
     #[test]
-    fn belongs_to_idは多重度1でキーそのものを返す() {
+    fn id_ofは多重度1でキーそのものを返す() {
         let g = build_healthy_chart();
-        let dept_id: &DepartmentId = g.belongs_to_id(&emp("田中"));
+        let dept_id: &DepartmentId = g.belongs_to().id_of(&emp("田中"));
         assert_eq!(*dept_id, dept("営業部"));
     }
 
     #[test]
-    #[should_panic(expected = "belongs_to_id")]
-    fn belongs_to_idは未知キーでパニックする() {
+    #[should_panic(expected = "belongs_to().id_of")]
+    fn id_ofは未知キーでパニックする() {
         let g = build_healthy_chart();
-        let _ = g.belongs_to_id(&emp("存在しない社員"));
+        let _ = g.belongs_to().id_of(&emp("存在しない社員"));
     }
 
     #[test]
-    fn try_belongs_to_idは未知キーでnoneを返す() {
+    fn get_idは未知キーでnoneを返す() {
         let g = build_healthy_chart();
-        assert!(g.try_belongs_to_id(&emp("存在しない社員")).is_none());
+        assert!(g.belongs_to().get_id(&emp("存在しない社員")).is_none());
         let dept_id = g
-            .try_belongs_to_id(&emp("田中"))
+            .belongs_to()
+            .get_id(&emp("田中"))
             .expect("田中は営業部に所属しているはず");
         assert_eq!(*dept_id, dept("営業部"));
     }
 
     #[test]
-    fn boss_idは多重度0か1でoptionのキーを返す() {
+    fn boss_のid_ofは多重度0か1でoptionのキーを返す() {
         let g = build_healthy_chart();
-        let boss_id: Option<&EmployeeId> = g.boss_id(&emp("佐藤"));
+        let boss_id: Option<&EmployeeId> = g.boss().id_of(&emp("佐藤"));
         assert_eq!(boss_id, Some(&emp("田中")));
-        assert_eq!(g.boss_id(&emp("田中")), None);
+        assert_eq!(g.boss().id_of(&emp("田中")), None);
     }
 
     #[test]
-    fn reports_idsは多重度0以上でキーのvecを返す_かつ追加順を保持する() {
+    fn reportsのids_ofは多重度0以上でキーのvecを返す_かつ追加順を保持する() {
         let g = OrgChart::create(|b| {
             b.employee(emp("部長"), Employee { name: "部長".to_string(), id: 1 });
             b.employee(emp("C"), Employee { name: "C".to_string(), id: 2 });
@@ -312,16 +314,17 @@ mod tests {
         })
         .unwrap();
 
-        let ids: Vec<&EmployeeId> = g.reports_ids(&emp("部長"));
+        let ids: Vec<&EmployeeId> = g.reports().ids_of(&emp("部長"));
         assert_eq!(ids, vec![&emp("C"), &emp("A"), &emp("B")]);
 
-        let none: Vec<&EmployeeId> = g.reports_ids(&emp("A"));
+        let none: Vec<&EmployeeId> = g.reports().ids_of(&emp("A"));
         assert!(none.is_empty());
 
-        // 項目i (フェーズ5): 値アクセサ `reports` も同じ順序保証を持つ
+        // 項目i (フェーズ5): `of` も同じ順序保証を持つ
         // (README「`(0..*)` エッジの順序保証」節)。
         let names: Vec<&str> = g
-            .reports(&emp("部長"))
+            .reports()
+            .of(&emp("部長"))
             .into_iter()
             .map(|e| e.name.as_str())
             .collect();
@@ -418,10 +421,10 @@ mod tests {
         .unwrap();
 
         // match パターン (`match g { @{ a -[boss]-> b, b -[boss]-> a } => ... }`)
-        // の代替として、ペアイテレータ + メソッドチェーンで同じクエリを書ける
+        // の代替として、`iter()` + メソッドチェーンで同じクエリを書ける
         // ことを実証する。
         let all: Vec<(&EmployeeId, &EmployeeId)> =
-            g.boss_pairs().map(|(a, b, _attrs)| (a, b)).collect();
+            g.boss().iter().map(|(a, b, _attrs)| (a, b)).collect();
         let mutual: Vec<(&EmployeeId, &EmployeeId)> = all
             .iter()
             .copied()
@@ -516,7 +519,7 @@ mod graph_literal_tests {
             "営業"
         );
 
-        let d: &Department = g.belongs_to(&EmployeeId("tanaka".to_string()));
+        let d: &Department = g.belongs_to().of(&EmployeeId("tanaka".to_string()));
         assert_eq!(d.name, "営業");
 
         // `edge boss: Employee -> Employee` の方向は from=部下, to=上司
@@ -524,7 +527,8 @@ mod graph_literal_tests {
         // に合わせた規約)。よって `tanaka -[boss]-> sato` は
         // 「田中の上司は佐藤」を意味する。
         let (boss_emp, attrs) = g
-            .boss(&EmployeeId("tanaka".to_string()))
+            .boss()
+            .of(&EmployeeId("tanaka".to_string()))
             .expect("田中の上司は佐藤のはず");
         assert_eq!(boss_emp.name, "佐藤");
         assert_eq!(attrs.since, 2020);
@@ -568,7 +572,7 @@ mod graph_literal_tests {
             g.employee(&EmployeeId("b".to_string())).unwrap().name,
             "B社員"
         );
-        let d: &Department = g.belongs_to(&EmployeeId("b".to_string()));
+        let d: &Department = g.belongs_to().of(&EmployeeId("b".to_string()));
         assert_eq!(d.name, "営業");
     }
 
@@ -589,11 +593,12 @@ mod graph_literal_tests {
         })
         .expect("エッジをノード宣言より先に書いても構築できるはず");
 
-        let d: &Department = g.belongs_to(&EmployeeId("tanaka".to_string()));
+        let d: &Department = g.belongs_to().of(&EmployeeId("tanaka".to_string()));
         assert_eq!(d.name, "営業");
 
         let (boss_emp, attrs) = g
-            .boss(&EmployeeId("tanaka".to_string()))
+            .boss()
+            .of(&EmployeeId("tanaka".to_string()))
             .expect("田中の上司は佐藤のはず");
         assert_eq!(boss_emp.name, "佐藤");
         assert_eq!(attrs.since, 2020);
@@ -623,7 +628,8 @@ mod graph_literal_tests {
             "田中"
         );
         let (boss_emp, attrs) = g
-            .boss(&EmployeeId("sato".to_string()))
+            .boss()
+            .of(&EmployeeId("sato".to_string()))
             .expect("佐藤の上司は田中のはず");
         assert_eq!(boss_emp.name, "田中");
         assert_eq!(attrs.since, 2021);

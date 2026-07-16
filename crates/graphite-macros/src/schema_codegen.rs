@@ -487,267 +487,67 @@ fn gen_node_id_iter(node: &NodeInfo) -> TokenStream {
     }
 }
 
-/// 多重度 (1) アクセサの非パニック版 (項目1)。`Vec` における `v[i]` (パニック
-/// する) と `v.get(i)` (`Option` を返す) の対の関係に相当する。
-fn gen_try_edge_accessor(edge: &EdgeInfo<'_>) -> TokenStream {
-    let label = &edge.label;
-    let try_ident = format_ident!("try_{}", label);
-    let from_id = &edge.from_node.id_ident;
-    let to_ty = &edge.to_node.type_ident;
-    let to_field = &edge.to_node.field_ident;
-
-    match &edge.attrs_ty {
-        None => quote! {
-            /// 多重度 (1) の非パニック版。未知キーは (パニックせず) `None` を
-            /// 返す。
-            pub fn #try_ident(&self, id: &#from_id) -> Option<&#to_ty> {
-                let to_id = self.#label.get(id)?;
-                Some(&self.#to_field[to_id])
-            }
-        },
-        Some(attrs_ty) => quote! {
-            /// 多重度 (1) + 属性ありの非パニック版。未知キーは (パニックせず)
-            /// `None` を返す。
-            pub fn #try_ident(&self, id: &#from_id) -> Option<(&#to_ty, &#attrs_ty)> {
-                let (to_id, attrs) = self.#label.get(id)?;
-                Some((&self.#to_field[to_id], attrs))
-            }
-        },
-    }
-}
-
-/// エッジ種別 1 つ分の (始点キー, 終点キー[, 属性]) ペアイテレータ (項目2:
-/// クエリAPI)。`match` パターンによるクエリ DSL の代替として、メソッド
-/// チェーンで検索・フィルタができるようにする。多重度 (0..*) は全ペアへ
-/// 展開する。
-fn gen_edge_pairs_iter(edge: &EdgeInfo<'_>) -> TokenStream {
-    let label = &edge.label;
-    let pairs_ident = format_ident!("{}_pairs", label);
-    let from_id = &edge.from_node.id_ident;
-    let to_id = &edge.to_node.id_ident;
-
-    match (&edge.decl.mult, &edge.attrs_ty) {
-        (Multiplicity::One, None) | (Multiplicity::ZeroOrOne, None) => quote! {
-            /// 全ての (始点キー, 終点キー) ペアを列挙する。
-            pub fn #pairs_ident(&self) -> impl Iterator<Item = (&#from_id, &#to_id)> {
-                self.#label.iter().map(|(from, to)| (from, to))
-            }
-        },
-        (Multiplicity::One, Some(attrs_ty)) | (Multiplicity::ZeroOrOne, Some(attrs_ty)) => quote! {
-            /// 全ての (始点キー, 終点キー, 属性) タプルを列挙する。
-            pub fn #pairs_ident(&self) -> impl Iterator<Item = (&#from_id, &#to_id, &#attrs_ty)> {
-                self.#label.iter().map(|(from, (to, attrs))| (from, to, attrs))
-            }
-        },
-        (Multiplicity::ZeroOrMany, None) => quote! {
-            /// 全ての (始点キー, 終点キー) ペアを列挙する
-            /// (多重度 0..* は始点ごとの複数終点へ展開する)。
-            ///
-            /// 順序保証 (項目i、フェーズ5): 同一始点キーに対する複数終点の
-            /// 相対順序は、構築時の追加順 (`graph!` の場合はソース中の
-            /// 記述順) を保持する。ただし始点キーをまたぐ列挙順は
-            /// 保証しない (内部ストレージが `HashMap` のため)。
-            pub fn #pairs_ident(&self) -> impl Iterator<Item = (&#from_id, &#to_id)> {
-                self.#label
-                    .iter()
-                    .flat_map(|(from, tos)| tos.iter().map(move |to| (from, to)))
-            }
-        },
-        (Multiplicity::ZeroOrMany, Some(attrs_ty)) => quote! {
-            /// 全ての (始点キー, 終点キー, 属性) タプルを列挙する
-            /// (多重度 0..* は始点ごとの複数終点へ展開する)。
-            ///
-            /// 順序保証 (項目i、フェーズ5): 同一始点キーに対する複数終点の
-            /// 相対順序は、構築時の追加順 (`graph!` の場合はソース中の
-            /// 記述順) を保持する。ただし始点キーをまたぐ列挙順は
-            /// 保証しない (内部ストレージが `HashMap` のため)。
-            pub fn #pairs_ident(&self) -> impl Iterator<Item = (&#from_id, &#to_id, &#attrs_ty)> {
-                self.#label
-                    .iter()
-                    .flat_map(|(from, items)| items.iter().map(move |(to, attrs)| (from, to, attrs)))
-            }
-        },
-    }
-}
-
-/// 項目d (フェーズ5): ID 版アクセサ。相手ノードの値ではなくキーを返す。
-/// 指揮系統チェーンのように「次のノードのキーへ辿ってまたそこから辿る」
-/// 処理をしたい場合に、値からキーを逆引きする追加コードを不要にする。
-/// 属性は既存の値アクセサ (`{label}`) で取得できるため ID 版には含めない
-/// (`docs/design_principles.md` 原則1: 型のstrictness — キーは newtype で
-/// 運び、値アクセサと役割を混在させない)。
-fn gen_edge_id_accessor(edge: &EdgeInfo<'_>) -> TokenStream {
-    let label = &edge.label;
-    let from_id = &edge.from_node.id_ident;
-    let to_id = &edge.to_node.id_ident;
-    let label_str = label.to_string();
-
-    let project_one = |expr: TokenStream| -> TokenStream {
-        match &edge.attrs_ty {
-            None => expr,
-            Some(_) => quote! { (#expr).map(|(to_id, _attrs)| to_id) },
-        }
-    };
-
-    match edge.decl.mult {
-        Multiplicity::One => {
-            let id_fn = format_ident!("{}_id", label);
-            let try_id_fn = format_ident!("try_{}_id", label);
-            let get_expr = project_one(quote! { self.#label.get(id) });
-            quote! {
-                /// 多重度 (1) の ID 版アクセサ。相手ノードの値ではなく
-                /// キーを返す。
-                ///
-                /// # Panics
-                /// `id` がこのグラフに存在しないキーの場合パニックする
-                /// (呼び出し規約違反。このグラフが発行したキーだけを渡すこと)。
-                pub fn #id_fn(&self, id: &#from_id) -> &#to_id {
-                    #get_expr.unwrap_or_else(|| {
-                        panic!(
-                            "{}_id: 未知のキーです (このグラフが発行したキーではありません): {:?}",
-                            #label_str, id
-                        )
-                    })
-                }
-
-                /// 上記の非パニック版。未知キーは (パニックせず) `None` を
-                /// 返す。
-                pub fn #try_id_fn(&self, id: &#from_id) -> Option<&#to_id> {
-                    #get_expr
-                }
-            }
-        }
-        Multiplicity::ZeroOrOne => {
-            let id_fn = format_ident!("{}_id", label);
-            let get_expr = project_one(quote! { self.#label.get(id) });
-            quote! {
-                /// 多重度 (0..1) の ID 版アクセサ。相手ノードの値ではなく
-                /// キーを `Option` で返す。未知キーも `None` に落ちる。
-                pub fn #id_fn(&self, id: &#from_id) -> Option<&#to_id> {
-                    #get_expr
-                }
-            }
-        }
-        Multiplicity::ZeroOrMany => {
-            let ids_fn = format_ident!("{}_ids", label);
-            let map_expr = match &edge.attrs_ty {
-                None => quote! { items.iter().collect() },
-                Some(_) => quote! { items.iter().map(|(to_id, _attrs)| to_id).collect() },
-            };
-            quote! {
-                /// 多重度 (0..*) の ID 版アクセサ。相手ノードの値ではなく
-                /// キーの列を返す。無い/未知キーはどちらも空。格納順
-                /// (構築時の追加順、`graph!` の場合はソース記述順) を保持する
-                /// (README「`(0..*)` エッジの順序保証」節参照)。
-                pub fn #ids_fn(&self, id: &#from_id) -> Vec<&#to_id> {
-                    match self.#label.get(id) {
-                        Some(items) => #map_expr,
-                        None => Vec::new(),
-                    }
-                }
-            }
-        }
-    }
-}
-
+/// エッジ 1 種別につき、ビュー (`graphite::EdgeOne`/`EdgeOneWith`/
+/// `EdgeOption`/`EdgeOptionWith`/`EdgeMany`/`EdgeManyWith`。多重度×属性有無
+/// で 6 択) を返す薄いメソッド 1 つだけを生成する
+/// (`docs/edge_view_api.md` §3.2)。旧版にあった `try_{label}`/`{label}_id`/
+/// `try_{label}_id`/`{label}_ids`/`{label}_pairs` という導出名メソッド群は
+/// 全廃した (痕跡なし)。操作の語彙 (`of`/`get`/`id_of`/`get_id`/`ids_of`/
+/// `iter`/`len`/`is_empty`) とその rustdoc (`# Panics` 含む) はビュー型側
+/// (`crates/graphite/src/edge_view.rs`) に集約されているため、ここで
+/// 生成するアクセサ自体には多重度・属性の有無以上のドキュメントを書かない。
+///
+/// 多重度 (1) のビュー (`EdgeOne`/`EdgeOneWith`) だけがパニックする
+/// `of`/`id_of` を持つため、旧アクセサと同等の情報量のパニック文言を組み立て
+/// られるよう、コンストラクタにラベル名・スキーマ名を追加で渡す。他の 4 型
+/// はパニックしないため、エッジ表・相手ノードストレージへの参照 2 つだけで
+/// 構築する。
 fn gen_edge_accessor(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream {
     let label = &edge.label;
     let from_id = &edge.from_node.id_ident;
+    let to_id = &edge.to_node.id_ident;
     let to_field = &edge.to_node.field_ident;
     let to_ty = &edge.to_node.type_ident;
     let label_str = label.to_string();
     let schema_name_str = schema_name.to_string();
 
-    let try_accessor = match edge.decl.mult {
-        Multiplicity::One => gen_try_edge_accessor(edge),
-        Multiplicity::ZeroOrOne | Multiplicity::ZeroOrMany => quote! {},
-    };
-    let pairs_iter = gen_edge_pairs_iter(edge);
-    let id_accessor = gen_edge_id_accessor(edge);
-
-    let main_accessor = match (&edge.decl.mult, &edge.attrs_ty) {
+    match (&edge.decl.mult, &edge.attrs_ty) {
         (Multiplicity::One, None) => quote! {
-            /// 多重度 (1) -> 参照そのものを返す。
-            ///
-            /// # Panics
-            /// `id` がこのグラフに存在しないキーの場合パニックする
-            /// (呼び出し規約違反。このグラフが発行したキーだけを渡すこと)。
-            pub fn #label(&self, id: &#from_id) -> &#to_ty {
-                let to_id = self.#label.get(id).unwrap_or_else(|| {
-                    panic!(
-                        "{}: 未知のキーです (この{}が発行したキーではありません): {:?}",
-                        #label_str, #schema_name_str, id
-                    )
-                });
-                &self.#to_field[to_id]
+            /// 多重度 (1)・属性なしのエッジビューを返す。
+            pub fn #label(&self) -> graphite::EdgeOne<'_, #from_id, #to_id, #to_ty> {
+                graphite::EdgeOne::new(&self.#label, &self.#to_field, #label_str, #schema_name_str)
             }
         },
         (Multiplicity::One, Some(attrs_ty)) => quote! {
-            /// 多重度 (1) + 属性あり -> `(参照, 属性参照)` を返す。
-            ///
-            /// # Panics
-            /// `id` がこのグラフに存在しないキーの場合パニックする。
-            pub fn #label(&self, id: &#from_id) -> (&#to_ty, &#attrs_ty) {
-                let (to_id, attrs) = self.#label.get(id).unwrap_or_else(|| {
-                    panic!(
-                        "{}: 未知のキーです (この{}が発行したキーではありません): {:?}",
-                        #label_str, #schema_name_str, id
-                    )
-                });
-                (&self.#to_field[to_id], attrs)
+            /// 多重度 (1)・属性ありのエッジビューを返す。
+            pub fn #label(&self) -> graphite::EdgeOneWith<'_, #from_id, #to_id, #to_ty, #attrs_ty> {
+                graphite::EdgeOneWith::new(&self.#label, &self.#to_field, #label_str, #schema_name_str)
             }
         },
         (Multiplicity::ZeroOrOne, None) => quote! {
-            /// 多重度 (0..1) -> `Option<&T>`。未知キーも `None` に落ちる。
-            pub fn #label(&self, id: &#from_id) -> Option<&#to_ty> {
-                self.#label.get(id).map(|to_id| &self.#to_field[to_id])
+            /// 多重度 (0..1)・属性なしのエッジビューを返す。
+            pub fn #label(&self) -> graphite::EdgeOption<'_, #from_id, #to_id, #to_ty> {
+                graphite::EdgeOption::new(&self.#label, &self.#to_field)
             }
         },
         (Multiplicity::ZeroOrOne, Some(attrs_ty)) => quote! {
-            /// 多重度 (0..1) + 属性あり -> `Option<(&T, &Attrs)>`。
-            pub fn #label(&self, id: &#from_id) -> Option<(&#to_ty, &#attrs_ty)> {
-                let (to_id, attrs) = self.#label.get(id)?;
-                Some((&self.#to_field[to_id], attrs))
+            /// 多重度 (0..1)・属性ありのエッジビューを返す。
+            pub fn #label(&self) -> graphite::EdgeOptionWith<'_, #from_id, #to_id, #to_ty, #attrs_ty> {
+                graphite::EdgeOptionWith::new(&self.#label, &self.#to_field)
             }
         },
         (Multiplicity::ZeroOrMany, None) => quote! {
-            /// 多重度 (0..*) -> `Vec<&T>`。無い/未知キーはどちらも空。
-            ///
-            /// 順序保証 (項目i、フェーズ5): 格納が `Vec` ベースであり、
-            /// 構築時の追加順 (`graph!` の場合はソース中の記述順) を
-            /// そのまま保持する。選択肢の表示順のように順序が意味を持つ
-            /// 場面で依存してよい (README「`(0..*)` エッジの順序保証」節
-            /// 参照)。
-            pub fn #label(&self, id: &#from_id) -> Vec<&#to_ty> {
-                match self.#label.get(id) {
-                    Some(ids) => ids.iter().map(|to_id| &self.#to_field[to_id]).collect(),
-                    None => Vec::new(),
-                }
+            /// 多重度 (0..*)・属性なしのエッジビューを返す。
+            pub fn #label(&self) -> graphite::EdgeMany<'_, #from_id, #to_id, #to_ty> {
+                graphite::EdgeMany::new(&self.#label, &self.#to_field)
             }
         },
         (Multiplicity::ZeroOrMany, Some(attrs_ty)) => quote! {
-            /// 多重度 (0..*) + 属性あり -> `Vec<(&T, &Attrs)>`。
-            ///
-            /// 順序保証 (項目i、フェーズ5): 格納が `Vec` ベースであり、
-            /// 構築時の追加順 (`graph!` の場合はソース中の記述順) を
-            /// そのまま保持する。
-            pub fn #label(&self, id: &#from_id) -> Vec<(&#to_ty, &#attrs_ty)> {
-                match self.#label.get(id) {
-                    Some(items) => items
-                        .iter()
-                        .map(|(to_id, attrs)| (&self.#to_field[to_id], attrs))
-                        .collect(),
-                    None => Vec::new(),
-                }
+            /// 多重度 (0..*)・属性ありのエッジビューを返す。
+            pub fn #label(&self) -> graphite::EdgeManyWith<'_, #from_id, #to_id, #to_ty, #attrs_ty> {
+                graphite::EdgeManyWith::new(&self.#label, &self.#to_field)
             }
         },
-    };
-
-    quote! {
-        #main_accessor
-        #try_accessor
-        #id_accessor
-        #pairs_iter
     }
 }
 

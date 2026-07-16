@@ -63,7 +63,7 @@ mod usage {
             g.employee(&EmployeeId("tanaka".to_string())).unwrap().name,
             "田中"
         );
-        let dept: &Department = g.belongs_to(&EmployeeId("tanaka".to_string()));
+        let dept: &Department = g.belongs_to().of(&EmployeeId("tanaka".to_string()));
         assert_eq!(dept.name, "営業");
     }
 }
