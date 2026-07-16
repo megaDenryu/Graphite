@@ -98,12 +98,12 @@ fn 異なるシードなら生成結果が変わる() {
     let dept_counts_a: Vec<usize> = a
         .chart
         .department_ids()
-        .map(|d| a.chart.belongs_to_pairs().filter(|(_, dep)| *dep == d).count())
+        .map(|d| a.chart.belongs_to().iter().filter(|(_, dep)| *dep == d).count())
         .collect();
     let dept_counts_b: Vec<usize> = b
         .chart
         .department_ids()
-        .map(|d| b.chart.belongs_to_pairs().filter(|(_, dep)| *dep == d).count())
+        .map(|d| b.chart.belongs_to().iter().filter(|(_, dep)| *dep == d).count())
         .collect();
 
     assert_ne!(dept_counts_a, dept_counts_b, "seedが違えば部署別人数分布は変わるはず");
@@ -134,7 +134,7 @@ fn chainはトップ層まで辿ると停止する() {
         .employee_ids()
         .find(|id| {
             let emp = generated.chart.employee(id).unwrap();
-            emp.grade == 5 && generated.chart.boss(id).is_none()
+            emp.grade == 5 && generated.chart.boss().of(id).is_none()
         })
         .cloned();
 
@@ -159,7 +159,7 @@ fn reorgは廃止部署の全社員を他部署へ再配置する() {
 
     let before_count = generated
         .chart
-        .belongs_to_pairs()
+        .belongs_to().iter()
         .filter(|(_, d)| **d == target)
         .count();
     assert!(before_count > 0, "テスト対象部署には元々社員がいるはず");
@@ -177,7 +177,7 @@ fn reorgは廃止部署の全社員を他部署へ再配置する() {
             assert!(new_org.department(&target).is_none());
             // 再配置された社員は新部署に所属している
             for (emp_id, new_dept) in &report.reassigned {
-                let actual = new_org.try_belongs_to(emp_id);
+                let actual = new_org.belongs_to().get(emp_id);
                 assert_eq!(actual.map(|d| d.name.clone()), new_org.department(new_dept).map(|d| d.name.clone()));
             }
             // 社員総数・プロジェクト総数は変化しない
@@ -203,10 +203,11 @@ fn reorgは存在しない部署キーでnoneを返す() {
 #[test]
 fn reorgでスポンサー元部署を廃止するとviolationになる() {
     let generated = dataset::generate(TEST_SEED, false);
-    // sponsors_pairsを持つ部署を1つ探す (スポンサー辺を発している側)。
+    // sponsors().iter()を持つ部署を1つ探す (スポンサー辺を発している側)。
     let sponsor_dept = generated
         .chart
-        .sponsors_pairs()
+        .sponsors()
+        .iter()
         .map(|(d, _p)| d.clone())
         .next();
 

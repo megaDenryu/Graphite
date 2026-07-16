@@ -109,7 +109,7 @@ cargo run -- summary
   ...
 ```
 
-「span of control」は `grade >= 3` (係長以上) を管理職とみなし、`boss_pairs()`
+「span of control」は `grade >= 3` (係長以上) を管理職とみなし、`boss().iter()`
 を上司キーで集計した直属部下数から平均・最大・部下ゼロの管理職一覧を出す。
 
 ### 2. `chain <社員キー>` — 管理チェーンを根まで辿る
@@ -127,8 +127,8 @@ cargo run -- chain E003 --seed 7 --inject-anomalies
 [警告] 循環を検出したため打ち切りました (社員 E003 まで戻っています)
 ```
 
-`boss` アクセサ (多重度 0..1) は `Option<(&Employee, &BossEdge)>` を返すだけで
-上司の ID そのものは含まないため、`boss_pairs()` から `EmployeeId -> (EmployeeId,
+`boss().of` (多重度 0..1) は `Option<(&Employee, &BossEdge)>` を返すだけで
+上司の ID そのものは含まないため、`boss().iter()` から `EmployeeId -> (EmployeeId,
 since)` の索引を作ってから辿っている。訪問済み集合を持ちながら辿ることで、
 途中で循環に入った場合も無限ループせず検出・打ち切りできる。
 
@@ -168,7 +168,7 @@ cargo run -- anomalies --seed 7 --inject-anomalies
 
 検出手法:
 
-- **相互上司ペア**: `boss_pairs()` で全ペアを集めておき、`(a, b)` かつ
+- **相互上司ペア**: `boss().iter()` で全ペアを集めておき、`(a, b)` かつ
   `(b, a)` が両方存在するものを拾う (README (Graphite本体) に載っている手法
   そのもの)。
 - **上司循環**: `boss` エッジを `Graph::from_edges` (フェーズ5追加) で汎用
@@ -177,10 +177,10 @@ cargo run -- anomalies --seed 7 --inject-anomalies
   をそのまま使えるので、以前のような「boss辺を手で辿って復元する」処理は
   不要になった。長さ2の循環 (相互上司) は上の項目と重複するのでここには
   含めない。
-- **部署跨ぎ上司**: `belongs_to_pairs()` で作った所属索引と `boss_pairs()`
+- **部署跨ぎ上司**: `belongs_to().iter()` で作った所属索引と `boss().iter()`
   を突き合わせ、上司と部下の部署が異なるものを拾う。
-- **無人プロジェクト / スポンサー無しプロジェクト**: `assigned_pairs()` /
-  `sponsors_pairs()` に現れないプロジェクトキーを `project_ids()` との差分
+- **無人プロジェクト / スポンサー無しプロジェクト**: `assigned().iter()` /
+  `sponsors().iter()` に現れないプロジェクトキーを `project_ids()` との差分
   で求める。
 
 ### 4. `reorg <部署キー>` — 組織改編シミュレーション
@@ -249,7 +249,7 @@ $ cargo run -- reorg D03
 ### 1. 多重度(1)による「全社員は必ず1部署」保証
 
 生HashMap実装では「社員を登録したが部署未設定」「部署を2つ登録してしまった」
-といった不整合が **実行時に静かに** 残り得る。`belongs_to_pairs()` を毎回
+といった不整合が **実行時に静かに** 残り得る。`belongs_to().iter()` を毎回
 自分で数えて検査するコードを書かない限り気づけない。
 
 Graphiteでは `edge Employee -[belongs_to]-> Department (1)` と宣言した時点で、
@@ -271,27 +271,29 @@ Graphiteには可変な削除APIが存在せず、「新しいノード集合と
 再構築のたびに `freeze` が全エッジの端点を検査するため、カスケード削除の
 モレは (今回のように) 必ずその場で `Violation` として浮かび上がる。
 
-### 3. 型付きアクセサによる誤り耐性
+### 3. 型付きビューによる誤り耐性
 
-`g.belongs_to(&emp_id)` は `&Department` を、`g.boss(&emp_id)` は
-`Option<(&Employee, &BossEdge)>` を、`g.assigned(&emp_id)` は
+`g.belongs_to().of(&emp_id)` は `&Department` を、`g.boss().of(&emp_id)` は
+`Option<(&Employee, &BossEdge)>` を、`g.assigned().of(&emp_id)` は
 `Vec<(&Project, &AssignedEdge)>` を返す — 多重度がそのまま戻り値の型
 (直接返却 / `Option` / `Vec`) に反映されている。生HashMap実装で
 `HashMap<EmployeeId, Vec<DepartmentId>>` のように多重度を型で表現し忘れると、
 「本当は1つのはずの部署が複数入っている」バグを型システムが教えてくれない。
 
-`try_belongs_to()` (非パニック版) と `belongs_to()` (パニック版) の対も、
-「このグラフが発行したキーだけを渡す」という呼び出し規約と、「外部入力
-かもしれないキーを安全に検査する」という用途を型シグネチャで自然に書き分け
-られる (`main.rs` の `chain`/`reorg` サブコマンドで未知キー入力を扱う箇所は
-`Option` 版、内部で確実に存在するキーを使う箇所は直接アクセサ、と使い分けて
-いる)。
+`belongs_to().get()` (非パニック版) と `belongs_to().of()` (パニック版) の
+対も、「このグラフが発行したキーだけを渡す」という呼び出し規約と、「外部
+入力かもしれないキーを安全に検査する」という用途を型シグネチャで自然に
+書き分けられる (`main.rs` の `chain`/`reorg` サブコマンドで未知キー入力を
+扱う箇所は `get`、内部で確実に存在するキーを使う箇所は `of`、と使い分けて
+いる)。ビューの操作語彙 (`of`/`get`/`id_of`/`get_id`/`ids_of`/`iter`) は
+ラベルによらず共通なので、覚えることは増えない (`docs/edge_view_api.md`
+参照)。
 
-### 4. pairsイテレータによる宣言的なクエリ
+### 4. `iter()` による宣言的なクエリ
 
 `anomalies` コマンドの相互上司検出・部署跨ぎ上司検出は、生HashMapなら
 「全社員をループしてO(N)の検索を都度行う」か「逆引きインデックスを自分で
-構築・保守する」必要がある。Graphiteの `boss_pairs()`/`belongs_to_pairs()`
+構築・保守する」必要がある。Graphiteの `boss().iter()`/`belongs_to().iter()`
 は最初からその形 (`(&EmployeeId, &EmployeeId[, &Attrs])` のイテレータ) で
 提供されるため、`filter`/`collect`/`contains` といった通常のイテレータ
 コンビネータだけで検出ロジックを書ける (`src/analysis.rs` 参照)。
@@ -316,10 +318,17 @@ tests/
 - **`boss()` のような多重度(0..1)アクセサが相手ノードのIDを返さない**。
   `Option<(&Employee, &BossEdge)>` は値は取れるが「その上司のキーは何か」
   が分からないため、`chain` コマンドのようにチェーンを辿る用途では結局
-  `boss_pairs()` から自前でインデックス (`HashMap<EmployeeId, (EmployeeId,
+  `boss().iter()` から自前でインデックス (`HashMap<EmployeeId, (EmployeeId,
   BossEdge)>`) を作り直す必要があった。`{label}_target(&SrcId) ->
   Option<&DstId>` のような「相手キーだけを返す」アクセサがあると、
   グラフを辿るタイプの処理 (経路探索・チェーン追跡) がもう一段書きやすい。
+  → **解決 (フェーズ5で `{label}_id` として追加、その後ビュー方式
+  (`docs/edge_view_api.md`) へ移行)**: 現在は `boss().id_of(&EmployeeId) ->
+  Option<&EmployeeId>` としてキーだけを取得できる。`management_chain` は
+  依然として自前でインデックスを作っているが、これは「上司を根まで辿る」
+  という探索そのものが `id_of` 単体では表現できない (毎回グラフに問い合わせ
+  直すより索引を1回作る方が効率的な) ためであり、キー取得手段が無いことに
+  よる回避策ではなくなった。
 - **`Graph<N, E, K>::topological_sort()` の `CycleError` が循環メンバーを
   1つしか返さない**。今回の `boss` は「各ノードの出次数が高々1」という
   特殊な形 (関数グラフ) だったため自前で辿って復元できたが、一般のグラフ

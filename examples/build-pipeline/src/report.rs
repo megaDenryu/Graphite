@@ -114,7 +114,8 @@ pub fn mermaid(g: &BuildPipeline) -> String {
     }
 
     let mut produces: Vec<(String, String)> = g
-        .produces_pairs()
+        .produces()
+        .iter()
         .map(|(t, a)| (sanitize_id(&t.0), sanitize_id(&a.0)))
         .collect();
     produces.sort();
@@ -123,7 +124,8 @@ pub fn mermaid(g: &BuildPipeline) -> String {
     }
 
     let mut consumes: Vec<(String, String)> = g
-        .consumes_pairs()
+        .consumes()
+        .iter()
         .map(|(t, a)| (sanitize_id(&t.0), sanitize_id(&a.0)))
         .collect();
     consumes.sort();

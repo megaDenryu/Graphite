@@ -4,7 +4,7 @@
 //! グラフの形が正しいかどうかであり、「誰も produce しない artifact を
 //! consume している」「同じ artifact を2つのタスクが produce している」
 //! 「タスク依存が循環している」といった *ビルドパイプラインとしての意味の
-//! 妥当性* は検査しない。これらはこのモジュールで、`{label}_pairs()` /
+//! 妥当性* は検査しない。これらはこのモジュールで、`{label}().iter()` /
 //! `{node_snake}_ids()` イテレータと汎用 `graphite::Graph<TaskId>` への
 //! 射影を使って別レイヤーとして実装する
 //! (README「導出エッジ」節が想定する使い分けそのもの)。
@@ -24,13 +24,13 @@ pub type TaskDependencyGraph = Graph<(), (), TaskId>;
 
 /// [`BuildPipeline`] からタスク依存グラフを射影する。
 ///
-/// `produces_pairs()`/`consumes_pairs()` はどちらも `BuildPipeline` の生成物
+/// `produces().iter()`/`consumes().iter()` はどちらも `BuildPipeline` の生成物
 /// (図式グラフのクエリ API) であり、ここで初めて「タスク間の順序」という
 /// 導出情報を組み立てる。エッジの終点キーは常に `g.task_ids()` 由来なので
 /// `Graph::build` が `UnknownEndpoint` を返すことはない (`expect` で妥当)。
 pub fn task_dependency_graph(g: &BuildPipeline) -> TaskDependencyGraph {
     let mut producers_of: HashMap<&ArtifactId, Vec<&TaskId>> = HashMap::new();
-    for (task, artifact) in g.produces_pairs() {
+    for (task, artifact) in g.produces().iter() {
         producers_of.entry(artifact).or_default().push(task);
     }
 
@@ -42,7 +42,7 @@ pub fn task_dependency_graph(g: &BuildPipeline) -> TaskDependencyGraph {
     // `FnMut` の性質上、その借用は呼び出しの外へ逃がせない)。ループで
     // 即座に `Vec` へ確定させることで回避する。
     let mut edges: Vec<(TaskId, TaskId, ())> = Vec::new();
-    for (consumer, artifact) in g.consumes_pairs() {
+    for (consumer, artifact) in g.consumes().iter() {
         if let Some(producers) = producers_of.get(artifact) {
             for producer in producers {
                 edges.push(((*producer).clone(), consumer.clone(), ()));
@@ -120,11 +120,11 @@ pub fn validate(g: &BuildPipeline) -> Vec<DomainIssue> {
     let mut issues = Vec::new();
 
     let mut producers_of: HashMap<&ArtifactId, Vec<&TaskId>> = HashMap::new();
-    for (task, artifact) in g.produces_pairs() {
+    for (task, artifact) in g.produces().iter() {
         producers_of.entry(artifact).or_default().push(task);
     }
     let mut consumers_of: HashMap<&ArtifactId, Vec<&TaskId>> = HashMap::new();
-    for (task, artifact) in g.consumes_pairs() {
+    for (task, artifact) in g.consumes().iter() {
         consumers_of.entry(artifact).or_default().push(task);
     }
 

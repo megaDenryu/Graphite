@@ -47,7 +47,8 @@ pub fn to_mermaid(schema: &DialogueGraph) -> String {
     }
 
     let mut choice_edges: Vec<(&SceneId, &SceneId, &str)> = schema
-        .choice_pairs()
+        .choice()
+        .iter()
         .map(|(from, to, attrs)| (from, to, attrs.label.as_str()))
         .collect();
     choice_edges.sort_by(|a, b| (a.0, a.1).cmp(&(b.0, b.1)));
@@ -60,7 +61,7 @@ pub fn to_mermaid(schema: &DialogueGraph) -> String {
         ));
     }
 
-    let mut finale_edges: Vec<(&SceneId, &EndingId)> = schema.finale_pairs().collect();
+    let mut finale_edges: Vec<(&SceneId, &EndingId)> = schema.finale().iter().collect();
     finale_edges.sort();
     for (from, to) in finale_edges {
         out.push_str(&format!(
@@ -138,22 +139,22 @@ pub fn compute_stats(schema: &DialogueGraph, start: &SceneId) -> Stats {
 
     let scene_count = schema.scene_ids().count();
     let ending_count = schema.ending_ids().count();
-    let choice_count = schema.choice_pairs().count();
+    let choice_count = schema.choice().len();
 
     // 合流点: ある終点シーンへ、異なる始点シーンから2本以上の choice 辺が
     // 入っているシーン。
     let mut incoming: HashMap<SceneId, HashSet<SceneId>> = HashMap::new();
-    for (from, to, _attrs) in schema.choice_pairs() {
+    for (from, to, _attrs) in schema.choice().iter() {
         incoming.entry(to.clone()).or_default().insert(from.clone());
     }
     let convergence_count = incoming.values().filter(|froms| froms.len() >= 2).count();
 
     let mut shortest_routes: Vec<(String, usize)> = Vec::new();
-    for (scene_id, ending_id) in schema.finale_pairs() {
+    for (scene_id, ending_id) in schema.finale().iter() {
         if let Some(path) = scene_graph.path(start, scene_id) {
             let ending = schema
                 .ending(ending_id)
-                .expect("finale_pairs() が返す EndingId は必ず ending() で引ける");
+                .expect("finale().iter() が返す EndingId は必ず ending() で引ける");
             shortest_routes.push((ending.title.clone(), path.len()));
         }
     }
@@ -185,7 +186,7 @@ pub fn route_to_ending(
     let scene_graph = schema.scene_graph();
 
     let mut best: Option<Vec<SceneId>> = None;
-    for (scene_id, e) in schema.finale_pairs() {
+    for (scene_id, e) in schema.finale().iter() {
         if e != ending {
             continue;
         }

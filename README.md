@@ -53,12 +53,12 @@ let g = graphite::graph!(Org {
     bob   -[boss = BossEdge { since: 2021 }]-> alice,
 })?;
 
-let team: &Team = g.belongs_to(&PersonId("alice".to_string()));
-let (boss, attrs) = g.boss(&PersonId("bob".to_string())).unwrap(); // (&Person, &BossEdge)
+let team: &Team = g.belongs_to().of(&PersonId("alice".to_string()));
+let (boss, attrs) = g.boss().of(&PersonId("bob".to_string())).unwrap(); // (&Person, &BossEdge)
 ```
 
-`graph_schema!` が何を生成するか (newtype キー・builder・アクセサ・違反 enum)、
-多重度ごとにアクセサが何を返すかは下記「使用例」節で詳しく説明します。
+`graph_schema!` が何を生成するか (newtype キー・builder・エッジビュー・
+違反 enum)、多重度ごとにビューが何を返すかは下記「使用例」節で詳しく説明します。
 「ラベルとは値なのか関数なのか、何ができて何ができないのか」を実際のコンパイル
 エラー付きで1つずつ確認したい場合は、まず `examples/hello-graph` を読んでみて
 ください (下記「実践例」節参照)。
@@ -160,36 +160,46 @@ struct を複数の schema が `node` として参照すると、両方の schem
 `{Node}Id` newtype を生成しようとして名前衝突します。schema ごとにモジュール
 を分けて運用してください。
 
-多重度→戻り値の対応:
+**エッジアクセスはビュー方式 (`docs/edge_view_api.md`)**: ラベルごとに
+生成されるのはビューを返す1個のメソッド `{label}() -> EdgeXxx<'_, ...>`
+だけです (旧版にあった `try_{label}`/`{label}_id(s)`/`{label}_pairs` という
+導出名の合成メソッド群は全廃しました)。ビューが持つ操作の語彙は全ラベル・
+全スキーマ共通で、graphite ランタイム側の
+`EdgeOne`/`EdgeOneWith`/`EdgeOption`/`EdgeOptionWith`/`EdgeMany`/
+`EdgeManyWith` (多重度×属性有無で6種) に1回だけ定義されています:
 
-| 多重度     | 格納                        | アクセサの戻り値                  |
-|-----------|----------------------------|-----------------------------------|
-| `(1)`     | 必須 1 本 (freeze で検査)    | `&T` (または属性付きなら `(&T, &Attrs)`) |
-| `(0..1)`  | 高々 1 本                   | `Option<&T>` (属性付きは `Option<(&T, &Attrs)>`) |
-| `(0..*)`  | 0 本以上                     | `Vec<&T>` (属性付きは `Vec<(&T, &Attrs)>`) |
+- **`of(&SrcId)`** — そのラベルの自然な戻り値。**多重度が戻り型を決めます**:
 
-多重度 `(1)` のアクセサ (`{label}(&SrcId) -> &T`) は未知キーを渡すとパニック
-します (`Vec` の `v[i]` と同じ「呼び出し規約違反」の扱い)。パニックしない
-版として `try_{label}(&SrcId) -> Option<&T>` (属性付きなら
-`Option<(&T, &Attrs)>`) も併せて生成されます (`v.get(i)` に相当)。
+  | 多重度     | 格納                        | `of` の戻り値                  |
+  |-----------|----------------------------|-----------------------------------|
+  | `(1)`     | 必須 1 本 (freeze で検査)    | `&T` (または属性付きなら `(&T, &Attrs)`)。未知キーはパニック |
+  | `(0..1)`  | 高々 1 本                   | `Option<&T>` (属性付きは `Option<(&T, &Attrs)>`) |
+  | `(0..*)`  | 0 本以上                     | `Vec<&T>` (属性付きは `Vec<(&T, &Attrs)>`) |
 
-さらに、`match` パターンでのグラフクエリの代替として、各エッジ種別ごとに
-ペアイテレータ `{label}_pairs() -> impl Iterator<Item = (&SrcId, &DstId)>`
-(属性付きなら `(&SrcId, &DstId, &Attrs)`。多重度 `(0..*)` は全ペアへ展開)
-と、各ノード種別ごとにキー列挙 `{node_snake}_ids() -> impl Iterator<Item = &NodeId>`
-も生成されます。使用例は「3. アクセサ・アルゴリズムを使う」節を参照。
+  多重度 `(1)` の `of` (`{label}().of(&SrcId) -> &T`) は未知キーを渡すと
+  パニックします (`Vec` の `v[i]` と同じ「呼び出し規約違反」の扱い)。
+- **`get(&SrcId)`** — `of` の `Option` 版。**`(1)` のビューにのみ存在**
+  します (`(0..1)`/`(0..*)` は `of` が既に全域関数なので生成しません。
+  `Vec` の `v[i]`/`v.get(i)` と同じ関係)。
+- **`id_of`/`get_id`/`ids_of`** — 相手ノードの*値*ではなくキーが欲しいとき
+  に使います (指揮系統チェーンのように「次のノードのキーへ辿ってまた
+  そこから辿る」処理向け)。`of`/`get` と同じ多重度規則です:
 
-**ID版アクセサ (フェーズ5)**: `{label}` 系アクセサは相手ノードの*値*
-(`&T`) を返しますが、指揮系統チェーンのように「次のノードのキーへ辿って
-またそこから辿る」処理には値ではなくキーが要ります。多重度ごとに以下の
-ID版が併せて生成されます (属性は既存の値アクセサで取得できるため、ID版
-には含めません):
+  | 多重度     | ID版メソッド                                        |
+  |-----------|-----------------------------------------------------|
+  | `(1)`     | `id_of(&SrcId) -> &DstId` (未知キーはパニック。`# Panics` 明記) + `get_id(&SrcId) -> Option<&DstId>` |
+  | `(0..1)`  | `id_of(&SrcId) -> Option<&DstId>`                    |
+  | `(0..*)`  | `ids_of(&SrcId) -> Vec<&DstId>` (格納順を保持。後述「`(0..*)` エッジの順序保証」節参照) |
+- **`iter()`** — 表全体を辺単位で走査します。`match` パターンでのグラフ
+  クエリの代替として使えます。属性なしは `(&SrcId, &DstId)` の2つ組、
+  属性ありは `(&SrcId, &DstId, &Attrs)` の3つ組 (多重度 `(0..*)` は全ペア
+  へ展開)。使用例は「3. アクセサ・アルゴリズムを使う」節を参照。
+- **`len()`/`is_empty()`** — 表の辺の本数 (`(0..*)` は始点キーごとの終点数
+  の総和)。
 
-| 多重度     | ID版アクセサ                                        |
-|-----------|-----------------------------------------------------|
-| `(1)`     | `{label}_id(&SrcId) -> &DstId` (未知キーはパニック。`# Panics` 明記) + `try_{label}_id(&SrcId) -> Option<&DstId>` |
-| `(0..1)`  | `{label}_id(&SrcId) -> Option<&DstId>`               |
-| `(0..*)`  | `{label}_ids(&SrcId) -> Vec<&DstId>` (格納順を保持。後述「`(0..*)` エッジの順序保証」節参照) |
+ノード種別ごとのキー列挙 `{node_snake}_ids() -> impl Iterator<Item = &NodeId>`
+はビュー化していません (2個だけなので許容範囲。README「変更しないもの」
+節参照)。
 
 **`create_collecting` (フェーズ5)**: `create` は最初の1件の違反で `Err`
 になりますが、組織図の全違反を一覧表示するような検証系ユースケースでは
@@ -302,17 +312,17 @@ v2 まではエッジ行ごとにハンドシェイク用の宣言的マクロ
 ### 3. アクセサ・アルゴリズムを使う
 
 ```rust
-let dept = g.belongs_to(&EmployeeId("tanaka".to_string())); // &Department (多重度 (1))
-let (boss, attrs) = g.boss(&EmployeeId("tanaka".to_string())).unwrap(); // Option<(&Employee, &BossEdge)>
-let reports = g.reports(&EmployeeId("tanaka".to_string())); // Vec<&Employee>
+let dept = g.belongs_to().of(&EmployeeId("tanaka".to_string())); // &Department (多重度 (1))
+let (boss, attrs) = g.boss().of(&EmployeeId("tanaka".to_string())).unwrap(); // Option<(&Employee, &BossEdge)>
+let reports = g.reports().of(&EmployeeId("tanaka".to_string())); // Vec<&Employee>
 
-// try_{label}: 多重度 (1) の非パニック版。未知キーは None に落ちる。
-let dept_opt = g.try_belongs_to(&EmployeeId("no-such-id".to_string())); // None
+// get: 多重度 (1) の非パニック版。未知キーは None に落ちる。
+let dept_opt = g.belongs_to().get(&EmployeeId("no-such-id".to_string())); // None
 
-// {label}_pairs(): match パターンの代替。イテレータチェーンでクエリを書く。
+// iter(): match パターンの代替。イテレータチェーンでクエリを書く。
 // 例: 相互に上司であるペア (A の boss が B かつ B の boss が A) を検出する。
 let all: Vec<(&EmployeeId, &EmployeeId)> =
-    g.boss_pairs().map(|(a, b, _attrs)| (a, b)).collect();
+    g.boss().iter().map(|(a, b, _attrs)| (a, b)).collect();
 let mutual_bosses: Vec<(&EmployeeId, &EmployeeId)> = all
     .iter()
     .copied()
@@ -322,11 +332,11 @@ let mutual_bosses: Vec<(&EmployeeId, &EmployeeId)> = all
 // {node_snake}_ids(): ノード種別ごとの全キー列挙。
 let all_employee_ids: Vec<&EmployeeId> = g.employee_ids().collect();
 
-// {label}_id / {label}_ids: 値ではなくキーを返すID版アクセサ (フェーズ5)。
+// id_of / ids_of: 値ではなくキーを返す (フェーズ5で導入、その後ビュー方式へ移行)。
 // 指揮系統チェーンのように「キーのまま次のノードへ辿る」処理に使う。
-let dept_id: &DepartmentId = g.belongs_to_id(&EmployeeId("tanaka".to_string()));
-let boss_id: Option<&EmployeeId> = g.boss_id(&EmployeeId("sato".to_string()));
-let report_ids: Vec<&EmployeeId> = g.reports_ids(&EmployeeId("tanaka".to_string()));
+let dept_id: &DepartmentId = g.belongs_to().id_of(&EmployeeId("tanaka".to_string()));
+let boss_id: Option<&EmployeeId> = g.boss().id_of(&EmployeeId("sato".to_string()));
+let report_ids: Vec<&EmployeeId> = g.reports().ids_of(&EmployeeId("tanaka".to_string()));
 
 // create_collecting: 最初の1件で打ち切らず全違反を収集する (フェーズ5)。
 let result: Result<OrgChart, Vec<OrgChartViolation>> = OrgChart::create_collecting(|b| {
@@ -347,7 +357,7 @@ let result: Result<OrgChart, Vec<OrgChartViolation>> = OrgChart::create_collecti
   始点キー一覧)。
 - `Graph::<(), (), K>::from_edges(nodes, edges) -> Result<Self, GraphError<K>>` —
   ノードキー集合と `(from, to)` の列から値なしの構造グラフを作る射影用
-  ヘルパー。`{label}_pairs()` から汎用アルゴリズムへ射影する定型操作向け。
+  ヘルパー。`{label}().iter()` から汎用アルゴリズムへ射影する定型操作向け。
 - `topological_levels() -> Result<Vec<Vec<&K>>, CycleError<K>>` — 依存の
   ないノードから順にレベル (波) 分割したトポロジカルソート (レベル内は
   挿入順で決定的)。
@@ -374,14 +384,14 @@ let result: Result<OrgChart, Vec<OrgChartViolation>> = OrgChart::create_collecti
 `Vec<(DstId, Attrs)>`) として格納されます。**同一始点キーに対する複数
 終点の相対順序は、構築時の追加順 (builder の呼び出し順。`graph!` の場合は
 ソース中の記述順) をそのまま保持することを仕様として保証します。** これは
-実装詳細ではなく、`{label}`/`{label}_ids`/`{label}_pairs()` いずれの
-アクセサでも成り立つ保証です (`crates/graphite/tests/orgchart_macro.rs`
-の `reports_ids` 順序テスト参照)。分岐ノベルの選択肢表示順のように、
+実装詳細ではなく、`of`/`ids_of`/`iter()` いずれのビューメソッドでも
+成り立つ保証です (`crates/graphite/tests/orgchart_macro.rs` の
+`reportsのids_of` 順序テスト参照)。分岐ノベルの選択肢表示順のように、
 順序そのものが意味を持つ場面で安心して依存できます。
 
-ただし、これは「同一始点キー内での順序」の保証であり、`{label}_pairs()`
-が異なる始点キーをまたいで列挙する順序までは保証しません (始点キーの
-集合は `HashMap` で管理されているため)。
+ただし、これは「同一始点キー内での順序」の保証であり、`iter()` が異なる
+始点キーをまたいで列挙する順序までは保証しません (始点キーの集合は
+`HashMap` で管理されているため)。
 
 ### 名前空間に関する制約 (`graph!`)
 
@@ -513,17 +523,20 @@ cargo test
 (残り 1 項目は設計判断として据え置き) に着手し、対応関係は以下の通りです。
 
 - **多重度 `(1)` アクセサへ未知キーを渡した場合は v0 ではパニックとする —
-  解決済み (フェーズ4)**。既存の `{label}(&SrcId) -> &T` (パニック版) は
-  「このスキーマが発行したキーだけを渡すことが呼び出し側の責務」という
-  設計のまま残しつつ、非パニック版 `try_{label}(&SrcId) -> Option<&T>`
-  (属性付きは `Option<(&T, &Attrs)>`) を追加生成しました。`Vec` の `v[i]`
-  (パニック) と `v.get(i)` (`Option`) の対と同じ関係です。
+  解決済み (フェーズ4、その後ビュー方式へ移行)**。多重度 `(1)` のビューの
+  `of(&SrcId) -> &T` (パニック版) は「このスキーマが発行したキーだけを
+  渡すことが呼び出し側の責務」という設計のまま残しつつ、非パニック版
+  `get(&SrcId) -> Option<&T>` (属性付きは `Option<(&T, &Attrs)>`) を対で
+  持ちます。`Vec` の `v[i]` (パニック) と `v.get(i)` (`Option`) の対と
+  同じ関係です (フェーズ4では `{label}`/`try_{label}` という導出名の
+  メソッド対でしたが、`docs/edge_view_api.md` でビュー1個の `of`/`get`
+  に統合されました)。
 - **`match` パターンでのクエリは非対応 — 一部緩和 (フェーズ4)、
   `match` 構文そのものは引き続き非対応**。Vertex 側で検討していた
   `match g { @{ a -[boss]-> b, b -[boss]-> a } => ... }` のような辺ラベル
   付きパターンマッチは、Rust の安定版では `match` アーム位置に任意の
   カスタム構文を注入できないため今後も実装しません。代わりに、各エッジ
-  種別ごとのペアイテレータ `{label}_pairs() -> impl Iterator<Item = (&SrcId, &DstId[, &Attrs])>`
+  種別ごとのビューの `iter() -> impl Iterator<Item = (&SrcId, &DstId[, &Attrs])>`
   と、各ノード種別ごとのキー列挙 `{node_snake}_ids()` を追加し、メソッド
   チェーンで同種のクエリ (例: 相互上司の検出) を書けるようにしました
   (独自パーサ・コンビネータ DSL は「独自パーサの再演になる」という

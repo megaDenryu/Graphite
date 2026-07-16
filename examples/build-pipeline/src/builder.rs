@@ -82,7 +82,7 @@ test_core consumes target/core.rlib
         assert_eq!(g.task_ids().count(), 2);
         assert_eq!(g.artifact_ids().count(), 1);
 
-        let produced = g.produces(&TaskId("build_core".to_string()));
+        let produced = g.produces().of(&TaskId("build_core".to_string()));
         assert_eq!(produced.len(), 1);
         assert_eq!(produced[0].path, "target/core.rlib");
     }

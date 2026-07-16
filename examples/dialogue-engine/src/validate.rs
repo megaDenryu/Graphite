@@ -67,7 +67,7 @@ pub fn validate(schema: &DialogueGraph, start: &SceneId) -> ValidationReport {
 
     // 3-a. finale を持つシーンの集合 (到達可能性チェックの終点候補)。
     let finale_scene_ids: HashSet<SceneId> =
-        schema.finale_pairs().map(|(from, _to)| from.clone()).collect();
+        schema.finale().iter().map(|(from, _to)| from.clone()).collect();
 
     // 3-b. 「そのシーンから、finale を持つシーンへ到達できるか」を全シーン
     //      について計算する (自分自身が finale シーンなら当然到達できる —
@@ -87,7 +87,8 @@ pub fn validate(schema: &DialogueGraph, start: &SceneId) -> ValidationReport {
     // 4. 到達不能なエンディング: reachable な finale シーンが指す先だけを
     //    「到達可能エンディング」とし、その補集合を報告する。
     let reachable_endings: HashSet<EndingId> = schema
-        .finale_pairs()
+        .finale()
+        .iter()
         .filter(|(from, _to)| reachable.contains(*from))
         .map(|(_from, to)| to.clone())
         .collect();

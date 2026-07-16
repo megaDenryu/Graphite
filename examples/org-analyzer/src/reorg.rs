@@ -62,7 +62,7 @@ pub fn simulate_reorg(org: &OrgChart, target: &DepartmentId) -> Option<ReorgRepo
     // 元の belongs_to を社員キー順にソートし、対象部署に所属していた社員を
     // 残存部署へラウンドロビンで機械的に再配置する。
     let mut belongs_to: Vec<(EmployeeId, DepartmentId)> =
-        org.belongs_to_pairs().map(|(e, d)| (e.clone(), d.clone())).collect();
+        org.belongs_to().iter().map(|(e, d)| (e.clone(), d.clone())).collect();
     belongs_to.sort_by(|a, b| a.0.cmp(&b.0));
 
     let mut reassigned: Vec<(EmployeeId, DepartmentId)> = Vec::new();
@@ -96,18 +96,20 @@ pub fn simulate_reorg(org: &OrgChart, target: &DepartmentId) -> Option<ReorgRepo
     // boss / assigned は Employee が両端 (or 片端) なので部署削除の影響を
     // 受けない。素通しで良い。
     let boss_edges: Vec<(EmployeeId, EmployeeId, BossEdge)> = org
-        .boss_pairs()
+        .boss()
+        .iter()
         .map(|(a, b, attrs)| (a.clone(), b.clone(), attrs.clone()))
         .collect();
     let assigned_edges: Vec<(EmployeeId, ProjectId, AssignedEdge)> = org
-        .assigned_pairs()
+        .assigned()
+        .iter()
         .map(|(e, p, attrs)| (e.clone(), p.clone(), attrs.clone()))
         .collect();
 
     // 意図的に「素朴」なまま: sponsors 辺は対象部署の分もフィルタせず
     // そのまま引き継ぐ (モジュール doc コメント参照)。
     let sponsors_edges: Vec<(DepartmentId, ProjectId)> =
-        org.sponsors_pairs().map(|(d, p)| (d.clone(), p.clone())).collect();
+        org.sponsors().iter().map(|(d, p)| (d.clone(), p.clone())).collect();
 
     let result = OrgChart::create(|b| {
         for (id, e) in employees {

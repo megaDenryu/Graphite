@@ -62,10 +62,10 @@ pub struct SummaryReport {
 pub fn summarize(org: &OrgChart) -> SummaryReport {
     let total_employees = org.employee_ids().count();
 
-    // 部署別人数: belongs_to_pairs (多重度1、社員ごとにちょうど1本) を
+    // 部署別人数: belongs_to().iter() (多重度1、社員ごとにちょうど1本) を
     // 部署キーで集計する。
     let mut dept_counter: HashMap<DepartmentId, usize> = HashMap::new();
-    for (_, dept_id) in org.belongs_to_pairs() {
+    for (_, dept_id) in org.belongs_to().iter() {
         *dept_counter.entry(dept_id.clone()).or_insert(0) += 1;
     }
     let mut dept_counts: Vec<DeptCount> = org
@@ -90,9 +90,9 @@ pub fn summarize(org: &OrgChart) -> SummaryReport {
         .collect();
     grade_counts.sort_by_key(|g| g.grade);
 
-    // span of control: boss_pairs から「boss -> 直属部下数」を集計する。
+    // span of control: boss().iter() から「boss -> 直属部下数」を集計する。
     let mut direct_reports: HashMap<EmployeeId, usize> = HashMap::new();
-    for (_sub, boss_id, _attrs) in org.boss_pairs() {
+    for (_sub, boss_id, _attrs) in org.boss().iter() {
         *direct_reports.entry(boss_id.clone()).or_insert(0) += 1;
     }
 
@@ -127,7 +127,7 @@ pub fn summarize(org: &OrgChart) -> SummaryReport {
 
     // プロジェクト別アサイン人数
     let mut project_counter: HashMap<ProjectId, usize> = HashMap::new();
-    for (_emp, proj_id, _attrs) in org.assigned_pairs() {
+    for (_emp, proj_id, _attrs) in org.assigned().iter() {
         *project_counter.entry(proj_id.clone()).or_insert(0) += 1;
     }
     let mut project_assignments: Vec<ProjectAssignmentCount> = org
@@ -179,9 +179,9 @@ pub struct ChainResult {
 
 /// 指定した社員から `boss` 辺を根 (トップ層) まで辿る。
 ///
-/// `boss` アクセサ (多重度 0..1) は `Option<(&Employee, &BossEdge)>` を
+/// `boss().of` (多重度 0..1) は `Option<(&Employee, &BossEdge)>` を
 /// 返すだけで上司の `EmployeeId` そのものは含まないため、辿るには
-/// `boss_pairs()` から `EmployeeId -> (EmployeeId, since)` の索引を先に
+/// `boss().iter()` から `EmployeeId -> (EmployeeId, since)` の索引を先に
 /// 作っておく必要がある。
 ///
 /// 訪問済み集合を持ちながら辿ることで循環を検出する。循環に突入したら
@@ -191,7 +191,7 @@ pub fn management_chain(org: &OrgChart, start: &EmployeeId) -> Option<ChainResul
     let start_employee = org.employee(start)?;
 
     let boss_of: HashMap<EmployeeId, (EmployeeId, i32)> = org
-        .boss_pairs()
+        .boss().iter()
         .map(|(sub, boss, attrs)| (sub.clone(), (boss.clone(), attrs.since)))
         .collect();
 
@@ -219,7 +219,7 @@ pub fn management_chain(org: &OrgChart, start: &EmployeeId) -> Option<ChainResul
                 }
                 let boss_employee = org
                     .employee(boss_id)
-                    .expect("boss_pairsの終点は必ずemployeeに存在するはず");
+                    .expect("boss().iter()の終点は必ずemployeeに存在するはず");
                 entries.push(ChainEntry {
                     depth,
                     employee: boss_id.clone(),
@@ -280,7 +280,7 @@ pub fn detect_anomalies(org: &OrgChart) -> AnomalyReport {
 /// 全ペアを集めておき、`(a, b)` かつ `(b, a)` が両方存在するものを拾う。
 fn detect_mutual_boss_pairs(org: &OrgChart) -> Vec<(EmployeeId, EmployeeId)> {
     let all: Vec<(&EmployeeId, &EmployeeId)> =
-        org.boss_pairs().map(|(a, b, _attrs)| (a, b)).collect();
+        org.boss().iter().map(|(a, b, _attrs)| (a, b)).collect();
 
     let mut result: Vec<(EmployeeId, EmployeeId)> = Vec::new();
     for (a, b) in &all {
@@ -296,7 +296,7 @@ fn detect_mutual_boss_pairs(org: &OrgChart) -> Vec<(EmployeeId, EmployeeId)> {
 ///
 /// `boss` エッジ (Employee -> Employee, 多重度 0..1) を汎用
 /// `graphite::Graph<(), (), EmployeeId>` に射影する (`Graph::from_edges` が
-/// `{label}_pairs()` からの定型的な射影をまとめてくれる)。`topological_sort`
+/// `{label}().iter()` からの定型的な射影をまとめてくれる)。`topological_sort`
 /// が返す `CycleError::cycle` はフェーズ5から循環メンバー全体を返すように
 /// なったため、以前のような「boss辺を手で辿って復元する」処理は不要になった。
 /// 1つの循環を見つけたら `filter_nodes_with_key` でそのメンバーを取り除いた
@@ -305,9 +305,9 @@ fn detect_mutual_boss_pairs(org: &OrgChart) -> Vec<(EmployeeId, EmployeeId)> {
 fn detect_boss_cycles(org: &OrgChart) -> Vec<Vec<EmployeeId>> {
     let mut graph: Graph<(), (), EmployeeId> = Graph::from_edges(
         org.employee_ids().cloned(),
-        org.boss_pairs().map(|(a, b, _attrs)| (a.clone(), b.clone())),
+        org.boss().iter().map(|(a, b, _attrs)| (a.clone(), b.clone())),
     )
-    .expect("employee_idsは重複せず、boss_pairsの端点は全てemployee_idsに含まれるはず");
+    .expect("employee_idsは重複せず、boss().iter()の端点は全てemployee_idsに含まれるはず");
 
     let mut cycles: Vec<Vec<EmployeeId>> = Vec::new();
 
@@ -330,10 +330,10 @@ fn detect_boss_cycles(org: &OrgChart) -> Vec<Vec<EmployeeId>> {
 
 /// 部署跨ぎの上司関係 (上司と部下が異なる部署)。
 fn detect_cross_department_bosses(org: &OrgChart) -> Vec<CrossDepartmentBoss> {
-    let dept_of: HashMap<&EmployeeId, &DepartmentId> = org.belongs_to_pairs().collect();
+    let dept_of: HashMap<&EmployeeId, &DepartmentId> = org.belongs_to().iter().collect();
 
     let mut result: Vec<CrossDepartmentBoss> = org
-        .boss_pairs()
+        .boss().iter()
         .filter_map(|(emp_id, boss_id, _attrs)| {
             let emp_dept = *dept_of.get(emp_id)?;
             let boss_dept = *dept_of.get(boss_id)?;
@@ -356,7 +356,7 @@ fn detect_cross_department_bosses(org: &OrgChart) -> Vec<CrossDepartmentBoss> {
 
 /// 誰もアサインされていないプロジェクト。
 fn detect_unstaffed_projects(org: &OrgChart) -> Vec<ProjectId> {
-    let staffed: HashSet<&ProjectId> = org.assigned_pairs().map(|(_, p, _)| p).collect();
+    let staffed: HashSet<&ProjectId> = org.assigned().iter().map(|(_, p, _)| p).collect();
     let mut result: Vec<ProjectId> = org
         .project_ids()
         .filter(|p| !staffed.contains(p))
@@ -368,7 +368,7 @@ fn detect_unstaffed_projects(org: &OrgChart) -> Vec<ProjectId> {
 
 /// どの部署からもスポンサーされていないプロジェクト。
 fn detect_sponsorless_projects(org: &OrgChart) -> Vec<ProjectId> {
-    let sponsored: HashSet<&ProjectId> = org.sponsors_pairs().map(|(_, p)| p).collect();
+    let sponsored: HashSet<&ProjectId> = org.sponsors().iter().map(|(_, p)| p).collect();
     let mut result: Vec<ProjectId> = org
         .project_ids()
         .filter(|p| !sponsored.contains(p))

@@ -62,10 +62,11 @@ graphite::graph_schema! {
 
 impl DialogueGraph {
     /// あるシーンから出ている選択肢一覧を `(行き先キー, 選択肢ラベル)` で返す。
-    /// `choice_pairs()` は `match` クエリの代替として提供されているペア
-    /// イテレータで、ここでは特定の始点だけに絞り込むフィルタとして使う。
+    /// `choice().iter()` は `match` クエリの代替として提供されているビューの
+    /// 走査で、ここでは特定の始点だけに絞り込むフィルタとして使う。
     pub fn scene_choices(&self, id: &SceneId) -> Vec<(SceneId, String)> {
-        self.choice_pairs()
+        self.choice()
+            .iter()
             .filter(|(from, _to, _attrs)| *from == id)
             .map(|(_from, to, attrs)| (to.clone(), attrs.label.clone()))
             .collect()
@@ -85,7 +86,7 @@ impl DialogueGraph {
             for id in self.scene_ids() {
                 b.node(id.clone(), id.clone());
             }
-            for (from, to, attrs) in self.choice_pairs() {
+            for (from, to, attrs) in self.choice().iter() {
                 b.edge(from.clone(), to.clone(), attrs.label.clone());
             }
         })
@@ -94,12 +95,12 @@ impl DialogueGraph {
 
     /// このシーンに finale (エンディングへの到達) があるか。
     pub fn is_finale_scene(&self, id: &SceneId) -> bool {
-        self.finale(id).is_some()
+        self.finale().of(id).is_some()
     }
 
     /// このシーンに選択肢が 0 本、かつ finale も無いか (= デッドエンド)。
     pub fn is_dead_end(&self, id: &SceneId) -> bool {
-        self.choice(id).is_empty() && self.finale(id).is_none()
+        self.choice().of(id).is_empty() && self.finale().of(id).is_none()
     }
 }
 

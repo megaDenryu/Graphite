@@ -55,11 +55,15 @@ pub struct ReviewEdge {
 // `edge From -[label]-> To (多重度);` の読み方:
 //
 // - `label` は「エッジ種別の宣言」です。struct のフィールド名に相当する
-//   1トークンで、ここから `{label}`/`try_{label}`/`{label}_id(s)`/
-//   `{label}_pairs` といったアクセサ・builder メソッド・違反 enum の
-//   バリアントが機械的に命名・生成されます。つまり `label` は「値」では
-//   なく「これから生成される一群のメソッド名の元になる識別子」です。
-//   値のように読み書きできる変数ではありません (§4 で実際に確認します)。
+//   1トークンで、ここから `{label}()` という**ビューを返す1個のメソッド**
+//   だけが機械的に命名・生成されます (旧版にあった `try_{label}`/
+//   `{label}_id(s)`/`{label}_pairs` という導出名の合成は行いません)。
+//   ビューが持つ操作の語彙 (`of`/`get`/`id_of`/`get_id`/`ids_of`/`iter`/
+//   `len`/`is_empty`) は全ラベル・全スキーマ共通で、graphite ランタイム側
+//   (`EdgeOne`/`EdgeOption`/`EdgeMany` 等) に1回だけ定義されています。
+//   つまり `label` は「値」ではなく「これから生成されるビュー返却メソッド
+//   1個の名前の元になる識別子」です。値のように読み書きできる変数では
+//   ありません (§4 で実際に確認します)。
 // - `label: Type` の `Type` は「辺1本ごとが運ぶペイロードの型」です。
 //   属性なしエッジ (`belongs_to`・`reports`) は何も運ばず、属性ありエッジ
 //   (`boss: BossEdge`・`reviewed_by: ReviewEdge`) はその型の値を辺1本ごとに
@@ -158,12 +162,12 @@ fn main() {
 //   INSERT する」ことに相当します (実際 `OrgBuilder::boss` は
 //   `self.boss.push((from, to, attrs))` で `Vec` に積むだけ。検査は
 //   `freeze` 時にまとめて行われます)。
-// - `g.boss(&bob)` は「`boss` 表を `from = bob` で引き、`to` (=alice) を
+// - `g.boss().of(&bob)` は「`boss` 表を `from = bob` で引き、`to` (=alice) を
 //   ノード実体 (`Person`) に解決してから返す」ことに相当します。
 //
 // `boss.since` のように書けない (§4.1) のは、`boss` がオブジェクトでは
 // なく表の名前だから、というのがこの比喩の結論です。`attrs.since` の形で
-// アクセスできるのは、`g.boss(&id)` という**クエリの戻り値**
+// アクセスできるのは、`g.boss().of(&id)` という**クエリの戻り値**
 // (`(&Person, &BossEdge)`) の2番目の要素だからであり、`boss` という値
 // そのものが `since` を持っているわけではありません。
 //
@@ -182,8 +186,15 @@ fn main() {
 //
 // `graph_schema!` が `schema Org { .. }` から生成する公開API を、
 // 1関数=1つの「やりたいこと」に分けて全部並べています。
-// カテゴリ順: 構築 → ノードを読む → エッジを辿る (多重度別) →
-// 一覧する (pairs/ids) → 検証エラーを受ける。
+// カテゴリ順: 構築 → ノードを読む → エッジを辿る (ビューの of/get/id_of/
+// get_id/ids_of) → 一覧する (iter/len/is_empty) → 検証エラーを受ける。
+//
+// 覚えるのは `of`/`get`/`id_of`/`get_id`/`ids_of`/`iter`/`len`/`is_empty`
+// という語彙だけです。ラベルごとに違う名前のメソッドが増えることはなく、
+// **多重度が `of` の戻り型を決める** (`(1)` → 参照そのもの、`(0..1)` →
+// `Option`、`(0..*)` → `Vec`) だけなので、4本のエッジ (多重度×属性有無の
+// 全組み合わせ) を1本ずつ確認すれば全ラベルに応用できます
+// (`docs/edge_view_api.md` 参照)。
 //
 // スタイル: イテレータ連鎖 (`map`/`filter`/`collect`) やクロージャによる
 // データ加工は使わず、素の `for`/`if let`/`match` だけで書いています
@@ -207,26 +218,22 @@ fn section3() {
     チームノードを1件読む(&g);
     personidの作り方とgraphのキーの対応を確認する(&g);
 
-    // --- エッジを辿る (多重度別) ---
-    println!("\n--- エッジを辿る (多重度別) ---");
-    多重度1のエッジを辿る(&g);
-    多重度1のエッジを安全に辿る(&g);
-    多重度1のエッジをidだけで辿る(&g);
-    多重度0か1のエッジを辿る(&g);
-    多重度0か1のエッジをidだけで辿る(&g);
-    多重度0以上のエッジを辿る(&g);
-    多重度0以上のエッジをidだけで辿る(&g);
-    多重度0以上属性ありのエッジを辿る(&g);
-    多重度0以上属性ありのエッジをidだけで辿る(&g);
+    // --- エッジを辿る (ビューの of/get/id_of/get_id/ids_of) ---
+    println!("\n--- エッジを辿る (ビューの of/get/id_of/get_id/ids_of) ---");
+    多重度1のビューでof_get_id_ofを使う(&g);
+    多重度0か1のビューでof_id_ofを使う(&g);
+    多重度0以上のビューでof_ids_ofを使う(&g);
+    多重度0以上属性ありのビューでof_ids_ofを使う(&g);
 
-    // --- 一覧する (pairs / ids) ---
-    println!("\n--- 一覧する (pairs / ids) ---");
+    // --- 一覧する (iter/len/is_empty) ---
+    println!("\n--- 一覧する (iter/len/is_empty) ---");
     person_idsで全ノードキーを列挙する(&g);
     team_idsで全ノードキーを列挙する(&g);
-    belongs_to_pairsで属性なしエッジを列挙する(&g);
-    boss_pairsで属性ありエッジを列挙する(&g);
-    reports_pairsで多重度0以上のエッジを列挙する(&g);
-    reviewed_by_pairsで属性あり多重度0以上のエッジを列挙する(&g);
+    belongs_toのiterで属性なしエッジを列挙する(&g);
+    bossのiterで属性ありエッジを列挙する(&g);
+    reportsのiterで多重度0以上のエッジを列挙する(&g);
+    reviewed_byのiterで属性あり多重度0以上のエッジを列挙する(&g);
+    lenとis_emptyで表の辺の本数を確認する(&g);
 
     // --- 検証エラーを受ける ---
     println!("\n--- 検証エラーを受ける ---");
@@ -293,7 +300,7 @@ fn 外部で作ったエッジ属性をgraphリテラルに渡す() {
         bob   -[boss = promotion]-> alice,
     })
     .expect("外部エッジ属性を渡した graph! も構築に成功するはず");
-    let boss_pair: (&Person, &BossEdge) = g.boss(&PersonId("bob".to_string())).unwrap();
+    let boss_pair: (&Person, &BossEdge) = g.boss().of(&PersonId("bob".to_string())).unwrap();
     println!("(構築3: 外部エッジ属性渡し) bob の上司就任年 = {}", boss_pair.1.since);
 }
 
@@ -353,87 +360,79 @@ fn personidの作り方とgraphのキーの対応を確認する(g: &Org) {
     println!("(型) PersonId(\"alice\".to_string()) で graph! の alice = {} が引ける", alice.name);
 }
 
-// --- エッジを辿る (多重度別) ---
+// --- エッジを辿る (ビューの of/get/id_of/get_id/ids_of) ---
 
-// やりたいこと: 多重度(1)のアクセサ `{label}(&id)` は参照そのものを返す (未知キーはパニック)。
-fn 多重度1のエッジを辿る(g: &Org) {
-    let team: &Team = g.belongs_to(&PersonId("alice".to_string()));
-    println!("(1) belongs_to(&alice) = {}", team.name);
-}
+// やりたいこと: 多重度(1)のビュー `{label}()` は `of`/`get`/`id_of`/`get_id`
+// の4つ全てを持つ。`of` は参照そのものを返す (未知キーはパニックする契約)。
+// `get`/`get_id` はその非パニック版 (`Option` を返す)。
+fn 多重度1のビューでof_get_id_ofを使う(g: &Org) {
+    let team: &Team = g.belongs_to().of(&PersonId("alice".to_string()));
+    println!("(1) belongs_to().of(&alice) = {}", team.name);
 
-// やりたいこと: パニックしない版 `try_{label}` は Option を返す (多重度(1)にのみ存在)。
-fn 多重度1のエッジを安全に辿る(g: &Org) {
-    let known: Option<&Team> = g.try_belongs_to(&PersonId("alice".to_string()));
-    if let Some(team) = known {
-        println!("(1) try_belongs_to(&alice) = {}", team.name);
+    if let Some(team) = g.belongs_to().get(&PersonId("alice".to_string())) {
+        println!("(1) belongs_to().get(&alice) = {}", team.name);
     }
-    let unknown: Option<&Team> = g.try_belongs_to(&PersonId("dave".to_string()));
-    println!("(1) try_belongs_to(&dave)  = {unknown:?} (未知キーはNone)");
+    let unknown: Option<&Team> = g.belongs_to().get(&PersonId("dave".to_string()));
+    println!("(1) belongs_to().get(&dave)  = {unknown:?} (未知キーはNone)");
+
+    // id_of/get_id: 相手ノードの値ではなくキーが欲しいときはこちら。
+    let team_id: &TeamId = g.belongs_to().id_of(&PersonId("alice".to_string()));
+    println!("(1) belongs_to().id_of(&alice) = {team_id:?}");
+    let unknown_id: Option<&TeamId> = g.belongs_to().get_id(&PersonId("dave".to_string()));
+    println!("(1) belongs_to().get_id(&dave) = {unknown_id:?}");
 }
 
-// やりたいこと: 相手ノードの値ではなくキーだけが欲しい場合は `{label}_id`/`try_{label}_id`。
-fn 多重度1のエッジをidだけで辿る(g: &Org) {
-    let team_id: &TeamId = g.belongs_to_id(&PersonId("alice".to_string()));
-    println!("(1) belongs_to_id(&alice) = {team_id:?}");
-    let unknown_id: Option<&TeamId> = g.try_belongs_to_id(&PersonId("dave".to_string()));
-    println!("(1) try_belongs_to_id(&dave) = {unknown_id:?}");
-}
-
-// やりたいこと: 多重度(0..1)+属性ありのアクセサは `Option<(&Node, &Attrs)>` を返す。
-// 属性の値へは "ふつうのフィールドアクセス" で辿れる (`attrs.since`)。
-fn 多重度0か1のエッジを辿る(g: &Org) {
-    let boss: Option<(&Person, &BossEdge)> = g.boss(&PersonId("bob".to_string()));
+// やりたいこと: 多重度(0..1)のビューは `of`/`id_of` を持つ (`get`/`get_id` は
+// 無い — `of` が既に `Option` を返す全域関数なので不要)。属性ありなので
+// `of` は `Option<(&Node, &Attrs)>` を返し、属性の値へは "ふつうの
+// フィールドアクセス" で辿れる (`attrs.since`)。
+fn 多重度0か1のビューでof_id_ofを使う(g: &Org) {
+    let boss: Option<(&Person, &BossEdge)> = g.boss().of(&PersonId("bob".to_string()));
     if let Some((boss_person, attrs)) = boss {
-        println!("(0..1)   boss(&bob) = {} (就任年: {})", boss_person.name, attrs.since);
+        println!("(0..1) boss().of(&bob) = {} (就任年: {})", boss_person.name, attrs.since);
     }
-    let no_boss: Option<(&Person, &BossEdge)> = g.boss(&PersonId("alice".to_string()));
-    println!("(0..1)   boss(&alice) = {no_boss:?} (aliceには上司がいない)");
+    let no_boss: Option<(&Person, &BossEdge)> = g.boss().of(&PersonId("alice".to_string()));
+    println!("(0..1) boss().of(&alice) = {no_boss:?} (aliceには上司がいない)");
+
+    let boss_id: Option<&PersonId> = g.boss().id_of(&PersonId("bob".to_string()));
+    println!("(0..1) boss().id_of(&bob) = {boss_id:?}");
 }
 
-// やりたいこと: 多重度(0..1)のID版アクセサ `{label}_id` は `Option<&Id>` を返す
-// (多重度(1)と違い try_版は存在しない。無い/未知キーどちらも None に落ちるため)。
-fn 多重度0か1のエッジをidだけで辿る(g: &Org) {
-    let boss_id: Option<&PersonId> = g.boss_id(&PersonId("bob".to_string()));
-    println!("(0..1)   boss_id(&bob) = {boss_id:?}");
-}
-
-// やりたいこと: 多重度(0..*)のアクセサは `Vec` を返す。素の for ループで受ける。
-fn 多重度0以上のエッジを辿る(g: &Org) {
-    let reports: Vec<&Person> = g.reports(&PersonId("alice".to_string()));
+// やりたいこと: 多重度(0..*)のビューは `of`/`ids_of` を持つ。`of` は `Vec` を
+// 返す (素の for ループで受ける)。`ids_of` は属性を含まずキーだけの `Vec`
+// (格納順、`graph!` のソース記述順を保持する)。
+fn 多重度0以上のビューでof_ids_ofを使う(g: &Org) {
+    let reports: Vec<&Person> = g.reports().of(&PersonId("alice".to_string()));
     for report in &reports {
-        println!("(0..*)   reports(&alice) に {} が含まれる", report.name);
+        println!("(0..*) reports().of(&alice) に {} が含まれる", report.name);
     }
-}
-
-// やりたいこと: 多重度(0..*)のID版アクセサ `{label}_ids` は `Vec<&Id>` を返す。
-// 格納順 (`graph!` のソース記述順) を保持する。
-fn 多重度0以上のエッジをidだけで辿る(g: &Org) {
-    let report_ids: Vec<&PersonId> = g.reports_ids(&PersonId("alice".to_string()));
+    let report_ids: Vec<&PersonId> = g.reports().ids_of(&PersonId("alice".to_string()));
     for id in &report_ids {
-        println!("(0..*)   reports_ids(&alice) に {id:?} が含まれる");
+        println!("(0..*) reports().ids_of(&alice) に {id:?} が含まれる");
     }
 }
 
-// やりたいこと: 多重度(0..*)+属性ありのアクセサは `Vec<(&Node, &Attrs)>` を返す。
-fn 多重度0以上属性ありのエッジを辿る(g: &Org) {
-    let reviewers: Vec<(&Person, &ReviewEdge)> = g.reviewed_by(&PersonId("bob".to_string()));
+// やりたいこと: 属性ありの多重度(0..*)も同じ語彙 (`of`/`ids_of`) で辿れる。
+// `of` は `Vec<(&Node, &Attrs)>`、`ids_of` は属性を含まないキーだけの `Vec`
+// (属性が欲しい場合は `of` を使う)。
+fn 多重度0以上属性ありのビューでof_ids_ofを使う(g: &Org) {
+    let reviewers: Vec<(&Person, &ReviewEdge)> = g.reviewed_by().of(&PersonId("bob".to_string()));
     for (reviewer, attrs) in &reviewers {
-        println!("(0..*属性あり) bob のレビュアー: {} ({}年度)", reviewer.name, attrs.year);
+        println!(
+            "(0..*属性あり) reviewed_by().of(&bob) に {} ({}年度) が含まれる",
+            reviewer.name, attrs.year
+        );
     }
-}
-
-// やりたいこと: 属性の有無に関わらず、ID版アクセサ (`{label}_ids`) は属性を含まず
-// キーだけを返す (属性が欲しい場合は値アクセサ `{label}` を使う)。
-fn 多重度0以上属性ありのエッジをidだけで辿る(g: &Org) {
-    let reviewer_ids: Vec<&PersonId> = g.reviewed_by_ids(&PersonId("bob".to_string()));
+    let reviewer_ids: Vec<&PersonId> = g.reviewed_by().ids_of(&PersonId("bob".to_string()));
     for id in &reviewer_ids {
-        println!("(0..*属性あり) reviewed_by_ids(&bob) に {id:?} が含まれる");
+        println!("(0..*属性あり) reviewed_by().ids_of(&bob) に {id:?} が含まれる");
     }
 }
 
-// --- 一覧する (pairs / ids) ---
+// --- 一覧する (iter / len / is_empty) ---
 
-// やりたいこと: `{node}_ids()` でノード種別ごとの全キーを列挙する。
+// やりたいこと: `{node}_ids()` でノード種別ごとの全キーを列挙する
+// (ノードアクセサはビュー化の対象外。README「変更しないもの」節参照)。
 fn person_idsで全ノードキーを列挙する(g: &Org) {
     for id in g.person_ids() {
         println!("(一覧) person_ids: {id:?}");
@@ -446,32 +445,46 @@ fn team_idsで全ノードキーを列挙する(g: &Org) {
     }
 }
 
-// やりたいこと: 属性なしエッジの `{label}_pairs()` は (始点キー, 終点キー) の2つ組。
-fn belongs_to_pairsで属性なしエッジを列挙する(g: &Org) {
-    for (from, to) in g.belongs_to_pairs() {
-        println!("(pairs 2つ組) belongs_to: {from:?} -> {to:?}");
+// やりたいこと: 属性なしエッジの `iter()` は (始点キー, 終点キー) の2つ組。
+fn belongs_toのiterで属性なしエッジを列挙する(g: &Org) {
+    for (from, to) in g.belongs_to().iter() {
+        println!("(iter 2つ組) belongs_to: {from:?} -> {to:?}");
     }
 }
 
-// やりたいこと: 属性ありエッジの `{label}_pairs()` は (始点キー, 終点キー, 属性) の3つ組。
-fn boss_pairsで属性ありエッジを列挙する(g: &Org) {
-    for (from, to, attrs) in g.boss_pairs() {
-        println!("(pairs 3つ組) boss: {from:?} -> {to:?} (since={})", attrs.since);
+// やりたいこと: 属性ありエッジの `iter()` は (始点キー, 終点キー, 属性) の3つ組。
+fn bossのiterで属性ありエッジを列挙する(g: &Org) {
+    for (from, to, attrs) in g.boss().iter() {
+        println!("(iter 3つ組) boss: {from:?} -> {to:?} (since={})", attrs.since);
     }
 }
 
-// やりたいこと: 多重度(0..*)の `{label}_pairs()` は始点キーごとの複数終点へ展開される。
-fn reports_pairsで多重度0以上のエッジを列挙する(g: &Org) {
-    for (from, to) in g.reports_pairs() {
-        println!("(pairs 0..*展開) reports: {from:?} -> {to:?}");
+// やりたいこと: 多重度(0..*)の `iter()` は始点キーごとの複数終点へ展開される。
+fn reportsのiterで多重度0以上のエッジを列挙する(g: &Org) {
+    for (from, to) in g.reports().iter() {
+        println!("(iter 0..*展開) reports: {from:?} -> {to:?}");
     }
 }
 
-// やりたいこと: 多重度(0..*)+属性ありの `{label}_pairs()` は3つ組かつ展開される。
-fn reviewed_by_pairsで属性あり多重度0以上のエッジを列挙する(g: &Org) {
-    for (from, to, attrs) in g.reviewed_by_pairs() {
-        println!("(pairs 0..*属性あり) reviewed_by: {from:?} -> {to:?} ({}年度)", attrs.year);
+// やりたいこと: 多重度(0..*)+属性ありの `iter()` は3つ組かつ展開される。
+fn reviewed_byのiterで属性あり多重度0以上のエッジを列挙する(g: &Org) {
+    for (from, to, attrs) in g.reviewed_by().iter() {
+        println!(
+            "(iter 0..*属性あり) reviewed_by: {from:?} -> {to:?} ({}年度)",
+            attrs.year
+        );
     }
+}
+
+// やりたいこと: `len()`/`is_empty()` で表の辺の本数を確認する
+// (多重度(0..*)は始点キーごとの終点数の総和になる)。
+fn lenとis_emptyで表の辺の本数を確認する(g: &Org) {
+    println!("(len) belongs_to().len() = {}", g.belongs_to().len());
+    println!("(len) reports().len()    = {} (0..*は総本数)", g.reports().len());
+    println!(
+        "(is_empty) reviewed_by().is_empty() = {}",
+        g.reviewed_by().is_empty()
+    );
 }
 
 // --- 検証エラーを受ける ---
@@ -573,8 +586,8 @@ fn create_collectingで全違反を集める() {
 // --- 4.1 ラベルを変数として使おうとする ---
 //
 // `boss` はスキーマ宣言の中の1トークンであり、実行時に読み書きできる
-// 変数ではありません。生成されるのは `g.boss(...)` という**メソッド**
-// であって、裸の `boss` という名前の値は存在しません。
+// 変数ではありません。生成されるのは `g.boss()` という**メソッド**
+// (ビューを返す) であって、裸の `boss` という名前の値は存在しません。
 //
 // fn section4_1(g: &Org) {
 //     let _ = boss.since;
@@ -583,14 +596,14 @@ fn create_collectingで全違反を集める() {
 // 実際のエラー (コメントを外して `cargo build` した際に採取):
 //
 //   error[E0425]: cannot find value `boss` in this scope
-//      --> src\main.rs:580:13
+//      --> src\main.rs:593:13
 //       |
-//   580 |     let _ = boss.since;
+//   593 |     let _ = boss.since;
 //       |             ^^^^ not found in this scope
 
 // --- 4.2 フィールドに直接アクセスしようとする (メソッド呼び出しを忘れる) ---
 //
-// アクセサは常に「呼び出す」もの (`g.boss(&id)`) であり、`g.boss` という
+// アクセサは常に「呼び出す」もの (`g.boss().of(&id)`) であり、`g.boss` という
 // フィールドそのものは非公開の内部ストレージ (`HashMap<PersonId, (PersonId, BossEdge)>`、
 // §2.5 参照) です。このファイルは schema 宣言と同じモジュールなので `g.boss` という
 // 式自体は private エラーにはなりません (Rust の可視性はモジュール単位
@@ -606,11 +619,11 @@ fn create_collectingで全違反を集める() {
 // 実際のエラー (コメントを外して `cargo build` した際に採取):
 //
 //   error[E0308]: mismatched types
-//      --> src\main.rs:603:5
+//      --> src\main.rs:616:5
 //       |
-//   602 | fn section4_2(g: &Org) -> Person {
+//   615 | fn section4_2(g: &Org) -> Person {
 //       |                           ------ expected `Person` because of return type
-//   603 |     g.boss
+//   616 |     g.boss
 //       |     ^^^^^^ expected `Person`, found `HashMap<PersonId, (PersonId, BossEdge)>`
 //       |
 //       = note: expected struct `Person`
@@ -641,13 +654,13 @@ fn create_collectingで全違反を集める() {
 // 実際のエラー (コメントを外して `cargo build` した際に採取):
 //
 //   error[E0599]: no method named `no_such_label` found for mutable reference `&mut OrgBuilder` in the current scope
-//      --> src\main.rs:637:17
+//      --> src\main.rs:650:17
 //       |
-//   634 |       let _ = graphite::graph!(Org {
+//   647 |       let _ = graphite::graph!(Org {
 //       |  _____________-
-//   635 | |         alice = Person { name: "Alice".into() },
-//   636 | |         eng = Team { name: "Engineering".into() },
-//   637 | |         alice -[no_such_label]-> eng,
+//   648 | |         alice = Person { name: "Alice".into() },
+//   649 | |         eng = Team { name: "Engineering".into() },
+//   650 | |         alice -[no_such_label]-> eng,
 //       | |                -^^^^^^^^^^^^^ method not found in `&mut OrgBuilder`
 //       | |________________|
 //       |
@@ -670,29 +683,29 @@ fn create_collectingで全違反を集める() {
 // 実際のエラー (コメントを外して `cargo build` した際に採取):
 //
 //   error[E0308]: mismatched types
-//      --> src\main.rs:663:13
+//      --> src\main.rs:676:13
 //       |
-//   663 |       let _ = graphite::graph!(Org {
+//   676 |       let _ = graphite::graph!(Org {
 //       |  _____________^
-//   664 | |         alice = Person { name: "Alice".into() },
-//   665 | |         bob = Person { name: "Bob".into() },
-//   666 | |         alice -[belongs_to]-> bob,
+//   677 | |         alice = Person { name: "Alice".into() },
+//   678 | |         bob = Person { name: "Bob".into() },
+//   679 | |         alice -[belongs_to]-> bob,
 //       | |                 ---------- arguments to this method are incorrect
-//   667 | |     });
+//   680 | |     });
 //       | |______^ expected `TeamId`, found `PersonId`
 //       |
 //   note: method defined here
-//      --> src\main.rs:88:23
+//      --> src\main.rs:92:23
 //       |
-//    83 | / graphite::graph_schema! {
-//    84 | |     schema Org {
-//    85 | |         node Person;
-//    86 | |         node Team;
-//    87 | |
-//    88 | |         edge Person -[belongs_to]-> Team (1);
+//    87 | / graphite::graph_schema! {
+//    88 | |     schema Org {
+//    89 | |         node Person;
+//    90 | |         node Team;
+//    91 | |
+//    92 | |         edge Person -[belongs_to]-> Team (1);
 //       | |                       ^^^^^^^^^^
 //   ...   |
-//    93 | | }
+//    97 | | }
 //       | |_-
 //       = note: this error originates in the macro `graphite::graph` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -721,28 +734,30 @@ mod tests {
     }
 
     #[test]
-    fn 多重度1のアクセサは参照そのものを返す() {
+    fn 多重度1のビューのofは参照そのものを返す() {
         let g = build();
-        let team = g.belongs_to(&PersonId("alice".to_string()));
+        let team = g.belongs_to().of(&PersonId("alice".to_string()));
         assert_eq!(team.name, "Engineering");
     }
 
     #[test]
-    fn 多重度0か1のアクセサはoptionのタプルを返し属性フィールドへアクセスできる() {
+    fn 多重度0か1のビューのofはoptionのタプルを返し属性フィールドへアクセスできる() {
         let g = build();
         let (boss, attrs) = g
-            .boss(&PersonId("bob".to_string()))
+            .boss()
+            .of(&PersonId("bob".to_string()))
             .expect("bobの上司はaliceのはず");
         assert_eq!(boss.name, "Alice");
         assert_eq!(attrs.since, 2021);
-        assert!(g.boss(&PersonId("alice".to_string())).is_none());
+        assert!(g.boss().of(&PersonId("alice".to_string())).is_none());
     }
 
     #[test]
-    fn 多重度0以上のアクセサはvecを返す() {
+    fn 多重度0以上のビューのofはvecを返す() {
         let g = build();
         let mut names: Vec<&str> = g
-            .reports(&PersonId("alice".to_string()))
+            .reports()
+            .of(&PersonId("alice".to_string()))
             .into_iter()
             .map(|p| p.name.as_str())
             .collect();
@@ -751,17 +766,18 @@ mod tests {
     }
 
     #[test]
-    fn try_belongs_toは未知キーでnoneを返す() {
+    fn 多重度1のビューのgetは未知キーでnoneを返す() {
         let g = build();
         assert!(g
-            .try_belongs_to(&PersonId("dave".to_string()))
+            .belongs_to()
+            .get(&PersonId("dave".to_string()))
             .is_none());
     }
 
     #[test]
-    fn pairsイテレータは3つ組で列挙できる() {
+    fn iterは3つ組で列挙できる() {
         let g = build();
-        let boss_pairs: Vec<(&PersonId, &PersonId, &BossEdge)> = g.boss_pairs().collect();
+        let boss_pairs: Vec<(&PersonId, &PersonId, &BossEdge)> = g.boss().iter().collect();
         assert_eq!(boss_pairs.len(), 1);
         let (from, to, attrs) = boss_pairs[0];
         assert_eq!(*from, PersonId("bob".to_string()));
@@ -777,35 +793,43 @@ mod tests {
     }
 
     #[test]
-    fn belongs_to_idは多重度1でキーを返しtryは未知キーでnoneになる() {
+    fn id_ofは多重度1でキーを返しget_idは未知キーでnoneになる() {
         let g = build();
-        assert_eq!(*g.belongs_to_id(&PersonId("alice".to_string())), TeamId("eng".to_string()));
-        assert!(g.try_belongs_to_id(&PersonId("dave".to_string())).is_none());
+        assert_eq!(*g.belongs_to().id_of(&PersonId("alice".to_string())), TeamId("eng".to_string()));
+        assert!(g.belongs_to().get_id(&PersonId("dave".to_string())).is_none());
     }
 
     #[test]
-    fn boss_idは多重度0か1でoptionのキーを返す() {
+    fn boss_のid_ofは多重度0か1でoptionのキーを返す() {
         let g = build();
-        assert_eq!(g.boss_id(&PersonId("bob".to_string())), Some(&PersonId("alice".to_string())));
-        assert_eq!(g.boss_id(&PersonId("alice".to_string())), None);
+        assert_eq!(g.boss().id_of(&PersonId("bob".to_string())), Some(&PersonId("alice".to_string())));
+        assert_eq!(g.boss().id_of(&PersonId("alice".to_string())), None);
     }
 
     #[test]
-    fn reports_idsは追加順を保持したvecを返す() {
+    fn reportsのids_ofは追加順を保持したvecを返す() {
         let g = build();
         assert_eq!(
-            g.reports_ids(&PersonId("alice".to_string())),
+            g.reports().ids_of(&PersonId("alice".to_string())),
             vec![&PersonId("bob".to_string()), &PersonId("carol".to_string())]
         );
     }
 
     #[test]
-    fn reviewed_byは属性あり多重度0以上でvecのタプルを返す() {
+    fn reviewed_byのofは属性あり多重度0以上でvecのタプルを返す() {
         let g = build();
-        let reviewers = g.reviewed_by(&PersonId("bob".to_string()));
+        let reviewers = g.reviewed_by().of(&PersonId("bob".to_string()));
         assert_eq!(reviewers.len(), 2);
         assert!(reviewers.iter().any(|(p, a)| p.name == "Alice" && a.year == 2023));
         assert!(reviewers.iter().any(|(p, a)| p.name == "Carol" && a.year == 2024));
+    }
+
+    #[test]
+    fn lenとis_emptyで辺の本数を確認できる() {
+        let g = build();
+        assert_eq!(g.belongs_to().len(), 3);
+        assert!(!g.belongs_to().is_empty());
+        assert_eq!(g.reports().len(), 2);
     }
 
     #[test]

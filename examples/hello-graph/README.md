@@ -37,23 +37,27 @@ cargo run
 ## ラベルは何者か
 
 `edge Person -[boss: BossEdge]-> Person (0..1);` の `boss` は、**値でも
-変数でもなく、これから生成される一群のメソッド名の元になる識別子**です。
-`graph_schema!` はこの1トークンから以下を機械的に命名・生成します
-(`boss` の場合の実例つき):
+変数でもなく、これから生成される「ビューを返す1個のメソッド」の名前の
+元になる識別子**です。`graph_schema!` はこの1トークンから以下を機械的に
+命名・生成します (`boss` の場合の実例つき):
 
 | 生成されるもの | 命名規則 | `boss` の場合 |
 |---|---|---|
-| アクセサ (パニック版) | `{label}` | `boss(&PersonId) -> Option<(&Person, &BossEdge)>` (多重度による。下表参照) |
-| アクセサ (非パニック版、多重度(1)のみ) | `try_{label}` | (`boss` は0..1なので生成されない。`belongs_to` なら `try_belongs_to`) |
-| ID版アクセサ | `{label}_id` / `{label}_ids` | `boss_id(&PersonId) -> Option<&PersonId>` |
-| ペアイテレータ | `{label}_pairs` | `boss_pairs() -> impl Iterator<Item = (&PersonId, &PersonId, &BossEdge)>` |
+| ビュー返却メソッド (これ1つだけ) | `{label}` | `boss() -> EdgeOptionWith<'_, PersonId, PersonId, Person, BossEdge>` |
 | builder のエッジ追加メソッド | `{label}` | `OrgBuilder::boss(from, to, attrs)` |
 | 違反 enum のバリアント | `{Label}Multiplicity`/`{Label}UnknownSource`/`{Label}UnknownTarget` | `OrgViolation::BossMultiplicity { .. }` |
 
-属性なしエッジ (`belongs_to`・`reports`) では属性を運ぶ部分が無いだけで、
-上記の命名規則自体は同じです。ノード型宣言 (`node Person;`) からは
+旧版にあった `try_{label}`/`{label}_id(s)`/`{label}_pairs` という導出名の
+合成メソッド群は全廃されています。ビューが持つ操作の語彙 (`of`/`get`/
+`id_of`/`get_id`/`ids_of`/`iter`/`len`/`is_empty`) は全ラベル・全スキーマ
+共通で、graphite ランタイム側の `EdgeOne`/`EdgeOneWith`/`EdgeOption`/
+`EdgeOptionWith`/`EdgeMany`/`EdgeManyWith` に1回だけ定義されています
+(`docs/edge_view_api.md` 参照)。属性なしエッジ (`belongs_to`・`reports`)
+では属性を運ぶ部分が無いビュー型 (`EdgeOne`/`EdgeOption`/`EdgeMany`) に
+なるだけで、命名規則自体は同じです。ノード型宣言 (`node Person;`) からは
 `{Node}Id` newtype キー (`PersonId`) と `{node_snake}(&id)`/
-`{node_snake}_ids()` (`person(&id)`/`person_ids()`) が生成されます。
+`{node_snake}_ids()` (`person(&id)`/`person_ids()`) が生成されます
+(ノードアクセサはビュー化していません)。
 
 「`boss` を値として `.attr` で持っているのか?」という疑問には `src/main.rs`
 §2.5 (脱糖の実像) で直接回答しています。要点だけ言うと **No** — `boss` は
@@ -62,20 +66,21 @@ cargo run
 `-[boss = 式]->` は `__graphite_b.boss(from.clone(), to.clone(), 式)` という
 ただのメソッド呼び出しに脱糖されるだけです。
 
-多重度ごとのアクセサの戻り値:
+多重度がビューの `of` の戻り型を決めます (これだけ覚えれば全ラベルに
+応用できます):
 
-| 多重度 | `{label}` の戻り値 | `{label}_pairs()` の要素 |
-|---|---|---|
-| `(1)` | `&T` (属性つきは `(&T, &Attrs)`)。未知キーはパニック | `(&SrcId, &DstId[, &Attrs])` |
-| `(0..1)` | `Option<&T>` (属性つきは `Option<(&T, &Attrs)>`) | 同上 |
-| `(0..*)` | `Vec<&T>` (属性つきは `Vec<(&T, &Attrs)>`) | 同上 (始点キーごとに全ペアへ展開) |
+| 多重度 | `of` の戻り値 | `get`/`get_id` | `iter()` の要素 |
+|---|---|---|---|
+| `(1)` | `&T` (属性つきは `(&T, &Attrs)`)。未知キーはパニック | `get`/`get_id` あり (非パニック版、`Option`) | `(&SrcId, &DstId[, &Attrs])` |
+| `(0..1)` | `Option<&T>` (属性つきは `Option<(&T, &Attrs)>`) | 無し (`of` が既に全域関数) | 同上 |
+| `(0..*)` | `Vec<&T>` (属性つきは `Vec<(&T, &Attrs)>`)。キーだけなら `ids_of` | 無し | 同上 (始点キーごとに全ペアへ展開) |
 
 ## クックブック チートシート (`src/main.rs` §3 と1対1対応)
 
 `src/main.rs` §3 の各関数が、それぞれ生成APIの1つずつに対応しています。
 「やりたいこと」列の順は `main.rs` の呼び出し順 (構築 → ノードを読む →
 エッジを辿る → 一覧する → 検証エラーを受ける) と同じです。エッジの実体は
-どれも「ラベル名の表 (非公開フィールド)」であり、`{label}(...)` は
+どれも「ラベル名の表 (非公開フィールド)」であり、`{label}().of(...)` は
 その表への問い合わせだと考えてください (§2.5 参照)。
 
 ### 構築
@@ -96,30 +101,31 @@ cargo run
 | チームノードを1件読む | `g.team(&TeamId("eng".to_string()))` | `Option<&Team>` |
 | `PersonId` を手で組み立てる (`graph!` のキーと同一視) | `PersonId("alice".to_string())` | `PersonId` |
 
-### エッジを辿る (多重度別)
+### エッジを辿る (ビューの of/get/id_of/get_id/ids_of)
 
 | やりたいこと | 書き方 | 戻り値の型 |
 |---|---|---|
-| 多重度(1)を辿る (パニック版) | `g.belongs_to(&id)` | `&Team` |
-| 多重度(1)を安全に辿る | `g.try_belongs_to(&id)` | `Option<&Team>` |
-| 多重度(1)をidだけで辿る | `g.belongs_to_id(&id)` / `g.try_belongs_to_id(&id)` | `&TeamId` / `Option<&TeamId>` |
-| 多重度(0..1)+属性ありを辿る | `g.boss(&id)` | `Option<(&Person, &BossEdge)>` |
-| 多重度(0..1)をidだけで辿る | `g.boss_id(&id)` | `Option<&PersonId>` |
-| 多重度(0..*)を辿る | `g.reports(&id)` (for ループで受ける) | `Vec<&Person>` |
-| 多重度(0..*)をidだけで辿る | `g.reports_ids(&id)` | `Vec<&PersonId>` |
-| 多重度(0..*)+属性ありを辿る | `g.reviewed_by(&id)` | `Vec<(&Person, &ReviewEdge)>` |
-| 多重度(0..*)+属性ありをidだけで辿る | `g.reviewed_by_ids(&id)` | `Vec<&PersonId>` |
+| 多重度(1)を辿る (パニック版) | `g.belongs_to().of(&id)` | `&Team` |
+| 多重度(1)を安全に辿る | `g.belongs_to().get(&id)` | `Option<&Team>` |
+| 多重度(1)をidだけで辿る | `g.belongs_to().id_of(&id)` / `g.belongs_to().get_id(&id)` | `&TeamId` / `Option<&TeamId>` |
+| 多重度(0..1)+属性ありを辿る | `g.boss().of(&id)` | `Option<(&Person, &BossEdge)>` |
+| 多重度(0..1)をidだけで辿る | `g.boss().id_of(&id)` | `Option<&PersonId>` |
+| 多重度(0..*)を辿る | `g.reports().of(&id)` (for ループで受ける) | `Vec<&Person>` |
+| 多重度(0..*)をidだけで辿る | `g.reports().ids_of(&id)` | `Vec<&PersonId>` |
+| 多重度(0..*)+属性ありを辿る | `g.reviewed_by().of(&id)` | `Vec<(&Person, &ReviewEdge)>` |
+| 多重度(0..*)+属性ありをidだけで辿る | `g.reviewed_by().ids_of(&id)` | `Vec<&PersonId>` |
 
-### 一覧する (pairs / ids)
+### 一覧する (iter / len / is_empty)
 
 | やりたいこと | 書き方 | 戻り値の型 |
 |---|---|---|
 | 人ノードの全キーを列挙する | `g.person_ids()` | `impl Iterator<Item = &PersonId>` |
 | チームノードの全キーを列挙する | `g.team_ids()` | `impl Iterator<Item = &TeamId>` |
-| 属性なしエッジを全部列挙する | `g.belongs_to_pairs()` | `impl Iterator<Item = (&PersonId, &TeamId)>` |
-| 属性ありエッジを全部列挙する | `g.boss_pairs()` | `impl Iterator<Item = (&PersonId, &PersonId, &BossEdge)>` |
-| 多重度(0..*)のエッジを全部列挙する (始点ごとに展開) | `g.reports_pairs()` | `impl Iterator<Item = (&PersonId, &PersonId)>` |
-| 多重度(0..*)+属性ありのエッジを全部列挙する | `g.reviewed_by_pairs()` | `impl Iterator<Item = (&PersonId, &PersonId, &ReviewEdge)>` |
+| 属性なしエッジを全部列挙する | `g.belongs_to().iter()` | `impl Iterator<Item = (&PersonId, &TeamId)>` |
+| 属性ありエッジを全部列挙する | `g.boss().iter()` | `impl Iterator<Item = (&PersonId, &PersonId, &BossEdge)>` |
+| 多重度(0..*)のエッジを全部列挙する (始点ごとに展開) | `g.reports().iter()` | `impl Iterator<Item = (&PersonId, &PersonId)>` |
+| 多重度(0..*)+属性ありのエッジを全部列挙する | `g.reviewed_by().iter()` | `impl Iterator<Item = (&PersonId, &PersonId, &ReviewEdge)>` |
+| 表の辺の本数を確認する | `g.belongs_to().len()` / `g.belongs_to().is_empty()` | `usize` / `bool` |
 
 ### 検証エラーを受ける
 
@@ -136,11 +142,11 @@ cargo run
 
 | やりたいこと | できる? | 方法 / 実際に出るエラー |
 |---|---|---|
-| `boss` エッジの相手ノードを取得する | できる | `g.boss(&id)` (`src/main.rs` §3) |
-| `boss` エッジの属性 (`since`) を読む | できる | `g.boss(&id)` が返す `(&Person, &BossEdge)` の2番目から `attrs.since` |
-| 未知キーで安全に問い合わせる | できる | `g.try_belongs_to(&id)` (`Option` で返る) |
-| キーだけを取得して次のノードへ辿る | できる | `g.boss_id(&id)` (値ではなくキーの `Option<&PersonId>`) |
-| 全エッジをイテレータで走査する | できる | `g.boss_pairs()` (`(&PersonId, &PersonId, &BossEdge)` の3つ組) |
+| `boss` エッジの相手ノードを取得する | できる | `g.boss().of(&id)` (`src/main.rs` §3) |
+| `boss` エッジの属性 (`since`) を読む | できる | `g.boss().of(&id)` が返す `(&Person, &BossEdge)` の2番目から `attrs.since` |
+| 未知キーで安全に問い合わせる | できる | `g.belongs_to().get(&id)` (`Option` で返る。多重度(1)のビューにのみ存在) |
+| キーだけを取得して次のノードへ辿る | できる | `g.boss().id_of(&id)` (値ではなくキーの `Option<&PersonId>`) |
+| 全エッジをイテレータで走査する | できる | `g.boss().iter()` (`(&PersonId, &PersonId, &BossEdge)` の3つ組) |
 | `boss` を値として (`boss.since`) 読む | **できない** | `error[E0425]: cannot find value \`boss\` in this scope` (§4.1) |
 | `g.boss` とフィールドのように書いて `Person` を得る | **できない** | `error[E0308]: mismatched types` (中身は `HashMap`。§4.2、§2.5 参照) |
 | `graph!` に存在しないエッジラベルを書く | **できない** | `error[E0599]: no method named \`no_such_label\` found ...` (v3 でハンドシェイクマクロを全廃したため、素の rustc method-not-found のみ。§4.3) |

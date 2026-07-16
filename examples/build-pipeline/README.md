@@ -191,14 +191,14 @@ task <名前>: <コマンド...> (<秒数>s)      タスク定義
   内容をクロージャの外に一切漏らさず (借用検査器が保証)、戻ってきた瞬間に
   一括で凍結・検証するため、「検証を書き忘れたパス」が原理的に存在しない。
 - **多重度 API と `Vec` の使い分け**: `produces`/`consumes` は `(0..*)` なので
-  `g.produces(&TaskId) -> Vec<&Artifact>` が自動生成される。自作なら
+  `g.produces().of(&TaskId) -> Vec<&Artifact>` が自動生成される。自作なら
   `HashMap<String, Vec<String>>` を用意したうえで `.get(key).cloned()
   .unwrap_or_default()` のような空デフォルト処理を毎回書く必要がある
   (書き忘れると未知キーで `panic`)。
-- **`{label}_pairs()` イテレータ**: 本アプリのドメイン検証 (孤児成果物・
+- **`{label}().iter()`**: 本アプリのドメイン検証 (孤児成果物・
   produce競合・循環依存) はどれも「全 produces ペア」「全 consumes ペア」を
   俯瞰して初めて判定できる (1本のエッジだけを見ても分からない)。
-  `g.produces_pairs()`/`g.consumes_pairs()` が無ければ、内部の
+  `g.produces().iter()`/`g.consumes().iter()` が無ければ、内部の
   `HashMap<K, Vec<V>>` を手でフラット化するイテレータをアプリ側に毎回書く
   ことになる。ここでは `analysis.rs` の `validate`/`task_dependency_graph`
   がこれをそのまま使い、artifactごとの producer/consumer 集合を

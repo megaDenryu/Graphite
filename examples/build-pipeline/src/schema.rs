@@ -63,11 +63,11 @@ mod fixed_pipeline_showcase {
         assert_eq!(g.task_ids().count(), 3);
         assert_eq!(g.artifact_ids().count(), 2);
 
-        let produced: Vec<&Artifact> = g.produces(&TaskId("build".to_string()));
+        let produced: Vec<&Artifact> = g.produces().of(&TaskId("build".to_string()));
         assert_eq!(produced.len(), 1);
         assert_eq!(produced[0].path, "target/core.rlib");
 
-        let consumed: Vec<&Artifact> = g.consumes(&TaskId("test".to_string()));
+        let consumed: Vec<&Artifact> = g.consumes().of(&TaskId("test".to_string()));
         assert_eq!(consumed.len(), 1);
         assert_eq!(consumed[0].path, "target/core.rlib");
     }
