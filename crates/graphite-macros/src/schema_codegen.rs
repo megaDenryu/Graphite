@@ -103,6 +103,12 @@ struct EdgeInfo<'a> {
     /// このマクロは属性型そのものを生成しない。
     attrs_ty: Option<Path>,
     each: Option<EachSpec>,
+    /// `where each <FromType>: ..` の `<FromType>` トークンそのもの
+    /// (検証意味論には使わず、IDE 支援専用: `gen_edge_freeze_block` が
+    /// このトークンのスパンを使ったゼロコスト型検査文を生成することで、
+    /// rust-analyzer の定義ジャンプ (F12) がこのトークンからノード型の
+    /// 宣言へ着地できるようにする。`docs/ide_support_spec.md` §1.9)。
+    each_from_token: Option<Ident>,
     unique_pair: bool,
 }
 
@@ -205,6 +211,7 @@ fn build_edge_info<'a>(decl: &'a EdgeDecl, node_infos: &'a [NodeInfo]) -> EdgeIn
         to_node,
         attrs_ty: decl.attrs_ty.clone(),
         each: decl.constraints.each.as_ref().map(|(_, spec)| *spec),
+        each_from_token: decl.constraints.each.as_ref().map(|(ident, _)| ident.clone()),
         unique_pair: decl.constraints.unique_pair,
     }
 }
@@ -254,31 +261,42 @@ fn gen_node_trait_and_impls(
         let id_ty = &n.id_ident;
         let accessor = &n.accessor_ident;
         let field = &n.field_ident;
+        // IDE 支援 (`docs/ide_support_spec.md` §1.9, G3 ポリシー): このノード
+        // 型への `{Schema}Node` impl が生やすメソッド名は `n.type_ident`
+        // (ノード型そのもののトークン) のスパンを持たせる。トレイト定義
+        // 自体 (下の `pub trait #node_trait_ident { .. }`) は単一の由来
+        // トークンを持たない schema 全体のインフラなので call_site のまま
+        // でよい (指示どおり、impl 側だけに適用する)。
+        let span = ty.span();
+        let insert_into_ident = Ident::new("insert_into", span);
+        let get_ident = Ident::new("get", span);
+        let ids_ident = Ident::new("ids", span);
+        let iter_ident = Ident::new("iter", span);
         quote! {
             impl #node_trait_ident for #ty {
                 type Id = #id_ty;
 
-                fn insert_into(self, b: &mut #builder_ident, key: String) -> Self::Id {
+                fn #insert_into_ident(self, b: &mut #builder_ident, key: String) -> Self::Id {
                     let id = #id_ty(key);
                     b.#accessor(id.clone(), self);
                     id
                 }
 
-                fn get<'g>(g: &'g #schema_name, id: &Self::Id) -> Option<&'g Self>
+                fn #get_ident<'g>(g: &'g #schema_name, id: &Self::Id) -> Option<&'g Self>
                 where
                     Self: 'g,
                 {
                     g.#field.get(id)
                 }
 
-                fn ids<'g>(g: &'g #schema_name) -> impl Iterator<Item = &'g Self::Id>
+                fn #ids_ident<'g>(g: &'g #schema_name) -> impl Iterator<Item = &'g Self::Id>
                 where
                     Self: 'g,
                 {
                     g.#field.ids()
                 }
 
-                fn iter<'g>(g: &'g #schema_name) -> impl Iterator<Item = (&'g Self::Id, &'g Self)>
+                fn #iter_ident<'g>(g: &'g #schema_name) -> impl Iterator<Item = (&'g Self::Id, &'g Self)>
                 where
                     Self: 'g,
                 {
@@ -334,11 +352,15 @@ fn gen_edge_trait_and_impls(
         let kind = e.kind;
         let id_ty = &e.id_ident;
         let accessor = &e.accessor_ident;
+        // 必須ではないが (このメソッドはユーザーが直接呼ぶ想定ではない)、
+        // 他の生成メソッドとの一貫性のため `edge.kind` のスパンを付ける
+        // (`docs/ide_support_spec.md` §1.9 の指示: 余裕があれば付けてよい)。
+        let insert_into_ident = Ident::new("insert_into", kind.span());
         quote! {
             impl #edge_trait_ident for #kind {
                 type Id = #id_ty;
 
-                fn insert_into(self, b: &mut #builder_ident, key: String) -> Self::Id {
+                fn #insert_into_ident(self, b: &mut #builder_ident, key: String) -> Self::Id {
                     let id = #id_ty(key);
                     b.#accessor(id.clone(), self);
                     id
@@ -794,6 +816,37 @@ fn gen_edge_freeze_block(violation_ident: &Ident, edge: &EdgeInfo<'_>) -> TokenS
         (quote! {}, quote! {})
     };
 
+    // IDE 支援専用のゼロコスト型検査文 (`docs/ide_support_spec.md` §1.9)。
+    //
+    // where 節の `each <FromType>` の `<FromType>` トークン (`each_from_token`)
+    // は、意味検査 (`schema_validate.rs` が `decl.from` との一致を確認する)
+    // にしか使われておらず、生成コードのどこにもこのトークン自身は現れない。
+    // そのため rust-analyzer はこのトークンから何かへ定義ジャンプする先を
+    // 持てなかった (F12 が解決なしになる)。
+    //
+    // 検討した選択肢:
+    // (a) この文のように、トークンをそのまま型名として使う実在の型検査文を
+    //     生成コードへ新規に追加する。
+    // (b) 検証ロジックの中で既に `#from_field`/`#from_node.type_ident` 等を
+    //     使っている箇所のどれかに、無理にこのトークンを混ぜ込む。
+    // (a) を採用した。既存の検証コードは全て `edge.from_node` 側 (schema の
+    // `edge Kind = From -> ..` の `From` 位置) のスパンを使う識別子で構成
+    // されており、where 節のトークン (別の出現位置) を自然に差し込める箇所が
+    // 存在しない。無理に (b) をやると「たまたま型が一致するから使い回す」
+    // 不透明なコードになり、このスパンが何のためにここにあるのか読み手に
+    // 伝わらない。(a) は「このトークンが指す型はこれです」という主張を
+    // そのままコードとして表現できる。
+    //
+    // ゼロコスト性 (`docs/design_principles.md` 原則5): `fn(&Type) = |_| {}`
+    // という関数ポインタへの代入は実行時コストを持たない (最適化で消える)。
+    // 検証の意味論・違反判定ロジック (`each_check` 以下) には一切影響しない。
+    let each_type_check = match &edge.each_from_token {
+        Some(from_token) => quote! {
+            let _: fn(&#from_token) = |_| {};
+        },
+        None => quote! {},
+    };
+
     let each_check = match edge.each {
         Some(EachSpec::One) => {
             let v = edge.each_violation_variant();
@@ -852,6 +905,7 @@ fn gen_edge_freeze_block(violation_ident: &Ident, edge: &EdgeInfo<'_>) -> TokenS
                 #from_index.entry(from.clone()).or_default().push(id.clone());
             }
         }
+        #each_type_check
         #each_check
     }
 }
@@ -923,6 +977,20 @@ fn gen_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream 
     let to_field = &edge.to_node.field_ident;
     let to_ty = &edge.to_node.type_ident;
 
+    // IDE 支援 (`docs/ide_support_spec.md` §1.9, G3 ポリシー): このエッジ
+    // 種別への固有 impl が生やすメソッド名は、全て `edge.kind` (schema の
+    // `edge Kind = ..` の `Kind` トークン) のスパンを持たせる。これにより
+    // `Boss::of(..)` の `of` から F12 すると schema の `edge Boss` 宣言へ
+    // 着地するようになる (call_site のままだと macro 定義側に着地してしまう)。
+    let kind_span = kind.span();
+    let of_ident = Ident::new("of", kind_span);
+    let get_of_ident = Ident::new("get_of", kind_span);
+    let get_ident = Ident::new("get", kind_span);
+    let between_ident = Ident::new("between", kind_span);
+    let iter_ident = Ident::new("iter", kind_span);
+    let ids_ident = Ident::new("ids", kind_span);
+    let len_ident = Ident::new("len", kind_span);
+
     // `of`/`get_of` の戻り値の型・実装は「積み荷の有無」「each 制約」の
     // 組み合わせで分岐する。これらの関数はいずれも `&self` を取らず
     // `g: &'g Schema` を第一引数に取る associated function なので、
@@ -965,8 +1033,8 @@ fn gen_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream 
                 /// 欠如ではなく呼び出し規約の違反であり
                 /// (`docs/design_principles.md` 原則2)、非パニック版
                 /// [`Self::get_of`] も併せて提供する。
-                pub fn of<'g>(g: &'g #schema_name, from: &#from_id) -> #of_item_ty {
-                    Self::get_of(g, from).unwrap_or_else(|| {
+                pub fn #of_ident<'g>(g: &'g #schema_name, from: &#from_id) -> #of_item_ty {
+                    Self::#get_of_ident(g, from).unwrap_or_else(|| {
                         panic!(
                             "{}::of: 未知のキーです (このグラフが発行したキーではありません): {:?}",
                             stringify!(#kind), from
@@ -975,7 +1043,7 @@ fn gen_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream 
                 }
 
                 /// [`Self::of`] の非パニック版。未知キーは `None` を返す。
-                pub fn get_of<'g>(g: &'g #schema_name, from: &#from_id) -> Option<#of_item_ty> {
+                pub fn #get_of_ident<'g>(g: &'g #schema_name, from: &#from_id) -> Option<#of_item_ty> {
                     let ids = g.#from_index.get(from)?;
                     Some(#resolved)
                 }
@@ -987,7 +1055,7 @@ fn gen_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream 
                 /// この辺種別の自然な戻り値 (`each 0..1` → `Option`)。
                 /// 無い/未知キーはどちらも `None` に落ちる (「無い」ことが
                 /// 正常なドメイン状態なのでパニックしない)。
-                pub fn of<'g>(g: &'g #schema_name, from: &#from_id) -> Option<#of_item_ty> {
+                pub fn #of_ident<'g>(g: &'g #schema_name, from: &#from_id) -> Option<#of_item_ty> {
                     let ids = g.#from_index.get(from)?;
                     Some(#resolved)
                 }
@@ -999,7 +1067,7 @@ fn gen_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream 
                 /// この辺種別の自然な戻り値 (制約なし → `Vec`)。無い/未知
                 /// キーはどちらも空 `Vec` に落ちる。格納順 (構築時の追加順)
                 /// を保持する。
-                pub fn of<'g>(g: &'g #schema_name, from: &#from_id) -> Vec<#of_item_ty> {
+                pub fn #of_ident<'g>(g: &'g #schema_name, from: &#from_id) -> Vec<#of_item_ty> {
                     match g.#from_index.get(from) {
                         Some(ids) => ids.iter().map(|id| #resolved).collect(),
                         None => Vec::new(),
@@ -1012,7 +1080,7 @@ fn gen_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream 
     let between = if edge.unique_pair {
         quote! {
             /// 対 (始点, 終点) で辺を検索する (`unique pair` → 高々1本)。
-            pub fn between<'g>(g: &'g #schema_name, from: &#from_id, to: &#to_id) -> Option<&'g #kind> {
+            pub fn #between_ident<'g>(g: &'g #schema_name, from: &#from_id, to: &#to_id) -> Option<&'g #kind> {
                 g.#from_index
                     .get(from)?
                     .iter()
@@ -1024,7 +1092,7 @@ fn gen_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream 
         quote! {
             /// 対 (始点, 終点) で辺を検索する (制約なしなら平行辺を許すため
             /// `Vec`)。格納順 (構築時の追加順) を保持する。
-            pub fn between<'g>(g: &'g #schema_name, from: &#from_id, to: &#to_id) -> Vec<&'g #kind> {
+            pub fn #between_ident<'g>(g: &'g #schema_name, from: &#from_id, to: &#to_id) -> Vec<&'g #kind> {
                 match g.#from_index.get(from) {
                     Some(ids) => ids
                         .iter()
@@ -1042,7 +1110,7 @@ fn gen_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream 
             #of_and_get_of
 
             /// キーで辺1本を検索する。
-            pub fn get<'g>(g: &'g #schema_name, id: &#id_ty) -> Option<&'g #kind> {
+            pub fn #get_ident<'g>(g: &'g #schema_name, id: &#id_ty) -> Option<&'g #kind> {
                 g.#accessor.get(id)
             }
 
@@ -1050,18 +1118,18 @@ fn gen_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream 
 
             /// 表全体を `(キー, 値)` で走査する。挿入順 (構築時の追加順) を
             /// 保持する (`KeyedTable` の仕様)。
-            pub fn iter(g: &#schema_name) -> impl Iterator<Item = (&#id_ty, &#kind)> {
+            pub fn #iter_ident(g: &#schema_name) -> impl Iterator<Item = (&#id_ty, &#kind)> {
                 g.#accessor.iter()
             }
 
             /// この辺種別の全キーを列挙する。挿入順 (構築時の追加順) を
             /// 保持する (`KeyedTable` の仕様)。
-            pub fn ids(g: &#schema_name) -> impl Iterator<Item = &#id_ty> {
+            pub fn #ids_ident(g: &#schema_name) -> impl Iterator<Item = &#id_ty> {
                 g.#accessor.ids()
             }
 
             /// この辺種別に含まれる辺の本数。
-            pub fn len(g: &#schema_name) -> usize {
+            pub fn #len_ident(g: &#schema_name) -> usize {
                 g.#accessor.len()
             }
         }
