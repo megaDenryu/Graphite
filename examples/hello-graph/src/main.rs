@@ -8,8 +8,10 @@
 //!
 //! 上から順に読める構成にしています:
 //! - §1 ノード型・エッジ属性型の宣言 (普通の struct)
-//! - §2 `graph_schema!` によるスキーマ宣言 (ラベルとは何なのかの説明)
-//! - §2.5 脱糖の実像 — `-[label = 式]->` は誰が何を持つ形に展開されるのか
+//! - §2 `graph_schema!` によるスキーマ宣言 (v4: `edge Kind = ...;` は
+//!   新しい nominal 型の定義、`where` は制約)
+//! - §2.5 脱糖の実像 — 全要素キー・`KeyedTable` 格納・辺はタプル struct
+//!   として第一級、という v4 の実装を実測して解説する
 //! - §3 クックブック — `graph_schema!`/`graph!` が生成する公開APIの全列挙
 //! - §4 「できないこと」— コンパイルエラーになる例と、実際のエラー引用
 //!
@@ -20,9 +22,8 @@
 // ============================================================
 //
 // `graph_schema!` はこれらの型を**生成せず、参照するだけ**です
-// (README「使用例」節、`docs/edge_syntax_v3.md` 参照)。derive・可視性・
-// 追加のメソッドは全部ふつうの Rust の話であり、Graphite 固有のルールは
-// ありません。
+// (`docs/schema_v4.md` §1)。derive・可視性・追加のメソッドは全部ふつうの
+// Rust の話であり、Graphite 固有のルールはありません。
 
 /// ノード型その1: 社員。
 #[derive(Debug, Clone, PartialEq)]
@@ -36,13 +37,13 @@ pub struct Team {
     pub name: String,
 }
 
-/// `boss` エッジが辺1本ごとに運ぶペイロード (属性)。
+/// `Boss` エッジが辺1本ごとに運ぶペイロード (積み荷)。
 #[derive(Debug, Clone, PartialEq)]
 pub struct BossEdge {
     pub since: i32,
 }
 
-/// `reviewed_by` エッジが辺1本ごとに運ぶペイロード (属性)。
+/// `ReviewedBy` エッジが辺1本ごとに運ぶペイロード (積み荷)。
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReviewEdge {
     pub year: i32,
@@ -52,48 +53,37 @@ pub struct ReviewEdge {
 // §2 schema 宣言
 // ============================================================
 //
-// `edge label: From -> To (多重度);` (属性なし) / `edge label: From -[Attrs]->
-// To (多重度);` (属性あり) の読み方:
+// v4 (`docs/schema_v4.md` §0) の骨格は3規則だけです:
 //
-// - **`label:` の右側全体が、そのラベルの型 (関係型) です。** 読み方は Rust
-//   の関数型 `f: impl Fn(A) -> B` と同じ構図です — 「`名前: A -> B` は写像の
-//   型宣言」という、Rust に既にある読解をそのまま借ります。`boss` の型は
-//   「`Person` から `Person` へ、`BossEdge` を運ぶ、高々1本の関係」です。
-//   (以前の構文案 `edge Person -[boss: BossEdge]-> Person` は `boss:
-//   BossEdge` がフィールド宣言 `name: Type` の顔をしていたのに、実際には
-//   **`boss` の型は `BossEdge` ではない** という構文の嘘があった —
-//   `BossEdge` は `boss` という関係が運ぶ積み荷でしかない。ラベルを矢印の
-//   外へ出し `label:` の右側全体を関係型として読ませることでこれを解消した
-//   のが今の形です。経緯は `docs/edge_syntax_v3.md` 参照。)
-// - **矢印の中 (`-[..]->` または `->`) はその関係が運ぶ積み荷 (ペイロード
-//   の型) だけです。** 属性ありエッジ (`boss: Person -[BossEdge]-> Person`)
-//   は辺1本ごとに `BossEdge` の値を1つ運びます。属性なしエッジ
-//   (`belongs_to`・`reports`) は矢印の中に何も書かない素の `->` になり、
-//   「何も運ばない」ことがそのまま見た目に出ます。
-// - ラベル (`boss` 等) 自体は「エッジ種別の宣言」です。struct のフィールド
-//   名に相当する1トークンで、ここから `{label}()` という**ビューを返す
-//   1個のメソッド**だけが機械的に命名・生成されます (旧版にあった
-//   `try_{label}`/`{label}_id(s)`/`{label}_pairs` という導出名の合成は
-//   行いません)。ビューが持つ操作の語彙 (`of`/`get`/`id_of`/`get_id`/
-//   `ids_of`/`iter`/`len`/`is_empty`) は全ラベル・全スキーマ共通で、
-//   graphite ランタイム側 (`EdgeOne`/`EdgeOption`/`EdgeMany` 等) に1回だけ
-//   定義されています。つまり `label` は「値」ではなく「これから生成される
-//   ビュー返却メソッド1個の名前の元になる識別子」です。値のように読み書き
-//   できる変数ではありません (§4 で実際に確認します)。
-// - 多重度 `(1)`/`(0..1)`/`(0..*)` は関係型のさらに外側に書きます (辺その
-//   ものが運ぶものではなく「本数の制約」だからです)。
-// - (schema 宣言は常に `:` — 型付け — を使います。次の §3 で見る `graph!`
-//   リテラルはこれとは対照的に常に `=` — 代入 — を使います。)
+// 1. **`名前 = 定義`** — `edge Kind = From -> To ...;` は **`Kind` という
+//    新しい nominal 型 (名前で区別される型) を定義する宣言**です。透過的な
+//    別名ではありません。`Person -> Person` という同じ形の辺を2つ宣言
+//    しても (下記の `Boss` と `Reports` の関係と終点の型は同じですが)、
+//    それぞれ独立した別の型になります (取り違えてもコンパイルエラーに
+//    なる、という利点はここから来ます)。
+// 2. **矢印の中は積み荷だけ** — `-[X]->` の `X` は、その辺1本が運ぶ
+//    積み荷の**型**です。積み荷が無い辺 (`Person -> Team` のように矢印の
+//    中に何も書かない) は素の `->` になります。ラベルや関係の名前を
+//    矢印の中に書くことはありません — `Kind` という名前は既に
+//    `edge Kind = ..` の左辺で言い切っているからです。
+// 3. **`where` は制約** — 制約があるときだけ書きます。省略時は「制約なし」
+//    (=平行辺も含めて自由) を意味します。
+//    - `each <FromType>: 1` — 各始点ノードにつきちょうど1本
+//      (数学的には: この辺は始点の型から終点の型への**全域関数**)
+//    - `each <FromType>: 0..1` — 各始点ノードにつき高々1本
+//      (数学的には: **部分関数**)
+//    - `unique pair` — 同じ (始点, 終点) の対に2本目を張ることを禁止
+//      (=平行辺の禁止)
 //
-// 4本のエッジは「多重度 × 属性の有無」の組み合わせを一通り確かめられる
-// ように選んであります:
+// 以下4本のエッジは、この "each 1 / each 0..1 / unique pair / 制約なし"
+// という4パターンを一通りカバーするように選んであります:
 //
-// | ラベル        | 多重度   | 属性         |
-// |---------------|----------|--------------|
-// | `belongs_to`  | `(1)`    | なし         |
-// | `boss`        | `(0..1)` | `BossEdge`   |
-// | `reports`     | `(0..*)` | なし         |
-// | `reviewed_by` | `(0..*)` | `ReviewEdge` |
+// | エッジ         | 制約                | 積み荷        | 読み方 |
+// |----------------|---------------------|----------------|--------|
+// | `BelongsTo`    | `each Person: 1`    | なし           | 全域関数。全社員は必ずどこか1つのチームに所属する |
+// | `Boss`         | `each Person: 0..1` | `BossEdge`     | 部分関数。上司がいない社員がいてもよいが、いるなら1人だけ |
+// | `Reports`      | `unique pair`       | なし           | 同じ (上司, 部下) の対を2回宣言できない (平行辺の禁止) |
+// | `ReviewedBy`   | 制約なし            | `ReviewEdge`   | 平行辺OK。同じ2人の間で複数年度の考課が積み重なってよい |
 
 #[rustfmt::skip]
 graphite::graph_schema! {
@@ -101,10 +91,10 @@ graphite::graph_schema! {
         node Person;
         node Team;
 
-        edge belongs_to:  Person -> Team (1);
-        edge boss:        Person -[BossEdge]-> Person (0..1);
-        edge reports:     Person -> Person (0..*);
-        edge reviewed_by: Person -[ReviewEdge]-> Person (0..*);
+        edge BelongsTo  = Person -> Team              where each Person: 1;
+        edge Boss       = Person -[BossEdge]-> Person where each Person: 0..1;
+        edge Reports    = Person -> Person             where unique pair;
+        edge ReviewedBy = Person -[ReviewEdge]-> Person; // 制約なし (平行辺も自由)
     }
 }
 
@@ -113,84 +103,120 @@ fn main() {
 }
 
 // ============================================================
-// §2.5 脱糖の実像 — エッジは誰が持っているのか
+// §2.5 脱糖の実像 — 全要素キー・KeyedTable格納・辺の第一級化
 // ============================================================
 //
-// 「`-[boss = BossEdge { .. }]->` は脱糖されたとき、構造体は誰が
-// どういうプロパティとして持つのか? `boss.attr = 構造体` のような形
-// なのか?」という疑問への回答です。答えは **No** です。`boss` は
-// オブジェクトではなく、以下で見るように「表 (テーブル) の名前」です。
+// 以下は `cargo expand` で実際に確認した生成物 (`cargo install cargo-expand`
+// して `cargo expand --bin hello-graph 2>&1 | Select-String -Context 5
+// "struct Boss"` のように確認できます) を元に、要点だけ抜き出して整理した
+// ものです。要約であって書き下ろしではありません — 生成ロジックそのものは
+// `crates/graphite-macros/src/schema_codegen.rs` を正としてください。
 //
-// ## 1. `graph!` の脱糖はただのメソッド呼び出し
+// ## 1. 全要素がキー化される — ノードもエッジも
 //
-// `crates/graphite-macros/src/instance_codegen.rs` (`generate` 関数) を
-// 読むと、
-//
-// ```rust
-// bob -[boss = BossEdge { since: 2021 }]-> alice,
-// ```
-//
-// は次のコードへ展開されることが分かります (実際の生成コードそのまま。
-// 引数は3つ: 始点キー・終点キー・ペイロード式):
+// v3 までは「エッジは HashMap のエントリ」でしたが、v4 では
+// **辺そのものが、ノードと同じ資格を持つ第一級の要素**になりました。
+// `graph_schema!` は `Boss` エッジ宣言から、ノードの `PersonId` と全く
+// 同じ形の newtype キーを生成します:
 //
 // ```rust
-// __graphite_b.boss(bob.clone(), alice.clone(), BossEdge { since: 2021 });
+// pub struct BossId(pub String);
 // ```
 //
-// `boss` はここでは `OrgBuilder` の**メソッド名**であって、`.attr` で
-// たどる先のフィールドではありません。
-//
-// ## 2. 格納先はグラフ本体の「ラベル名の非公開フィールド」
-//
-// `b.boss(..)` が最終的に格納する先は、`graph_schema!` が生成する `Org`
-// struct の `boss` という名前のフィールドです
-// (`crates/graphite-macros/src/schema_codegen.rs` の `gen_schema_struct`/
-// `edge_stored_value_type` 参照。以下は実際に生成される型そのもの、
-// 多重度・属性の有無で形が変わることを1行ずつ示します):
+// `graph!` リテラルの各行 `名前 = 値` の「名前」は、ノード行でもエッジ行
+// でも常に**キーの束縛**です (`docs/schema_v4.md` §0 規則1)。これは
+// `instance_codegen.rs` の脱糖を見ると直接分かります — 例えば
 //
 // ```rust
-// // belongs_to: (1) + 属性なし  -> 終点キーを直接値に持つ
-// belongs_to: std::collections::HashMap<PersonId, TeamId>,
-// // boss:       (0..1) + 属性あり -> (終点キー, ペイロード) のタプル
-// boss: std::collections::HashMap<PersonId, (PersonId, BossEdge)>,
-// // reports:    (0..*) + 属性なし  -> 終点キーの Vec
-// reports: std::collections::HashMap<PersonId, Vec<PersonId>>,
-// // reviewed_by: (0..*) + 属性あり -> (終点キー, ペイロード) タプルの Vec
-// reviewed_by: std::collections::HashMap<PersonId, Vec<(PersonId, ReviewEdge)>>,
+// tanaka_boss = Boss(bob -[promo]-> alice),
 // ```
 //
-// つまり `boss` エッジ1本 (`bob -[boss = BossEdge{since:2021}]-> alice`) は
-// `boss` という `HashMap` の中の1エントリ `bob -> (alice, BossEdge{since:2021})`
-// として格納されるだけです。`BossEdge` の値は「`boss` というオブジェクトの
-// プロパティ」ではなく、「`boss` という表の、キー `bob` の行に載っている
-// ペイロード列」です。
+// は次のように展開されます (実際の展開形そのまま。`__graphite_b` が
+// builder、`clone()` は from/to のキーを渡すため):
 //
-// ## 3. メンタルモデル: リレーショナル DB の比喩
+// ```rust
+// let tanaka_boss = __graphite_b.add(
+//     "tanaka_boss",
+//     Boss(bob.clone(), alice.clone(), promo),
+// );
+// ```
 //
-// - **ラベル = テーブル名**。`boss`/`belongs_to`/`reports`/`reviewed_by` は
-//   それぞれ独立した1つの表の名前です。
-// - **辺1本 = 1行** = `(from, to[, ペイロード])`。
-// - `-[boss = 式]->` は「`boss` 表に `(bob, alice, 式の値)` という1行を
-//   INSERT する」ことに相当します (実際 `OrgBuilder::boss` は
-//   `self.boss.push((from, to, attrs))` で `Vec` に積むだけ。検査は
-//   `freeze` 時にまとめて行われます)。
-// - `g.boss().of(&bob)` は「`boss` 表を `from = bob` で引き、`to` (=alice) を
-//   ノード実体 (`Person`) に解決してから返す」ことに相当します。
+// `tanaka_boss` はここで `Boss` の値そのものではなく、`add` が返す
+// **`BossId`** に束縛されます。ノード行 (`alice = Person { .. }`) も
+// 同じ形で `__graphite_b.insert("alice", Person { .. })` に展開され、
+// `alice` は `PersonId` です。「名前 = 値」の名前は常にキー、という規則が
+// ノード・エッジ双方に一貫して効いています。
 //
-// `boss.since` のように書けない (§4.1) のは、`boss` がオブジェクトでは
-// なく表の名前だから、というのがこの比喩の結論です。`attrs.since` の形で
-// アクセスできるのは、`g.boss().of(&id)` という**クエリの戻り値**
-// (`(&Person, &BossEdge)`) の2番目の要素だからであり、`boss` という値
-// そのものが `since` を持っているわけではありません。
+// ## 2. 辺はタプル struct として実在する
 //
-// ## 4. §4.2 との対応
+// `edge Boss = Person -[BossEdge]-> Person where each Person: 0..1;` から
+// `graph_schema!` が生成する実際の型は次の通りです
+// (`schema_codegen.rs::gen_edge_tuple_structs`):
 //
-// 後述 §4.2 で `g.boss` を `Person` として直接使おうとすると
-// `mismatched types` になり、実際の型が
-// `HashMap<PersonId, (PersonId, BossEdge)>` であることが分かります。
-// これはまさに上記2節の内部テーブルそのものです — `g.boss` という式を
-// 素朴に書いた瞬間、隠していたはずの内部実装 (表そのもの) がそのまま型
-// エラーに露出する、というのが §4.2 の正体です。
+// ```rust
+// #[derive(Debug, Clone, PartialEq)]
+// pub struct Boss(pub PersonId, pub PersonId, pub BossEdge);
+//
+// impl Boss {
+//     pub fn from(&self) -> &PersonId { &self.0 }
+//     pub fn to(&self) -> &PersonId { &self.1 }
+//     pub fn payload(&self) -> &BossEdge { &self.2 }
+// }
+// ```
+//
+// 積み荷なしエッジ (`BelongsTo`) は3要素目が無いだけの2要素タプル struct
+// `pub struct BelongsTo(pub PersonId, pub TeamId);` になり、`payload()` は
+// 生成されません。**このタプル struct はマクロの内部表現ではなく、公開
+// struct として実在します** (`docs/schema_v4.md` §3.1 原則6) — マクロの
+// 外で `Boss(bob_id, tanaka_id, BossEdge { since: 2020 })` と普通に構築
+// できることは、`crates/graphite/tests/orgchart_macro.rs` の
+// `タプルstructはマクロ外でも普通に構築できる`/`タプルstructを直接構築して
+// addできる` が実例です。読み取りは `.0`/`.1`/`.2` という位置アクセスを
+// 人間に晒さず、`from()`/`to()`/`payload()` という固定語彙のメソッドに
+// 統一されています。
+//
+// ## 3. 格納先は KeyedTable — HashMap 直書きではない
+//
+// `Org` struct 本体は次の形で生成されます
+// (`schema_codegen.rs::gen_schema_struct`。フィールド名はノード種別名の
+// 複数形・エッジ種別名の snake_case):
+//
+// ```rust
+// pub struct Org {
+//     persons: graphite::KeyedTable<PersonId, Person>,
+//     teams: graphite::KeyedTable<TeamId, Team>,
+//
+//     belongs_to: graphite::KeyedTable<BelongsToId, BelongsTo>,
+//     belongs_to_from_index: std::collections::HashMap<PersonId, Vec<BelongsToId>>,
+//
+//     boss: graphite::KeyedTable<BossId, Boss>,
+//     boss_from_index: std::collections::HashMap<PersonId, Vec<BossId>>,
+//
+//     reports: graphite::KeyedTable<ReportsId, Reports>,
+//     reports_from_index: std::collections::HashMap<PersonId, Vec<ReportsId>>,
+//
+//     reviewed_by: graphite::KeyedTable<ReviewedById, ReviewedBy>,
+//     reviewed_by_from_index: std::collections::HashMap<PersonId, Vec<ReviewedById>>,
+// }
+// ```
+//
+// ノード表もエッジ表も同じ `KeyedTable<Key, Value>` (`crates/graphite/src/
+// keyed_table.rs`) というジェネリック機構を共有しています — v3 では
+// ノード用の素朴な `HashMap` とエッジ用のビュー6型が別々の機構でしたが、
+// v4 は「キー付き要素表」という1つの機構にノードと辺の両方を載せています。
+// `{accessor}_from_index` (始点キー -> そこから出る辺キーの一覧) は
+// `freeze` 時に構築される索引で、`Kind::of`/`between` の実装が使います。
+//
+// ## 4. メンタルモデル: 「ラベル=表」から「辺=第一級の行」へ
+//
+// v3 の比喩は「ラベルはリレーショナルDBの表名、辺はその1行」でしたが、
+// v4 ではさらに一歩進み、**辺という「行」自体が独立したキーを持つ実体**
+// になりました。`Boss::of(&g, &bob)` は「`boss` 表を `bob` で引く」ので
+// はなく、正確には「`boss_from_index` で `bob` から出る `BossId` の一覧を
+// 引き、`boss` 表からその `BossId` の `Boss` を取り、その `to()` で
+// `persons` 表を引く」という3段の索引です。§4.2 で実際に `g.boss` へ
+// 直接アクセスしようとした際の型不一致から、この `KeyedTable<BossId,
+// Boss>` という実際の格納型がそのまま見えます。
 
 // ============================================================
 // §3 クックブック — 生成される公開APIの全列挙
@@ -198,15 +224,18 @@ fn main() {
 //
 // `graph_schema!` が `schema Org { .. }` から生成する公開API を、
 // 1関数=1つの「やりたいこと」に分けて全部並べています。
-// カテゴリ順: 構築 → ノードを読む → エッジを辿る (ビューの of/get/id_of/
-// get_id/ids_of) → 一覧する (iter/len/is_empty) → 検証エラーを受ける。
+// カテゴリ順: 構築 → ノードを読む → エッジを辿る → 一覧する →
+// 検証エラーを受ける。
 //
-// 覚えるのは `of`/`get`/`id_of`/`get_id`/`ids_of`/`iter`/`len`/`is_empty`
-// という語彙だけです。ラベルごとに違う名前のメソッドが増えることはなく、
-// **多重度が `of` の戻り型を決める** (`(1)` → 参照そのもの、`(0..1)` →
-// `Option`、`(0..*)` → `Vec`) だけなので、4本のエッジ (多重度×属性有無の
-// 全組み合わせ) を1本ずつ確認すれば全ラベルに応用できます
-// (`docs/edge_view_api.md` 参照)。
+// v4 (`docs/schema_v4.md` §3.2) では「すべて型名前空間の関連関数」です。
+// `g.メソッド()` は一切生成されません:
+// - ノード: `{Schema}Node` トレイト経由 (`Person::get(&g, &id)` 等。この
+//   トレイトを `use` でスコープに入れておく必要があります — 本ファイルは
+//   `graph_schema!` 呼び出しと同じモジュールなので暗黙にスコープ内です)。
+// - エッジ: 各 `Kind` への固有 impl (`Boss::of`/`get`/`between`/`iter`/
+//   `ids`/`len`)。`of`/`between` の戻り型は宣言した `where` 制約が決めます
+//   (`each 1` → 直接参照、`each 0..1` → `Option`、制約なし → `Vec`、
+//   `unique pair` → `between` が `Option`)。
 //
 // スタイル: イテレータ連鎖 (`map`/`filter`/`collect`) やクロージャによる
 // データ加工は使わず、素の `for`/`if let`/`match` だけで書いています
@@ -222,7 +251,7 @@ fn section3() {
     外部変数を渡してgraphリテラルを組み立てる();
     外部で作ったエッジ属性をgraphリテラルに渡す();
     builderの型名メソッドで組み立てる();
-    builderの総称insertで組み立てる();
+    builderの総称insertとaddで組み立てる();
 
     // --- ノードを読む ---
     println!("\n--- ノードを読む ---");
@@ -230,29 +259,29 @@ fn section3() {
     チームノードを1件読む(&g);
     personidの作り方とgraphのキーの対応を確認する(&g);
 
-    // --- エッジを辿る (ビューの of/get/id_of/get_id/ids_of) ---
-    println!("\n--- エッジを辿る (ビューの of/get/id_of/get_id/ids_of) ---");
-    多重度1のビューでof_get_id_ofを使う(&g);
-    多重度0か1のビューでof_id_ofを使う(&g);
-    多重度0以上のビューでof_ids_ofを使う(&g);
-    多重度0以上属性ありのビューでof_ids_ofを使う(&g);
+    // --- エッジを辿る (Kind::of/get/between) ---
+    println!("\n--- エッジを辿る (Kind::of/get/between) ---");
+    each_1のofは直接参照を返す(&g);
+    each_0か1のofはoptionを返す(&g);
+    unique_pairのbetweenはoptionを返す(&g);
+    制約なしのofはvecを返す(&g);
 
-    // --- 一覧する (iter/len/is_empty) ---
-    println!("\n--- 一覧する (iter/len/is_empty) ---");
+    // --- 一覧する (iter/ids/len) ---
+    println!("\n--- 一覧する (iter/ids/len) ---");
     person_idsで全ノードキーを列挙する(&g);
     team_idsで全ノードキーを列挙する(&g);
-    belongs_toのiterで属性なしエッジを列挙する(&g);
-    bossのiterで属性ありエッジを列挙する(&g);
-    reportsのiterで多重度0以上のエッジを列挙する(&g);
-    reviewed_byのiterで属性あり多重度0以上のエッジを列挙する(&g);
-    lenとis_emptyで表の辺の本数を確認する(&g);
+    belongs_toのiterで制約ありエッジを列挙する(&g);
+    bossのiterで積み荷ありエッジを列挙する(&g);
+    lenで表の辺の本数を確認する(&g);
 
     // --- 検証エラーを受ける ---
     println!("\n--- 検証エラーを受ける ---");
     重複ノードキーの違反を受け取る();
+    辺キー重複の違反を受け取る();
     未知の始点キーの違反を受け取る();
     未知の終点キーの違反を受け取る();
-    多重度違反を受け取る();
+    each違反を受け取る();
+    unique_pair違反を受け取る();
     createは最初の1件で違反を止める();
     create_collectingで全違反を集める();
 }
@@ -269,17 +298,17 @@ fn インライン式でgraphリテラルを組み立てる() -> Org {
         carol = Person { name: "Carol".into() },
         eng   = Team { name: "Engineering".into() },
 
-        alice -[belongs_to]-> eng,
-        bob   -[belongs_to]-> eng,
-        carol -[belongs_to]-> eng,
-        bob   -[boss = BossEdge { since: 2021 }]-> alice,
-        alice -[reports]-> bob,
-        alice -[reports]-> carol,
-        bob   -[reviewed_by = ReviewEdge { year: 2023 }]-> alice,
-        bob   -[reviewed_by = ReviewEdge { year: 2024 }]-> carol,
+        alice_dept = BelongsTo(alice -> eng),
+        bob_dept   = BelongsTo(bob -> eng),
+        carol_dept = BelongsTo(carol -> eng),
+        bob_boss   = Boss(bob -[BossEdge { since: 2021 }]-> alice),
+        alice_reports_bob   = Reports(alice -> bob),
+        alice_reports_carol = Reports(alice -> carol),
+        review_2023 = ReviewedBy(bob -[ReviewEdge { year: 2023 }]-> alice),
+        review_2024 = ReviewedBy(bob -[ReviewEdge { year: 2024 }]-> carol),
     })
     .expect("正常なグラフは構築に成功するはず");
-    let alice_person: &Person = g.person(&PersonId("alice".to_string())).unwrap();
+    let alice_person: &Person = Person::get(&g, &PersonId("alice".to_string())).unwrap();
     println!("(構築1: インライン式) alice = {}", alice_person.name);
     g
 }
@@ -292,14 +321,14 @@ fn 外部変数を渡してgraphリテラルを組み立てる() {
     let g: Org = graphite::graph!(Org {
         alice = alice_value,
         eng   = eng_value,
-        alice -[belongs_to]-> eng,
+        alice_dept = BelongsTo(alice -> eng),
     })
     .expect("外部変数を渡した graph! も構築に成功するはず");
-    let alice_person: &Person = g.person(&PersonId("alice".to_string())).unwrap();
+    let alice_person: &Person = Person::get(&g, &PersonId("alice".to_string())).unwrap();
     println!("(構築2: 外部変数渡し) alice = {}", alice_person.name);
 }
 
-// やりたいこと: エッジの属性 (`BossEdge`) もグラフの外で作った値を渡せることを確認する。
+// やりたいこと: エッジの積み荷 (`BossEdge`) もグラフの外で作った値を渡せることを確認する。
 fn 外部で作ったエッジ属性をgraphリテラルに渡す() {
     let promotion: BossEdge = BossEdge { since: 2019 };
     #[rustfmt::skip]
@@ -307,12 +336,12 @@ fn 外部で作ったエッジ属性をgraphリテラルに渡す() {
         alice = Person { name: "Alice".into() },
         bob   = Person { name: "Bob".into() },
         eng   = Team { name: "Engineering".into() },
-        alice -[belongs_to]-> eng,
-        bob   -[belongs_to]-> eng,
-        bob   -[boss = promotion]-> alice,
+        alice_dept = BelongsTo(alice -> eng),
+        bob_dept   = BelongsTo(bob -> eng),
+        bob_boss   = Boss(bob -[promotion]-> alice),
     })
     .expect("外部エッジ属性を渡した graph! も構築に成功するはず");
-    let boss_pair: (&Person, &BossEdge) = g.boss().of(&PersonId("bob".to_string())).unwrap();
+    let boss_pair: (&Person, &BossEdge) = Boss::of(&g, &PersonId("bob".to_string())).unwrap();
     println!("(構築3: 外部エッジ属性渡し) bob の上司就任年 = {}", boss_pair.1.since);
 }
 
@@ -321,44 +350,47 @@ fn builderの型名メソッドで組み立てる() {
     let g: Org = Org::create(|b: &mut OrgBuilder| {
         b.person(PersonId("dave".to_string()), Person { name: "Dave".to_string() });
         b.team(TeamId("sales".to_string()), Team { name: "Sales".to_string() });
-        b.belongs_to(PersonId("dave".to_string()), TeamId("sales".to_string()));
+        b.belongs_to(
+            BelongsToId("dave_dept".to_string()),
+            BelongsTo(PersonId("dave".to_string()), TeamId("sales".to_string())),
+        );
     })
     .expect("builder の型名メソッドでも構築に成功するはず");
-    let dave: &Person = g.person(&PersonId("dave".to_string())).unwrap();
+    let dave: &Person = Person::get(&g, &PersonId("dave".to_string())).unwrap();
     println!("(構築4: builderの型名メソッド) dave = {}", dave.name);
 }
 
-// やりたいこと: builder の総称メソッド `insert` に値を渡し、値の型から自動で振り分けさせる
-// (`insert` の型境界 `N: OrgNode` は graph_schema! が生成した `OrgNode` トレイトで
-// 満たされる。利用者がこのトレイトを直接呼ぶことは無い)。
-fn builderの総称insertで組み立てる() {
+// やりたいこと: builder の総称メソッド `insert`/`add` に値を渡し、値の型から自動で
+// 振り分けさせる (`insert` の型境界 `N: OrgNode`、`add` の型境界 `E: OrgEdge` は
+// graph_schema! が生成したトレイトで満たされる。利用者がこのトレイトを直接呼ぶことは無い)。
+fn builderの総称insertとaddで組み立てる() {
     let g: Org = Org::create(|b: &mut OrgBuilder| {
         let eve_id: PersonId = b.insert("eve", Person { name: "Eve".to_string() });
         let sales_id: TeamId = b.insert("sales", Team { name: "Sales".to_string() });
-        b.belongs_to(eve_id, sales_id);
+        let _dept_id: BelongsToId = b.add("eve_dept", BelongsTo(eve_id.clone(), sales_id.clone()));
     })
-    .expect("insert 経由の構築も成功するはず");
-    let eve: &Person = g.person(&PersonId("eve".to_string())).unwrap();
-    println!("(構築5: builderの総称insert) eve = {}", eve.name);
+    .expect("insert/add 経由の構築も成功するはず");
+    let eve: &Person = Person::get(&g, &PersonId("eve".to_string())).unwrap();
+    println!("(構築5: builderの総称insert/add) eve = {}", eve.name);
 }
 
 // --- ノードを読む ---
 
-// やりたいこと: ノード種別ごとのアクセサ `{node}(&id)` で1件読む (無ければ None)。
+// やりたいこと: `{Type}::get(&g, &id)` で1件読む (無ければ None)。
 fn 人ノードを1件読む(g: &Org) {
-    let alice: Option<&Person> = g.person(&PersonId("alice".to_string()));
+    let alice: Option<&Person> = Person::get(g, &PersonId("alice".to_string()));
     if let Some(person) = alice {
-        println!("(ノード) person(&alice) = {}", person.name);
+        println!("(ノード) Person::get(&g, &alice) = {}", person.name);
     }
-    let unknown: Option<&Person> = g.person(&PersonId("dave".to_string()));
-    println!("(ノード) person(&dave)  = {unknown:?} (この g には居ない)");
+    let unknown: Option<&Person> = Person::get(g, &PersonId("dave".to_string()));
+    println!("(ノード) Person::get(&g, &dave)  = {unknown:?} (この g には居ない)");
 }
 
-// やりたいこと: `team(&id)` も同じ形。ノード型が違っても命名規則は共通。
+// やりたいこと: `Team::get` も同じ形。ノード型が違っても命名規則は共通。
 fn チームノードを1件読む(g: &Org) {
-    let eng: Option<&Team> = g.team(&TeamId("eng".to_string()));
+    let eng: Option<&Team> = Team::get(g, &TeamId("eng".to_string()));
     if let Some(team) = eng {
-        println!("(ノード) team(&eng) = {}", team.name);
+        println!("(ノード) Team::get(&g, &eng) = {}", team.name);
     }
 }
 
@@ -366,137 +398,102 @@ fn チームノードを1件読む(g: &Org) {
 // キー (`alice = ..`) はこの `PersonId("alice".to_string())` と同一視される。
 fn personidの作り方とgraphのキーの対応を確認する(g: &Org) {
     let hand_built_id: PersonId = PersonId("alice".to_string());
-    let alice: &Person = g
-        .person(&hand_built_id)
+    let alice: &Person = Person::get(g, &hand_built_id)
         .expect("graph!のキーaliceがPersonId(\"alice\")と一致するはず");
     println!("(型) PersonId(\"alice\".to_string()) で graph! の alice = {} が引ける", alice.name);
 }
 
-// --- エッジを辿る (ビューの of/get/id_of/get_id/ids_of) ---
+// --- エッジを辿る (Kind::of/get/between) ---
 
-// やりたいこと: 多重度(1)のビュー `{label}()` は `of`/`get`/`id_of`/`get_id`
-// の4つ全てを持つ。`of` は参照そのものを返す (未知キーはパニックする契約)。
-// `get`/`get_id` はその非パニック版 (`Option` を返す)。
-fn 多重度1のビューでof_get_id_ofを使う(g: &Org) {
-    let team: &Team = g.belongs_to().of(&PersonId("alice".to_string()));
-    println!("(1) belongs_to().of(&alice) = {}", team.name);
+// やりたいこと: `each Person: 1` のエッジは `of` が参照そのものを返す
+// (未知キーはパニックする契約。非パニック版は `get_of`)。
+fn each_1のofは直接参照を返す(g: &Org) {
+    let team: &Team = BelongsTo::of(g, &PersonId("alice".to_string()));
+    println!("(each 1) BelongsTo::of(&g, &alice) = {}", team.name);
 
-    if let Some(team) = g.belongs_to().get(&PersonId("alice".to_string())) {
-        println!("(1) belongs_to().get(&alice) = {}", team.name);
-    }
-    let unknown: Option<&Team> = g.belongs_to().get(&PersonId("dave".to_string()));
-    println!("(1) belongs_to().get(&dave)  = {unknown:?} (未知キーはNone)");
-
-    // id_of/get_id: 相手ノードの値ではなくキーが欲しいときはこちら。
-    let team_id: &TeamId = g.belongs_to().id_of(&PersonId("alice".to_string()));
-    println!("(1) belongs_to().id_of(&alice) = {team_id:?}");
-    let unknown_id: Option<&TeamId> = g.belongs_to().get_id(&PersonId("dave".to_string()));
-    println!("(1) belongs_to().get_id(&dave) = {unknown_id:?}");
+    let safe: Option<&Team> = BelongsTo::get_of(g, &PersonId("alice".to_string()));
+    println!("(each 1) BelongsTo::get_of(&g, &alice) = {:?}", safe.map(|t| &t.name));
+    let unknown: Option<&Team> = BelongsTo::get_of(g, &PersonId("dave".to_string()));
+    println!("(each 1) BelongsTo::get_of(&g, &dave) = {unknown:?} (未知キーはNone)");
 }
 
-// やりたいこと: 多重度(0..1)のビューは `of`/`id_of` を持つ (`get`/`get_id` は
-// 無い — `of` が既に `Option` を返す全域関数なので不要)。属性ありなので
-// `of` は `Option<(&Node, &Attrs)>` を返し、属性の値へは "ふつうの
+// やりたいこと: `each Person: 0..1` のエッジは `of` が `Option` を返す。
+// 積み荷ありなので `Option<(&Node, &Attrs)>` になり、積み荷へは "ふつうの
 // フィールドアクセス" で辿れる (`attrs.since`)。
-fn 多重度0か1のビューでof_id_ofを使う(g: &Org) {
-    let boss: Option<(&Person, &BossEdge)> = g.boss().of(&PersonId("bob".to_string()));
+fn each_0か1のofはoptionを返す(g: &Org) {
+    let boss: Option<(&Person, &BossEdge)> = Boss::of(g, &PersonId("bob".to_string()));
     if let Some((boss_person, attrs)) = boss {
-        println!("(0..1) boss().of(&bob) = {} (就任年: {})", boss_person.name, attrs.since);
+        println!("(each 0..1) Boss::of(&g, &bob) = {} (就任年: {})", boss_person.name, attrs.since);
     }
-    let no_boss: Option<(&Person, &BossEdge)> = g.boss().of(&PersonId("alice".to_string()));
-    println!("(0..1) boss().of(&alice) = {no_boss:?} (aliceには上司がいない)");
-
-    let boss_id: Option<&PersonId> = g.boss().id_of(&PersonId("bob".to_string()));
-    println!("(0..1) boss().id_of(&bob) = {boss_id:?}");
+    let no_boss: Option<(&Person, &BossEdge)> = Boss::of(g, &PersonId("alice".to_string()));
+    println!("(each 0..1) Boss::of(&g, &alice) = {no_boss:?} (aliceには上司がいない)");
 }
 
-// やりたいこと: 多重度(0..*)のビューは `of`/`ids_of` を持つ。`of` は `Vec` を
-// 返す (素の for ループで受ける)。`ids_of` は属性を含まずキーだけの `Vec`
-// (格納順、`graph!` のソース記述順を保持する)。
-fn 多重度0以上のビューでof_ids_ofを使う(g: &Org) {
-    let reports: Vec<&Person> = g.reports().of(&PersonId("alice".to_string()));
-    for report in &reports {
-        println!("(0..*) reports().of(&alice) に {} が含まれる", report.name);
-    }
-    let report_ids: Vec<&PersonId> = g.reports().ids_of(&PersonId("alice".to_string()));
-    for id in &report_ids {
-        println!("(0..*) reports().ids_of(&alice) に {id:?} が含まれる");
-    }
+// やりたいこと: `unique pair` のエッジは `between` が `Option` を返す
+// (同じ対に2本目を張れないので「あるかないか」で十分)。
+fn unique_pairのbetweenはoptionを返す(g: &Org) {
+    let r: Option<&Reports> = Reports::between(
+        g,
+        &PersonId("alice".to_string()),
+        &PersonId("bob".to_string()),
+    );
+    println!("(unique pair) Reports::between(&g, &alice, &bob) = {}", r.is_some());
+    let none = Reports::between(
+        g,
+        &PersonId("bob".to_string()),
+        &PersonId("alice".to_string()),
+    );
+    println!("(unique pair) Reports::between(&g, &bob, &alice) = {} (逆向きは無い)", none.is_some());
 }
 
-// やりたいこと: 属性ありの多重度(0..*)も同じ語彙 (`of`/`ids_of`) で辿れる。
-// `of` は `Vec<(&Node, &Attrs)>`、`ids_of` は属性を含まないキーだけの `Vec`
-// (属性が欲しい場合は `of` を使う)。
-fn 多重度0以上属性ありのビューでof_ids_ofを使う(g: &Org) {
-    let reviewers: Vec<(&Person, &ReviewEdge)> = g.reviewed_by().of(&PersonId("bob".to_string()));
+// やりたいこと: 制約なしのエッジは `of` が `Vec` を返す (平行辺を許すため)。
+// 積み荷ありなので `Vec<(&Node, &Attrs)>`。
+fn 制約なしのofはvecを返す(g: &Org) {
+    let reviewers: Vec<(&Person, &ReviewEdge)> = ReviewedBy::of(g, &PersonId("bob".to_string()));
     for (reviewer, attrs) in &reviewers {
         println!(
-            "(0..*属性あり) reviewed_by().of(&bob) に {} ({}年度) が含まれる",
+            "(制約なし) ReviewedBy::of(&g, &bob) に {} ({}年度) が含まれる",
             reviewer.name, attrs.year
         );
     }
-    let reviewer_ids: Vec<&PersonId> = g.reviewed_by().ids_of(&PersonId("bob".to_string()));
-    for id in &reviewer_ids {
-        println!("(0..*属性あり) reviewed_by().ids_of(&bob) に {id:?} が含まれる");
-    }
 }
 
-// --- 一覧する (iter / len / is_empty) ---
+// --- 一覧する (iter/ids/len) ---
 
-// やりたいこと: `{node}_ids()` でノード種別ごとの全キーを列挙する
-// (ノードアクセサはビュー化の対象外。README「変更しないもの」節参照)。
+// やりたいこと: `{Type}::ids(&g)` でノード種別ごとの全キーを列挙する。
 fn person_idsで全ノードキーを列挙する(g: &Org) {
-    for id in g.person_ids() {
-        println!("(一覧) person_ids: {id:?}");
+    for id in Person::ids(g) {
+        println!("(一覧) Person::ids: {id:?}");
     }
 }
 
 fn team_idsで全ノードキーを列挙する(g: &Org) {
-    for id in g.team_ids() {
-        println!("(一覧) team_ids: {id:?}");
+    for id in Team::ids(g) {
+        println!("(一覧) Team::ids: {id:?}");
     }
 }
 
-// やりたいこと: 属性なしエッジの `iter()` は (始点キー, 終点キー) の2つ組。
-fn belongs_toのiterで属性なしエッジを列挙する(g: &Org) {
-    for (from, to) in g.belongs_to().iter() {
-        println!("(iter 2つ組) belongs_to: {from:?} -> {to:?}");
+// やりたいこと: `Kind::iter(&g)` は `(&{Kind}Id, &Kind)` の組。積み荷なしエッジの例。
+fn belongs_toのiterで制約ありエッジを列挙する(g: &Org) {
+    for (id, edge) in BelongsTo::iter(g) {
+        println!("(iter) BelongsTo {id:?}: {:?} -> {:?}", edge.from(), edge.to());
     }
 }
 
-// やりたいこと: 属性ありエッジの `iter()` は (始点キー, 終点キー, 属性) の3つ組。
-fn bossのiterで属性ありエッジを列挙する(g: &Org) {
-    for (from, to, attrs) in g.boss().iter() {
-        println!("(iter 3つ組) boss: {from:?} -> {to:?} (since={})", attrs.since);
-    }
-}
-
-// やりたいこと: 多重度(0..*)の `iter()` は始点キーごとの複数終点へ展開される。
-fn reportsのiterで多重度0以上のエッジを列挙する(g: &Org) {
-    for (from, to) in g.reports().iter() {
-        println!("(iter 0..*展開) reports: {from:?} -> {to:?}");
-    }
-}
-
-// やりたいこと: 多重度(0..*)+属性ありの `iter()` は3つ組かつ展開される。
-fn reviewed_byのiterで属性あり多重度0以上のエッジを列挙する(g: &Org) {
-    for (from, to, attrs) in g.reviewed_by().iter() {
+// やりたいこと: 積み荷ありエッジの `iter()` も同じ形。`edge.payload()` で積み荷を読む。
+fn bossのiterで積み荷ありエッジを列挙する(g: &Org) {
+    for (id, edge) in Boss::iter(g) {
         println!(
-            "(iter 0..*属性あり) reviewed_by: {from:?} -> {to:?} ({}年度)",
-            attrs.year
+            "(iter) Boss {id:?}: {:?} -> {:?} (since={})",
+            edge.from(), edge.to(), edge.payload().since
         );
     }
 }
 
-// やりたいこと: `len()`/`is_empty()` で表の辺の本数を確認する
-// (多重度(0..*)は始点キーごとの終点数の総和になる)。
-fn lenとis_emptyで表の辺の本数を確認する(g: &Org) {
-    println!("(len) belongs_to().len() = {}", g.belongs_to().len());
-    println!("(len) reports().len()    = {} (0..*は総本数)", g.reports().len());
-    println!(
-        "(is_empty) reviewed_by().is_empty() = {}",
-        g.reviewed_by().is_empty()
-    );
+// やりたいこと: `Kind::len(&g)` で表の辺の本数を確認する。
+fn lenで表の辺の本数を確認する(g: &Org) {
+    println!("(len) BelongsTo::len(&g) = {}", BelongsTo::len(g));
+    println!("(len) ReviewedBy::len(&g) = {} (制約なしは平行辺込みの総本数)", ReviewedBy::len(g));
 }
 
 // --- 検証エラーを受ける ---
@@ -508,50 +505,110 @@ fn 重複ノードキーの違反を受け取る() {
         b.person(PersonId("alice".to_string()), Person { name: "Alice2".to_string() });
     });
     match result {
-        Err(OrgViolation::DuplicatePerson(id)) => println!("(違反) 重複キー: {id:?}"),
-        _ => panic!("重複キー違反が検出されるはず"),
+        Err(OrgViolation::DuplicatePerson(id)) => println!("(違反) 重複ノードキー: {id:?}"),
+        _ => panic!("重複ノードキー違反が検出されるはず"),
     }
 }
 
-// やりたいこと: 未宣言の始点キーからエッジを張ると `{Label}UnknownSource` 違反になる。
+// やりたいこと: v4で新規追加された「辺キーの重複」も検出できることを確認する
+// (辺も第一級のキー付き要素になったため)。
+fn 辺キー重複の違反を受け取る() {
+    let result: Result<Org, OrgViolation> = Org::create(|b: &mut OrgBuilder| {
+        b.person(PersonId("alice".to_string()), Person { name: "Alice".to_string() });
+        b.person(PersonId("bob".to_string()), Person { name: "Bob".to_string() });
+        b.team(TeamId("eng".to_string()), Team { name: "Engineering".to_string() });
+        b.belongs_to(
+            BelongsToId("dup".to_string()),
+            BelongsTo(PersonId("alice".to_string()), TeamId("eng".to_string())),
+        );
+        b.belongs_to(
+            BelongsToId("dup".to_string()),
+            BelongsTo(PersonId("bob".to_string()), TeamId("eng".to_string())),
+        );
+    });
+    match result {
+        Err(OrgViolation::BelongsToDuplicateKey(id)) => println!("(違反) 辺キー重複: {id:?}"),
+        _ => panic!("辺キー重複違反が検出されるはず"),
+    }
+}
+
+// やりたいこと: 未宣言の始点キーからエッジを張ると `{Kind}UnknownSource` 違反になる。
 fn 未知の始点キーの違反を受け取る() {
     let result: Result<Org, OrgViolation> = Org::create(|b: &mut OrgBuilder| {
         b.team(TeamId("eng".to_string()), Team { name: "Engineering".to_string() });
-        b.belongs_to(PersonId("存在しない社員".to_string()), TeamId("eng".to_string()));
+        b.belongs_to(
+            BelongsToId("bt1".to_string()),
+            BelongsTo(PersonId("存在しない社員".to_string()), TeamId("eng".to_string())),
+        );
     });
     match result {
-        Err(OrgViolation::BelongsToUnknownSource { key }) => {
-            println!("(違反) 未知の始点キー: {key:?}");
+        Err(OrgViolation::BelongsToUnknownSource { edge, source }) => {
+            println!("(違反) 未知の始点キー: 辺={edge:?} 始点={source:?}");
         }
         _ => panic!("未知の始点キー違反が検出されるはず"),
     }
 }
 
-// やりたいこと: 未宣言の終点キーへエッジを張ると `{Label}UnknownTarget` 違反になる。
+// やりたいこと: 未宣言の終点キーへエッジを張ると `{Kind}UnknownTarget` 違反になる。
 fn 未知の終点キーの違反を受け取る() {
     let result: Result<Org, OrgViolation> = Org::create(|b: &mut OrgBuilder| {
         b.person(PersonId("alice".to_string()), Person { name: "Alice".to_string() });
-        b.belongs_to(PersonId("alice".to_string()), TeamId("存在しないチーム".to_string()));
+        b.belongs_to(
+            BelongsToId("bt1".to_string()),
+            BelongsTo(PersonId("alice".to_string()), TeamId("存在しないチーム".to_string())),
+        );
     });
     match result {
-        Err(OrgViolation::BelongsToUnknownTarget { key }) => {
-            println!("(違反) 未知の終点キー: {key:?}");
+        Err(OrgViolation::BelongsToUnknownTarget { edge, target }) => {
+            println!("(違反) 未知の終点キー: 辺={edge:?} 終点={target:?}");
         }
         _ => panic!("未知の終点キー違反が検出されるはず"),
     }
 }
 
-// やりたいこと: 多重度(1)を満たさない (0本の) エッジは `{Label}Multiplicity` 違反になる。
-fn 多重度違反を受け取る() {
+// やりたいこと: `each Person: 1` を満たさない (0本の) エッジは `{Kind}EachViolation` になる。
+fn each違反を受け取る() {
     let result: Result<Org, OrgViolation> = Org::create(|b: &mut OrgBuilder| {
         b.person(PersonId("alice".to_string()), Person { name: "Alice".to_string() });
-        // aliceをどのチームにも所属させない (belongs_to は多重度(1))
+        // aliceをどのチームにも所属させない (BelongsTo は each Person: 1)
     });
     match result {
-        Err(OrgViolation::BelongsToMultiplicity { source, count }) => {
-            println!("(違反) 多重度違反: {source:?} は {count} 本 (期待は1本)");
+        Err(OrgViolation::BelongsToEachViolation { source, count }) => {
+            println!("(違反) each違反: {source:?} は {count} 本 (期待は1本)");
         }
-        _ => panic!("多重度違反が検出されるはず"),
+        _ => panic!("each違反が検出されるはず"),
+    }
+}
+
+// やりたいこと: `unique pair` の対に2本目を張ると `{Kind}UniquePairViolation` になる。
+fn unique_pair違反を受け取る() {
+    let result: Result<Org, OrgViolation> = Org::create(|b: &mut OrgBuilder| {
+        b.person(PersonId("alice".to_string()), Person { name: "Alice".to_string() });
+        b.person(PersonId("bob".to_string()), Person { name: "Bob".to_string() });
+        b.team(TeamId("eng".to_string()), Team { name: "Engineering".to_string() });
+        // each Person: 1 (BelongsTo) が先に違反しないよう、両者ともチームに所属させておく。
+        b.belongs_to(
+            BelongsToId("bt_alice".to_string()),
+            BelongsTo(PersonId("alice".to_string()), TeamId("eng".to_string())),
+        );
+        b.belongs_to(
+            BelongsToId("bt_bob".to_string()),
+            BelongsTo(PersonId("bob".to_string()), TeamId("eng".to_string())),
+        );
+        b.reports(
+            ReportsId("r1".to_string()),
+            Reports(PersonId("alice".to_string()), PersonId("bob".to_string())),
+        );
+        b.reports(
+            ReportsId("r2".to_string()),
+            Reports(PersonId("alice".to_string()), PersonId("bob".to_string())),
+        );
+    });
+    match result {
+        Err(OrgViolation::ReportsUniquePairViolation { source, target }) => {
+            println!("(違反) unique pair違反: {source:?} -> {target:?} に2本目");
+        }
+        _ => panic!("unique pair違反が検出されるはず"),
     }
 }
 
@@ -574,7 +631,7 @@ fn create_collectingで全違反を集める() {
     let result: Result<Org, Vec<OrgViolation>> = Org::create_collecting(|b: &mut OrgBuilder| {
         b.person(PersonId("alice".to_string()), Person { name: "Alice".to_string() });
         b.person(PersonId("bob".to_string()), Person { name: "Bob".to_string() });
-        // alice, bobともどのチームにも所属させない (2件の多重度違反が集まるはず)
+        // alice, bobともどのチームにも所属させない (2件のeach違反が集まるはず)
     });
     let violations: Vec<OrgViolation> = match result {
         Err(violations) => violations,
@@ -595,34 +652,39 @@ fn create_collectingで全違反を集める() {
 // (このファイルに記載のエラー文はすべて実測したもので、書き下ろしでは
 // ありません)。
 
-// --- 4.1 ラベルを変数として使おうとする ---
+// --- 4.1 Kind名を積み荷のように扱おうとする (フィールドは無い) ---
 //
-// `boss` はスキーマ宣言の中の1トークンであり、実行時に読み書きできる
-// 変数ではありません。生成されるのは `g.boss()` という**メソッド**
-// (ビューを返す) であって、裸の `boss` という名前の値は存在しません。
+// `Boss` はスキーマ宣言で定義された1つのタプル struct 型です (§2.5)。
+// タプル struct 名は Rust 的にはそのコンストラクタ関数として式の位置に
+// 書ける値でもある (`Boss` 単体は `fn(PersonId, PersonId, BossEdge) ->
+// Boss` という関数) ため、「未定義」エラーにはなりません。しかし
+// `.since` のような名前付きフィールドは (積み荷は `.2`/`payload()` の
+// 位置アクセスでしか持たないため) 存在せず、フィールドなしエラーに
+// なります — `Boss.since` と直接書けるという誤解を正すのがこの例の
+// 意図です。
 //
-// fn section4_1(g: &Org) {
-//     let _ = boss.since;
+// fn section4_1() {
+//     let _ = Boss.since;
 // }
 //
 // 実際のエラー (コメントを外して `cargo build` した際に採取):
 //
-//   error[E0425]: cannot find value `boss` in this scope
-//      --> src\main.rs:605:13
+//   error[E0609]: no field `since` on type `fn(PersonId, PersonId, BossEdge) -> Boss {Boss}`
+//      --> src\main.rs:663:18
 //       |
-//   605 |     let _ = boss.since;
-//       |             ^^^^ not found in this scope
+//   663 |     let _ = Boss.since;
+//       |                  ^^^^^ unknown field
 
-// --- 4.2 フィールドに直接アクセスしようとする (メソッド呼び出しを忘れる) ---
+// --- 4.2 フィールドに直接アクセスしようとする (内部ストレージの型が露出する) ---
 //
-// アクセサは常に「呼び出す」もの (`g.boss().of(&id)`) であり、`g.boss` という
-// フィールドそのものは非公開の内部ストレージ (`HashMap<PersonId, (PersonId, BossEdge)>`、
-// §2.5 参照) です。このファイルは schema 宣言と同じモジュールなので `g.boss` という
-// 式自体は private エラーにはなりません (Rust の可視性はモジュール単位
-// であり、同一モジュール内では非公開フィールドも見えるため)。しかし
-// 中身は `Person` ではなく内部ストレージそのものなので、`Person` として
-// 使おうとした瞬間に型不一致になります。括弧を付け忘れて `g.boss` と
-// 書くと、素朴には使えません。
+// `Org` の各フィールド (`boss` 等) は非公開の内部ストレージ
+// (`KeyedTable<BossId, Boss>`、§2.5 参照) であり、`Person`/`Team` のような
+// ノード値そのものではありません。このファイルは schema 宣言と同じ
+// モジュールなので `g.boss` という式自体は private エラーにはなりません
+// (Rust の可視性はモジュール単位であり、同一モジュール内では非公開
+// フィールドも見えるため)。しかし中身は `Person` ではなく
+// `KeyedTable<BossId, Boss>` そのものなので、`Person` として使おうとした
+// 瞬間に型不一致になります。
 //
 // fn section4_2(g: &Org) -> Person {
 //     g.boss
@@ -631,94 +693,78 @@ fn create_collectingで全違反を集める() {
 // 実際のエラー (コメントを外して `cargo build` した際に採取):
 //
 //   error[E0308]: mismatched types
-//      --> src\main.rs:628:5
+//      --> src\main.rs:690:5
 //       |
-//   627 | fn section4_2(g: &Org) -> Person {
+//   689 | fn section4_2(g: &Org) -> Person {
 //       |                           ------ expected `Person` because of return type
-//   628 |     g.boss
-//       |     ^^^^^^ expected `Person`, found `HashMap<PersonId, (PersonId, BossEdge)>`
+//   690 |     g.boss
+//       |     ^^^^^^ expected `Person`, found `KeyedTable<BossId, Boss>`
 //       |
 //       = note: expected struct `Person`
-//                  found struct `HashMap<PersonId, (PersonId, BossEdge)>`
+//                  found struct `KeyedTable<BossId, Boss>`
 //
 // (`g.boss` という式そのものは同一モジュール内なので private エラーには
 // ならず素朴に評価できてしまいますが、その型は `Person` ではなく内部
-// ストレージの `HashMap` そのものであることがこの型不一致から分かります。
+// ストレージの `KeyedTable` そのものであることがこの型不一致から分かります。
 // つまり「boss というフィールドで社員そのものが手に入る」という誤解は
 // この型不一致で正されます。§2.5 で見た内部テーブルの型そのものです。)
 
-// --- 4.3 存在しないエッジラベルを graph! に書く ---
+// --- 4.3 存在しないエッジ種別を graph! に書く ---
 //
-// v3 (`docs/graph_literal_v3.md` §4) でハンドシェイクマクロを全廃したため、
-// 未知のラベルは素の rustc メソッド解決 (E0599) だけで検出されます
-// (「利用可能なエッジ一覧」付きの親切な compile_error! は無くなりました。
-// これは意図した trade-off です)。
+// 未知の `Kind` は素の rustc 型解決 (cannot find type/function) だけで
+// 検出されます (ハンドシェイクマクロは無い。意図した trade-off です)。
 //
 // fn section4_3() {
 //     #[rustfmt::skip]
 //     let _ = graphite::graph!(Org {
 //         alice = Person { name: "Alice".into() },
 //         eng = Team { name: "Engineering".into() },
-//         alice -[no_such_label]-> eng,
+//         no_such = NoSuchKind(alice -> eng),
 //     });
 // }
 //
 // 実際のエラー (コメントを外して `cargo build` した際に採取):
 //
-//   error[E0599]: no method named `no_such_label` found for mutable reference `&mut OrgBuilder` in the current scope
-//      --> src\main.rs:662:17
+//   error[E0425]: cannot find function, tuple struct or tuple variant `NoSuchKind` in this scope
+//      --> src\main.rs:722:19
 //       |
-//   659 |       let _ = graphite::graph!(Org {
-//       |  _____________-
-//   660 | |         alice = Person { name: "Alice".into() },
-//   661 | |         eng = Team { name: "Engineering".into() },
-//   662 | |         alice -[no_such_label]-> eng,
-//       | |                -^^^^^^^^^^^^^ method not found in `&mut OrgBuilder`
-//       | |________________|
-//       |
+//   722 |         no_such = NoSuchKind(alice -> eng),
+//       |                   ^^^^^^^^^^ not found in this scope
 
 // --- 4.4 端点の型を間違えたエッジを graph! に書く ---
 //
-// `belongs_to` は `belongs_to: Person -> Team` として宣言されているので、
-// from/to は Person/Team でなければなりません。両方を Person にすると
-// 型不一致になります。
+// `BelongsTo` は `Person -> Team` として宣言されているので、from/to は
+// `Person`/`Team` でなければなりません。両方を `Person` にすると型不一致に
+// なります。
 //
 // fn section4_4() {
 //     #[rustfmt::skip]
 //     let _ = graphite::graph!(Org {
 //         alice = Person { name: "Alice".into() },
 //         bob = Person { name: "Bob".into() },
-//         alice -[belongs_to]-> bob,
+//         bad = BelongsTo(alice -> bob),
 //     });
 // }
 //
 // 実際のエラー (コメントを外して `cargo build` した際に採取):
 //
 //   error[E0308]: mismatched types
-//      --> src\main.rs:688:13
+//      --> src\main.rs:742:13
 //       |
-//   688 |       let _ = graphite::graph!(Org {
+//   742 |       let _ = graphite::graph!(Org {
 //       |  _____________^
-//   689 | |         alice = Person { name: "Alice".into() },
-//   690 | |         bob = Person { name: "Bob".into() },
-//   691 | |         alice -[belongs_to]-> bob,
-//       | |                 ---------- arguments to this method are incorrect
-//   692 | |     });
+//   743 | |         alice = Person { name: "Alice".into() },
+//   744 | |         bob = Person { name: "Bob".into() },
+//   745 | |         bad = BelongsTo(alice -> bob),
+//       | |               --------- arguments to this struct are incorrect
+//   746 | |     });
 //       | |______^ expected `TeamId`, found `PersonId`
 //       |
-//   note: method defined here
-//      --> src\main.rs:104:14
+//   note: tuple struct defined here
+//      --> src\main.rs:94:14
 //       |
-//    99 | / graphite::graph_schema! {
-//   100 | |     schema Org {
-//   101 | |         node Person;
-//   102 | |         node Team;
-//   103 | |
-//   104 | |         edge belongs_to:  Person -> Team (1);
-//       | |              ^^^^^^^^^^
-//   ...   |
-//   109 | | }
-//       | |_-
+//    94 |         edge BelongsTo  = Person -> Team              where each Person: 1;
+//       |              ^^^^^^^^^
 //       = note: this error originates in the macro `graphite::graph` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 #[cfg(test)]
@@ -733,119 +779,95 @@ mod tests {
             carol = Person { name: "Carol".into() },
             eng   = Team { name: "Engineering".into() },
 
-            alice -[belongs_to]-> eng,
-            bob   -[belongs_to]-> eng,
-            carol -[belongs_to]-> eng,
-            bob   -[boss = BossEdge { since: 2021 }]-> alice,
-            alice -[reports]-> bob,
-            alice -[reports]-> carol,
-            bob   -[reviewed_by = ReviewEdge { year: 2023 }]-> alice,
-            bob   -[reviewed_by = ReviewEdge { year: 2024 }]-> carol,
+            alice_dept = BelongsTo(alice -> eng),
+            bob_dept   = BelongsTo(bob -> eng),
+            carol_dept = BelongsTo(carol -> eng),
+            bob_boss   = Boss(bob -[BossEdge { since: 2021 }]-> alice),
+            alice_reports_bob   = Reports(alice -> bob),
+            alice_reports_carol = Reports(alice -> carol),
+            review_2023 = ReviewedBy(bob -[ReviewEdge { year: 2023 }]-> alice),
+            review_2024 = ReviewedBy(bob -[ReviewEdge { year: 2024 }]-> carol),
         });
         g.expect("正常なグラフは構築に成功するはず")
     }
 
     #[test]
-    fn 多重度1のビューのofは参照そのものを返す() {
+    fn each_1のofは参照そのものを返す() {
         let g = build();
-        let team = g.belongs_to().of(&PersonId("alice".to_string()));
+        let team = BelongsTo::of(&g, &PersonId("alice".to_string()));
         assert_eq!(team.name, "Engineering");
     }
 
     #[test]
-    fn 多重度0か1のビューのofはoptionのタプルを返し属性フィールドへアクセスできる() {
+    fn each_0か1のofはoptionのタプルを返し積み荷フィールドへアクセスできる() {
         let g = build();
-        let (boss, attrs) = g
-            .boss()
-            .of(&PersonId("bob".to_string()))
+        let (boss, attrs) = Boss::of(&g, &PersonId("bob".to_string()))
             .expect("bobの上司はaliceのはず");
         assert_eq!(boss.name, "Alice");
         assert_eq!(attrs.since, 2021);
-        assert!(g.boss().of(&PersonId("alice".to_string())).is_none());
+        assert!(Boss::of(&g, &PersonId("alice".to_string())).is_none());
     }
 
     #[test]
-    fn 多重度0以上のビューのofはvecを返す() {
+    fn 制約なしのofはvecを返す() {
         let g = build();
-        let mut names: Vec<&str> = g
-            .reports()
-            .of(&PersonId("alice".to_string()))
+        let mut names: Vec<&str> = ReviewedBy::of(&g, &PersonId("bob".to_string()))
             .into_iter()
-            .map(|p| p.name.as_str())
+            .map(|(p, _)| p.name.as_str())
             .collect();
         names.sort();
-        assert_eq!(names, vec!["Bob", "Carol"]);
+        assert_eq!(names, vec!["Alice", "Carol"]);
     }
 
     #[test]
-    fn 多重度1のビューのgetは未知キーでnoneを返す() {
+    fn each_1のget_ofは未知キーでnoneを返す() {
         let g = build();
-        assert!(g
-            .belongs_to()
-            .get(&PersonId("dave".to_string()))
-            .is_none());
+        assert!(BelongsTo::get_of(&g, &PersonId("dave".to_string())).is_none());
     }
 
     #[test]
-    fn iterは3つ組で列挙できる() {
+    fn iterで表全体を列挙できる() {
         let g = build();
-        let boss_pairs: Vec<(&PersonId, &PersonId, &BossEdge)> = g.boss().iter().collect();
+        let boss_pairs: Vec<(&BossId, &Boss)> = Boss::iter(&g).collect();
         assert_eq!(boss_pairs.len(), 1);
-        let (from, to, attrs) = boss_pairs[0];
-        assert_eq!(*from, PersonId("bob".to_string()));
-        assert_eq!(*to, PersonId("alice".to_string()));
-        assert_eq!(attrs.since, 2021);
+        let (_, edge) = boss_pairs[0];
+        assert_eq!(edge.from(), &PersonId("bob".to_string()));
+        assert_eq!(edge.to(), &PersonId("alice".to_string()));
+        assert_eq!(edge.payload().since, 2021);
     }
 
     #[test]
-    fn person_で1件読める() {
+    fn person_getで1件読める() {
         let g = build();
-        assert_eq!(g.person(&PersonId("alice".to_string())).unwrap().name, "Alice");
-        assert!(g.person(&PersonId("dave".to_string())).is_none());
+        assert_eq!(Person::get(&g, &PersonId("alice".to_string())).unwrap().name, "Alice");
+        assert!(Person::get(&g, &PersonId("dave".to_string())).is_none());
     }
 
     #[test]
-    fn id_ofは多重度1でキーを返しget_idは未知キーでnoneになる() {
+    fn reports_betweenはunique_pairなのでoptionを返す() {
         let g = build();
-        assert_eq!(*g.belongs_to().id_of(&PersonId("alice".to_string())), TeamId("eng".to_string()));
-        assert!(g.belongs_to().get_id(&PersonId("dave".to_string())).is_none());
+        assert!(Reports::between(&g, &PersonId("alice".to_string()), &PersonId("bob".to_string())).is_some());
+        assert!(Reports::between(&g, &PersonId("bob".to_string()), &PersonId("alice".to_string())).is_none());
     }
 
     #[test]
-    fn boss_のid_ofは多重度0か1でoptionのキーを返す() {
+    fn review_のofは制約なしでvecのタプルを返す() {
         let g = build();
-        assert_eq!(g.boss().id_of(&PersonId("bob".to_string())), Some(&PersonId("alice".to_string())));
-        assert_eq!(g.boss().id_of(&PersonId("alice".to_string())), None);
-    }
-
-    #[test]
-    fn reportsのids_ofは追加順を保持したvecを返す() {
-        let g = build();
-        assert_eq!(
-            g.reports().ids_of(&PersonId("alice".to_string())),
-            vec![&PersonId("bob".to_string()), &PersonId("carol".to_string())]
-        );
-    }
-
-    #[test]
-    fn reviewed_byのofは属性あり多重度0以上でvecのタプルを返す() {
-        let g = build();
-        let reviewers = g.reviewed_by().of(&PersonId("bob".to_string()));
+        let reviewers = ReviewedBy::of(&g, &PersonId("bob".to_string()));
         assert_eq!(reviewers.len(), 2);
         assert!(reviewers.iter().any(|(p, a)| p.name == "Alice" && a.year == 2023));
         assert!(reviewers.iter().any(|(p, a)| p.name == "Carol" && a.year == 2024));
     }
 
     #[test]
-    fn lenとis_emptyで辺の本数を確認できる() {
+    fn lenで辺の本数を確認できる() {
         let g = build();
-        assert_eq!(g.belongs_to().len(), 3);
-        assert!(!g.belongs_to().is_empty());
-        assert_eq!(g.reports().len(), 2);
+        assert_eq!(BelongsTo::len(&g), 3);
+        assert_eq!(Reports::len(&g), 2);
     }
 
     #[test]
-    fn 重複キーはduplicate違反になる() {
+    fn 重複ノードキーはduplicate違反になる() {
         let result = Org::create(|b| {
             b.person(PersonId("alice".to_string()), Person { name: "Alice".to_string() });
             b.person(PersonId("alice".to_string()), Person { name: "Alice2".to_string() });
@@ -854,12 +876,41 @@ mod tests {
     }
 
     #[test]
+    fn 辺キー重複はduplicatekey違反になる() {
+        let result = Org::create(|b| {
+            b.person(PersonId("alice".to_string()), Person { name: "Alice".to_string() });
+            b.team(TeamId("eng".to_string()), Team { name: "Engineering".to_string() });
+            b.belongs_to(BelongsToId("dup".to_string()), BelongsTo(PersonId("alice".to_string()), TeamId("eng".to_string())));
+            b.belongs_to(BelongsToId("dup".to_string()), BelongsTo(PersonId("alice".to_string()), TeamId("eng".to_string())));
+        });
+        assert!(matches!(result, Err(OrgViolation::BelongsToDuplicateKey(_))));
+    }
+
+    #[test]
     fn 未知の始点キーはunknownsource違反になる() {
         let result = Org::create(|b| {
             b.team(TeamId("eng".to_string()), Team { name: "Engineering".to_string() });
-            b.belongs_to(PersonId("存在しない社員".to_string()), TeamId("eng".to_string()));
+            b.belongs_to(
+                BelongsToId("bt1".to_string()),
+                BelongsTo(PersonId("存在しない社員".to_string()), TeamId("eng".to_string())),
+            );
         });
         assert!(matches!(result, Err(OrgViolation::BelongsToUnknownSource { .. })));
+    }
+
+    #[test]
+    fn unique_pair違反が検出される() {
+        let result = Org::create(|b| {
+            b.person(PersonId("alice".to_string()), Person { name: "Alice".to_string() });
+            b.person(PersonId("bob".to_string()), Person { name: "Bob".to_string() });
+            b.team(TeamId("eng".to_string()), Team { name: "Engineering".to_string() });
+            // each Person: 1 (BelongsTo) が先に違反しないよう、両者ともチームに所属させておく。
+            b.belongs_to(BelongsToId("bt_alice".to_string()), BelongsTo(PersonId("alice".to_string()), TeamId("eng".to_string())));
+            b.belongs_to(BelongsToId("bt_bob".to_string()), BelongsTo(PersonId("bob".to_string()), TeamId("eng".to_string())));
+            b.reports(ReportsId("r1".to_string()), Reports(PersonId("alice".to_string()), PersonId("bob".to_string())));
+            b.reports(ReportsId("r2".to_string()), Reports(PersonId("alice".to_string()), PersonId("bob".to_string())));
+        });
+        assert!(matches!(result, Err(OrgViolation::ReportsUniquePairViolation { .. })));
     }
 
     #[test]
@@ -873,5 +924,21 @@ mod tests {
             Ok(_) => panic!("2件の違反が集まるはず"),
         };
         assert_eq!(violations.len(), 2);
+    }
+
+    #[test]
+    fn タプルstructはマクロ外でも普通に構築できる() {
+        // `docs/schema_v4.md` §3.1 原則6: 生成されたタプル struct はマクロの
+        // 外でも普通に構築できる。
+        let e = BelongsTo(PersonId("alice".to_string()), TeamId("eng".to_string()));
+        assert_eq!(e.from(), &PersonId("alice".to_string()));
+        assert_eq!(e.to(), &TeamId("eng".to_string()));
+
+        let b = Boss(
+            PersonId("bob".to_string()),
+            PersonId("alice".to_string()),
+            BossEdge { since: 2020 },
+        );
+        assert_eq!(b.payload().since, 2020);
     }
 }
