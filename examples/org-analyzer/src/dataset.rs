@@ -322,28 +322,30 @@ pub fn generate(seed: u64, inject_anomalies: bool) -> GeneratedOrg {
     // sponsors は高々1) を常に満たすように組んでいるので、合成データの
     // 構築自体が失敗することはない想定 (失敗したら生成ロジックのバグ)。
     //
-    // 構築コード自体は `extend_nodes`/`extend_edges` (`docs/bulk_construction.md`)
-    // に集約し、for ループは上記の「データを生成する」部分だけに残す。
+    // 構築コード自体は統一 `extend` (`docs/bulk_construction.md`、
+    // `docs/graph_splice.md` §2) に集約し、for ループは上記の「データを
+    // 生成する」部分だけに残す。ノード用・エッジ用の呼び分けは無く、値の型
+    // (`{Schema}Insertable` を満たすか) から rustc が振り分ける。
     let chart = OrgChart::create(|b| {
-        b.extend_nodes(employees.into_iter().map(|(id, e)| (id.0, e)));
-        b.extend_nodes(departments.into_iter().map(|(id, d)| (id.0, d)));
-        b.extend_nodes(projects.into_iter().map(|(id, p)| (id.0, p)));
-        b.extend_edges(
+        b.extend(employees.into_iter().map(|(id, e)| (id.0, e)));
+        b.extend(departments.into_iter().map(|(id, d)| (id.0, d)));
+        b.extend(projects.into_iter().map(|(id, p)| (id.0, p)));
+        b.extend(
             belongs_to_edges
                 .into_iter()
                 .map(|(e, d)| (format!("bt_{}", e.0), BelongsTo(e, d))),
         );
-        b.extend_edges(
+        b.extend(
             boss_edges
                 .into_iter()
                 .map(|(from, to, attrs)| (format!("boss_{}", from.0), Boss(from, to, attrs))),
         );
-        b.extend_edges(
+        b.extend(
             assigned_edges
                 .into_iter()
                 .map(|(e, p, attrs)| (format!("asn_{}_{}", e.0, p.0), Assigned(e, p, attrs))),
         );
-        b.extend_edges(
+        b.extend(
             sponsors_edges
                 .into_iter()
                 .map(|(d, p)| (format!("spon_{}", d.0), Sponsors(d, p))),

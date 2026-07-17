@@ -1,4 +1,5 @@
-//! `graph!` のコード生成本体 (v4、`docs/schema_v4.md` §2 参照)。
+//! `graph!` のコード生成本体 (v4、`docs/schema_v4.md` §2 参照。スプライス項は
+//! v4.2、`docs/graph_splice.md` §1)。
 //!
 //! `SchemaName::create(|__graphite_b| { ... })` の呼び出し列へ脱糖する。
 //!
@@ -14,6 +15,11 @@
 //! 参照) へ渡す。**辺の名前も (ノードと同様) 常にキーの束縛**
 //! (`docs/schema_v4.md` §0 規則1) なので、エッジ項も `let key = ..;` を生成する。
 //!
+//! スプライス項 (`..式`) は統一 `extend` (`schema_codegen.rs::
+//! gen_builder_impl` 参照) への呼び出し `__graphite_b.extend(式);` に脱糖する。
+//! 静的な項と異なり名前を持たないため `let` 束縛は作らず、戻り値の `Id` 列も
+//! 捨てる (`docs/graph_splice.md` §1)。
+//!
 //! ## 展開形 (項目G1、`docs/ide_support_spec.md` 参照)
 //!
 //! ノードキー・エッジキーはその場で文字列化せず、キーごとに 1 つの `let`
@@ -26,14 +32,17 @@
 //!     // (1) 全ノード宣言 (記述順)
 //!     let alice = __graphite_b.insert("alice", Person { .. });
 //!     let eng = __graphite_b.insert("eng", Team { .. });
-//!     // (2) 全エッジ (記述順)
+//!     // (2) 全エッジとスプライスを記述順に (`docs/graph_splice.md` §1)
 //!     let a_team = __graphite_b.add("a_team", BelongsTo(alice.clone(), eng.clone()));
+//!     __graphite_b.extend(staff);
 //! })
 //! ```
 //!
 //! エッジはノードキー (`from`/`to`) を参照するため、`let` 束縛は使用より
-//!前に定義されている必要がある。よって展開は「全ノード → 全エッジ」の
-//! 2段に並べ替える (builder の検証は freeze 時なので意味論は変わらない)。
+//!前に定義されている必要がある。よって展開は「全ノード → (全エッジ+全
+//! スプライスを記述順)」の2段に並べ替える (builder の検証は freeze 時なので
+//! 意味論は変わらない。スプライスの (0..*) 系の挿入順保証には第2段内の記述順
+//! がそのまま現れる、`docs/graph_splice.md` §1)。
 //!
 //! builder のクロージャ引数名は `b` ではなく `__graphite_b` にする。ユーザーが
 //! `b` というノードキーを書いたときに生成する `let b = ..;` が builder を
@@ -78,6 +87,9 @@ fn collect_declared_keys(items: &[GraphItem]) -> syn::Result<(HashSet<String>, H
         let key = match item {
             GraphItem::Node(node) => &node.key,
             GraphItem::Edge(edge) => &edge.key,
+            // スプライス項は名前を持たない (名前は静的な項だけの概念、
+            // `docs/graph_splice.md` §1) ので、キーの重複検査の対象外。
+            GraphItem::Spread(_) => continue,
         };
         let key_str = key.to_string();
         if let Some(&prev_span) = key_spans.get(&key_str) {
@@ -110,10 +122,13 @@ pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<Token
 
     let (_all_keys, node_keys) = collect_declared_keys(&input.items)?;
 
-    // 項目G1: 「全ノード → 全エッジ」の2段に並べ替えるため、生成する
-    // トークン列を別々の Vec に集めておき、最後に結合する。
+    // 項目G1 (`docs/graph_splice.md` §1 で拡張): 「全ノード → (全エッジ +
+    // 全スプライスを記述順)」の2段に並べ替えるため、生成するトークン列を
+    // 別々の Vec に集めておき、最後に結合する。`rest_calls` はエッジと
+    // スプライスの両方を、元の記述順のまま (この1つのループで出現順に push
+    // するだけなので自然に順序が保たれる) 保持する。
     let mut node_calls: Vec<TokenStream> = Vec::new();
-    let mut edge_calls: Vec<TokenStream> = Vec::new();
+    let mut rest_calls: Vec<TokenStream> = Vec::new();
 
     for item in &input.items {
         match item {
@@ -178,9 +193,18 @@ pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<Token
                 // 辺の名前もキーの束縛 (`docs/schema_v4.md` §0 規則1)。
                 // ノード同様、どこからも参照されない辺キーは
                 // `unused variable` 警告のノイズになるため抑制する。
-                edge_calls.push(quote! {
+                rest_calls.push(quote! {
                     #[allow(unused_variables)]
                     let #key_ident = __graphite_b.add(#key_str, #ctor);
+                });
+            }
+            GraphItem::Spread(spread) => {
+                // 統一 `extend` への脱糖 (`docs/graph_splice.md` §1/§2)。
+                // スプライスの要素は名前を持たないため `let` 束縛は作らず、
+                // 戻り値のキー列もその場で捨てる (式文として実行するのみ)。
+                let expr = &spread.expr;
+                rest_calls.push(quote! {
+                    __graphite_b.extend(#expr);
                 });
             }
         }
@@ -189,7 +213,7 @@ pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<Token
     Ok(quote! {
         #schema_name::create(|__graphite_b| {
             #(#node_calls)*
-            #(#edge_calls)*
+            #(#rest_calls)*
         })
     })
 }

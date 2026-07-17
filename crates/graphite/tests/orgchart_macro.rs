@@ -446,29 +446,31 @@ mod tests {
     }
 
     #[test]
-    fn extend_nodesとextend_edgesは要素単位apiの反復と同一の内容になる() {
-        // `docs/bulk_construction.md`: extend_nodes/extend_edges は insert/add
-        // の反復と完全に同一の意味論であるはず。build_healthy_chart (要素単位
-        // で構築) と同じデータを extend で構築し、内容が一致することを確認する。
+    fn extendは要素単位apiの反復と同一の内容になる() {
+        // `docs/bulk_construction.md`/`docs/graph_splice.md` §2: 統一
+        // extend は insert/add の反復と完全に同一の意味論であるはず。
+        // build_healthy_chart (要素単位で構築) と同じデータを extend で
+        // 構築し、内容が一致することを確認する。ノード用・エッジ用の
+        // 呼び分けが要らない (値の型から rustc が振り分ける) ことも実証する。
         let g1 = build_healthy_chart();
         let g2 = OrgChart::create(|b| {
-            b.extend_nodes(vec![
+            b.extend(vec![
                 ("田中".to_string(), Employee { name: "田中".to_string(), id: 1 }),
                 ("佐藤".to_string(), Employee { name: "佐藤".to_string(), id: 2 }),
             ]);
-            b.extend_nodes(vec![(
+            b.extend(vec![(
                 "営業部".to_string(),
                 Department { name: "営業".to_string() },
             )]);
-            b.extend_edges(vec![
+            b.extend(vec![
                 ("bt-tanaka".to_string(), BelongsTo(emp("田中"), dept("営業部"))),
                 ("bt-sato".to_string(), BelongsTo(emp("佐藤"), dept("営業部"))),
             ]);
-            b.extend_edges(vec![(
+            b.extend(vec![(
                 "boss-sato".to_string(),
                 Boss(emp("佐藤"), emp("田中"), BossEdge { since: 2020 }),
             )]);
-            b.extend_edges(vec![("r1".to_string(), Reports(emp("田中"), emp("佐藤")))]);
+            b.extend(vec![("r1".to_string(), Reports(emp("田中"), emp("佐藤")))]);
         })
         .expect("extendで構築した組織図も要素単位と同様に成功するはず");
 
@@ -506,20 +508,20 @@ mod tests {
     }
 
     #[test]
-    fn extend_nodesとextend_edgesの戻り値は入力順のidになる() {
+    fn extendの戻り値は入力順のidになる() {
         let g = OrgChart::create(|b| {
-            let node_ids = b.extend_nodes(vec![
+            let node_ids = b.extend(vec![
                 ("田中".to_string(), Employee { name: "田中".to_string(), id: 1 }),
                 ("佐藤".to_string(), Employee { name: "佐藤".to_string(), id: 2 }),
             ]);
             assert_eq!(node_ids, vec![emp("田中"), emp("佐藤")]);
 
-            b.extend_nodes(vec![(
+            b.extend(vec![(
                 "営業部".to_string(),
                 Department { name: "営業".to_string() },
             )]);
 
-            let edge_ids = b.extend_edges(vec![
+            let edge_ids = b.extend(vec![
                 ("bt-tanaka".to_string(), BelongsTo(emp("田中"), dept("営業部"))),
                 ("bt-sato".to_string(), BelongsTo(emp("佐藤"), dept("営業部"))),
             ]);
@@ -537,11 +539,11 @@ mod tests {
     }
 
     #[test]
-    fn extend_nodesとextend_edgesは空イテレータでも問題なく動く() {
+    fn extendは空イテレータでも問題なく動く() {
         let result = OrgChart::create(|b| {
-            let node_ids: Vec<EmployeeId> = b.extend_nodes(Vec::<(String, Employee)>::new());
+            let node_ids: Vec<EmployeeId> = b.extend(Vec::<(String, Employee)>::new());
             assert!(node_ids.is_empty());
-            let edge_ids: Vec<BelongsToId> = b.extend_edges(Vec::<(String, BelongsTo)>::new());
+            let edge_ids: Vec<BelongsToId> = b.extend(Vec::<(String, BelongsTo)>::new());
             assert!(edge_ids.is_empty());
 
             // 空のextendだけではノードも辺も無いので違反も無く成功するはず。

@@ -1,6 +1,8 @@
 //! `graph!` の入力 DSL のパース。
 //!
 //! 対応する文法 (v4、`docs/schema_v4.md` §2 参照): **全行が `名前 = 値`**。
+//! v4.2 (`docs/graph_splice.md` §1) でスプライス項 `..式` を追加した (下記
+//! 「スプライス項」参照)。
 //!
 //! ```text
 //! graph!(Org {
@@ -11,12 +13,24 @@
 //!     a_team = BelongsTo(alice -> eng),
 //!     b_boss = Boss(bob -[promo]-> alice),
 //!     lead   = Assigned(alice -[Role { name: "lead".into() }]-> proj),
+//!     ..staff,  // スプライス: 実行時コレクションから一括で流し込む
 //! })
 //! ```
 //!
 //! `graph!` はスキーマの中身 (`graph_schema!` が何を生成したか) を一切知らない。
 //! ノード項の値・エッジの積み荷はいずれも任意の `syn::Expr` として受け取り、
 //! 値の型そのものはパースしない (型はマクロではなく rustc の型推論に委ねる)。
+//!
+//! ## スプライス項 (`..式`、`docs/graph_splice.md` §1)
+//!
+//! 項の先頭が `..` なら、それは静的な `名前 = 値` の項ではなく実行時
+//! コレクションのスプライスである。式は `IntoIterator<Item = (K, T)>`
+//! (`K: Into<String>`) を実装している必要があり、`T` がノード型か辺種別かは
+//! 静的な項と同様 rustc の型推論が決める。名前は識別子であり `..` から
+//! 始まり得ないため、静的な項との曖昧性は無い (先頭トークンだけで判別できる)。
+//! 脱糖先は統一 `extend` (`instance_codegen.rs` 参照)。スプライスの要素は
+//! 静的な項と異なり名前を持たないため `key` を持たない
+//! ([`SpreadInstance`] 参照)。
 //!
 //! ## ノード項とエッジ項の判別 (v4 での新しい曖昧性)
 //!
@@ -270,13 +284,39 @@ pub struct EdgeInstance {
     pub to: Ident,
 }
 
+/// `..式` — 実行時コレクションからノード/辺を一括で流し込む
+/// (`docs/graph_splice.md` §1)。式の型は `IntoIterator<Item = (K, T)>` で、
+/// `K: Into<String>`・`T` がノード型か辺種別かは静的な項と同様 rustc の
+/// 型推論が決める。スプライスの要素は名前を持たない (名前は静的な項だけの
+/// 概念) ため、`NodeInstance`/`EdgeInstance` と異なり `key` フィールドが
+/// 無い。
+pub struct SpreadInstance {
+    pub expr: Expr,
+}
+
 pub enum GraphItem {
     Node(NodeInstance),
     Edge(EdgeInstance),
+    Spread(SpreadInstance),
 }
 
 impl Parse for GraphItem {
     fn parse(input: ParseStream) -> syn::Result<Self> {
+        // スプライス項 (`..式`) は Rust の struct update 構文 `..rest` の
+        // 借用で、項の先頭が `..` かどうかだけで静的な項 (`key = 値`) と
+        // 判別できる (`名前 = 値` の名前は識別子であり `..` から始まり得ない
+        // ため曖昧性は無い)。
+        if input.peek(Token![..]) {
+            input.parse::<Token![..]>()?;
+            let span = input.span();
+            // 構造化パースを経由せず生トークンとして捕獲してから、独立した
+            // 新規トップレベル呼び出しで再パースする (ファイル冒頭の
+            // ドキュメントコメント参照)。
+            let captured = capture_until_top_level_comma(input)?;
+            let expr = parse_expr_isolated(captured, span)?;
+            return Ok(GraphItem::Spread(SpreadInstance { expr }));
+        }
+
         let key: Ident = input.parse()?;
         input.parse::<Token![=]>()?;
         let span = input.span();
@@ -323,7 +363,7 @@ impl GraphInput {
     /// - ヘッダ (`SchemaName {`) 自体が壊れている場合は回復せず `Err` を
     ///   返す。
     /// - ボディはカンマ区切りの項目 (ノード / エッジ、どちらも `key = ..`
-    ///   の形) 単位でパースする。
+    ///   の形、またはスプライス `..式`) 単位でパースする。
     /// - **境界の定義**: 「項目はカンマ区切り」という構文上の性質を使い、
     ///   次のトップレベルの `,` (もしくは入力終端) まで、トークン木を1つ
     ///   ずつ読み飛ばす境界とする。proc_macro2 では `{ .. }`/`[ .. ]`/

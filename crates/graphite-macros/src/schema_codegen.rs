@@ -196,6 +196,10 @@ pub fn generate(schema: &SchemaInput) -> TokenStream {
     // 同じ理由でエッジ挿入用にも生やす (書き込み側専用。読み取り側は
     // 各エッジ種別型への固有 impl なのでトレイトを介さない)。
     let edge_trait_ident = format_ident!("{}Edge", schema_name);
+    // ノード用/エッジ用の挿入 trait を単一の `extend` に橋渡しするための
+    // 共通 supertrait (`gen_insertable_trait` のドキュメントコメント参照、
+    // `docs/graph_splice.md` §2)。
+    let insertable_trait_ident = format_ident!("{}Insertable", schema_name);
 
     let node_infos: Vec<NodeInfo> = schema.nodes.iter().map(NodeInfo::new).collect();
 
@@ -217,14 +221,25 @@ pub fn generate(schema: &SchemaInput) -> TokenStream {
         &violation_ident,
         &node_trait_ident,
         &edge_trait_ident,
+        &insertable_trait_ident,
         schema_name,
         &node_infos,
         &edge_infos,
     );
-    let node_trait_and_impls =
-        gen_node_trait_and_impls(&node_trait_ident, &builder_ident, schema_name, &node_infos);
-    let edge_trait_and_impls =
-        gen_edge_trait_and_impls(&edge_trait_ident, &builder_ident, &edge_infos);
+    let insertable_trait_def = gen_insertable_trait(&insertable_trait_ident, &builder_ident);
+    let node_trait_and_impls = gen_node_trait_and_impls(
+        &node_trait_ident,
+        &insertable_trait_ident,
+        &builder_ident,
+        schema_name,
+        &node_infos,
+    );
+    let edge_trait_and_impls = gen_edge_trait_and_impls(
+        &edge_trait_ident,
+        &insertable_trait_ident,
+        &builder_ident,
+        &edge_infos,
+    );
     let edge_query_impls = edge_infos.iter().map(|e| gen_edge_query_impl(schema_name, e));
 
     quote! {
@@ -235,6 +250,7 @@ pub fn generate(schema: &SchemaInput) -> TokenStream {
         #schema_struct_def
         #schema_impl
         #builder_struct_def
+        #insertable_trait_def
         #node_trait_and_impls
         #edge_trait_and_impls
         #builder_impl
@@ -288,6 +304,51 @@ fn build_edge_info<'a>(decl: &'a EdgeDecl, node_infos: &'a [NodeInfo]) -> EdgeIn
     }
 }
 
+/// ノード用/エッジ用の挿入トレイトの**共通 supertrait**
+/// (`docs/graph_splice.md` §2「extend の統一」)。
+///
+/// ## 背景: なぜ統一 `extend` にこの trait が要るか
+///
+/// `graph!` のスプライス項 (`..式`) と builder の一括構築 API は、渡された
+/// イテレータの要素の型 (ノード型かエッジ種別か) を見て正しい内部ストレージへ
+/// 振り分ける必要がある。この判別も他の総称メソッド (`insert`/`add`) と同様
+/// rustc の型推論 (単相化) に委ねたいので、`extend<K, T>` の `T` に対する
+/// **単一の**トレイト境界が要る。しかし `insert`/`add` はそれぞれ「ノード専用」
+/// 「エッジ専用」の型境界を保つ必要がある (`docs/graph_splice.md` §2「これも
+/// 統一できるか? しない」)。この2つの要求を両立させるため、`insert_into`/
+/// `Id` を本トレイトに集約し、`{Schema}Node`/`{Schema}Edge` をこの supertrait
+/// として再定義する。
+///
+/// ## 検討した代替案: 2本の blanket impl
+///
+/// ```text
+/// impl<T: {Schema}Node> {Schema}Insertable for T { .. }
+/// impl<T: {Schema}Edge> {Schema}Insertable for T { .. }
+/// ```
+/// という2本の blanket impl にすれば、ノード/エッジの型ごとに追加の impl
+/// ブロックを生成せずに済む (schema 内の型数に関わらず定数個の impl で
+/// 橋渡しできる) ため、生成コード量そのものはこちらの方が小さくなる場合が
+/// 多い。しかし rustc の coherence 検査は「ある型が `{Schema}Node` と
+/// `{Schema}Edge` を両方実装する可能性」を型システムのレベルでは否定できない
+/// (この2つは無関係な独立したトレイトであり、将来のある型が両方を実装しない
+/// 保証が無い) ため、この2本の blanket impl は素の stable Rust では
+/// **E0119 (conflicting implementations)** になる。したがって、型ごとに
+/// `{Schema}Insertable` を直接 impl する (= supertrait 関係にして、ノード型
+/// への impl ブロックを1つ増やす) 方式を採用する。
+fn gen_insertable_trait(insertable_trait_ident: &Ident, builder_ident: &Ident) -> TokenStream {
+    quote! {
+        /// ノード・エッジ共通の挿入トレイト。統一 `extend` (下記
+        /// `{Builder}::extend`) の型境界として使う。利用者がこのトレイトの
+        /// メソッドを直接呼ぶことは想定しない。
+        pub trait #insertable_trait_ident: Sized {
+            type Id;
+            /// `self` を `b` の対応する内部ストレージへ格納し、発行された
+            /// キーを返す。
+            fn insert_into(self, b: &mut #builder_ident, key: String) -> Self::Id;
+        }
+    }
+}
+
 /// v4 (`docs/schema_v4.md` §3.2) が要求する「ノード挿入用トレイト」
 /// とその各ノード型への impl を生成する。
 ///
@@ -313,6 +374,16 @@ fn build_edge_info<'a>(decl: &'a EdgeDecl, node_infos: &'a [NodeInfo]) -> EdgeIn
 /// 複数 schema が同じ `Person` に対しそれぞれ別のトレイトを impl できる
 /// (トレイトは同名でも schema ごとに別型なので衝突しない)。
 ///
+/// ## v4 での拡張: `{Schema}Insertable` supertrait (`extend` 統一)
+///
+/// `insert_into`/`Id` は `{Schema}Insertable` (`gen_insertable_trait` 参照) に
+/// 移動し、このトレイトはその supertrait として `get`/`ids`/`iter` だけを
+/// 追加する。`insert` の型境界は変わらず `N: #node_trait_ident` のまま
+/// (ノード専用の型境界を保つ)。ノード型1つにつき impl ブロックが2つ
+/// (`{Schema}Insertable` + `{Schema}Node`) になるが、`insert`/`add` の型の
+/// 厳密さ (ノード専用/エッジ専用) を保ったまま `extend` の共通境界を得る
+/// トレードオフとして採用する。
+///
 /// ## 命名判断 (`docs/design_principles.md` 原則3: std 命名規約準拠)
 ///
 /// - **trait 名は `{Schema}Node` とした**。理由は README「同一モジュール内で
@@ -324,6 +395,7 @@ fn build_edge_info<'a>(decl: &'a EdgeDecl, node_infos: &'a [NodeInfo]) -> EdgeIn
 ///   `HashMap::keys`/`HashMap::iter` に倣った命名)。
 fn gen_node_trait_and_impls(
     node_trait_ident: &Ident,
+    insertable_trait_ident: &Ident,
     builder_ident: &Ident,
     schema_name: &Ident,
     nodes: &[NodeInfo],
@@ -334,18 +406,18 @@ fn gen_node_trait_and_impls(
         let accessor = &n.accessor_ident;
         let field = &n.field_ident;
         // IDE 支援 (`docs/ide_support_spec.md` §1.9, G3 ポリシー): このノード
-        // 型への `{Schema}Node` impl が生やすメソッド名は `n.type_ident`
-        // (ノード型そのもののトークン) のスパンを持たせる。トレイト定義
-        // 自体 (下の `pub trait #node_trait_ident { .. }`) は単一の由来
-        // トークンを持たない schema 全体のインフラなので call_site のまま
-        // でよい (指示どおり、impl 側だけに適用する)。
+        // 型への `{Schema}Node`/`{Schema}Insertable` impl が生やすメソッド名は
+        // `n.type_ident` (ノード型そのもののトークン) のスパンを持たせる。
+        // トレイト定義自体 (下の `pub trait #node_trait_ident { .. }`) は
+        // 単一の由来トークンを持たない schema 全体のインフラなので call_site
+        // のままでよい (指示どおり、impl 側だけに適用する)。
         let span = ty.span();
         let insert_into_ident = Ident::new("insert_into", span);
         let get_ident = Ident::new("get", span);
         let ids_ident = Ident::new("ids", span);
         let iter_ident = Ident::new("iter", span);
         quote! {
-            impl #node_trait_ident for #ty {
+            impl #insertable_trait_ident for #ty {
                 type Id = #id_ty;
 
                 fn #insert_into_ident(self, b: &mut #builder_ident, key: String) -> Self::Id {
@@ -353,7 +425,9 @@ fn gen_node_trait_and_impls(
                     b.#accessor(id.clone(), self);
                     id
                 }
+            }
 
+            impl #node_trait_ident for #ty {
                 fn #get_ident<'g>(g: &'g #schema_name, id: &Self::Id) -> Option<&'g Self>
                 where
                     Self: 'g,
@@ -380,15 +454,12 @@ fn gen_node_trait_and_impls(
 
     quote! {
         /// ノードの読み書きで使うトレイト境界 (`docs/schema_v4.md` §3.2)。
-        /// 書き込み ( `insert_into` ) は `{Builder}::insert` 経由、読み取り
-        /// (`get`/`ids`/`iter`) は `Type::method(&g, ..)` の形で使う想定
-        /// (このトレイトを `use` でスコープに入れておく必要がある)。
-        /// 利用者が `insert_into` を直接呼ぶことは想定しない。
-        pub trait #node_trait_ident: Sized {
-            type Id;
-            /// `self` を `b` の対応する内部ストレージへ格納し、発行された
-            /// キーを返す。
-            fn insert_into(self, b: &mut #builder_ident, key: String) -> Self::Id;
+        /// 書き込み (`insert_into`、`{Schema}Insertable` supertrait 経由) は
+        /// `{Builder}::insert` 経由、読み取り (`get`/`ids`/`iter`) は
+        /// `Type::method(&g, ..)` の形で使う想定 (このトレイトを `use` で
+        /// スコープに入れておく必要がある)。利用者が `insert_into` を直接
+        /// 呼ぶことは想定しない。
+        pub trait #node_trait_ident: #insertable_trait_ident {
             /// キーからノード値を引く。
             fn get<'g>(g: &'g #schema_name, id: &Self::Id) -> Option<&'g Self>
             where
@@ -415,8 +486,14 @@ fn gen_node_trait_and_impls(
 /// (`docs/schema_v4.md` §2/§3.2)。読み取り側 (`of`/`get`/`between`/`iter`/
 /// `ids`/`len`) は各エッジ種別型 (`Kind`) への固有 impl で提供するため、
 /// このトレイトには含めない (`gen_edge_query_impl` 参照)。
+///
+/// `insert_into`/`Id` は `{Schema}Insertable` (`gen_insertable_trait` 参照) に
+/// 集約したため、このトレイト自体は supertrait 境界のみのマーカーになる
+/// (`extend` 統一、`docs/graph_splice.md` §2)。`add` の型境界は変わらず
+/// `E: #edge_trait_ident` のまま (エッジ専用の型境界を保つ)。
 fn gen_edge_trait_and_impls(
     edge_trait_ident: &Ident,
+    insertable_trait_ident: &Ident,
     builder_ident: &Ident,
     edges: &[EdgeInfo<'_>],
 ) -> TokenStream {
@@ -429,7 +506,7 @@ fn gen_edge_trait_and_impls(
         // (`docs/ide_support_spec.md` §1.9 の指示: 余裕があれば付けてよい)。
         let insert_into_ident = Ident::new("insert_into", kind.span());
         quote! {
-            impl #edge_trait_ident for #kind {
+            impl #insertable_trait_ident for #kind {
                 type Id = #id_ty;
 
                 fn #insert_into_ident(self, b: &mut #builder_ident, key: String) -> Self::Id {
@@ -438,6 +515,8 @@ fn gen_edge_trait_and_impls(
                     id
                 }
             }
+
+            impl #edge_trait_ident for #kind {}
         }
     });
 
@@ -445,10 +524,7 @@ fn gen_edge_trait_and_impls(
         /// `graph!` の `add` 経由のエッジ挿入で使うトレイト境界。利用者が
         /// この trait のメソッドを直接呼ぶことは想定しない
         /// (`{Builder}::add` 経由で使う)。
-        pub trait #edge_trait_ident: Sized {
-            type Id;
-            fn insert_into(self, b: &mut #builder_ident, key: String) -> Self::Id;
-        }
+        pub trait #edge_trait_ident: #insertable_trait_ident {}
 
         #(#edge_impls)*
     }
@@ -904,6 +980,7 @@ fn gen_builder_impl(
     violation_ident: &Ident,
     node_trait_ident: &Ident,
     edge_trait_ident: &Ident,
+    insertable_trait_ident: &Ident,
     schema_name: &Ident,
     nodes: &[NodeInfo],
     edges: &[EdgeInfo<'_>],
@@ -974,27 +1051,24 @@ fn gen_builder_impl(
                 value.insert_into(self, key.into())
             }
 
-            /// `insert` のイテレータ版 (`docs/bulk_construction.md`)。実行時
-            /// データからの構築で for ループが構築コードに残るのを避けるため、
-            /// 要素単位 API の反復に完全に一致する意味論 (挿入順保持・検証は
-            /// freeze 時) をまとめて提供する。`insert` と同じ理由
-            /// (`N: #node_trait_ident` が schema ごとに名前の異なるトレイト)
-            /// で、graphite ランタイム側の共通機構ではなくここに生成する。
-            pub fn extend_nodes<K, N>(&mut self, items: impl IntoIterator<Item = (K, N)>) -> Vec<N::Id>
+            /// `insert`/`add` のイテレータ版 (`docs/bulk_construction.md`、
+            /// `docs/graph_splice.md` §2)。実行時データからの構築で for
+            /// ループが構築コードに残るのを避けるため、要素単位 API の反復に
+            /// 完全に一致する意味論 (挿入順保持・検証は freeze 時) をまとめて
+            /// 提供する。ノード用・エッジ用の呼び分けが要らない単一の総称
+            /// メソッドに統一している (v4 破壊的変更、旧 `extend_nodes`/
+            /// `extend_edges` は廃止): 値の型が `T: #insertable_trait_ident`
+            /// を満たせばノードでもエッジでもよい (どちらになるかは rustc の
+            /// 型推論任せ)。`graph!` のスプライス項 (`..式`) もこのメソッドへ
+            /// 脱糖する。`insert`/`add` と同じ理由 (トレイトが schema ごとに
+            /// 名前が異なる) で、graphite ランタイム側の共通機構ではなく
+            /// ここに生成する。
+            pub fn extend<K, T>(&mut self, items: impl IntoIterator<Item = (K, T)>) -> Vec<T::Id>
             where
                 K: Into<String>,
-                N: #node_trait_ident,
+                T: #insertable_trait_ident,
             {
-                items.into_iter().map(|(k, v)| self.insert(k, v)).collect()
-            }
-
-            /// `extend_nodes` のエッジ版 (`add` のイテレータ版)。
-            pub fn extend_edges<K, E>(&mut self, items: impl IntoIterator<Item = (K, E)>) -> Vec<E::Id>
-            where
-                K: Into<String>,
-                E: #edge_trait_ident,
-            {
-                items.into_iter().map(|(k, v)| self.add(k, v)).collect()
+                items.into_iter().map(|(k, v)| v.insert_into(self, k.into())).collect()
             }
 
             #freeze_body
