@@ -14,10 +14,16 @@
 //!
 //! builder 直接経由・`graph!` リテラル経由の両方で確認する。
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct SpeakerId(pub String);
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Speaker {
     pub name: String,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct LineId(pub String);
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Line {

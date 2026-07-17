@@ -1,6 +1,9 @@
 // v4.1: 役割名は両端同時に書くか、両方省略するかの二択 (片方だけは構文
 // エラー、`docs/edge_endpoints_v4_1.md` §1)。
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct EmployeeId(pub String);
+
 pub struct Employee {
     pub name: String,
 }

@@ -9,10 +9,16 @@
 // 大量に出てしまうため、あえて文(statement)位置で呼び出している
 // (`graph_unknown_edge_label.rs` は生成が成功する経路なので式位置のまま)。
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct EmployeeId(pub String);
+
 pub struct Employee {
     pub name: String,
     pub id: u32,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct DepartmentId(pub String);
 
 pub struct Department {
     pub name: String,

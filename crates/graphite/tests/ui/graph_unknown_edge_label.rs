@@ -5,10 +5,16 @@
 // E0425 が単独で出る (`docs/schema_v4.md` は「利用可能な辺種別一覧」付きの
 // compile_error! を要求していない。v3 からの trade-off を踏襲)。
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct EmployeeId(pub String);
+
 pub struct Employee {
     pub name: String,
     pub id: u32,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct DepartmentId(pub String);
 
 pub struct Department {
     pub name: String,

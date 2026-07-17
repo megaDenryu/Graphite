@@ -23,6 +23,11 @@ pub struct Widget {
     pub name: String,
 }
 
+/// ノードキー。v4.2 からは `graph_schema!` はこれも生成せず、
+/// `{ノード型名}Id` という命名規約で参照するだけ (`docs/node_id_v4_2.md`)。
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct WidgetId(pub String);
+
 // エッジを1本も持たないスキーマ。孤立ノードのみで完結するグラフを
 // 素直に表現するために、あえてエッジ無しにしてある (`///` ではなく `//`
 // にしているのは、マクロ呼び出し直前の doc comment は rustdoc に

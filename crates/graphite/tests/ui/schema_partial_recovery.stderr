@@ -1,5 +1,5 @@
 error: expected `;`
-  --> tests/ui/schema_partial_recovery.rs:21:23
+  --> tests/ui/schema_partial_recovery.rs:24:23
    |
-21 |         node Employee extra_token;
+24 |         node Employee extra_token;
    |                       ^^^^^^^^^^^

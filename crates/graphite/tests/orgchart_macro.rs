@@ -15,12 +15,21 @@
 //! されず、`.subordinate()`/`.superior()` を使う。`graph!` リテラルの構文
 //! (`Boss(bob -[..]-> alice)`) は不変 (役割名は宣言側だけの語彙)。
 
+/// ノードキー。v4.2 からは `graph_schema!` はこれも生成せず、
+/// `{ノード型名}Id` という命名規約で参照するだけ (`docs/node_id_v4_2.md`)。
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct EmployeeId(pub String);
+
 /// ノード型。`graph_schema!` はこの型を生成せず参照するだけ。
 #[derive(Debug, Clone, PartialEq)]
 pub struct Employee {
     pub name: String,
     pub id: u32,
 }
+
+/// ノードキー。
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct DepartmentId(pub String);
 
 /// ノード型。
 #[derive(Debug, Clone, PartialEq)]

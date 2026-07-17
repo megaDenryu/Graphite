@@ -8,10 +8,16 @@
 
 /// スキーマ宣言を専用モジュールに隔離する。
 mod schema {
+    #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+    pub struct EmployeeId(pub String);
+
     #[derive(Debug, Clone, PartialEq)]
     pub struct Employee {
         pub name: String,
     }
+
+    #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+    pub struct DepartmentId(pub String);
 
     #[derive(Debug, Clone, PartialEq)]
     pub struct Department {

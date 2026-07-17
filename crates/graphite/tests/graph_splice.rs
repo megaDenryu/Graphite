@@ -6,6 +6,11 @@
 //! 単体で確かめるにはノイズが多い。ここでは制約なしの小さな専用スキーマ
 //! `SpliceDemo` を使う。
 
+/// ノードキー。v4.2 からは `graph_schema!` はこれも生成せず、
+/// `{ノード型名}Id` という命名規約で参照するだけ (`docs/node_id_v4_2.md`)。
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct PersonId(pub String);
+
 /// ノード型。`graph_schema!` はこの型を生成せず参照するだけ。
 #[derive(Debug, Clone, PartialEq)]
 pub struct Person {

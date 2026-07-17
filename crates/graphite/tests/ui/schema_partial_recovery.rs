@@ -12,6 +12,9 @@
 // `DepartmentId` も未定義になって fn main 側に無関係な二次エラーが大量に
 // 出るはずである。
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct DepartmentId(pub String);
+
 pub struct Department {
     pub name: String,
 }

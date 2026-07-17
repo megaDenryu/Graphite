@@ -2,9 +2,15 @@
 // `each <型>: <spec>` の spec は `1` / `0..1` のいずれかのみサポートする。
 // それ以外 (`2..5` 等) はコンパイルエラーになるはず。
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct EmployeeId(pub String);
+
 pub struct Employee {
     pub name: String,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct DepartmentId(pub String);
 
 pub struct Department {
     pub name: String,

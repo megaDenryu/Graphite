@@ -8,6 +8,9 @@
 //! - 格納順 (挿入順) の保持
 //! を確認する。
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct PersonId(pub String);
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Person {
     pub name: String,

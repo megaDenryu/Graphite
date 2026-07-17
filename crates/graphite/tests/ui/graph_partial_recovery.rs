@@ -19,10 +19,16 @@
 // `.stderr` が `expected `,`` のままであること自体が、対処が効いている
 // ことの回帰テストになっている。
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct EmployeeId(pub String);
+
 pub struct Employee {
     pub name: String,
     pub id: u32,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct DepartmentId(pub String);
 
 pub struct Department {
     pub name: String,

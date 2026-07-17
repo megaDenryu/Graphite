@@ -1,5 +1,6 @@
 //! `graph_schema!` のコード生成本体 (v4、`docs/schema_v4.md` §3 参照。
-//! v4.1 の役割名・無向辺は `docs/edge_endpoints_v4_1.md` 参照)。
+//! v4.1 の役割名・無向辺は `docs/edge_endpoints_v4_1.md`、v4.2 のノード Id
+//! ユーザー宣言化は `docs/node_id_v4_2.md` 参照)。
 //!
 //! ## 生成物の全体像 (1エッジ種別分)
 //!
@@ -36,6 +37,11 @@
 //! (マクロ生成) への固有 impl」)。ノード型はユーザーが `graph_schema!` の外に
 //! 宣言する型で複数 schema 間の共有もありうるため、代わりに `{Schema}Node`
 //! トレイトの関連関数として生やす (README/`gen_node_trait_and_impls` 参照)。
+//! v4.2 ではノードの newtype キー型 (`PersonId`) も同様にユーザーが
+//! `graph_schema!` の外に宣言する (`{ノード型名}Id` という命名規約で参照する
+//! だけで、このマクロはもう生成しない。`docs/node_id_v4_2.md`)。「型を
+//! 宣言した者が Id も宣言する」規則により、複数 schema が同じ `PersonId` を
+//! 共有できる。
 //!
 //! where 制約 → 戻り型の対応表 (`docs/schema_v4.md` §3.2、有向・始点側のみ):
 //! - `each X: 1`    -> `of` は直接参照 (未知キーはパニック、非パニック版 `get_of`)
@@ -76,12 +82,20 @@ use crate::schema_validate::{self, EachSide};
 /// ノード宣言 1 つ分の、生成コードで使う識別子一式。
 ///
 /// ノード値の型 (`Person` 等) はユーザーが `graph_schema!` の外で宣言した
-/// 普通の struct への参照であり、このマクロは生成しない。マクロが生成するのは
-/// グラフ機械 (newtype キー・ストレージ・builder・アクセサ・違反 enum) だけ。
+/// 普通の struct への参照であり、このマクロは生成しない。v4.2
+/// (`docs/node_id_v4_2.md`) からは newtype キー型 (`PersonId`) も同様に
+/// ユーザー宣言への参照になった (「型を宣言した者が Id も宣言する」規則)。
+/// マクロが生成するのはグラフ機械 (ストレージ・builder・アクセサ・違反 enum、
+/// および辺の newtype キー型) だけ。
 struct NodeInfo {
     /// ノード値の型名 (`Person`)。ユーザー宣言型への参照。
     type_ident: Ident,
-    /// newtype キー型名 (`PersonId`)。
+    /// newtype キー型名 (`PersonId`)。ユーザーが `graph_schema!` の外で
+    /// 宣言した型への**参照**であり、このマクロはもう生成しない
+    /// (`docs/node_id_v4_2.md`)。命名規約は `{ノード型名}Id`。スパンは
+    /// ノード宣言の型トークン (`decl.name`) を継承する ── 未宣言なら rustc
+    /// の「cannot find type `PersonId`」がノード宣言の位置で出るようにする
+    /// ため (`docs/node_id_v4_2.md` 「構文とユーザーの書くもの」)。
     id_ident: Ident,
     /// 内部ストレージの複数形フィールド名 (`persons`)。
     field_ident: Ident,
@@ -209,7 +223,6 @@ pub fn generate(schema: &SchemaInput) -> TokenStream {
         .map(|edge| build_edge_info(edge, &node_infos))
         .collect();
 
-    let node_id_defs = gen_node_id_types(&node_infos);
     let edge_id_defs = gen_edge_id_types(&edge_infos);
     let edge_tuple_struct_defs = gen_edge_tuple_structs(&edge_infos);
     let violation_def = gen_violation_enum(&violation_ident, &node_infos, &edge_infos);
@@ -243,7 +256,6 @@ pub fn generate(schema: &SchemaInput) -> TokenStream {
     let edge_query_impls = edge_infos.iter().map(|e| gen_edge_query_impl(schema_name, e));
 
     quote! {
-        #(#node_id_defs)*
         #(#edge_id_defs)*
         #(#edge_tuple_struct_defs)*
         #violation_def
@@ -528,21 +540,6 @@ fn gen_edge_trait_and_impls(
 
         #(#edge_impls)*
     }
-}
-
-/// ノード値の型 (`Person` 等) はユーザー宣言への参照なので生成しない。
-/// ここで生成するのは newtype キー型だけ (`PersonId(pub String)`)。
-fn gen_node_id_types(nodes: &[NodeInfo]) -> Vec<TokenStream> {
-    nodes
-        .iter()
-        .map(|n| {
-            let id_ty = &n.id_ident;
-            quote! {
-                #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-                pub struct #id_ty(pub String);
-            }
-        })
-        .collect()
 }
 
 /// エッジ種別ごとの newtype キー型 (`BossId(pub String)`)。ノードキーと
@@ -1265,6 +1262,14 @@ fn gen_undirected_edge_freeze_block(violation_ident: &Ident, edge: &EdgeInfo<'_>
     let dup_key = edge.duplicate_key_variant();
     let unk = edge.unknown_endpoint_variant();
 
+    // 無向辺の `unique pair` は (p0, p1) と (p1, p0) を同一視する必要がある。
+    // v3 まではここで `p0 <= p1` によって正準化していたが、これはノード
+    // キー型に `PartialOrd` を要求してしまう。v4.2 (`docs/node_id_v4_2.md`)
+    // でノードキー型がユーザー宣言になり、必須 derive を
+    // `Debug, Clone, PartialEq, Eq, Hash` の最小限に定めたため、正準化に
+    // 順序比較を使う実装は選べなくなった。代わりに両方の順序で
+    // `__seen_pairs` を引く (`Eq + Hash` だけで足りる) ことで同じ意味論を
+    // 実現する。
     let (seen_pairs_decl, unique_pair_check) = if edge.unique_pair {
         let v = edge.unique_pair_violation_variant();
         (
@@ -1272,12 +1277,13 @@ fn gen_undirected_edge_freeze_block(violation_ident: &Ident, edge: &EdgeInfo<'_>
                 let mut __seen_pairs: std::collections::HashSet<_> = std::collections::HashSet::new();
             },
             quote! {
-                let __pair = if p0 <= p1 { (p0.clone(), p1.clone()) } else { (p1.clone(), p0.clone()) };
-                if !__seen_pairs.insert(__pair) {
+                if __seen_pairs.contains(&(p0.clone(), p1.clone())) || __seen_pairs.contains(&(p1.clone(), p0.clone())) {
                     __violations.push(#violation_ident::#v {
                         a: p0.clone(),
                         b: p1.clone(),
                     });
+                } else {
+                    __seen_pairs.insert((p0.clone(), p1.clone()));
                 }
             },
         )

@@ -1,5 +1,5 @@
 error: 無向辺 (`--`/`-[Attrs]-`) には役割名を書けません。役割の区別がある場合は役割名つき有向辺を使ってください
-  --> tests/ui/undirected_with_role.rs:13:29
+  --> tests/ui/undirected_with_role.rs:16:29
    |
-13 |             edge Friends = (a: Person) -- (b: Person);
+16 |             edge Friends = (a: Person) -- (b: Person);
    |                             ^
