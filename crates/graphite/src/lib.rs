@@ -11,10 +11,10 @@
 //! - `../../../Bullet/docs/rust_graph_extension_sketch.md`
 //! - `../../../Bullet/docs/graph_design_sketches.md`
 
-mod edge_view;
 mod graph;
+mod keyed_table;
 
-pub use edge_view::{EdgeMany, EdgeManyWith, EdgeOne, EdgeOneWith, EdgeOption, EdgeOptionWith};
 pub use graph::{CycleError, Graph, GraphBuilder, GraphError};
+pub use keyed_table::KeyedTable;
 
 pub use graphite_macros::{graph, graph_schema};
