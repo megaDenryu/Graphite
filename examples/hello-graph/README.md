@@ -32,6 +32,7 @@ cargo run
 | §2.5 | 脱糖の実像。全要素キー・`KeyedTable` 格納・辺はタプル struct として第一級、という v4 の実装を実測して解説 |
 | §3 | クックブック — 生成される公開APIを1関数=1つのやりたいこと単位で全列挙 (`cargo run` で実行される) |
 | §4 | 「できないこと」— コメントアウトしたコード + 実際に採取したコンパイルエラー |
+| §5 | `flow!` — 関数の辺 (`graph!` の宣言される辺との対比。`cargo run` で実行される) |
 
 ## Kind (辺種別) は何者か
 
@@ -137,6 +138,23 @@ cargo run
 | unique pair違反を受け取る | `Err(OrgViolation::ReportsUniquePairViolation { source, target })` を `match` で受ける | 同上 |
 | 最初の1件の違反だけで止める | `Org::create(\|b\| ..)` | `Result<Org, OrgViolation>` |
 | 違反を全件集める | `Org::create_collecting(\|b\| ..)` | `Result<Org, Vec<OrgViolation>>` |
+
+## `flow!` — 関数の辺 (`src/main.rs` §5 と1対1対応)
+
+`graph_schema!`/`graph!` の辺は**宣言**(構築時にまとめて検証されるデータの
+繋がり) ですが、`graphite::flow!` (`docs/flow_macro.md`) の矢印 `-[関数式]->`
+は**実行**です — 書かれた順に `let 束縛名 = (関数式)(始点..);` という関数
+呼び出しへ即時に脱糖するだけで、スキーマ・builder は一切関与しません。
+同じ矢印記法 `-[X]->` を「宣言される辺」と「即時実行される辺」という対照的
+な2つの意味論に使い分けている、という読み方が両者を統一します。
+
+| やりたいこと | 書き方 | 脱糖後 |
+|---|---|---|
+| 直線 (1本の矢印) | `x -[f]-> y` | `let y = (f)(x);` |
+| チェーン形 | `x -[f]-> y -[g]-> z` | `let y = (f)(x); let z = (g)(y);` |
+| fan-out (同じ始点を複数の矢印に流す) | `x -[f]-> y, x -[g]-> z` | `let y = (f)(x); let z = (g)(x);` |
+| fan-in (タプル始点で多引数呼び出し) | `(a, b) -[f]-> y` | `let y = (f)(a, b);` |
+| 束縛を後で使う | `y`/`z` は普通のローカル変数として `flow!` の後に見える | (`graph!` のキーが builder クロージャに閉じるのとは対照的) |
 
 ## できる/できない一覧
 

@@ -14,8 +14,9 @@
 //!   として第一級、という v4 の実装を実測して解説する
 //! - §3 クックブック — `graph_schema!`/`graph!` が生成する公開APIの全列挙
 //! - §4 「できないこと」— コンパイルエラーになる例と、実際のエラー引用
+//! - §5 `flow!` — 関数の辺 (`graph!` の宣言される辺との対比)
 //!
-//! `cargo run` すると §3 の内容が順に表示されます。
+//! `cargo run` すると §3・§5 の内容が順に表示されます。
 
 // ============================================================
 // §1 型宣言 — ノード型・エッジ属性型は普通の Rust struct
@@ -113,6 +114,7 @@ graphite::graph_schema! {
 
 fn main() {
     section3();
+    section5();
 }
 
 // ============================================================
@@ -815,6 +817,55 @@ fn create_collectingで全違反を集める() {
 //       |              ^^^^^^^^^
 //       = note: this error originates in the macro `graphite::graph` (in Nightly builds, run with -Z macro-backtrace for more info)
 
+// ============================================================
+// §5 flow! — 関数の辺 (graph! の宣言される辺との対比)
+// ============================================================
+//
+// `graph_schema!`/`graph!` の辺 (`edge Kind = ...` / `Kind(from -> to)`) は
+// **宣言**です — 構築 (`create`) 時にまとめて検証されるデータの繋がりで、
+// 矢印の中の値そのもの (積み荷) はグラフの外では意味を持ちません。対して
+// `graphite::flow!` (`docs/flow_macro.md`) の矢印 `-[関数式]->` は
+// **実行**です — 書かれた順に `let 束縛名 = (関数式)(始点..);` という
+// ただの関数呼び出しへ即時に脱糖するだけで、スキーマや builder は一切
+// 関与しません。同じ矢印記法 `-[X]->` を「宣言されるデータの辺」(`graph!`)
+// と「即時実行される関数の辺」(`flow!`) という対照的な2つの意味論に使い
+// 分けている、という読み方が両者を統一します — どちらも「ノードは値、
+// 矢印の中の `X` が辺の主役」という同じ形を共有しているのに、`X` が
+// 「運ばれる積み荷の型/値」なのか「今すぐ呼ばれる関数」なのかで意味が
+// 分岐する、という対応です。`flow!` は文位置マクロなので、束縛名は
+// `graph!` のノード/エッジキーのように builder クロージャの中に閉じず、
+// 普通の `let` 束縛としてマクロ呼び出しの後にそのまま見えます。
+
+fn section5() {
+    println!("\n=== §5 flow!: 関数の辺 (宣言ではなく即時実行) ===\n");
+
+    fn parse(s: &str) -> i32 {
+        s.parse().expect("数値のはず")
+    }
+    fn validate(x: i32) -> bool {
+        x >= 0
+    }
+    fn double(x: i32) -> i32 {
+        x * 2
+    }
+    fn merge(valid: bool, doubled: i32) -> String {
+        format!("valid={valid} doubled={doubled}")
+    }
+
+    #[rustfmt::skip]
+    graphite::flow! {
+        "21" -[parse]-> parsed,              // 直線 (1本の矢印)
+        parsed -[validate]-> valid,          // fan-out: parsed を2本の矢印に流す
+        parsed -[double]-> doubled,
+        (valid, doubled) -[merge]-> summary, // fan-in: タプル始点は多引数呼び出しに脱糖
+    };
+    // parsed/valid/doubled/summary はいずれも flow! の後で普通のローカル
+    // 変数として見える (§3 の graph! のノード/エッジキーが builder クロージャ
+    // の中に閉じるのとは対照的)。
+    println!("(flow!) parsed={parsed} valid={valid} doubled={doubled}");
+    println!("(flow!) summary = {summary}");
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -988,5 +1039,35 @@ mod tests {
             BossEdge { since: 2020 },
         );
         assert_eq!(b.payload().since, 2020);
+    }
+
+    #[test]
+    fn flowはfan_outとfan_inを組み合わせた関数の辺として動く() {
+        // §5 のデモと同じ形。graph! の宣言される辺と対照的に、flow! は
+        // その場で関数を呼ぶだけの脱糖であることをアサーションで確認する。
+        fn parse(s: &str) -> i32 {
+            s.parse().unwrap()
+        }
+        fn validate(x: i32) -> bool {
+            x >= 0
+        }
+        fn double(x: i32) -> i32 {
+            x * 2
+        }
+        fn merge(valid: bool, doubled: i32) -> String {
+            format!("valid={valid} doubled={doubled}")
+        }
+
+        #[rustfmt::skip]
+        graphite::flow! {
+            "21" -[parse]-> parsed,
+            parsed -[validate]-> valid,
+            parsed -[double]-> doubled,
+            (valid, doubled) -[merge]-> summary,
+        };
+        assert_eq!(parsed, 21);
+        assert!(valid);
+        assert_eq!(doubled, 42);
+        assert_eq!(summary, "valid=true doubled=42");
     }
 }
