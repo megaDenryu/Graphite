@@ -163,6 +163,20 @@ v4 時点で達成**とみなす。以後は構文変更のたびに本節の形
 数分間 [] を返すことがある。ユーザー struct が解決するのに生成型が解決しない場合は
 故障ではなくインデックス途中 — 対照実験 (`OrgChart` 等) で切り分けてから待つこと。
 
+## 1.10 端点宣言 v4.1 実装後の再計測 (2026-07-17)
+
+v4.1 (`docs/edge_endpoints_v4_1.md`: 端点役割名・無向辺) 実装後、
+`orgchart_macro.rs` / `undirected_edges.rs` で実測:
+
+| 操作 | 結果 |
+|---|---|
+| `where each subordinate` の役割名 → 定義 | ✅ schema の `(subordinate: Employee)` の役割名トークンへ精密着地 |
+| 使用側の役割アクセサ (`b.subordinate()`) → 定義 | ✅ 同上 (生成 fn ident が役割名トークンのスパンを持つ仕様どおり) |
+| 無向リテラル `Friends(alice -- bob)` の `Friends` → 定義 | ✅ `edge Friends = Person -- Person` 宣言へ精密着地 |
+| 同 `alice` → 定義 | ✅ ノードキー束縛へ (有向と同じ機構) |
+
+役割名・無向辺とも、既存のスパン規約 (G3) に乗って初回実装から全導線が機能した。
+
 ## 2. 仕様項目
 
 ### G1: `graph!` ノードキーの let 束縛化 (実装対象)
