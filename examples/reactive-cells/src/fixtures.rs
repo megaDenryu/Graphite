@@ -4,9 +4,9 @@
 //! 税率・割引率・配送料 → 小計 → 割引額・税額 → 調整額 → 合計)。
 //! [`cyclic_demo_sheet`] は循環デモ専用の壊れたシート。
 
-use crate::schema::{Cell, Formula, Sheet, SheetViolation};
+use crate::schema::{Cell, Feeds, Formula, Sheet, SheetViolation};
 
-/// 本編のミニスプレッドシート。10セル・11本の `feeds` エッジ。
+/// 本編のミニスプレッドシート。10セル・11本の `Feeds` エッジ。
 ///
 /// ## セル構成
 ///
@@ -34,12 +34,18 @@ use crate::schema::{Cell, Formula, Sheet, SheetViolation};
 ///
 /// `graph!` の脱糖はノード項を先に `let` 束縛へ展開してから、すべての
 /// エッジ呼び出し (`from.clone()`/`to.clone()` を自動生成) を後ろへ回す
-/// (`docs/graph_literal_v3.md` §G1)。そのため `subtotal` のように
-/// **後続のセルの式でも、`feeds` エッジの端点でも両方使う**識別子は、
+/// (`docs/schema_v4.md` §2)。そのため `subtotal` のように
+/// **後続のセルの式でも、`Feeds` エッジの端点でも両方使う**識別子は、
 /// 式の中で使う時点で明示的に `.clone()` しないと後続のエッジ生成コードが
 /// 「すでにmoveされた変数」を借用できずコンパイルエラーになる。この
 /// exampleでは早見表として「式の中で他セルのキーを使うときは常に
 /// `.clone()` する」という一貫ルールにしている。
+///
+/// ## 辺キーの命名
+///
+/// v4 の `graph!` はノードキー・エッジキーが単一の平坦な名前空間なので、
+/// 全ての `Feeds` エッジに端点から読める一意なキー (`f_<from>_<to>`) を
+/// 付けている (連番は避ける)。
 #[rustfmt::skip]
 pub fn default_sheet() -> Result<Sheet, SheetViolation> {
     graphite::graph!(Sheet {
@@ -57,26 +63,27 @@ pub fn default_sheet() -> Result<Sheet, SheetViolation> {
             formula: Formula::Sum(vec![subtotal.clone(), adjustment.clone(), shipping_fee.clone()])
         },
 
-        unit_price      -[feeds]-> subtotal,
-        quantity        -[feeds]-> subtotal,
-        subtotal        -[feeds]-> discount_amount,
-        discount_rate   -[feeds]-> discount_amount,
-        subtotal        -[feeds]-> tax,
-        tax_rate        -[feeds]-> tax,
-        discount_amount -[feeds]-> adjustment,
-        tax             -[feeds]-> adjustment,
-        subtotal        -[feeds]-> grand_total,
-        adjustment      -[feeds]-> grand_total,
-        shipping_fee    -[feeds]-> grand_total,
+        f_unit_price_subtotal        = Feeds(unit_price -> subtotal),
+        f_quantity_subtotal          = Feeds(quantity -> subtotal),
+        f_subtotal_discount_amount   = Feeds(subtotal -> discount_amount),
+        f_discount_rate_discount_amount = Feeds(discount_rate -> discount_amount),
+        f_subtotal_tax               = Feeds(subtotal -> tax),
+        f_tax_rate_tax               = Feeds(tax_rate -> tax),
+        f_discount_amount_adjustment = Feeds(discount_amount -> adjustment),
+        f_tax_adjustment             = Feeds(tax -> adjustment),
+        f_subtotal_grand_total       = Feeds(subtotal -> grand_total),
+        f_adjustment_grand_total     = Feeds(adjustment -> grand_total),
+        f_shipping_fee_grand_total   = Feeds(shipping_fee -> grand_total),
     })
 }
 
-/// 循環デモ専用の壊れたシート。3セル `a -[feeds]-> b -[feeds]-> c
-/// -[feeds]-> a` の循環購読を表す (README「循環の拒否」節)。
+/// 循環デモ専用の壊れたシート。3セル `a -> b -> c -> a` の `Feeds`
+/// エッジによる循環購読を表す (README「循環の拒否」節)。
 ///
-/// `feeds` は多重度 `(0..*)` なので `graph!`/`Sheet::create` 自体は
-/// **構造としては正常に構築できてしまう** (端点は全て宣言済みで、
-/// 多重度違反も無い)。循環の検出は `graphite::Graph::topological_sort`
+/// `Feeds` は `where unique pair` のみで循環そのものを禁止する制約は
+/// 無いので `graph!`/`Sheet::create` 自体は**構造としては正常に構築
+/// できてしまう** (端点は全て宣言済みで、同一対の重複も無い)。循環の
+/// 検出は `graphite::Graph::topological_sort`
 /// (= [`crate::engine::Engine::new`] が内部で呼ぶ) まで遅延される —
 /// これは意図的な設計で、「schema/graph! は構造の整合性だけを見る、
 /// 非循環性はドメイン (このexampleでは再計算エンジン) が要求する制約」
@@ -88,29 +95,30 @@ pub fn cyclic_demo_sheet() -> Result<Sheet, SheetViolation> {
         b = Cell { formula: Formula::Input },
         c = Cell { formula: Formula::Input },
 
-        a -[feeds]-> b,
-        b -[feeds]-> c,
-        c -[feeds]-> a,
+        f_a_b = Feeds(a -> b),
+        f_b_c = Feeds(b -> c),
+        f_c_a = Feeds(c -> a),
     })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::schema::SheetNode;
 
     #[test]
     fn default_sheetは10セル11エッジで構築できる() {
         let sheet = default_sheet().expect("正常なシートは構築に成功するはず");
-        assert_eq!(sheet.cell_ids().count(), 10);
-        assert_eq!(sheet.feeds().len(), 11);
+        assert_eq!(Cell::ids(&sheet).count(), 10);
+        assert_eq!(Feeds::len(&sheet), 11);
     }
 
     #[test]
     fn cyclic_demo_sheetは構造としては構築に成功する() {
         // 循環そのものはSheet::create/graph!の検証対象外 (端点存在と
-        // 多重度だけを見る)。循環検出はEngine::new側の責務。
-        let sheet = cyclic_demo_sheet().expect("feedsは0..*なので循環でも構造検証は通るはず");
-        assert_eq!(sheet.cell_ids().count(), 3);
-        assert_eq!(sheet.feeds().len(), 3);
+        // unique pairだけを見る)。循環検出はEngine::new側の責務。
+        let sheet = cyclic_demo_sheet().expect("Feedsはunique pairのみなので循環でも構造検証は通るはず");
+        assert_eq!(Cell::ids(&sheet).count(), 3);
+        assert_eq!(Feeds::len(&sheet), 3);
     }
 }

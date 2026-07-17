@@ -9,7 +9,7 @@ use std::collections::HashSet;
 use reactive_cells::antipattern::{build_diamond_demo, build_infinite_loop_demo};
 use reactive_cells::engine::Engine;
 use reactive_cells::fixtures::{cyclic_demo_sheet, default_sheet};
-use reactive_cells::schema::CellId;
+use reactive_cells::schema::{CellId, Feeds};
 
 fn id(s: &str) -> CellId {
     CellId(s.to_string())
@@ -107,11 +107,13 @@ fn topological_orderはgraph_dependency構造と整合する() {
     let order = engine.topological_order();
     assert_eq!(order.len(), 10);
     let pos = |k: &str| order.iter().position(|c| c.0 == k).unwrap();
-    // 全ての `feeds: from -> to` エッジについて pos(from) < pos(to)。
-    for (from, to) in engine.graph().feeds().iter() {
+    // 全ての `Feeds(from -> to)` エッジについて pos(from) < pos(to)。
+    for (_id, edge) in Feeds::iter(engine.graph()) {
+        let from = edge.from();
+        let to = edge.to();
         assert!(
             pos(&from.0) < pos(&to.0),
-            "feeds {from:?} -> {to:?} はトポロジカル順序に反している"
+            "Feeds {from:?} -> {to:?} はトポロジカル順序に反している"
         );
     }
 }

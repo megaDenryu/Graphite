@@ -87,21 +87,24 @@ impl NaiveCell {
 
 ## 3. グラフによる再定式化
 
-`src/schema.rs` は依存関係を「セル (`Cell`) ノード + `feeds` エッジ」
+`src/schema.rs` は依存関係を「セル (`Cell`) ノード + `Feeds` エッジ」
 という**構造データ**として宣言する:
 
 ```rust
 graphite::graph_schema! {
     schema Sheet {
         node Cell;
-        edge feeds: Cell -> Cell (0..*);
+        edge Feeds = Cell -> Cell where unique pair;
     }
 }
 ```
 
-`feeds` は「`from` の値が `to` の入力になる」という向き
-(依存元→依存先) で読む。`src/fixtures.rs::default_sheet` がこれを
-`graph!` リテラルで具体化する — 依存グラフが**一枚のリテラルとして
+`Feeds` は「`from` の値が `to` の入力になる」という向き
+(依存元→依存先) で読む。`where unique pair` は「あるセルが別のセルへ
+値を供給する」という依存関係は有るか無いかの二値であり、同じ
+(from, to) の対に2本目の `Feeds` エッジを張ることに意味は無い、という
+判断 (`examples/async-dag` の `DependsOn` と同じ)。`src/fixtures.rs::default_sheet`
+がこれを `graph!` リテラルで具体化する — 依存グラフが**一枚のリテラルとして
 実行前に全部見える**:
 
 ```rust
@@ -111,8 +114,8 @@ graphite::graph!(Sheet {
     subtotal   = Cell { formula: Formula::Mul(unit_price.clone(), quantity.clone()) },
     // .. 計算セル5個 ..
 
-    unit_price -[feeds]-> subtotal,
-    // .. feedsエッジ11本 ..
+    f_unit_price_subtotal = Feeds(unit_price -> subtotal),
+    // .. Feedsエッジ11本 ..
 })
 ```
 
@@ -145,7 +148,7 @@ adjustment`) を含む見積シートで `unit_price` を変更しても、
 存在しない (`topo_order` は依存構造だけから決まる) ので (c) の非決定性
 も原理的に発生しない。循環は `graph!`/`Sheet::create` ではなく
 `Engine::new` で拒否される — これは意図的な責務分離で、「schema/graph!
-は構造の整合性 (端点の存在・多重度) だけを見る、非循環性は再計算エンジン
+は構造の整合性 (端点の存在・where制約) だけを見る、非循環性は再計算エンジン
 という**ドメイン**が要求する制約」という切り分け (`src/fixtures.rs`
 の `cyclic_demo_sheet` のドキュメント参照)。
 
@@ -155,7 +158,7 @@ adjustment`) を含む見積シートで `unit_price` を変更しても、
 |---|---|---|
 | signal (入力値) | 入力ノード | `Formula::Input` を持つ `Cell` |
 | computed (計算値) | 計算ノード + そのノードへの入辺 | `Formula::Mul`/`Sub`/`Sum` を持つ `Cell` |
-| 依存関係の宣言 (JSで言えば `computed(() => a.get() + b.get())`) | `edge feeds: Cell -> Cell (0..*);` + `graph!` リテラル | `unit_price -[feeds]-> subtotal` 等 |
+| 依存関係の宣言 (JSで言えば `computed(() => a.get() + b.get())`) | `edge Feeds = Cell -> Cell where unique pair;` + `graph!` リテラル | `f_unit_price_subtotal = Feeds(unit_price -> subtotal)` 等 |
 | 購読 (subscribe)・通知 (notify) | (存在しない — 不要になる) | `Engine::set_input` が影響範囲を一括で処理する |
 | 正しい再計算順序の保証 | `topological_sort()` | `Engine::topological_order()` (構築時に1回だけ計算) |
 | 影響範囲の特定 (dirty checking) | `reachable_from(id)` | `Engine::set_input` 内の `affected` 集合 |
@@ -165,7 +168,7 @@ adjustment`) を含む見積シートで `unit_price` を変更しても、
 
 ## セル構成
 
-10セル・`feeds` エッジ11本。ダイヤモンド依存
+10セル・`Feeds` エッジ11本。ダイヤモンド依存
 (`subtotal(a) → discount_amount(b) → adjustment(d)`、
 `subtotal(a) → tax(c) → adjustment(d)`) を含む。
 
@@ -192,10 +195,10 @@ adjustment`) を含む見積シートで `unit_price` を変更しても、
 
 ## 実装の割り切り
 
-- `Formula` (式) と `feeds` エッジ (依存グラフの構造) は独立に手で
+- `Formula` (式) と `Feeds` エッジ (依存グラフの構造) は独立に手で
   書いており、意図的に重複させている。`Formula::Mul(subtotal, ..)` が
   「`subtotal` に依存する」という情報を既に持っているので、実運用なら
-  `feeds` エッジを `Formula` から自動導出する設計もありうる。この
+  `Feeds` エッジを `Formula` から自動導出する設計もありうる。この
   exampleでは `graph!` リテラルが依存グラフを一枚のデータとして見せる
   ことを優先し、あえて両方を手書きにしている (`src/fixtures.rs` の
   `default_sheet` ドキュメント参照)。

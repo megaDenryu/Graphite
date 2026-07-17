@@ -9,7 +9,7 @@ use reactive_cells::antipattern::{build_diamond_demo, build_infinite_loop_demo};
 use reactive_cells::engine::Engine;
 use reactive_cells::fixtures::{cyclic_demo_sheet, default_sheet};
 use reactive_cells::report;
-use reactive_cells::schema::CellId;
+use reactive_cells::schema::{Cell, CellId, Feeds, SheetNode};
 
 fn id(s: &str) -> CellId {
     CellId(s.to_string())
@@ -44,9 +44,9 @@ fn main() {
     report::print_section("グラフによる再定式化: ミニスプレッドシートをgraph!で宣言する");
     let sheet = default_sheet().expect("正常なシートは構築に成功するはず");
     println!(
-        "セル数 = {}, feedsエッジ数 = {} (依存関係は実行前に一枚で見える構造データ)",
-        sheet.cell_ids().count(),
-        sheet.feeds().len()
+        "セル数 = {}, Feedsエッジ数 = {} (依存関係は実行前に一枚で見える構造データ)",
+        Cell::ids(&sheet).count(),
+        Feeds::len(&sheet)
     );
     let mut engine = Engine::new(sheet).expect("循環が無いので構築に成功するはず");
     println!("トポロジカル順序 (これがそのままglitch-freeな再計算順になる):");

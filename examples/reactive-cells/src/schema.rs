@@ -1,16 +1,19 @@
 //! ミニスプレッドシートのスキーマ定義。
 //!
-//! ノード種別は `Cell` の1種のみ。エッジは `feeds: Cell -> Cell (0..*)`
-//! の1種のみ — 「`from` の値が `to` の入力になる」という向きで読む
-//! (`from` が `to` に値を feed する)。多重度 `(0..*)` は「1つのセルは
-//! 0個以上の他セルに値を供給できる」ことを表す (逆方向・つまり「1つの
-//! セルが何個の入力を持つか」は `feeds().iter()` を終点キーで集計すれば
-//! 分かる — `engine.rs` の依存グラフ射影で使う)。
+//! ノード種別は `Cell` の1種のみ。エッジは `Feeds = Cell -> Cell where
+//! unique pair;` の1種のみ — 「`from` の値が `to` の入力になる」という
+//! 向きで読む (`from` が `to` に値を feed する)。`where unique pair` を
+//! 付けている: 「あるセルが別のセルへ値を供給する」という依存関係は
+//! 有るか無いかの二値であり、同じ (from, to) の対に2本目の `Feeds`
+//! エッジを張ることに意味は無いため (`examples/async-dag` の
+//! `DependsOn` と同じ判断)。逆方向 (1つのセルが何個の入力を持つか) は
+//! `Feeds::iter` を終点キーで集計すれば分かる (`engine.rs` の依存グラフ
+//! 射影で使う)。
 //!
 //! `graph_schema!` はこの `Cell`/`Formula` 型を生成せず参照するだけ
-//! (`docs/edge_syntax_v3.md` 参照)。生成されるのはグラフ機械 (`CellId`
-//! newtype・`Sheet` 構造体・`SheetBuilder`・`SheetViolation`・
-//! `feeds()` ビューアクセサ) だけ。
+//! (`docs/schema_v4.md` 参照)。生成されるのはグラフ機械 (`CellId`/
+//! `FeedsId` newtype・`Sheet` 構造体・`SheetBuilder`・`SheetViolation`・
+//! `Feeds` 固有 impl) だけ。
 
 /// 1つのセルが「どう値を求めるか」を表す式。
 ///
@@ -51,6 +54,6 @@ graphite::graph_schema! {
     schema Sheet {
         node Cell;
 
-        edge feeds: Cell -> Cell (0..*);
+        edge Feeds = Cell -> Cell where unique pair;
     }
 }

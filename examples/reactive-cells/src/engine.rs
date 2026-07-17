@@ -20,7 +20,7 @@ use std::collections::{HashMap, HashSet};
 
 use graphite::{CycleError, Graph};
 
-use crate::schema::{CellId, Formula, Sheet};
+use crate::schema::{Cell, CellId, Feeds, Formula, Sheet, SheetNode};
 
 /// [`Engine::set_input`] が1回の更新で行った再計算1件分の記録。
 ///
@@ -61,11 +61,11 @@ impl Engine {
     /// 具体的な循環パスを表示できる。
     pub fn new(graph: Sheet) -> Result<Self, CycleError<CellId>> {
         let dependency_graph: Graph<(), (), CellId> = Graph::from_edges(
-            graph.cell_ids().cloned(),
-            graph.feeds().iter().map(|(from, to)| (from.clone(), to.clone())),
+            Cell::ids(&graph).cloned(),
+            Feeds::iter(&graph).map(|(_id, edge)| (edge.from().clone(), edge.to().clone())),
         )
         .expect(
-            "cell_ids()とfeeds().iter()の端点整合はSheet::create/create_collectingの検証で\
+            "Cell::ids()とFeeds::iter()の端点整合はSheet::create/create_collectingの検証で\
              既に保証されているはず (未知キー・重複キーはここでは起こらない)",
         );
 
@@ -75,7 +75,7 @@ impl Engine {
             .cloned()
             .collect();
 
-        let values: HashMap<CellId, f64> = graph.cell_ids().map(|id| (id.clone(), 0.0)).collect();
+        let values: HashMap<CellId, f64> = Cell::ids(&graph).map(|id| (id.clone(), 0.0)).collect();
 
         Ok(Self {
             graph,
@@ -122,9 +122,7 @@ impl Engine {
     ///   直接代入は契約違反 — 式を経由せず値を書き換えると依存グラフと
     ///   値ストアが不整合になるため)。
     pub fn set_input(&mut self, id: &CellId, value: f64) -> Vec<RecomputeStep> {
-        let cell = self
-            .graph
-            .cell(id)
+        let cell = Cell::get(&self.graph, id)
             .unwrap_or_else(|| panic!("set_input: 未知のセルキーです: {id:?}"));
         assert!(
             matches!(cell.formula, Formula::Input),
@@ -148,10 +146,8 @@ impl Engine {
             if cell_id == id || !affected.contains(cell_id) {
                 continue;
             }
-            let formula = self
-                .graph
-                .cell(cell_id)
-                .expect("topo_orderに含まれるキーはgraph.cell()に必ず存在する")
+            let formula = Cell::get(&self.graph, cell_id)
+                .expect("topo_orderに含まれるキーはCell::get()に必ず存在する")
                 .formula
                 .clone();
             let new_value = self.eval_formula(&formula);
