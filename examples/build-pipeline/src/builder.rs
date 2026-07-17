@@ -8,7 +8,10 @@
 //! 先に登録してからエッジを積む、という 2 段階の構築になる。
 
 use crate::parser::{EdgeKind, ParsedPipeline};
-use crate::schema::{Artifact, ArtifactId, BuildPipeline, BuildPipelineViolation, Task, TaskId};
+use crate::schema::{
+    Artifact, ArtifactId, BuildPipeline, BuildPipelineViolation, Consumes, ConsumesId, Produces,
+    ProducesId, Task, TaskId,
+};
 use std::collections::BTreeSet;
 
 /// `ParsedPipeline` から `BuildPipeline` を構築する。
@@ -50,12 +53,16 @@ pub fn build_graph(parsed: &ParsedPipeline) -> Result<BuildPipeline, BuildPipeli
         for edge in &parsed.edges {
             let task_id = TaskId(edge.task_name.clone());
             let artifact_id = ArtifactId(edge.path.clone());
+            // エッジキーは端点 (task_id, artifact_id) から機械的に組み立てる
+            // (連番は使わない)。ProducesId/ConsumesId は種別ごとに独立した
+            // KeyedTable を持つので、同じキー文字列を両方で使っても衝突しない。
+            let edge_key = format!("{}::{}", task_id.0, artifact_id.0);
             match edge.kind {
                 EdgeKind::Produces => {
-                    b.produces(task_id, artifact_id);
+                    b.produces(ProducesId(edge_key), Produces(task_id, artifact_id));
                 }
                 EdgeKind::Consumes => {
-                    b.consumes(task_id, artifact_id);
+                    b.consumes(ConsumesId(edge_key), Consumes(task_id, artifact_id));
                 }
             }
         }
@@ -66,6 +73,7 @@ pub fn build_graph(parsed: &ParsedPipeline) -> Result<BuildPipeline, BuildPipeli
 mod tests {
     use super::*;
     use crate::parser::parse;
+    use crate::schema::BuildPipelineNode;
 
     #[test]
     fn 正常なパースからグラフを構築できる() {
@@ -79,10 +87,10 @@ test_core consumes target/core.rlib
         let parsed = parse(input).unwrap();
         let g = build_graph(&parsed).expect("構築に成功するはず");
 
-        assert_eq!(g.task_ids().count(), 2);
-        assert_eq!(g.artifact_ids().count(), 1);
+        assert_eq!(Task::ids(&g).count(), 2);
+        assert_eq!(Artifact::ids(&g).count(), 1);
 
-        let produced = g.produces().of(&TaskId("build_core".to_string()));
+        let produced = Produces::of(&g, &TaskId("build_core".to_string()));
         assert_eq!(produced.len(), 1);
         assert_eq!(produced[0].path, "target/core.rlib");
     }

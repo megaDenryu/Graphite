@@ -3,7 +3,7 @@
 //! 計算ロジックは一切持たない。
 
 use crate::analysis::{CriticalPath, DomainIssue, Wave};
-use crate::schema::BuildPipeline;
+use crate::schema::{Artifact, BuildPipeline, BuildPipelineNode, Consumes, Produces, Task};
 
 /// `validate` サブコマンドの結果表示。
 pub fn format_domain_issues(issues: &[DomainIssue]) -> String {
@@ -53,7 +53,7 @@ pub fn format_critical_path(cp: &CriticalPath, g: &BuildPipeline) -> String {
     let mut out = String::new();
     out.push_str("クリティカルパス (依存関係上、最も時間がかかる経路):\n");
     for (i, task_id) in cp.path.iter().enumerate() {
-        let secs = g.task(task_id).map(|t| t.secs).unwrap_or(0);
+        let secs = Task::get(g, task_id).map(|t| t.secs).unwrap_or(0);
         if i > 0 {
             out.push_str("  -> ");
         } else {
@@ -88,10 +88,10 @@ pub fn mermaid(g: &BuildPipeline) -> String {
     let mut out = String::new();
     out.push_str("flowchart TD\n");
 
-    let mut task_ids: Vec<_> = g.task_ids().collect();
+    let mut task_ids: Vec<_> = Task::ids(g).collect();
     task_ids.sort_by(|a, b| a.0.cmp(&b.0));
     for id in &task_ids {
-        let task = g.task(id).expect("task_ids()由来のキーは必ず存在する");
+        let task = Task::get(g, id).expect("Task::ids(g)由来のキーは必ず存在する");
         out.push_str(&format!(
             "    T_{}[\"{} ({}s)\"]\n",
             sanitize_id(&id.0),
@@ -100,12 +100,11 @@ pub fn mermaid(g: &BuildPipeline) -> String {
         ));
     }
 
-    let mut artifact_ids: Vec<_> = g.artifact_ids().collect();
+    let mut artifact_ids: Vec<_> = Artifact::ids(g).collect();
     artifact_ids.sort_by(|a, b| a.0.cmp(&b.0));
     for id in &artifact_ids {
-        let artifact = g
-            .artifact(id)
-            .expect("artifact_ids()由来のキーは必ず存在する");
+        let artifact =
+            Artifact::get(g, id).expect("Artifact::ids(g)由来のキーは必ず存在する");
         out.push_str(&format!(
             "    A_{}[(\"{}\")]\n",
             sanitize_id(&id.0),
@@ -113,20 +112,16 @@ pub fn mermaid(g: &BuildPipeline) -> String {
         ));
     }
 
-    let mut produces: Vec<(String, String)> = g
-        .produces()
-        .iter()
-        .map(|(t, a)| (sanitize_id(&t.0), sanitize_id(&a.0)))
+    let mut produces: Vec<(String, String)> = Produces::iter(g)
+        .map(|(_id, edge)| (sanitize_id(&edge.from().0), sanitize_id(&edge.to().0)))
         .collect();
     produces.sort();
     for (t, a) in produces {
         out.push_str(&format!("    T_{t} -->|produces| A_{a}\n"));
     }
 
-    let mut consumes: Vec<(String, String)> = g
-        .consumes()
-        .iter()
-        .map(|(t, a)| (sanitize_id(&t.0), sanitize_id(&a.0)))
+    let mut consumes: Vec<(String, String)> = Consumes::iter(g)
+        .map(|(_id, edge)| (sanitize_id(&edge.from().0), sanitize_id(&edge.to().0)))
         .collect();
     consumes.sort();
     for (t, a) in consumes {
