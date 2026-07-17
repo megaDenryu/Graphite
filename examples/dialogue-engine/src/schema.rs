@@ -8,22 +8,21 @@
 //! この example では単に型定義とシナリオ本編が近くにあった方が読みやすい
 //! という理由で同居させている。
 
-// `-[label]->` 記法は rustfmt が「知らない構文」として誤整形しうるため、
+// `-[積み荷式]->` 記法は rustfmt が「知らない構文」として誤整形しうるため、
 // `graph!` を呼ぶ関数には個別に `#[rustfmt::skip]` を付ける
 // (.claude/skills/proc-macro-dev/SKILL.md の注意通り)。
 
 use graphite::Graph;
 
 // ============================================================
-// スキーマ宣言
+// スキーマ宣言 (`docs/schema_v4.md`)
 // ============================================================
 //
 // node Scene:  1 場面。話者と本文を持つ。
 // node Ending: 1 エンディング。タイトルとエピローグ本文を持つ。
-// edge choice: Scene -[ChoiceEdge { label: String }]-> Scene (0..*) —
-//              選択肢。多重度 0..* = 1 シーンから何本でも選択肢を出せる。
-// edge finale: Scene -> Ending (0..1) — エンディングへの到達。
-//              多重度 0..1 = 1 シーンにつき高々 1 つの結末。
+// edge Choice = Scene -[ChoiceEdge]-> Scene — 選択肢。制約なし (下記参照)。
+// edge Finale = Scene -> Ending where each Scene: 0..1 — エンディングへの
+//               到達。各シーンにつき高々1つの結末。
 
 /// ノード型。`graph_schema!` はこの型を生成せず参照するだけ。
 #[derive(Debug, Clone, PartialEq)]
@@ -39,19 +38,24 @@ pub struct Ending {
     pub epilogue: String,
 }
 
-/// `choice` エッジの属性 (選択肢のラベル文字列)。
+/// `Choice` 辺の積み荷 (選択肢のラベル文字列)。
 #[derive(Debug, Clone, PartialEq)]
 pub struct ChoiceEdge {
     pub label: String,
 }
 
+#[rustfmt::skip]
 graphite::graph_schema! {
     schema DialogueGraph {
         node Scene;
         node Ending;
 
-        edge choice: Scene -[ChoiceEdge]-> Scene (0..*);
-        edge finale: Scene -> Ending (0..1);
+        // Choice に `where unique pair` を付けない理由: 同じ (from, to) の
+        // 対に対して、文言 (ラベル) が異なる複数の選択肢が正当にありうる
+        // 設計 (例: 別々の経緯で同じシーンへ合流する選択肢が2つあっても
+        // おかしくない) ため、平行辺を積極的に許す。
+        edge Choice = Scene -[ChoiceEdge]-> Scene;
+        edge Finale = Scene -> Ending where each Scene: 0..1;
     }
 }
 
@@ -62,13 +66,12 @@ graphite::graph_schema! {
 
 impl DialogueGraph {
     /// あるシーンから出ている選択肢一覧を `(行き先キー, 選択肢ラベル)` で返す。
-    /// `choice().iter()` は `match` クエリの代替として提供されているビューの
-    /// 走査で、ここでは特定の始点だけに絞り込むフィルタとして使う。
+    /// `Choice::of` は行き先の `Scene` 値 (キーではない) を返すため使えず、
+    /// 生の辺 (キー付き) を走査する `Choice::iter` をフィルタして使う。
     pub fn scene_choices(&self, id: &SceneId) -> Vec<(SceneId, String)> {
-        self.choice()
-            .iter()
-            .filter(|(from, _to, _attrs)| *from == id)
-            .map(|(_from, to, attrs)| (to.clone(), attrs.label.clone()))
+        Choice::iter(self)
+            .filter(|(_key, edge)| edge.from() == id)
+            .map(|(_key, edge)| (edge.to().clone(), edge.payload().label.clone()))
             .collect()
     }
 
@@ -78,16 +81,16 @@ impl DialogueGraph {
     /// ノードの値には (使わないが) キー自身を積んでおく。辺の値には選択肢
     /// ラベルを積み、`route` コマンドでの表示に使う。
     ///
-    /// 構築は `Scene` の集合と `choice` 辺だけから機械的に決まるため、
+    /// 構築は `Scene` の集合と `Choice` 辺だけから機械的に決まるため、
     /// このシナリオが `DialogueGraph::create` を通過している時点で
     /// 重複キー・未知キーは有り得ず、`expect` で握り潰してよい。
     pub fn scene_graph(&self) -> Graph<SceneId, String, SceneId> {
         Graph::create(|b| {
-            for id in self.scene_ids() {
+            for id in Scene::ids(self) {
                 b.node(id.clone(), id.clone());
             }
-            for (from, to, attrs) in self.choice().iter() {
-                b.edge(from.clone(), to.clone(), attrs.label.clone());
+            for (_key, edge) in Choice::iter(self) {
+                b.edge(edge.from().clone(), edge.to().clone(), edge.payload().label.clone());
             }
         })
         .expect("scene_graph の射影は DialogueGraph が既に検証済みなので必ず成功する")
@@ -95,12 +98,12 @@ impl DialogueGraph {
 
     /// このシーンに finale (エンディングへの到達) があるか。
     pub fn is_finale_scene(&self, id: &SceneId) -> bool {
-        self.finale().of(id).is_some()
+        Finale::of(self, id).is_some()
     }
 
     /// このシーンに選択肢が 0 本、かつ finale も無いか (= デッドエンド)。
     pub fn is_dead_end(&self, id: &SceneId) -> bool {
-        self.choice().of(id).is_empty() && self.finale().of(id).is_none()
+        Choice::of(self, id).is_empty() && Finale::of(self, id).is_none()
     }
 }
 
@@ -120,6 +123,20 @@ impl DialogueGraph {
 //   `lower_hall <-> reactor/comms/control_room` は行って戻れる往復路であり、
 //   グラフ全体は木ではなく循環を含む。
 // - 4 種のエンディング (脱出 / 犠牲 / 真実 / 孤立=バッドエンド)。
+//
+// choice/finale エッジキーの命名規則 (v4 は辺も第一級キー付き要素なので、
+// 全56本のchoice + 4本のfinale全てに一意なキーが要る):
+// - choice: `c_<from>_<to>` (自己ループ・複数選択肢の場合は用途で接尾辞)
+// - finale: `f_<from>` (1シーンにつき finale は高々1本なので from だけで一意)
+// シーン名が長い箇所は読みやすさのため一貫した省略形を使う:
+//   hangar_log→hlog, lab_samples→lsamples, lab_computer→lcomputer,
+//   lab_echo→lecho, quarters_diary→qdiary, quarters_rooms→qrooms,
+//   quarters_locked→qlocked, quarters_takashi→qtakashi,
+//   lower_hatch→lhatch, lower_hall→lhall, control_room→croom,
+//   control_analysis→canalysis, takashi_seal→tseal, takashi_rescue→trescue,
+//   crisis_evacuate→cevac, crisis_seal→cseal, crisis_truth→ctruth,
+//   crisis_freeze→cfreeze, shuttle_bay→sbay, seal_sacrifice→ssac,
+//   truth_sent→tsent
 #[rustfmt::skip]
 pub fn build_story() -> Result<DialogueGraph, DialogueGraphViolation> {
     graphite::graph!(DialogueGraph {
@@ -278,87 +295,87 @@ pub fn build_story() -> Result<DialogueGraph, DialogueGraphViolation> {
         },
 
         // ============================================================
-        // 選択肢 (choice) — 導入
+        // 選択肢 (Choice) — 導入
         // ============================================================
-        start -[choice = ChoiceEdge { label: "基地へ急行する".to_string() }]-> arrival,
-        arrival -[choice = ChoiceEdge { label: "中へ入る".to_string() }]-> airlock,
-        airlock -[choice = ChoiceEdge { label: "格納庫を調べる".to_string() }]-> hangar,
-        airlock -[choice = ChoiceEdge { label: "研究室を調べる".to_string() }]-> lab,
-        airlock -[choice = ChoiceEdge { label: "居住区を調べる".to_string() }]-> quarters,
+        c_start_arrival = Choice(start -[ChoiceEdge { label: "基地へ急行する".to_string() }]-> arrival),
+        c_arrival_airlock = Choice(arrival -[ChoiceEdge { label: "中へ入る".to_string() }]-> airlock),
+        c_airlock_hangar = Choice(airlock -[ChoiceEdge { label: "格納庫を調べる".to_string() }]-> hangar),
+        c_airlock_lab = Choice(airlock -[ChoiceEdge { label: "研究室を調べる".to_string() }]-> lab),
+        c_airlock_quarters = Choice(airlock -[ChoiceEdge { label: "居住区を調べる".to_string() }]-> quarters),
 
         // --- 中央ホール: 3エリア + 地下への行き来 (合流点) ---
-        central -[choice = ChoiceEdge { label: "格納庫へ".to_string() }]-> hangar,
-        central -[choice = ChoiceEdge { label: "研究室へ".to_string() }]-> lab,
-        central -[choice = ChoiceEdge { label: "居住区へ".to_string() }]-> quarters,
-        central -[choice = ChoiceEdge { label: "地下区画へ続くハッチを開ける".to_string() }]-> lower_hatch,
+        c_central_hangar = Choice(central -[ChoiceEdge { label: "格納庫へ".to_string() }]-> hangar),
+        c_central_lab = Choice(central -[ChoiceEdge { label: "研究室へ".to_string() }]-> lab),
+        c_central_quarters = Choice(central -[ChoiceEdge { label: "居住区へ".to_string() }]-> quarters),
+        c_central_lhatch = Choice(central -[ChoiceEdge { label: "地下区画へ続くハッチを開ける".to_string() }]-> lower_hatch),
 
         // --- 格納庫ルート (central との往復 + 自己ループ) ---
-        hangar -[choice = ChoiceEdge { label: "ローバーの運行記録を調べる".to_string() }]-> hangar_log,
-        hangar -[choice = ChoiceEdge { label: "中央ホールに戻る".to_string() }]-> central,
-        hangar_log -[choice = ChoiceEdge { label: "もう一度記録を洗い直す".to_string() }]-> hangar_log,
-        hangar_log -[choice = ChoiceEdge { label: "中央ホールに戻る".to_string() }]-> central,
+        c_hangar_hlog = Choice(hangar -[ChoiceEdge { label: "ローバーの運行記録を調べる".to_string() }]-> hangar_log),
+        c_hangar_central = Choice(hangar -[ChoiceEdge { label: "中央ホールに戻る".to_string() }]-> central),
+        c_hlog_retry = Choice(hangar_log -[ChoiceEdge { label: "もう一度記録を洗い直す".to_string() }]-> hangar_log),
+        c_hlog_central = Choice(hangar_log -[ChoiceEdge { label: "中央ホールに戻る".to_string() }]-> central),
 
         // --- 研究室ルート ---
-        lab -[choice = ChoiceEdge { label: "サンプル保管庫を調べる".to_string() }]-> lab_samples,
-        lab -[choice = ChoiceEdge { label: "研究用端末を調べる".to_string() }]-> lab_computer,
-        lab -[choice = ChoiceEdge { label: "中央ホールに戻る".to_string() }]-> central,
-        lab_samples -[choice = ChoiceEdge { label: "端末を調べる".to_string() }]-> lab_computer,
-        lab_samples -[choice = ChoiceEdge { label: "中央ホールに戻る".to_string() }]-> central,
-        lab_computer -[choice = ChoiceEdge { label: "エコーに詳細を尋ねる".to_string() }]-> lab_echo,
-        lab_computer -[choice = ChoiceEdge { label: "中央ホールに戻る".to_string() }]-> central,
-        lab_echo -[choice = ChoiceEdge { label: "研究室に戻る".to_string() }]-> lab,
-        lab_echo -[choice = ChoiceEdge { label: "地下区画へ向かう".to_string() }]-> lower_hatch,
+        c_lab_lsamples = Choice(lab -[ChoiceEdge { label: "サンプル保管庫を調べる".to_string() }]-> lab_samples),
+        c_lab_lcomputer = Choice(lab -[ChoiceEdge { label: "研究用端末を調べる".to_string() }]-> lab_computer),
+        c_lab_central = Choice(lab -[ChoiceEdge { label: "中央ホールに戻る".to_string() }]-> central),
+        c_lsamples_lcomputer = Choice(lab_samples -[ChoiceEdge { label: "端末を調べる".to_string() }]-> lab_computer),
+        c_lsamples_central = Choice(lab_samples -[ChoiceEdge { label: "中央ホールに戻る".to_string() }]-> central),
+        c_lcomputer_lecho = Choice(lab_computer -[ChoiceEdge { label: "エコーに詳細を尋ねる".to_string() }]-> lab_echo),
+        c_lcomputer_central = Choice(lab_computer -[ChoiceEdge { label: "中央ホールに戻る".to_string() }]-> central),
+        c_lecho_lab = Choice(lab_echo -[ChoiceEdge { label: "研究室に戻る".to_string() }]-> lab),
+        c_lecho_lhatch = Choice(lab_echo -[ChoiceEdge { label: "地下区画へ向かう".to_string() }]-> lower_hatch),
 
         // --- 居住区ルート ---
-        quarters -[choice = ChoiceEdge { label: "日誌を調べる".to_string() }]-> quarters_diary,
-        quarters -[choice = ChoiceEdge { label: "個室を順に見て回る".to_string() }]-> quarters_rooms,
-        quarters -[choice = ChoiceEdge { label: "中央ホールに戻る".to_string() }]-> central,
-        quarters_diary -[choice = ChoiceEdge { label: "個室を見て回る".to_string() }]-> quarters_rooms,
-        quarters_diary -[choice = ChoiceEdge { label: "中央ホールに戻る".to_string() }]-> central,
-        quarters_rooms -[choice = ChoiceEdge { label: "鍵のかかった部屋をこじ開ける".to_string() }]-> quarters_locked,
-        quarters_rooms -[choice = ChoiceEdge { label: "中央ホールに戻る".to_string() }]-> central,
-        quarters_locked -[choice = ChoiceEdge { label: "話を聞く".to_string() }]-> quarters_takashi,
-        quarters_locked -[choice = ChoiceEdge { label: "その場を離れる".to_string() }]-> central,
-        quarters_takashi -[choice = ChoiceEdge { label: "隔壁を閉める".to_string() }]-> takashi_seal,
-        quarters_takashi -[choice = ChoiceEdge { label: "彼を連れて避難する".to_string() }]-> takashi_rescue,
-        quarters_takashi -[choice = ChoiceEdge { label: "地下区画へ急ぐ".to_string() }]-> lower_hatch,
+        c_quarters_qdiary = Choice(quarters -[ChoiceEdge { label: "日誌を調べる".to_string() }]-> quarters_diary),
+        c_quarters_qrooms = Choice(quarters -[ChoiceEdge { label: "個室を順に見て回る".to_string() }]-> quarters_rooms),
+        c_quarters_central = Choice(quarters -[ChoiceEdge { label: "中央ホールに戻る".to_string() }]-> central),
+        c_qdiary_qrooms = Choice(quarters_diary -[ChoiceEdge { label: "個室を見て回る".to_string() }]-> quarters_rooms),
+        c_qdiary_central = Choice(quarters_diary -[ChoiceEdge { label: "中央ホールに戻る".to_string() }]-> central),
+        c_qrooms_qlocked = Choice(quarters_rooms -[ChoiceEdge { label: "鍵のかかった部屋をこじ開ける".to_string() }]-> quarters_locked),
+        c_qrooms_central = Choice(quarters_rooms -[ChoiceEdge { label: "中央ホールに戻る".to_string() }]-> central),
+        c_qlocked_qtakashi = Choice(quarters_locked -[ChoiceEdge { label: "話を聞く".to_string() }]-> quarters_takashi),
+        c_qlocked_central = Choice(quarters_locked -[ChoiceEdge { label: "その場を離れる".to_string() }]-> central),
+        c_qtakashi_tseal = Choice(quarters_takashi -[ChoiceEdge { label: "隔壁を閉める".to_string() }]-> takashi_seal),
+        c_qtakashi_trescue = Choice(quarters_takashi -[ChoiceEdge { label: "彼を連れて避難する".to_string() }]-> takashi_rescue),
+        c_qtakashi_lhatch = Choice(quarters_takashi -[ChoiceEdge { label: "地下区画へ急ぐ".to_string() }]-> lower_hatch),
 
         // --- タカシを巡る分岐の合流 ---
-        takashi_seal -[choice = ChoiceEdge { label: "地下ホールへ戻る".to_string() }]-> lower_hall,
-        takashi_seal -[choice = ChoiceEdge { label: "封鎖を完了させる".to_string() }]-> seal_sacrifice,
-        takashi_rescue -[choice = ChoiceEdge { label: "地下ホールへ急ぐ".to_string() }]-> lower_hall,
-        takashi_rescue -[choice = ChoiceEdge { label: "管制室で状況を確認する".to_string() }]-> control_room,
+        c_tseal_lhall = Choice(takashi_seal -[ChoiceEdge { label: "地下ホールへ戻る".to_string() }]-> lower_hall),
+        c_tseal_ssac = Choice(takashi_seal -[ChoiceEdge { label: "封鎖を完了させる".to_string() }]-> seal_sacrifice),
+        c_trescue_lhall = Choice(takashi_rescue -[ChoiceEdge { label: "地下ホールへ急ぐ".to_string() }]-> lower_hall),
+        c_trescue_croom = Choice(takashi_rescue -[ChoiceEdge { label: "管制室で状況を確認する".to_string() }]-> control_room),
 
         // --- 地下区画 (合流点 + 往復) ---
-        lower_hatch -[choice = ChoiceEdge { label: "下りる".to_string() }]-> lower_hall,
-        lower_hall -[choice = ChoiceEdge { label: "原子炉室へ".to_string() }]-> reactor,
-        lower_hall -[choice = ChoiceEdge { label: "通信室へ".to_string() }]-> comms,
-        lower_hall -[choice = ChoiceEdge { label: "管制室へ".to_string() }]-> control_room,
-        lower_hall -[choice = ChoiceEdge { label: "中央ホールへ戻る".to_string() }]-> central,
-        reactor -[choice = ChoiceEdge { label: "地下ホールに戻る".to_string() }]-> lower_hall,
-        comms -[choice = ChoiceEdge { label: "地下ホールに戻る".to_string() }]-> lower_hall,
-        comms -[choice = ChoiceEdge { label: "管制室へ".to_string() }]-> control_room,
-        control_room -[choice = ChoiceEdge { label: "感染源を分析する".to_string() }]-> control_analysis,
-        control_room -[choice = ChoiceEdge { label: "地下ホールへ戻る".to_string() }]-> lower_hall,
+        c_lhatch_lhall = Choice(lower_hatch -[ChoiceEdge { label: "下りる".to_string() }]-> lower_hall),
+        c_lhall_reactor = Choice(lower_hall -[ChoiceEdge { label: "原子炉室へ".to_string() }]-> reactor),
+        c_lhall_comms = Choice(lower_hall -[ChoiceEdge { label: "通信室へ".to_string() }]-> comms),
+        c_lhall_croom = Choice(lower_hall -[ChoiceEdge { label: "管制室へ".to_string() }]-> control_room),
+        c_lhall_central = Choice(lower_hall -[ChoiceEdge { label: "中央ホールへ戻る".to_string() }]-> central),
+        c_reactor_lhall = Choice(reactor -[ChoiceEdge { label: "地下ホールに戻る".to_string() }]-> lower_hall),
+        c_comms_lhall = Choice(comms -[ChoiceEdge { label: "地下ホールに戻る".to_string() }]-> lower_hall),
+        c_comms_croom = Choice(comms -[ChoiceEdge { label: "管制室へ".to_string() }]-> control_room),
+        c_croom_canalysis = Choice(control_room -[ChoiceEdge { label: "感染源を分析する".to_string() }]-> control_analysis),
+        c_croom_lhall = Choice(control_room -[ChoiceEdge { label: "地下ホールへ戻る".to_string() }]-> lower_hall),
 
         // --- クライマックス分岐 ---
-        control_analysis -[choice = ChoiceEdge { label: "全員を退避させる".to_string() }]-> crisis_evacuate,
-        control_analysis -[choice = ChoiceEdge { label: "感染区画を封鎖する".to_string() }]-> crisis_seal,
-        control_analysis -[choice = ChoiceEdge { label: "真相を記録し外部に送信する".to_string() }]-> crisis_truth,
-        control_analysis -[choice = ChoiceEdge { label: "何も決められず立ち尽くす".to_string() }]-> crisis_freeze,
+        c_canalysis_cevac = Choice(control_analysis -[ChoiceEdge { label: "全員を退避させる".to_string() }]-> crisis_evacuate),
+        c_canalysis_cseal = Choice(control_analysis -[ChoiceEdge { label: "感染区画を封鎖する".to_string() }]-> crisis_seal),
+        c_canalysis_ctruth = Choice(control_analysis -[ChoiceEdge { label: "真相を記録し外部に送信する".to_string() }]-> crisis_truth),
+        c_canalysis_cfreeze = Choice(control_analysis -[ChoiceEdge { label: "何も決められず立ち尽くす".to_string() }]-> crisis_freeze),
 
-        crisis_evacuate -[choice = ChoiceEdge { label: "シャトルへ急ぐ".to_string() }]-> shuttle_bay,
-        crisis_seal -[choice = ChoiceEdge { label: "隔壁を封鎖する".to_string() }]-> seal_sacrifice,
-        crisis_seal -[choice = ChoiceEdge { label: "タカシを助けに戻る".to_string() }]-> takashi_rescue,
-        crisis_truth -[choice = ChoiceEdge { label: "送信を実行する".to_string() }]-> truth_sent,
+        c_cevac_sbay = Choice(crisis_evacuate -[ChoiceEdge { label: "シャトルへ急ぐ".to_string() }]-> shuttle_bay),
+        c_cseal_ssac = Choice(crisis_seal -[ChoiceEdge { label: "隔壁を封鎖する".to_string() }]-> seal_sacrifice),
+        c_cseal_trescue = Choice(crisis_seal -[ChoiceEdge { label: "タカシを助けに戻る".to_string() }]-> takashi_rescue),
+        c_ctruth_tsent = Choice(crisis_truth -[ChoiceEdge { label: "送信を実行する".to_string() }]-> truth_sent),
 
         // ============================================================
         // finale (エンディングへの到達)
         // ============================================================
-        shuttle_bay -[finale]-> ending_evacuate,
-        seal_sacrifice -[finale]-> ending_sacrifice,
-        truth_sent -[finale]-> ending_truth,
-        crisis_freeze -[finale]-> ending_isolation,
+        f_sbay = Finale(shuttle_bay -> ending_evacuate),
+        f_ssac = Finale(seal_sacrifice -> ending_sacrifice),
+        f_tsent = Finale(truth_sent -> ending_truth),
+        f_cfreeze = Finale(crisis_freeze -> ending_isolation),
     })
 }
 
@@ -397,11 +414,11 @@ pub fn build_broken_story() -> Result<DialogueGraph, DialogueGraphViolation> {
             epilogue: "壊れたシナリオのエンディング".to_string()
         },
 
-        br_start -[choice = ChoiceEdge { label: "進む".to_string() }]-> br_ok,
-        br_start -[choice = ChoiceEdge { label: "行き止まりへ向かう".to_string() }]-> br_dead,
-        br_ok -[finale]-> br_end,
+        c_brstart_brok = Choice(br_start -[ChoiceEdge { label: "進む".to_string() }]-> br_ok),
+        c_brstart_brdead = Choice(br_start -[ChoiceEdge { label: "行き止まりへ向かう".to_string() }]-> br_dead),
+        f_brok = Finale(br_ok -> br_end),
         // br_dead は意図的に何の辺も出さない (デッドエンド)。
-        br_unreachable -[choice = ChoiceEdge { label: "戻る".to_string() }]-> br_ok,
+        c_brunreachable_brok = Choice(br_unreachable -[ChoiceEdge { label: "戻る".to_string() }]-> br_ok),
         // br_unreachable は意図的に誰からも参照しない (到達不能)。
     })
 }
@@ -426,9 +443,9 @@ pub fn build_pure_loop_story() -> Result<DialogueGraph, DialogueGraphViolation> 
         t_loop_a = Scene { speaker: "テスト".to_string(), text: "ループA".to_string() },
         t_loop_b = Scene { speaker: "テスト".to_string(), text: "ループB".to_string() },
 
-        t_start -[choice = ChoiceEdge { label: "ループへ".to_string() }]-> t_loop_a,
-        t_loop_a -[choice = ChoiceEdge { label: "Bへ".to_string() }]-> t_loop_b,
-        t_loop_b -[choice = ChoiceEdge { label: "Aへ".to_string() }]-> t_loop_a,
+        c_tstart_tloopa = Choice(t_start -[ChoiceEdge { label: "ループへ".to_string() }]-> t_loop_a),
+        c_tloopa_tloopb = Choice(t_loop_a -[ChoiceEdge { label: "Bへ".to_string() }]-> t_loop_b),
+        c_tloopb_tloopa = Choice(t_loop_b -[ChoiceEdge { label: "Aへ".to_string() }]-> t_loop_a),
         // どのシーンにも finale が無い = t_loop_a/t_loop_b は循環しつつ
         // どのエンディングにも到達できない「罠」になる。
     })
