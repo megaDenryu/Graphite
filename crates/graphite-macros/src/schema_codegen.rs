@@ -933,6 +933,29 @@ fn gen_builder_impl(
                 value.insert_into(self, key.into())
             }
 
+            /// `insert` のイテレータ版 (`docs/bulk_construction.md`)。実行時
+            /// データからの構築で for ループが構築コードに残るのを避けるため、
+            /// 要素単位 API の反復に完全に一致する意味論 (挿入順保持・検証は
+            /// freeze 時) をまとめて提供する。`insert` と同じ理由
+            /// (`N: #node_trait_ident` が schema ごとに名前の異なるトレイト)
+            /// で、graphite ランタイム側の共通機構ではなくここに生成する。
+            pub fn extend_nodes<K, N>(&mut self, items: impl IntoIterator<Item = (K, N)>) -> Vec<N::Id>
+            where
+                K: Into<String>,
+                N: #node_trait_ident,
+            {
+                items.into_iter().map(|(k, v)| self.insert(k, v)).collect()
+            }
+
+            /// `extend_nodes` のエッジ版 (`add` のイテレータ版)。
+            pub fn extend_edges<K, E>(&mut self, items: impl IntoIterator<Item = (K, E)>) -> Vec<E::Id>
+            where
+                K: Into<String>,
+                E: #edge_trait_ident,
+            {
+                items.into_iter().map(|(k, v)| self.add(k, v)).collect()
+            }
+
             #freeze_body
         }
     }

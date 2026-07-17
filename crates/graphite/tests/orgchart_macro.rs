@@ -446,6 +446,110 @@ mod tests {
     }
 
     #[test]
+    fn extend_nodesとextend_edgesは要素単位apiの反復と同一の内容になる() {
+        // `docs/bulk_construction.md`: extend_nodes/extend_edges は insert/add
+        // の反復と完全に同一の意味論であるはず。build_healthy_chart (要素単位
+        // で構築) と同じデータを extend で構築し、内容が一致することを確認する。
+        let g1 = build_healthy_chart();
+        let g2 = OrgChart::create(|b| {
+            b.extend_nodes(vec![
+                ("田中".to_string(), Employee { name: "田中".to_string(), id: 1 }),
+                ("佐藤".to_string(), Employee { name: "佐藤".to_string(), id: 2 }),
+            ]);
+            b.extend_nodes(vec![(
+                "営業部".to_string(),
+                Department { name: "営業".to_string() },
+            )]);
+            b.extend_edges(vec![
+                ("bt-tanaka".to_string(), BelongsTo(emp("田中"), dept("営業部"))),
+                ("bt-sato".to_string(), BelongsTo(emp("佐藤"), dept("営業部"))),
+            ]);
+            b.extend_edges(vec![(
+                "boss-sato".to_string(),
+                Boss(emp("佐藤"), emp("田中"), BossEdge { since: 2020 }),
+            )]);
+            b.extend_edges(vec![("r1".to_string(), Reports(emp("田中"), emp("佐藤")))]);
+        })
+        .expect("extendで構築した組織図も要素単位と同様に成功するはず");
+
+        let employees_of = |g: &OrgChart| -> Vec<(String, Employee)> {
+            let mut v: Vec<(String, Employee)> = Employee::iter(g)
+                .map(|(id, e)| (id.0.clone(), e.clone()))
+                .collect();
+            v.sort_by(|a, b| a.0.cmp(&b.0));
+            v
+        };
+        assert_eq!(employees_of(&g1), employees_of(&g2));
+
+        let departments_of = |g: &OrgChart| -> Vec<(String, Department)> {
+            let mut v: Vec<(String, Department)> = Department::iter(g)
+                .map(|(id, d)| (id.0.clone(), d.clone()))
+                .collect();
+            v.sort_by(|a, b| a.0.cmp(&b.0));
+            v
+        };
+        assert_eq!(departments_of(&g1), departments_of(&g2));
+
+        // 辺は KeyedTable が挿入順を保持する仕様 (`docs/schema_v4.md` §3.2) な
+        // ので、順序も含めてそのまま比較できる。
+        let belongs_to_of =
+            |g: &OrgChart| -> Vec<(BelongsToId, BelongsTo)> { BelongsTo::iter(g).map(|(id, e)| (id.clone(), e.clone())).collect() };
+        assert_eq!(belongs_to_of(&g1), belongs_to_of(&g2));
+
+        let boss_of =
+            |g: &OrgChart| -> Vec<(BossId, Boss)> { Boss::iter(g).map(|(id, e)| (id.clone(), e.clone())).collect() };
+        assert_eq!(boss_of(&g1), boss_of(&g2));
+
+        let reports_of =
+            |g: &OrgChart| -> Vec<(ReportsId, Reports)> { Reports::iter(g).map(|(id, e)| (id.clone(), e.clone())).collect() };
+        assert_eq!(reports_of(&g1), reports_of(&g2));
+    }
+
+    #[test]
+    fn extend_nodesとextend_edgesの戻り値は入力順のidになる() {
+        let g = OrgChart::create(|b| {
+            let node_ids = b.extend_nodes(vec![
+                ("田中".to_string(), Employee { name: "田中".to_string(), id: 1 }),
+                ("佐藤".to_string(), Employee { name: "佐藤".to_string(), id: 2 }),
+            ]);
+            assert_eq!(node_ids, vec![emp("田中"), emp("佐藤")]);
+
+            b.extend_nodes(vec![(
+                "営業部".to_string(),
+                Department { name: "営業".to_string() },
+            )]);
+
+            let edge_ids = b.extend_edges(vec![
+                ("bt-tanaka".to_string(), BelongsTo(emp("田中"), dept("営業部"))),
+                ("bt-sato".to_string(), BelongsTo(emp("佐藤"), dept("営業部"))),
+            ]);
+            assert_eq!(
+                edge_ids,
+                vec![
+                    BelongsToId("bt-tanaka".to_string()),
+                    BelongsToId("bt-sato".to_string()),
+                ]
+            );
+        })
+        .expect("正常な組織図は構築に成功するはず");
+
+        assert_eq!(Employee::get(&g, &emp("田中")).unwrap().name, "田中");
+    }
+
+    #[test]
+    fn extend_nodesとextend_edgesは空イテレータでも問題なく動く() {
+        let result = OrgChart::create(|b| {
+            let node_ids: Vec<EmployeeId> = b.extend_nodes(Vec::<(String, Employee)>::new());
+            assert!(node_ids.is_empty());
+            let edge_ids: Vec<BelongsToId> = b.extend_edges(Vec::<(String, BelongsTo)>::new());
+            assert!(edge_ids.is_empty());
+
+            // 空のextendだけではノードも辺も無いので違反も無く成功するはず。
+        });
+        assert!(result.is_ok());
+    }
+
+    #[test]
     fn 同じ部署に2人のleaderをつけると入次数違反になる() {
         let result = OrgChart::create(|b| {
             b.employee(emp("田中"), Employee { name: "田中".to_string(), id: 1 });
