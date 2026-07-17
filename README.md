@@ -37,8 +37,8 @@ graphite::graph_schema! {
         node Person;
         node Team;
 
-        edge belongs_to: Person -> Team (1);
-        edge boss:       Person -[BossEdge]-> Person (0..1);
+        edge BelongsTo = Person -> Team              where each Person: 1;
+        edge Boss      = Person -[BossEdge]-> Person where each Person: 0..1;
     }
 }
 
@@ -48,20 +48,20 @@ let g = graphite::graph!(Org {
     bob   = Person { name: "Bob".into() },
     eng   = Team { name: "Engineering".into() },
 
-    alice -[belongs_to]-> eng,
-    bob   -[belongs_to]-> eng,
-    bob   -[boss = BossEdge { since: 2021 }]-> alice,
+    alice_eng = BelongsTo(alice -> eng),
+    bob_eng   = BelongsTo(bob -> eng),
+    bob_boss  = Boss(bob -[BossEdge { since: 2021 }]-> alice),
 })?;
 
-let team: &Team = g.belongs_to().of(&PersonId("alice".to_string()));
-let (boss, attrs) = g.boss().of(&PersonId("bob".to_string())).unwrap(); // (&Person, &BossEdge)
+let team: &Team = BelongsTo::of(&g, &PersonId("alice".to_string()));
+let (boss, attrs) = Boss::of(&g, &PersonId("bob".to_string())).unwrap(); // (&Person, &BossEdge)
 ```
 
-`graph_schema!` が何を生成するか (newtype キー・builder・エッジビュー・
-違反 enum)、多重度ごとにビューが何を返すかは下記「使用例」節で詳しく説明します。
-「ラベルとは値なのか関数なのか、何ができて何ができないのか」を実際のコンパイル
-エラー付きで1つずつ確認したい場合は、まず `examples/hello-graph` を読んでみて
-ください (下記「実践例」節参照)。
+`graph_schema!` が何を生成するか (newtype キー・builder・辺の第一級型・
+違反 enum)、`where` 制約ごとにアクセサが何を返すかは下記「使用例」節で
+詳しく説明します。「`edge Kind = ...` とは何を定義しているのか、何ができて
+何ができないのか」を実際のコンパイルエラー付きで1つずつ確認したい場合は、
+まず `examples/hello-graph` を読んでみてください (下記「実践例」節参照)。
 
 ## 2 クレート構成
 
@@ -107,9 +107,9 @@ graphite::graph_schema! {
         node Employee;
         node Department;
 
-        edge belongs_to: Employee -> Department (1);
-        edge boss:       Employee -[BossEdge]-> Employee (0..1);
-        edge reports:    Employee -> Employee (0..*);
+        edge BelongsTo = Employee -> Department              where each Employee: 1;
+        edge Boss      = Employee -[BossEdge]-> Employee     where each Employee: 0..1;
+        edge Reports   = Employee -> Employee                where unique pair;
     }
 }
 ```
@@ -119,40 +119,72 @@ graphite::graph_schema! {
 生成しないので)。省略可能な `node 型名(複数形);` で内部ストレージの複数形
 フィールド名を明示指定できます (後述)。
 
-エッジ宣言は `ラベル: From -> To (多重度);` (属性なし、例: `belongs_to:
-Employee -> Department (1)`) または `ラベル: From -[型パス]-> To (多重度);`
-(属性あり、例: `boss: Employee -[BossEdge]-> Employee (0..1)`) の形です。
-**`label:` の右側全体がそのラベルの関係型**というのが読み方の要点で、Rust の
-関数型 `f: impl Fn(A) -> B` と同じ構図です (`boss` の型は「`Employee` から
-`Employee` へ、`BossEdge` を運ぶ、高々1本の関係」)。矢印の中に置くのは
-**積み荷 (属性型) だけ**で、属性なしエッジは矢印の中に何も書かない素の `->`
-になります (「何も運ばない」ことが見た目にそのまま出ます)。属性型は
-`edges::BossEdge` のようなモジュール修飾付きパスも書けますが、**ノード型名
-は単純な識別子のみ**です (`node Employee;` の `Employee` にモジュール修飾は
-書けません)。理由は用途の違いです — ノード型名はエッジの `from`/`to` 端点の
-型名と文字列として照合される (`Employee` という同じトークンが `node` 宣言と
-`edge` 宣言の両方に現れて初めて同一ノード種別だと判定できる) ため、
-`crate::Employee` のようなパスにすると単純トークン `Employee` と同一視でき
-ず照合が破綻します。モジュール修飾したい場合は `use` でこのスコープに名前を
-持ち込んでください。多重度は矢印の外側 (辺そのものではなく制約なので) に
-置きます。
+Graphite の基盤は**多重グラフ**です。辺は独立した要素であり、辺種別
+(`Kind`) は**新しい nominal 型として生成されます** (透過的な別名ではない
+— 同じ形の `Boss` と仮に `Mentor` という別のエッジ種別を宣言したら、両者は
+別の型になります)。辺宣言は `edge Kind = From -> To;` (属性なし) または
+`edge Kind = From -[型パス]-> To;` (属性あり、例: `Boss = Employee
+-[BossEdge]-> Employee`) の形です。**規則は3つだけ**
+(`docs/schema_v4.md` §0):
+
+1. **`名前 = 定義`** — 名前が要る定義は schema もリテラルも全部この形
+2. **矢印の中は積み荷だけ** — `-[X]->` の `X` は積み荷の型 (schema) /
+   値 (リテラル) だけ。属性なしエッジは矢印の中に何も書かない素の `->`
+   になります (「何も運ばない」ことが見た目にそのまま出ます)
+3. **`where` は制約** — 制約があるときだけ書く
+
+`where` 節 (省略可、カンマ区切りで複数書ける) が持つ語彙は2つです:
+
+- **`each <FromType>: 1`** — 各始点ノードにつきちょうど1本 (数学的には
+  全域関数)。`<FromType>` は宣言の `From` と一致している必要があります
+  (始点と終点が同型の自己参照エッジでも「each = 始点側の出次数」と読みます)。
+- **`each <FromType>: 0..1`** — 各始点につき高々1本 (部分関数)。
+- **`unique pair`** — 同じ (始点, 終点) の対に2本目の辺を張ることを禁止
+  (「関係」らしさ、平行辺の禁止)。`each` の制約と両立させても構いません
+  (実装は単純さを優先し、冗長な組み合わせでも警告なく受け付けます)。
+
+制約を何も書かなければ「平行辺を含め自由な多重グラフ」です (旧多重度
+`(0..*)` に相当する状態で、専用の字面は無く単に `where` 節を省略します)。
+
+属性型は `edges::BossEdge` のようなモジュール修飾付きパスも書けますが、
+**ノード型名は単純な識別子のみ**です (`node Employee;` の `Employee` に
+モジュール修飾は書けません)。理由は用途の違いです — ノード型名はエッジの
+`from`/`to` 端点の型名と文字列として照合される (`Employee` という同じ
+トークンが `node` 宣言と `edge` 宣言の両方に現れて初めて同一ノード種別だと
+判定できる) ため、`crate::Employee` のようなパスにすると単純トークン
+`Employee` と同一視できず照合が破綻します。モジュール修飾したい場合は
+`use` でこのスコープに名前を持ち込んでください。
 
 これでノード種別ごとの newtype キー (`EmployeeId`/`DepartmentId`)・
-スキーマ struct (`OrgChart`, フィールドは非公開)・builder
-(`OrgChartBuilder`)・違反 enum (`OrgChartViolation`) が一式生成されます。
-ノード値の型 (`Employee`/`Department`) とエッジ属性型 (`BossEdge`) は
-いずれもユーザーが宣言した型をそのまま参照するだけで、`graph_schema!` は
-一切生成しません。
+辺種別ごとの newtype キー (`BelongsToId`/`BossId`/`ReportsId`) と
+タプル struct (`pub struct Boss(pub EmployeeId, pub EmployeeId,
+pub BossEdge);` — 属性なしは2要素)・スキーマ struct (`OrgChart`,
+フィールドは非公開)・builder (`OrgChartBuilder`)・違反 enum
+(`OrgChartViolation`) が一式生成されます。ノード値の型 (`Employee`/
+`Department`) とエッジ属性型 (`BossEdge`) はいずれもユーザーが宣言した型を
+そのまま参照するだけで、`graph_schema!` は一切生成しません。
 
-**`{Schema}Node` トレイトと総称 `insert` (v3)**: builder には型名付きの
+辺のタプル struct は**マクロの外でも普通に構築できます**
+(`Boss(from_id, to_id, payload)`。原則6: 消去可能な拡張のみ)。読み取りは
+位置 (`.0`/`.1`/`.2`) を人間に晒さず、固定語彙のメソッドを生成します:
+`fn from(&self) -> &EmployeeId` / `fn to(&self) -> &EmployeeId` /
+`fn payload(&self) -> &BossEdge` (積み荷ありのみ)。
+
+**`{Schema}Node` トレイトと総称 `insert`**: builder には型名付きの
 挿入メソッド (`b.employee(id, value)` など、上記の各 `node` 宣言から1つずつ
 生成) に加えて、総称メソッド `b.insert<N: OrgChartNode>(key: impl Into<String>, value: N) -> N::Id`
-も生成されます。これは `graph!` が値の型名を一切パースしない (`docs/graph_literal_v3.md`
-参照) ために必要で、`OrgChartNode` トレイト (各ノード型に `impl OrgChartNode for Employee { type Id = EmployeeId; .. }`
+も生成されます。これは `graph!` が値の型名を一切パースしないために必要で、
+`OrgChartNode` トレイト (各ノード型に `impl OrgChartNode for Employee { type Id = EmployeeId; .. }`
 が生成される) を介して、値の型から正しい内部ストレージへの振り分けを
 rustc の型推論に任せます。実行時のリフレクション・型判別は一切無く
 (原則5: ゼロコスト志向)、`b.employee(id, value)` を明示的に呼ぶプログラム的
 構築 (examples の合成データ生成など) では従来通り型名付きメソッドを使えます。
+同じトレイトはノードの**読み取り**API (`Person::get`/`ids`/`iter`、後述) も
+提供します。エッジの書き込み側も対称に `{Schema}Edge` トレイト経由の総称
+`b.add(key, value)` を持ちますが、エッジの**読み取り**API (`of`/`get`/
+`between`/`iter`/`ids`/`len`) はマクロが生成した `Kind` 型そのものへの
+固有 impl (`impl Boss { .. }`) として提供されるため、トレイトの `use` は
+不要です (詳しくは次節「アクセサ・アルゴリズムを使う」参照)。
 
 **ノード値の型・エッジ属性型に対する trait 要求**: `graph_schema!`/`graph!`
 の生成コードはこれらの値を builder → freeze → アクセサへ move/参照で受け
@@ -167,48 +199,41 @@ struct を複数の schema が `node` として参照すると、両方の schem
 `{Node}Id` newtype を生成しようとして名前衝突します。schema ごとにモジュール
 を分けて運用してください。
 
-**エッジアクセスはビュー方式 (`docs/edge_view_api.md`)**: ラベルごとに
-生成されるのはビューを返す1個のメソッド `{label}() -> EdgeXxx<'_, ...>`
-だけです (旧版にあった `try_{label}`/`{label}_id(s)`/`{label}_pairs` という
-導出名の合成メソッド群は全廃しました)。ビューが持つ操作の語彙は全ラベル・
-全スキーマ共通で、graphite ランタイム側の
-`EdgeOne`/`EdgeOneWith`/`EdgeOption`/`EdgeOptionWith`/`EdgeMany`/
-`EdgeManyWith` (多重度×属性有無で6種) に1回だけ定義されています:
+**アクセスは型名前空間の関連関数 (`g.メソッド` は廃止)**: v3 にあった
+「ラベルごとに1個のビューを返すメソッド `{label}()`」という間接層は v4 では
+無くなりました。辺の読み取りAPI (`of`/`get`/`between`/`iter`/`ids`/`len`) は
+`graph_schema!` が生成した `Kind` 型そのものへの固有 impl として直接生えます
+(`Boss::of(&g, ..)` のように、型名を主語にして呼びます)。ノードの読み取り
+API (`get`/`ids`/`iter`) は `{Schema}Node` トレイトの関連関数として提供され、
+使う前にそのトレイトを `use` でスコープに入れる必要があります
+(`use crate::schema::OrgChartNode;` のように。ユーザー struct
+(`Employee` 等) への固有 impl にはしていません — 複数 schema が同じ struct
+を `node` として共有したときにメソッドが衝突しないようにするためです)。
 
-- **`of(&SrcId)`** — そのラベルの自然な戻り値。**多重度が戻り型を決めます**:
+- **`Kind::of(&g, &SrcId)`** — そのエッジ種別の自然な戻り値。
+  **`where` 制約が戻り型を決めます**:
 
-  | 多重度     | 格納                        | `of` の戻り値                  |
-  |-----------|----------------------------|-----------------------------------|
-  | `(1)`     | 必須 1 本 (freeze で検査)    | `&T` (または属性付きなら `(&T, &Attrs)`)。未知キーはパニック |
-  | `(0..1)`  | 高々 1 本                   | `Option<&T>` (属性付きは `Option<(&T, &Attrs)>`) |
-  | `(0..*)`  | 0 本以上                     | `Vec<&T>` (属性付きは `Vec<(&T, &Attrs)>`) |
+  | 制約             | `of` の戻り値                                              |
+  |------------------|-------------------------------------------------------------|
+  | `each X: 1`      | `&T` (属性付きは `(&T, &Attrs)`)。未知キーはパニック (非パニック版 `get_of` あり) |
+  | `each X: 0..1`   | `Option<&T>` (属性付きは `Option<(&T, &Attrs)>`)             |
+  | 制約なし          | `Vec<&T>` (属性付きは `Vec<(&T, &Attrs)>`)                   |
 
-  多重度 `(1)` の `of` (`{label}().of(&SrcId) -> &T`) は未知キーを渡すと
-  パニックします (`Vec` の `v[i]` と同じ「呼び出し規約違反」の扱い)。
-- **`get(&SrcId)`** — `of` の `Option` 版。**`(1)` のビューにのみ存在**
-  します (`(0..1)`/`(0..*)` は `of` が既に全域関数なので生成しません。
-  `Vec` の `v[i]`/`v.get(i)` と同じ関係)。
-- **`id_of`/`get_id`/`ids_of`** — 相手ノードの*値*ではなくキーが欲しいとき
-  に使います (指揮系統チェーンのように「次のノードのキーへ辿ってまた
-  そこから辿る」処理向け)。`of`/`get` と同じ多重度規則です:
+  `each X: 1` の `of` は未知キーを渡すとパニックします (`Vec` の `v[i]` と
+  同じ「呼び出し規約違反」の扱い。非パニック版 `get_of` も対で提供されます)。
+- **`Kind::get(&g, &{Kind}Id)`** — 辺そのものをキー (`{Kind}Id`) で1本検索
+  します。見つかれば `Some(&Kind)` (from/to/payload を持つタプル struct)。
+- **`Kind::between(&g, &SrcId, &DstId)`** — (始点, 終点) の対で検索します。
+  `where unique pair` が付いていれば `Option<&Kind>`、無ければ平行辺を
+  許すため `Vec<&Kind>` を返します。
+- **`Kind::iter(&g)`** — 表全体を `(&{Kind}Id, &Kind)` で走査します。`match`
+  パターンでのグラフクエリの代替として使えます。
+- **`Kind::ids(&g)`/`Kind::len(&g)`** — 全キー列挙 / 本数。
 
-  | 多重度     | ID版メソッド                                        |
-  |-----------|-----------------------------------------------------|
-  | `(1)`     | `id_of(&SrcId) -> &DstId` (未知キーはパニック。`# Panics` 明記) + `get_id(&SrcId) -> Option<&DstId>` |
-  | `(0..1)`  | `id_of(&SrcId) -> Option<&DstId>`                    |
-  | `(0..*)`  | `ids_of(&SrcId) -> Vec<&DstId>` (格納順を保持。後述「`(0..*)` エッジの順序保証」節参照) |
-- **`iter()`** — 表全体を辺単位で走査します。`match` パターンでのグラフ
-  クエリの代替として使えます。属性なしは `(&SrcId, &DstId)` の2つ組、
-  属性ありは `(&SrcId, &DstId, &Attrs)` の3つ組 (多重度 `(0..*)` は全ペア
-  へ展開)。使用例は「3. アクセサ・アルゴリズムを使う」節を参照。
-- **`len()`/`is_empty()`** — 表の辺の本数 (`(0..*)` は始点キーごとの終点数
-  の総和)。
+ノード種別ごとのキー列挙は `{Type}::ids(&g)` (`{Schema}Node` トレイト経由)
+です。
 
-ノード種別ごとのキー列挙 `{node_snake}_ids() -> impl Iterator<Item = &NodeId>`
-はビュー化していません (2個だけなので許容範囲。README「変更しないもの」
-節参照)。
-
-**`create_collecting` (フェーズ5)**: `create` は最初の1件の違反で `Err`
+**`create_collecting`**: `create` は最初の1件の違反で `Err`
 になりますが、組織図の全違反を一覧表示するような検証系ユースケースでは
 複数違反をまとめて見たいことがあります。`{Schema}::create_collecting(|b| { ... }) -> Result<Self, Vec<{Schema}Violation>>`
 が同じ builder クロージャを受け取り、freeze 検査を打ち切らず全違反を
@@ -229,15 +254,21 @@ let g = graphite::graph!(OrgChart {
     sato   = Employee { name: "佐藤".into(), id: 2 },
     sales  = Department { name: "営業".into() },
 
-    tanaka -[belongs_to]-> sales,
-    sato   -[belongs_to]-> sales,
-    tanaka -[boss = BossEdge { since: 2020 }]-> sato,
+    tanaka_dept = BelongsTo(tanaka -> sales),
+    sato_dept   = BelongsTo(sato -> sales),
+    tanaka_boss = Boss(tanaka -[BossEdge { since: 2020 }]-> sato),
 })?; // Result<OrgChart, OrgChartViolation>
 ```
 
-統一規則は **schema は `:` (型付け)、`graph!` リテラルは `=` (代入)** です。
-`alice = alice1` のように外部で構築済みの値をそのまま渡すこともできます
-(ノード項の値・エッジ属性の値はいずれも任意の Rust の式で、値の型は
+**全行が `名前 = 値`** です (`docs/schema_v4.md` §0 規則1)。ノードの名前は
+ノードキー、辺の名前は辺キーの束縛であり、**ノードキー・辺キーは1つの
+`graph!` 呼び出しの中で単一の平坦な名前空間を共有します** (同じ識別子を
+2回使うとコンパイルエラー。詳細は後述「名前空間に関する制約」節)。辺の
+コンストラクタはタプル struct の顔 `Kind(from -> to)` /
+`Kind(from -[積み荷式]-> to)` で、`from`/`to` はその `graph!` 呼び出し内で
+既にノードとして宣言済みのキー識別子でなければなりません。`alice =
+alice_value` のように外部で構築済みの値をそのまま渡すこともできます
+(ノード項の値・エッジの積み荷はいずれも任意の Rust の式で、値の型は
 マクロではなく rustc が推論します)。
 
 ```rust
@@ -248,20 +279,20 @@ let g = graphite::graph!(OrgChart {
     sato   = Employee { name: "佐藤".into(), id: 2 },
     sales  = Department { name: "営業".into() },
 
-    tanaka -[belongs_to]-> sales,
-    sato   -[belongs_to]-> sales,
-    sato   -[boss = promotion]-> tanaka, // 外で作った値を move
+    tanaka_dept = BelongsTo(tanaka -> sales),
+    sato_dept   = BelongsTo(sato -> sales),
+    sato_boss   = Boss(sato -[promotion]-> tanaka), // 外で作った値を move
 })?;
 ```
 
 `graph!` は `OrgChart::create(|__graphite_b| { ... })` の呼び出し列へ脱糖する
 だけで、スキーマの中身 (どのエッジが存在するか等) は一切知りません。値の型も
-一切パースせず、`graph_schema!` が生成した総称 `insert` メソッド (下記) と
-型名付き builder メソッド (`b.label(from, to, 式)`) へユーザーの式トークンを
-そのまま渡すだけです (型推論は rustc に任せる。ゼロコスト志向、原則5)。
+一切パースせず、`graph_schema!` が生成した総称 `insert`/`add` メソッド
+(下記) へユーザーの式トークンをそのまま渡すだけです (型推論は rustc に
+任せる。ゼロコスト志向、原則5)。
 
-ノードキーはその場で文字列化するのではなく、キーごとに `let` 束縛を1つ作り、
-以後はその識別子への参照として運びます (IDE サポート項目G1、
+ノードキー・辺キーはその場で文字列化するのではなく、キーごとに `let` 束縛を
+1つ作り、以後はその識別子への参照として運びます (IDE サポート項目G1、
 `docs/ide_support_spec.md` 参照)。展開結果はおおよそ次の形になります:
 
 ```rust
@@ -270,21 +301,20 @@ OrgChart::create(|__graphite_b| {
     let tanaka = __graphite_b.insert("tanaka", Employee { .. });
     let sales = __graphite_b.insert("sales", Department { .. });
     // (2) 全エッジ (記述順)
-    __graphite_b.belongs_to(tanaka.clone(), sales.clone());
-    __graphite_b.boss(tanaka.clone(), sato.clone(), BossEdge { since: 2020 });
+    let tanaka_dept = __graphite_b.add("tanaka_dept", BelongsTo(tanaka.clone(), sales.clone()));
+    let tanaka_boss = __graphite_b.add("tanaka_boss", Boss(tanaka.clone(), sato.clone(), BossEdge { since: 2020 }));
 })
 ```
 
-`insert` は `graph_schema!` が各スキーマごとに生成する総称メソッドで、
-`{Schema}Node` トレイト境界を介して値の型 (`N`) から正しい内部ストレージへ
-振り分けます (詳細は下記「1. `graph_schema!` でスキーマを宣言する」節、
-`docs/graph_literal_v3.md` §3)。`N::Id` の型 (この例では `EmployeeId`) は
-rustc がこの trait 境界から単相化して決めるため、`let tanaka = ...` の型は
-`graph!` 自身は一切知りません。
+`insert`/`add` は `graph_schema!` が各スキーマごとに生成する総称メソッドで、
+`{Schema}Node`/`{Schema}Edge` トレイト境界を介して値の型から正しい内部
+ストレージへ振り分けます (詳細は上記「1. `graph_schema!` でスキーマを
+宣言する」節)。`N::Id`/`E::Id` の型は rustc がこの trait 境界から単相化して
+決めるため、`let tanaka = ...` の型は `graph!` 自身は一切知りません。
 
-これにより rust-analyzer 上でノードキー識別子への定義ジャンプ・rename・
-参照検索・hover が「普通のローカル変数」として機能します。`graph!` は
-従来エッジをノード宣言より前に書くこともできますが (キー→宣言の対応表は
+これにより rust-analyzer 上でノードキー・辺キー識別子への定義ジャンプ・
+rename・参照検索・hover が「普通のローカル変数」として機能します。`graph!`
+はエッジをノード宣言より前に書くこともできますが (キー→宣言の対応表は
 全項目を先に走査して作るため)、`let` 束縛は使用より前に必要なので、
 展開そのものは記述順によらず「全ノード → 全エッジ」の2段に並べ替えます
 (builder の検証は freeze 時に行われるため意味論は変わりません)。builder の
@@ -292,60 +322,51 @@ rustc がこの trait 境界から単相化して決めるため、`let tanaka =
 使ったときに生成される `let b = ..;` が builder 変数を隠してしまう衝突を
 避けるためです。
 
-v2 まではエッジ行ごとにハンドシェイク用の宣言的マクロ
-(`__graphite_edge_{Schema}!`) を挟んで未知ラベルを検査していましたが、v3
-ではこれを完全に廃止しました。属性ペイロードが式渡しになったことで
-中間マクロが不要になり、未知ラベルは `__graphite_b.#label(..)` の呼び出し
-自体が rustc の method-not-found (E0599) に落ちることで検出されます
-(「利用可能なエッジ一覧」付きの親切な `compile_error!` は失いますが、健全性
-には関与しないため許容する、というユーザー決定です。
-`crates/graphite/tests/ui/graph_unknown_edge_label.stderr` 参照)。この全廃に
-より、`graph_schema!` と `graph!` を同一ファイルに置く制約も構造的に消滅
-しました (`graph!` が参照するのは通常の型・メソッドだけになったため、別
-モジュールから `use` すれば足ります。実証は
-`crates/graphite/tests/graph_cross_module.rs`)。
+未知の Kind 名は `#kind(..)` というタプル struct 構築式がそのまま rustc の
+cannot-find-type / no-such-function に落ちることで検出されます (「利用可能な
+エッジ一覧」付きの親切な `compile_error!` は無いという意図的なトレードオフ)。
+これにより `graph_schema!` と `graph!` を同一ファイルに置く制約も無く、
+`graph!` が参照するのは通常の型・メソッドだけです (別モジュールから `use`
+すれば足ります。実証は `crates/graphite/tests/graph_cross_module.rs`)。
 
-`-[label]->` の向きは「`from` = 辺ラベルの builder 引数の 1 番目、`to` = 2
-番目」に対応します。上の例の `edge boss: Employee -[BossEdge]-> Employee`
-は手書きテンプレートの `boss(employee, boss, attrs)` という引数順を踏襲
-しているため、
-`tanaka -[boss]-> sato` は「田中の上司は佐藤」を意味します (向きを取り違え
-やすい点なので、独自スキーマを書くときは意識してください)。
+`Kind(from -> to)` の向きは「`from` = タプル struct の1番目、`to` = 2番目」に
+対応します。上の例の `edge Boss = Employee -[BossEdge]-> Employee` は
+`Boss(from, to, attrs)` という構築順のため、`Boss(tanaka -> sato)` は
+「田中の上司は佐藤」を意味します (向きを取り違えやすい点なので、独自
+スキーマを書くときは意識してください)。
 
-マクロ呼び出しの中の `-[label]->` は `-`, `[`, ident, `]`, `-`, `>` という
-独自トークン列のため、rustfmt を混乱させないよう呼び出しには
-`#[rustfmt::skip]` を付けることを推奨します。
+マクロ呼び出しの中の `-[式]->` は `-`, `[`, .., `]`, `-`, `>` という独自
+トークン列のため、rustfmt を混乱させないよう呼び出しには `#[rustfmt::skip]`
+を付けることを推奨します。
 
 ### 3. アクセサ・アルゴリズムを使う
 
 ```rust
-let dept = g.belongs_to().of(&EmployeeId("tanaka".to_string())); // &Department (多重度 (1))
-let (boss, attrs) = g.boss().of(&EmployeeId("tanaka".to_string())).unwrap(); // Option<(&Employee, &BossEdge)>
-let reports = g.reports().of(&EmployeeId("tanaka".to_string())); // Vec<&Employee>
+let dept = BelongsTo::of(&g, &EmployeeId("tanaka".to_string())); // &Department (each 1)
+let (boss, attrs) = Boss::of(&g, &EmployeeId("tanaka".to_string())).unwrap(); // Option<(&Employee, &BossEdge)>
+let reports = Reports::of(&g, &EmployeeId("tanaka".to_string())); // Vec<&Employee> (制約なし)
 
-// get: 多重度 (1) の非パニック版。未知キーは None に落ちる。
-let dept_opt = g.belongs_to().get(&EmployeeId("no-such-id".to_string())); // None
+// get_of: each 1 の非パニック版。未知キーは None に落ちる。
+let dept_opt = BelongsTo::get_of(&g, &EmployeeId("no-such-id".to_string())); // None
 
 // iter(): match パターンの代替。イテレータチェーンでクエリを書く。
 // 例: 相互に上司であるペア (A の boss が B かつ B の boss が A) を検出する。
-let all: Vec<(&EmployeeId, &EmployeeId)> =
-    g.boss().iter().map(|(a, b, _attrs)| (a, b)).collect();
+let all: Vec<(&EmployeeId, &EmployeeId)> = Boss::iter(&g)
+    .map(|(_id, edge)| (edge.from(), edge.to()))
+    .collect();
 let mutual_bosses: Vec<(&EmployeeId, &EmployeeId)> = all
     .iter()
     .copied()
     .filter(|(a, b)| all.contains(&(b, a)))
     .collect();
 
-// {node_snake}_ids(): ノード種別ごとの全キー列挙。
-let all_employee_ids: Vec<&EmployeeId> = g.employee_ids().collect();
+// {Type}::ids(&g): ノード種別ごとの全キー列挙 ({Schema}Node トレイトの関連関数)。
+let all_employee_ids: Vec<&EmployeeId> = Employee::ids(&g).collect();
 
-// id_of / ids_of: 値ではなくキーを返す (フェーズ5で導入、その後ビュー方式へ移行)。
-// 指揮系統チェーンのように「キーのまま次のノードへ辿る」処理に使う。
-let dept_id: &DepartmentId = g.belongs_to().id_of(&EmployeeId("tanaka".to_string()));
-let boss_id: Option<&EmployeeId> = g.boss().id_of(&EmployeeId("sato".to_string()));
-let report_ids: Vec<&EmployeeId> = g.reports().ids_of(&EmployeeId("tanaka".to_string()));
+// Kind::get: 辺キー (newtype) そのもので1本検索する。
+let edge: Option<&BelongsTo> = BelongsTo::get(&g, &BelongsToId("tanaka_dept".to_string()));
 
-// create_collecting: 最初の1件で打ち切らず全違反を収集する (フェーズ5)。
+// create_collecting: 最初の1件で打ち切らず全違反を収集する。
 let result: Result<OrgChart, Vec<OrgChartViolation>> = OrgChart::create_collecting(|b| {
     // ... 複数の違反を含みうる構築 ...
 });
@@ -385,30 +406,39 @@ let result: Result<OrgChart, Vec<OrgChartViolation>> = OrgChart::create_collecti
 のように後から普通のメソッドとして追記してください
 (`crates/graphite/tests/orgchart_macro.rs` に実例あり)。
 
-### 4. `(0..*)` エッジの順序保証 (項目i、フェーズ5)
+### 4. 制約なしエッジの順序保証
 
-多重度 `(0..*)` のエッジは内部で `HashMap<SrcId, Vec<DstId>>` (属性付きは
-`Vec<(DstId, Attrs)>`) として格納されます。**同一始点キーに対する複数
-終点の相対順序は、構築時の追加順 (builder の呼び出し順。`graph!` の場合は
-ソース中の記述順) をそのまま保持することを仕様として保証します。** これは
-実装詳細ではなく、`of`/`ids_of`/`iter()` いずれのビューメソッドでも
-成り立つ保証です (`crates/graphite/tests/orgchart_macro.rs` の
-`reportsのids_of` 順序テスト参照)。分岐ノベルの選択肢表示順のように、
-順序そのものが意味を持つ場面で安心して依存できます。
+ノード表・辺表 (`graph_schema!` が生成する `graphite::KeyedTable<K, V>`) は
+内部的に `Vec<(K, V)>` (挿入順の本体) + `HashMap<K, usize>` (キー→添字の
+索引) という構成になっており、**`ids()`/`iter()` は挿入順 (`insert` を
+呼んだ順) を保持することを仕様として保証します**
+(`crates/graphite/src/keyed_table.rs` 参照)。これにより、制約なしエッジ
+(`where` 節を省略した種別) の `Kind::of`/`between`/`iter` が返す `Vec` も、
+同一始点キーに対する複数終点の相対順序が構築時の追加順 (builder の呼び出し
+順。`graph!` の場合はソース中の記述順) をそのまま保持します。分岐ノベルの
+選択肢表示順のように、順序そのものが意味を持つ場面で安心して依存できます
+(`crates/graphite/tests/keyed_table_insertion_order.rs` に回帰テストあり)。
+
+この保証はランタイム移行の初期実装では抜け落ちており (`KeyedTable` が素の
+`HashMap` ラッパーで反復順序が未規定だったため)、dialogue-engine の v4 移行
+中に「制約なし辺の `of()` の並びがプロセスごとに変わる」flaky なテストとして
+発覚し、`KeyedTable` の内部構造を挿入順保持に変更する形で修正・仕様化された
+経緯がある (`docs/dev_history_2026-07-14_session2.md` §3.10 参照)。
 
 ただし、これは「同一始点キー内での順序」の保証であり、`iter()` が異なる
-始点キーをまたいで列挙する順序までは保証しません (始点キーの集合は
-`HashMap` で管理されているため)。
+始点キーをまたいで列挙する順序までは保証しません (始点キーの集合は内部の
+`HashMap` 索引で管理されているため)。
 
 ### 名前空間に関する制約 (`graph!`)
 
-`graph!` 内のノード識別子 (`tanaka = Employee { .. }` の `tanaka` の部分) は
-**ノード型を跨いで単一の平坦な名前空間**です。異なるノード型 (例:
-`Scene` と `Ending`) であっても同じ識別子を2回使うと衝突するため、
-命名規約 (プレフィックス等) で回避する必要があります。これは設計上の
-既知の制約であり、型ごとに名前空間を分ける再設計はフェーズ5では見送り
-ました (`docs/phase5_candidates.md` 項目h)。代わりに、同じ識別子を2回
-ノード宣言した場合は `syn::Error` (「識別子 `X` は既に宣言されています」)
+`graph!` 内の識別子 (`tanaka = Employee { .. }` の `tanaka`、`tanaka_dept =
+BelongsTo(..)` の `tanaka_dept` の部分) は**ノード・エッジの種別を跨いで
+単一の平坦な名前空間**です (`docs/schema_v4.md` §0 規則1: 全項目が
+`名前 = 値` であり、名前は常にキーの束縛であるため)。異なる種別 (例:
+`Scene` ノードと `Choice` エッジ) であっても同じ識別子を2回使うと衝突する
+ため、命名規約 (プレフィックス等) で回避する必要があります。これは設計上の
+既知の制約です。同じ識別子を2回宣言した場合は `syn::Error` (「識別子 `X`
+は既に宣言されています」)
 がその場でコンパイルエラーとして報告されます
 (`crates/graphite/tests/ui/graph_duplicate_node_key.rs` 参照)。
 
@@ -421,8 +451,8 @@ let result: Result<OrgChart, Vec<OrgChartViolation>> = OrgChart::create_collecti
 含まれないため、個別に `cd` してビルド・実行します)。
 
 - **`examples/hello-graph/`** — **まずこれ**。入門用の教材example。
-  アプリとしての面白さは無く、「ラベルとは何なのか (変数か関数か)」
-  「多重度ごとにアクセサは何を返すのか」「何ができて何ができないのか
+  アプリとしての面白さは無く、「`edge Kind = ...` とは何を定義しているのか」
+  「`where` 制約ごとにアクセサは何を返すのか」「何ができて何ができないのか
   (実際のコンパイルエラー付き)」を最小の題材で1つずつ確認する。
   ```powershell
   cd examples/hello-graph
@@ -458,14 +488,14 @@ let result: Result<OrgChart, Vec<OrgChartViolation>> = OrgChart::create_collecti
 
 - **`examples/state-machine/`** — ステートマシン地獄 (bool フラグの組合せ
   爆発、または enum + match の散在) を、状態=ノード・**イベント=エッジ
-  種別**・決定性=多重度 `(0..1)` として再定式化する。到達不能状態・行き
-  止まり状態を `reachable_from`/`out_neighbors` で検出する。
+  種別**・決定性=`where each OrderState: 0..1` として再定式化する。到達
+  不能状態・行き止まり状態を `reachable_from`/`out_neighbors` で検出する。
   ```powershell
   cd examples/state-machine
   cargo run
   ```
 - **`examples/async-dag/`** — 非同期オーケストレーション地獄 (`.await` の
-  順序や `spawn` の配線に依存関係が暗黙に溶け込む) を、依存=`depends_on`
+  順序や `spawn` の配線に依存関係が暗黙に溶け込む) を、依存=`DependsOn`
   エッジとして宣言し、循環はハングではなく構築時の `CycleError` に変え、
   `topological_levels` が導く「波」を `std::thread::scope` で実際に並列
   実行する (波分割により実測 1.59 倍の高速化)。
@@ -500,8 +530,9 @@ cargo test
   を宣言し直した同等テスト、および `graph!` リテラルのテスト
 - `crates/graphite/tests/compile_fail.rs` + `tests/ui/*.rs` —
   [`trybuild`](https://docs.rs/trybuild) によるコンパイルエラー系テスト
-  (未宣言ノード型を端点に指定 / 不正な多重度 / `graph!` で存在しないエッジ
-  種別)。stderr の再生成は `TRYBUILD=overwrite cargo test --test compile_fail`
+  (未宣言ノード型を端点に指定 / 不正な `where each` 指定 / `graph!` で
+  存在しないエッジ種別 / ノードキー重複 / 宣言単位のエラー回復)。stderr の
+  再生成は `TRYBUILD=overwrite cargo test --test compile_fail`
 
 ## IDE サポート (rust-analyzer)
 
@@ -523,22 +554,26 @@ cargo test
    に宣言したときに型名が衝突しないよう、スキーマ名をプレフィックスにして
    います。
 2. **違反 enum のバリアントはエッジ単位で型付き生成される
-   (`{Label}Multiplicity` / `{Label}UnknownSource` / `{Label}UnknownTarget`)**。
+   (`{Kind}EachViolation` / `{Kind}UniquePairViolation` /
+   `{Kind}DuplicateKey` / `{Kind}UnknownSource` / `{Kind}UnknownTarget`)**。
    手書き版は `MultiplicityViolation { employee: EmployeeId, .. }` という
    スキーマ共通の 1 バリアントでしたが、一般のスキーマではエッジごとに
-   始点/終点ノード型が異なりうる (例: `A -> B` と `C -> D` が両方多重度
+   始点/終点ノード型が異なりうる (例: `A -> B` と `C -> D` が両方 each
    違反を起こしうる) ため、エッジごとに専用バリアントを生成することで型を
-   `String` に落とさず固定できるようにしています (フェーズ5、「型の
-   strictness」原則。`docs/design_principles.md` 原則1 参照)。例:
-   `edge belongs_to: Employee -> Department (1)` からは
-   `BelongsToMultiplicity { source: EmployeeId, count: usize }` /
-   `BelongsToUnknownSource { key: EmployeeId }` /
-   `BelongsToUnknownTarget { key: DepartmentId }` が生成されます。
-3. **builder のエッジ追加メソッドの引数名は汎用的に `from`/`to`**。手書き版
+   `String` に落とさず固定できるようにしています (「型の strictness」
+   原則。`docs/design_principles.md` 原則1 参照)。例:
+   `edge BelongsTo = Employee -> Department where each Employee: 1;` からは
+   `BelongsToEachViolation { source: EmployeeId, count: usize }` /
+   `BelongsToUnknownSource { edge: BelongsToId, source: EmployeeId }` /
+   `BelongsToUnknownTarget { edge: BelongsToId, target: DepartmentId }` /
+   `BelongsToDuplicateKey(BelongsToId)` が生成されます (v4 で辺キー重複・
+   `unique pair` 違反が追加された。`docs/schema_v4.md` §3.1 参照)。
+3. **builder のエッジ追加メソッドの引数は `({Kind}Id, {Kind})`**。手書き版
    は `boss(employee, boss, attrs)`・`reports(manager, report)` のように
-   ドメイン語で命名されていましたが、マクロはノード型名だけから引数名を
-   導出する必要があり、自己参照エッジ (`Employee -> Employee`) では同名
-   引数の衝突を避けられないため、常に `from`/`to` にしています。
+   端点を直接引数に取っていましたが、v4 では辺そのものが第一級のキー付き
+   要素になったため、builder のエッジメソッドは常に「辺キー + 辺値
+   (タプル struct)」のペアを取ります (`b.boss(BossId("b1".into()),
+   Boss(employee_id, boss_id, attrs))` のように)。
 4. **内部ストレージの複数形フィールド名は既定では素朴な英語複数形
    (`+ "s"`)**。不規則複数形 (`Category` → `Categorys` になってしまう等)
    には自動対応していません。この名前は非公開フィールドで利用者から見えない
@@ -552,8 +587,9 @@ cargo test
    宣言し、マクロは参照するだけ**。手書き版は `pub struct Employee { .. }` /
    `pub struct BossAttrs { pub since: i32 }` をテンプレート内に直接書いて
    いましたが、マクロはこれらの型を一切生成せず、スキーマ宣言
-   (`node Employee;` / `edge boss: Employee -[BossEdge]-> Employee (0..1);`)
-   に書かれた型をそのまま参照します。派生する trait 要求も無い (上記
+   (`node Employee;` / `edge Boss = Employee -[BossEdge]-> Employee where
+   each Employee: 0..1;`) に書かれた型をそのまま参照します。派生する
+   trait 要求も無い (上記
    「ノード値の型・エッジ属性型に対する trait 要求」参照) ため、derive する
    かどうかも含めて完全に利用者の自由です。
 

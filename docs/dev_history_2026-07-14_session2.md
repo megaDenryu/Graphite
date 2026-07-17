@@ -226,30 +226,112 @@ Rust に実在しない形であるため棄却した。
 コミット: `6bc33cc` (state-machine) → `2887ca9` (async-dag) → `c444aef`
 (reactive-cells) → (本統合コミット)。
 
+## 3.10 スキーマ v4 — 辺の第一級化
+
+`async-dag` の schema.rs にユーザーが設計議論用のコメントを書き残していた
+ことをきっかけに、エッジ宣言構文そのものの再検討が始まった。
+
+> boss: BossEdgeとかの属性の型はこの場合何を指すのでしょうか
+
+この疑問の背景には、v3 構文 (`edge boss: Person -[BossEdge]-> Person
+(0..1);`) が「`boss:` の右側全体が関係型」という読み方をユーザーに要求する
+一方で、実装上は依然として「ラベル=ビューを返すメソッド名」というモデルの
+ままであり、辺そのものがキーを持つ第一級の値になっていない、というねじれが
+あった。ユーザーは async-dag の schema.rs に直接メモを書いて代案を提示した。
+
+> edge DependsON = Service -> Service (0..*) の方が構文としていいかも？
+
+ここから「ラベル: 型」という**型付け**の構文をやめ、「Kind = 定義」という
+**名前の束縛**の構文に転換する案が生まれた。エッジ種別を関数型的な関係
+としてではなく、ノードと対称な「名前を持つ nominal 型」として扱う発想
+である。この転換は当初 `graph!` リテラル側の無名辺 (`a -[label]-> b`) にも
+波及するかが焦点になった。
+
+> edgeで変数名を付けないってのに俺はあんまり納得できない
+
+ユーザーは「ノードには `alice = Person { .. }` という名前があるのに、辺には
+無い」という非対称性そのものに不満を表明した。これが「全行が `名前 = 値`」
+という v4 の規則1 (`docs/schema_v4.md` §0) に直結する。辺も第一級のキー付き
+要素であるなら、ノードと同様にキーの束縛を持つべきという結論である。
+
+多重度注釈 (`(1)`/`(0..1)`/`(0..*)`) の扱いも同時に見直された。
+
+> 多重度てどっちかというと、ノードが何本の線とつながってるかを見るとかそういう感じじゃね？前の設計思想が間違ってたとしか思えない
+
+この指摘により、多重度は「辺そのものの属性」ではなく「ノード側の出次数に
+対する制約」として捉え直された。これが `where each <FromType>: <spec>`
+という、制約を矢印式の外側に完全に切り離した構文につながっている。加えて
+「関係 (対で一意)」という性質も基盤ではなく `where unique pair` という
+個別の制約として明示的に宣言する対象になった (基盤は多重グラフ、関係は
+その上の特殊ケース、という §0 の宣言)。
+
+議論はしばらく行き来したが、最終的にユーザーが次のように総括して v4 の
+方向性が確定した。
+
+> まあじゃあ一回これで言ってみるかあ
+
+到達した設計は3規則に集約される (`docs/schema_v4.md` §0):
+
+1. **名前=キーの束縛** — schema もリテラルも全行が `名前 = 定義/値`
+2. **矢印の中は積み荷だけ** — `-[X]->` の X は積み荷の型/値のみ
+3. **where は制約** — `each`/`unique pair` は制約があるときだけ書く
+
+Fudaba では継続して #7 (エッジ第一級化そのものの是非) と #8 (辺キー命名
+規則・`unique pair` の適用判断基準) として記録され、実装フェーズ1 で
+ランタイム (`KeyedTable` 共有機構への置換)・マクロ (schema_dsl/instance_dsl/
+codegen 全面書き換え) が完了し (`3fff112`・`678727c`)、本セッションの
+フェーズ2で examples 7本・hello-graph 教材・README・本ファイルの追記まで
+移行が完了した。
+
+フェーズ2の examples 移行 (7本を並列実装エージェントに委譲) の途中、
+dialogue-engine (56本の choice エッジを持つ最大の example) の移行を担当した
+エージェントから、制約なしエッジ (`Choice`) の `Choice::of`/`iter` が返す
+順序が `cargo test` の実行のたびに変わる flaky なテスト報告が上がった。
+原因は `KeyedTable` (`3fff112` でエッジビュー6型を置き換えたキー付き要素表
+共有機構) が素の `HashMap` の薄いラッパーで、`ids`/`iter` の反復順序が
+未規定だったこと。freeze 時に始点キーごとの索引 (`{accessor}_from_index`)
+を `KeyedTable::iter()` 経由で構築していたため、この未規定の順序がそのまま
+索引に伝播し、同一始点から複数の制約なし辺 (平行辺) が出る場合の並びが
+プロセスごとに (`HashMap` のハッシュシード次第で) 変わっていた — v3 で
+保証されていた「構築時の追加順を保持する」という仕様がランタイム移行の
+過程で無自覚に失われていたことになる。この報告を受け、`KeyedTable` の内部を
+`Vec<(K, V)>` (挿入順の本体) + `HashMap<K, usize>` (キー→添字の索引) へ
+変更し、`get`/`contains_key` の O(1) を保ったまま `ids`/`iter` が挿入順を
+返すよう修正した (`975b753`)。`docs/schema_v4.md` に順序保証を仕様として
+明記し、平行辺5本以上を張る回帰テスト (builder経由・`graph!`リテラル経由の
+両方) を追加した上で、影響を受けうる example (dialogue-engine・org-analyzer・
+hello-graph) は `cargo test` を複数回連続実行して非決定性が無いことを確認
+している。
+
+コミット: `342ee0b` (v4設計文書) → `3fff112` (ランタイムKeyedTable化)
+→ `678727c` (マクロv4実装) → `975b753` (KeyedTable挿入順保持化・順序保証の
+発見と修正) → (本セッション: examples/教材/docs移行の一連のコミット、
+§4 参照)。
+
 ## 4. 現在の状態
 
-- テスト (実測): コア82 (`crates/graphite` 単体41 + 統合36
+- テスト (実測、v4移行完了時点): コア75 (`crates/graphite` 単体31 + 統合44
   [`compile_fail`1・`explicit_plural_field`1・`f64_attrs`1・
-  `graph_cross_module`1・`orgchart_handwritten`8・`orgchart_macro`23・
-  `orphan_node_no_warning`1] + `graphite-macros`単体3 + doctest2) +
-  examples 7本 (hello-graph 14 / build-pipeline 32 / org-analyzer 11 /
-  dialogue-engine 14 / state-machine 15 / async-dag 15 / reactive-cells 23)、
-  合計 206、全通過。構文は v3 のみ (v1/v2 は検出・移行診断なしで完全廃止)
-- コミット (このセッション分、古→新): `c75d927` (G2/G3+仕様書) → `1268cba` (G1) →
-  `67f6d7f` (docs) → `6e4b120` (G4) → `6f7643f` (docs) → `1c7d76d` (Attrsスパン修正) →
-  `e824f12` (docs: renameの壁) → `9de33b7` (v2設計文書) → `75f597e` (v2実装) →
-  `86b715a` (v2移行) → `ed42b1e` (v3設計文書) → `b434c48` (v3実装) →
-  `3389ab9` (v3テスト移行) → `de07098` (v3 examples移行) → `a1fb360`
-  (v3 README/仕様書反映) → `51cd679` (孤立ノード警告抑制) → `bf6042d`
-  (docs: v3実測+本ファイルテスト数更新) → `f92661a` (examples: hello-graph
-  クックブック形式化) → `5013315` (§3.7設計) → `779bdb9` (§3.7ランタイム
-  実装) → `4325798` (§3.7マクロ移行) → `b95e244` (§3.7 examples/docs移行) →
-  `424a83a` (§3.8設計) → `ec76188` (§3.8マクロ実装) → `4959d8e`
-  (§3.8 examples/README移行) → `6bc33cc` (§3.9 state-machine) → `2887ca9`
-  (§3.9 async-dag) → `c444aef` (§3.9 reactive-cells) → (本ファイル更新+
-  README/.vscode統合の docs/examples コミットが続く)
-- リモート: `origin/main` に本セッション分を push 予定 (このセッションの
-  最終タスク)
+  `graph_cross_module`1・`keyed_table_insertion_order`2・
+  `orgchart_handwritten`8・`orgchart_macro`25・`orphan_node_no_warning`1] +
+  `graphite-macros`単体2 + doctest2) + examples 7本 (hello-graph 15 /
+  build-pipeline 32 / org-analyzer 11 / dialogue-engine 14 /
+  state-machine 15 / async-dag 15 / reactive-cells 23)、合計 200、全通過。
+  制約なし辺 (平行辺) を持つ dialogue-engine・org-analyzer・hello-graph は
+  複数回連続実行して非決定性が無いことも確認済み。構文は v4 のみ
+  (v1/v2/v3 は検出・移行診断なしで完全廃止)
+- コミット (v3→v4移行分、古→新): `342ee0b` (v4設計文書) → `3fff112`
+  (ランタイムKeyedTable化) → `678727c` (マクロv4実装) → `29e8ca1`
+  (examples: async-dag) → `86ad4cc` (examples: reactive-cells) → `96b2417`
+  (examples: state-machine) → `de934ae` (merge: state-machine) → `2583cfe`
+  (examples: build-pipeline) → `dbaaf7b` (merge: build-pipeline) → `975b753`
+  (fix: KeyedTable挿入順保持化・順序保証の発見と修正) → `a31f413`
+  (examples: org-analyzer) → `ceae9b2` (merge: org-analyzer) → `68fbea4`
+  (examples: hello-graph全面書き直し) → `8bcf4d1` (merge: hello-graph) →
+  `bd10eb0` (examples: dialogue-engine) → `e56e8e9` (merge: dialogue-engine)
+  → (本ファイル・README統合の docs コミットが続く)
+- リモート: `origin/main` に本セッション分 (v3→v4移行含む) を push 予定
+  (このセッションの最終タスク)
 
 ## 5. 未着手の種 (次セッション候補)
 
