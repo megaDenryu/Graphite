@@ -19,6 +19,11 @@
 //! `build_dependency_graph` が一箇所で担う (README「グラフによる
 //! 再定式化」節参照)。
 
+/// ノードキー。`graph_schema!` はこれも生成せず、`{ノード型名}Id` という
+/// 命名規約で参照するだけ (`docs/node_id_v4_2.md`)。
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ServiceId(pub String);
+
 /// ノード型。`graph_schema!` はこの型を生成せず参照するだけ。
 #[derive(Debug, Clone, PartialEq)]
 pub struct Service {

@@ -31,9 +31,10 @@
 //! 解消されている。
 //!
 //! `graph_schema!` はこの `Cell`/`Formula` 型を生成せず参照するだけ
-//! (`docs/schema_v4.md` 参照)。生成されるのはグラフ機械 (`CellId`/
-//! `FeedsId`/`LhsId`/`RhsId` newtype・`Sheet` 構造体・`SheetBuilder`・
-//! `SheetViolation`・`Feeds`/`Lhs`/`Rhs` 固有 impl) だけ。
+//! (`docs/schema_v4.md` 参照)。v4.2 (`docs/node_id_v4_2.md`) からはノード
+//! キー型 `CellId` もユーザー宣言 (上記) への参照になった。マクロが生成
+//! するのはグラフ機械 (`FeedsId`/`LhsId`/`RhsId` newtype・`Sheet` 構造体・
+//! `SheetBuilder`・`SheetViolation`・`Feeds`/`Lhs`/`Rhs` 固有 impl) だけ。
 
 /// 1つのセルが「どう値を求めるか」— **どの演算を適用するか**だけを表す。
 ///
@@ -58,6 +59,11 @@ pub enum Formula {
     /// このセルへ `Feeds` エッジで入ってくる全セルの和 (可換)。
     Sum,
 }
+
+/// ノードキー。v4.2 からは `graph_schema!` はこれも生成せず、
+/// `{ノード型名}Id` という命名規約で参照するだけ (`docs/node_id_v4_2.md`)。
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CellId(pub String);
 
 /// スプレッドシートのセル。値そのものは持たない — 値は
 /// [`crate::engine::Engine`] が別途 `HashMap<CellId, f64>` として持つ

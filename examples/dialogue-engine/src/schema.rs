@@ -24,12 +24,25 @@ use graphite::Graph;
 // edge Finale = Scene -> Ending where each Scene: 0..1 — エンディングへの
 //               到達。各シーンにつき高々1つの結末。
 
+/// ノードキー。`graph_schema!` はこれも生成せず参照するだけ
+/// (`docs/node_id_v4_2.md`)。`PartialOrd`/`Ord` は必須ではないが
+/// (必須なのは `Debug, Clone, PartialEq, Eq, Hash` だけ)、`report.rs` が
+/// 決定的な表示順のためにキーをソートする箇所がこのアプリ側の都合で
+/// 要求している。
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct SceneId(pub String);
+
 /// ノード型。`graph_schema!` はこの型を生成せず参照するだけ。
 #[derive(Debug, Clone, PartialEq)]
 pub struct Scene {
     pub speaker: String,
     pub text: String,
 }
+
+/// ノードキー。`PartialOrd`/`Ord` は `report.rs` のソート表示のために
+/// 要求している (`graph_schema!` 自体の要求ではない)。
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct EndingId(pub String);
 
 /// ノード型。
 #[derive(Debug, Clone, PartialEq)]

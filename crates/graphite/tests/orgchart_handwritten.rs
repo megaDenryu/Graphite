@@ -62,8 +62,10 @@ use std::fmt;
 
 /// 社員ノードのキー。ユーザーキー方式 (決定1) だが、`Employee` と
 /// `Department` を同じ文字列キー空間で扱うと取り違えが起きるため、
-/// ノード種別ごとに newtype でキー型を分ける。これも `graph_schema!` が
-/// 各 `node` 宣言ごとに機械的に生成できる形。
+/// ノード種別ごとに newtype でキー型を分ける。v4.2 (`docs/node_id_v4_2.md`)
+/// では `graph_schema!` はこの型を生成せず、ユーザーが `Employee` の隣で
+/// こうして宣言したものを `{ノード型名}Id` という命名規約で参照するだけに
+/// なった (「型を宣言した者が Id も宣言する」規則)。
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct EmployeeId(pub String);
 

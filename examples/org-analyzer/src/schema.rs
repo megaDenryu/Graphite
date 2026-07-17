@@ -24,6 +24,15 @@
 //! すべて `dataset.rs` の合成生成器 (`OrgChart::create` の builder 呼び出し)
 //! から組み立てるため `graph!` リテラルは使わない。
 
+/// ノードキー。`graph_schema!` はこれも生成せず参照するだけ
+/// (`docs/node_id_v4_2.md`)。
+/// `PartialOrd`/`Ord` は `graph_schema!` の要求ではなく (必須なのは
+/// `Debug, Clone, PartialEq, Eq, Hash` だけ、`docs/node_id_v4_2.md`)、
+/// `analysis.rs`/`reorg.rs` が決定的な表示順のためにキーをソートする箇所
+/// (`result.sort()` 等) がこのアプリ側の都合で要求している。
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct EmployeeId(pub String);
+
 /// ノード型。`graph_schema!` はこの型を生成せず参照するだけ。
 #[derive(Debug, Clone, PartialEq)]
 pub struct Employee {
@@ -32,12 +41,22 @@ pub struct Employee {
     pub grade: u8,
 }
 
+/// ノードキー。`PartialOrd`/`Ord` はこのアプリ (`reorg.rs`) がソート表示
+/// のために要求している (`graph_schema!` 自体の要求ではない)。
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct DepartmentId(pub String);
+
 /// ノード型。`reorg.rs` が部署を再構築する際に値を `.clone()` するため
 /// `Clone` を derive している。
 #[derive(Debug, Clone, PartialEq)]
 pub struct Department {
     pub name: String,
 }
+
+/// ノードキー。`PartialOrd`/`Ord` はこのアプリ (`analysis.rs`) がソート
+/// 表示のために要求している (`graph_schema!` 自体の要求ではない)。
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct ProjectId(pub String);
 
 /// ノード型。
 #[derive(Debug, Clone, PartialEq)]

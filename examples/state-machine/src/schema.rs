@@ -24,12 +24,21 @@
 //! 禁止しているため、`unique pair` の併記は冗長になる
 //! (`docs/schema_v4.md` §1 「実装を単純にするため特別扱いしない」方針)。
 
+/// ノードキー。v4.2 からは `graph_schema!` はこれも生成せず、
+/// `{ノード型名}Id` という命名規約で参照するだけ (`docs/node_id_v4_2.md`)。
+/// `PartialOrd`/`Ord` は必須ではないが (必須なのは `Debug, Clone,
+/// PartialEq, Eq, Hash` だけ)、`validate.rs` が到達不能/行き止まり状態を
+/// 決定的な順で報告するためにキーをソートする箇所がこのアプリ側の都合で
+/// 要求している。
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct OrderStateId(pub String);
+
 /// 状態ノード。注文ライフサイクル中の1状態を表す
 /// (draft/pending_payment/paid/shipped/delivered/cancelled/refunded)。
 ///
 /// フィールドは表示用ラベルのみ。状態同士の区別はノードキー
-/// (`OrderStateId`、`graph!` の `draft = ..` の `draft` 部分から生成される)
-/// が担うので、フィールド自体は最小限で良い。
+/// (`OrderStateId`、`graph!` の `draft = ..` の `draft` 部分から値が
+/// 決まる) が担うので、フィールド自体は最小限で良い。
 #[derive(Debug, Clone, PartialEq)]
 pub struct OrderState {
     pub label: String,

@@ -17,6 +17,11 @@
 //! を組み立てられる` は型定義に近い方が読みやすいためこのファイルに
 //! 同居させている。
 
+/// ノードキー。`graph_schema!` はこれも生成せず参照するだけ
+/// (`docs/node_id_v4_2.md`)。
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TaskId(pub String);
+
 /// ノード型。`graph_schema!` はこの型を生成せず参照するだけ。
 #[derive(Debug, Clone, PartialEq)]
 pub struct Task {
@@ -24,6 +29,10 @@ pub struct Task {
     pub cmd: String,
     pub secs: u32,
 }
+
+/// ノードキー。
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ArtifactId(pub String);
 
 /// ノード型。
 #[derive(Debug, Clone, PartialEq)]

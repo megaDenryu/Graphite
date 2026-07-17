@@ -26,11 +26,27 @@
 // (`docs/schema_v4.md` §1)。derive・可視性・追加のメソッドは全部ふつうの
 // Rust の話であり、Graphite 固有のルールはありません。
 
+// v4.2 (`docs/node_id_v4_2.md`): ノードキー型 (`{ノード型名}Id`) も
+// `graph_schema!` は生成せず、ユーザーが型の隣に宣言したものを命名規約
+// (`{ノード型名}Id`) で参照するだけです。「型を宣言した者が Id も宣言する」
+// 規則により、`PersonId`/`TeamId` は `Org` schema にではなく `Person`/
+// `Team` という型そのものに属します — 別の schema が同じ `Person` を扱う
+// なら、その schema からも同じ `PersonId` がそのまま使えます
+// (`crates/graphite/tests/node_id_shared_across_schemas.rs` が実例)。
+
+/// `Person` のノードキー。
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct PersonId(pub String);
+
 /// ノード型その1: 社員。
 #[derive(Debug, Clone, PartialEq)]
 pub struct Person {
     pub name: String,
 }
+
+/// `Team` のノードキー。
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TeamId(pub String);
 
 /// ノード型その2: チーム。
 #[derive(Debug, Clone, PartialEq)]
@@ -131,12 +147,21 @@ fn main() {
 //
 // v3 までは「エッジは HashMap のエントリ」でしたが、v4 では
 // **辺そのものが、ノードと同じ資格を持つ第一級の要素**になりました。
-// `graph_schema!` は `Boss` エッジ宣言から、ノードの `PersonId` と全く
-// 同じ形の newtype キーを生成します:
+// `graph_schema!` は `Boss` エッジ宣言から、`§1` で宣言した `PersonId` と
+// 全く同じ形の newtype キーを生成します:
 //
 // ```rust
 // pub struct BossId(pub String);
 // ```
+//
+// ただし `BossId` と `PersonId` は生成のされ方が違います。`BossId` は
+// エッジ種別 (`Boss`) を宣言した `graph_schema!` 自身が生成しますが、
+// `PersonId` は `graph_schema!` の**外**、`Person` 型の隣でユーザーが
+// 宣言したものへの参照でしかありません (v4.2、`docs/node_id_v4_2.md`)。
+// これは「ノード同一性は特定の schema にではなく、ノード型そのものに
+// 属する」という決定の帰結です — エッジ種別は schema 局所の概念なので
+// schema が生成して構いませんが、ノード型は複数の schema から共有され
+// うるため、そのキーもどれか1つの schema に所有させるわけにはいきません。
 //
 // `graph!` リテラルの各行 `名前 = 値` の「名前」は、ノード行でもエッジ行
 // でも常に**キーの束縛**です (`docs/schema_v4.md` §0 規則1)。これは
