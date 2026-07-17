@@ -7,7 +7,10 @@
 //! - `summary` の統計値の健全性
 
 use org_analyzer::{analysis, dataset, reorg};
-use org_analyzer::schema::{DepartmentId, EmployeeId};
+use org_analyzer::schema::{
+    BelongsTo, Boss, Department, DepartmentId, Employee, EmployeeId, OrgChartNode, Project,
+    Sponsors,
+};
 
 const TEST_SEED: u64 = 7;
 
@@ -72,15 +75,11 @@ fn 同じシードなら生成結果は決定的である() {
     let a = dataset::generate(123, false);
     let b = dataset::generate(123, false);
 
-    let names_a: Vec<String> = a
-        .chart
-        .employee_ids()
-        .map(|id| a.chart.employee(id).unwrap().name.clone())
+    let names_a: Vec<String> = Employee::ids(&a.chart)
+        .map(|id| Employee::get(&a.chart, id).unwrap().name.clone())
         .collect();
-    let names_b: Vec<String> = b
-        .chart
-        .employee_ids()
-        .map(|id| b.chart.employee(id).unwrap().name.clone())
+    let names_b: Vec<String> = Employee::ids(&b.chart)
+        .map(|id| Employee::get(&b.chart, id).unwrap().name.clone())
         .collect();
 
     let mut sorted_a = names_a.clone();
@@ -95,15 +94,11 @@ fn 異なるシードなら生成結果が変わる() {
     let a = dataset::generate(1, false);
     let b = dataset::generate(2, false);
 
-    let dept_counts_a: Vec<usize> = a
-        .chart
-        .department_ids()
-        .map(|d| a.chart.belongs_to().iter().filter(|(_, dep)| *dep == d).count())
+    let dept_counts_a: Vec<usize> = Department::ids(&a.chart)
+        .map(|d| BelongsTo::iter(&a.chart).filter(|(_id, edge)| edge.to() == d).count())
         .collect();
-    let dept_counts_b: Vec<usize> = b
-        .chart
-        .department_ids()
-        .map(|d| b.chart.belongs_to().iter().filter(|(_, dep)| *dep == d).count())
+    let dept_counts_b: Vec<usize> = Department::ids(&b.chart)
+        .map(|d| BelongsTo::iter(&b.chart).filter(|(_id, edge)| edge.to() == d).count())
         .collect();
 
     assert_ne!(dept_counts_a, dept_counts_b, "seedが違えば部署別人数分布は変わるはず");
@@ -129,12 +124,10 @@ fn chainはトップ層まで辿ると停止する() {
     let generated = dataset::generate(TEST_SEED, false);
     // grade5 (部長) の誰か1人はトップ層 (boss無し) のはず。トップ層から
     // 辿ると即座にentries=1件・循環無しで停止する。
-    let top_id = generated
-        .chart
-        .employee_ids()
+    let top_id = Employee::ids(&generated.chart)
         .find(|id| {
-            let emp = generated.chart.employee(id).unwrap();
-            emp.grade == 5 && generated.chart.boss().of(id).is_none()
+            let emp = Employee::get(&generated.chart, id).unwrap();
+            emp.grade == 5 && Boss::of(&generated.chart, id).is_none()
         })
         .cloned();
 
@@ -157,10 +150,8 @@ fn reorgは廃止部署の全社員を他部署へ再配置する() {
     let generated = dataset::generate(TEST_SEED, false);
     let target = DepartmentId("D01".to_string());
 
-    let before_count = generated
-        .chart
-        .belongs_to().iter()
-        .filter(|(_, d)| **d == target)
+    let before_count = BelongsTo::iter(&generated.chart)
+        .filter(|(_id, edge)| *edge.to() == target)
         .count();
     assert!(before_count > 0, "テスト対象部署には元々社員がいるはず");
 
@@ -174,16 +165,22 @@ fn reorgは廃止部署の全社員を他部署へ再配置する() {
     match &report.outcome {
         reorg::ReorgOutcome::Success(new_org) => {
             // 廃止部署はもう存在しない
-            assert!(new_org.department(&target).is_none());
+            assert!(Department::get(new_org, &target).is_none());
             // 再配置された社員は新部署に所属している
             for (emp_id, new_dept) in &report.reassigned {
-                let actual = new_org.belongs_to().get(emp_id);
-                assert_eq!(actual.map(|d| d.name.clone()), new_org.department(new_dept).map(|d| d.name.clone()));
+                let actual = BelongsTo::get_of(new_org, emp_id);
+                assert_eq!(
+                    actual.map(|d| d.name.clone()),
+                    Department::get(new_org, new_dept).map(|d| d.name.clone())
+                );
             }
             // 社員総数・プロジェクト総数は変化しない
-            assert_eq!(new_org.employee_ids().count(), generated.chart.employee_ids().count());
-            assert_eq!(new_org.project_ids().count(), generated.chart.project_ids().count());
-            assert_eq!(new_org.department_ids().count(), generated.chart.department_ids().count() - 1);
+            assert_eq!(Employee::ids(new_org).count(), Employee::ids(&generated.chart).count());
+            assert_eq!(Project::ids(new_org).count(), Project::ids(&generated.chart).count());
+            assert_eq!(
+                Department::ids(new_org).count(),
+                Department::ids(&generated.chart).count() - 1
+            );
         }
         reorg::ReorgOutcome::Violated(_) => {
             // D01がスポンサー関係を持っていた場合はこちらのパスもありうる
@@ -204,11 +201,8 @@ fn reorgは存在しない部署キーでnoneを返す() {
 fn reorgでスポンサー元部署を廃止するとviolationになる() {
     let generated = dataset::generate(TEST_SEED, false);
     // sponsors().iter()を持つ部署を1つ探す (スポンサー辺を発している側)。
-    let sponsor_dept = generated
-        .chart
-        .sponsors()
-        .iter()
-        .map(|(d, _p)| d.clone())
+    let sponsor_dept = Sponsors::iter(&generated.chart)
+        .map(|(_id, edge)| edge.from().clone())
         .next();
 
     let Some(target) = sponsor_dept else {
