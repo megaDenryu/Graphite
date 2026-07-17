@@ -12,7 +12,7 @@ cargo run
 ```
 
 `cargo run` は以下の物語をそのまま実行して出力する。`cargo test` は
-23件のテスト (単体15件 + 統合8件) を実行する。
+25件のテスト (単体17件 + 統合8件) を実行する。
 
 ## 1. 敵の紹介 — observer パターン (コールバック購読) のグリッチ・無限ループ・非決定性
 
@@ -87,23 +87,27 @@ impl NaiveCell {
 
 ## 3. グラフによる再定式化
 
-`src/schema.rs` は依存関係を「セル (`Cell`) ノード + `Feeds` エッジ」
+`src/schema.rs` は依存関係を「セル (`Cell`) ノード + 依存エッジ3種」
 という**構造データ**として宣言する:
 
 ```rust
 graphite::graph_schema! {
     schema Sheet {
         node Cell;
+
         edge Feeds = Cell -> Cell where unique pair;
+        edge Lhs   = Cell -> Cell where unique pair;
+        edge Rhs   = Cell -> Cell where unique pair;
     }
 }
 ```
 
-`Feeds` は「`from` の値が `to` の入力になる」という向き
+3種いずれも「`from` の値が `to` の入力になる」という向き
 (依存元→依存先) で読む。`where unique pair` は「あるセルが別のセルへ
 値を供給する」という依存関係は有るか無いかの二値であり、同じ
-(from, to) の対に2本目の `Feeds` エッジを張ることに意味は無い、という
-判断 (`examples/async-dag` の `DependsOn` と同じ)。`src/fixtures.rs::default_sheet`
+(from, to) の対に2本目のエッジを張ることに意味は無い、という判断
+(`examples/async-dag` の `DependsOn` と同じ)。3種に分かれている理由は
+「モデリングガイド§5の適用例」節で説明する。`src/fixtures.rs::default_sheet`
 がこれを `graph!` リテラルで具体化する — 依存グラフが**一枚のリテラルとして
 実行前に全部見える**:
 
@@ -111,11 +115,13 @@ graphite::graph_schema! {
 graphite::graph!(Sheet {
     unit_price = Cell { formula: Formula::Input },
     // .. 入力セル5個 ..
-    subtotal   = Cell { formula: Formula::Mul(unit_price.clone(), quantity.clone()) },
-    // .. 計算セル5個 ..
+    subtotal   = Cell { formula: Formula::Mul },
+    // .. 計算セル4個 (adjustmentだけFormula::Sub) ..
 
     f_unit_price_subtotal = Feeds(unit_price -> subtotal),
-    // .. Feedsエッジ11本 ..
+    // .. Feedsエッジ9本 ..
+    l_tax_adjustment             = Lhs(tax -> adjustment),
+    r_discount_amount_adjustment = Rhs(discount_amount -> adjustment),
 })
 ```
 
@@ -158,7 +164,7 @@ adjustment`) を含む見積シートで `unit_price` を変更しても、
 |---|---|---|
 | signal (入力値) | 入力ノード | `Formula::Input` を持つ `Cell` |
 | computed (計算値) | 計算ノード + そのノードへの入辺 | `Formula::Mul`/`Sub`/`Sum` を持つ `Cell` |
-| 依存関係の宣言 (JSで言えば `computed(() => a.get() + b.get())`) | `edge Feeds = Cell -> Cell where unique pair;` + `graph!` リテラル | `f_unit_price_subtotal = Feeds(unit_price -> subtotal)` 等 |
+| 依存関係の宣言 (JSで言えば `computed(() => a.get() + b.get())`) | `edge Feeds/Lhs/Rhs = Cell -> Cell where unique pair;` + `graph!` リテラル | `f_unit_price_subtotal = Feeds(unit_price -> subtotal)`、`l_tax_adjustment = Lhs(tax -> adjustment)` 等 |
 | 購読 (subscribe)・通知 (notify) | (存在しない — 不要になる) | `Engine::set_input` が影響範囲を一括で処理する |
 | 正しい再計算順序の保証 | `topological_sort()` | `Engine::topological_order()` (構築時に1回だけ計算) |
 | 影響範囲の特定 (dirty checking) | `reachable_from(id)` | `Engine::set_input` 内の `affected` 集合 |
@@ -168,7 +174,7 @@ adjustment`) を含む見積シートで `unit_price` を変更しても、
 
 ## セル構成
 
-10セル・`Feeds` エッジ11本。ダイヤモンド依存
+10セル・依存エッジ11本 (`Feeds` 9本 + `Lhs`/`Rhs` 1本ずつ)。ダイヤモンド依存
 (`subtotal(a) → discount_amount(b) → adjustment(d)`、
 `subtotal(a) → tax(c) → adjustment(d)`) を含む。
 
@@ -193,16 +199,53 @@ adjustment`) を含む見積シートで `unit_price` を変更しても、
 | `src/main.rs` | 上記を通して読む物語 (`cargo run`) |
 | `tests/integration.rs` | 公開APIだけを使ったend-to-endテスト |
 
+## モデリングガイド§5の適用例 — Subの被減数/減数を辺種別に昇格
+
+このexampleは以前、依存関係を `Feeds = Cell -> Cell` 1種のエッジだけで
+張っていた。乗算 (`Mul`) や合計 (`Sum`) は可換 (`a*b == b*a`、和も同様)
+なので被演算子どうしの役割を区別する必要が無く、これで問題なかった。
+しかし減算 (`Sub`) は非可換 (`a - b != b - a`) であり、`adjustment = tax
+- discount_amount` のどちらが被減数/減数かという区別が必要だった。この
+区別を **`Feeds` エッジには書けず**、`Formula::Sub(CellId, CellId)` という
+enumの引数順序**だけ**が持っていた — つまり「`adjustment` は `tax`・
+`discount_amount` に依存する」という同じ事実を `Formula` とグラフの
+両方に手で書き、両者を一致させ続ける二重管理になっていた (グラフ構造
+だけを見ても被減数/減数は判別できなかった)。
+
+`docs/modeling_guide.md` §5「同種の辺の間の役割差は辺種別を分ける」を
+適用し、`Sub` の被減数/減数を**辺種別そのもの**に昇格させた
+(`src/schema.rs`):
+
+```rust
+edge Feeds = Cell -> Cell where unique pair; // 可換 (Mul/Sum) はそのまま1種
+edge Lhs   = Cell -> Cell where unique pair; // 非可換 (Sub) の被減数
+edge Rhs   = Cell -> Cell where unique pair; // 非可換 (Sub) の減数
+```
+
+これに合わせて `Formula` からも `CellId` を完全に取り除き、「どの演算か」
+(`Input`/`Mul`/`Sub`/`Sum`) だけを持つ形にした。演算対象の具体的なセルは
+`Engine::eval_formula` (`src/engine.rs`) が、そのセルを終点とする
+`Feeds`/`Lhs`/`Rhs` エッジをその都度絞り込んで直接読む。「どのセルが
+どのセルに依存するか」という**同一性+接続性を持つ情報**
+(`docs/modeling_guide.md` §1) はグラフだけが持つようになり、`Formula`
+との二重管理は完全に解消された。副産物として、`src/fixtures.rs` の
+`graph!` リテラルからも `Formula::Mul(subtotal.clone(), ..)` のような
+値の式の中でのセルキー使用が消え、手動 `.clone()` が一切不要になった
+(セルキーが登場するのは常に `graph!` が自動で `.clone()` するエッジ
+構築の中だけになったため)。
+
+`Formula::Sub` のセルに `Lhs`/`Rhs` がちょうど1本ずつ存在すること
+(`Formula::Mul`/`Sum` のセルに `Feeds` が1本以上存在すること) は
+`graph!`/`Sheet::create` の検証対象外 (端点存在と `unique pair` だけを
+見る、構造の整合性のみを検証する) なので、`Engine::new` が構築時に
+`validate_formula_wiring` として検査しパニックする — 循環検出
+(`CycleError`) と同じく「schema/graph! は構造の整合性だけを見る、それ以外
+の性質はドメイン (再計算エンジン) が要求する制約」という責務分離
+(`src/engine.rs` 参照)。
+
 ## 実装の割り切り
 
-- `Formula` (式) と `Feeds` エッジ (依存グラフの構造) は独立に手で
-  書いており、意図的に重複させている。`Formula::Mul(subtotal, ..)` が
-  「`subtotal` に依存する」という情報を既に持っているので、実運用なら
-  `Feeds` エッジを `Formula` から自動導出する設計もありうる。この
-  exampleでは `graph!` リテラルが依存グラフを一枚のデータとして見せる
-  ことを優先し、あえて両方を手書きにしている (`src/fixtures.rs` の
-  `default_sheet` ドキュメント参照)。
-- `Engine::set_input` は計算セル (`Formula::Input` 以外) への直接代入を
-  契約違反としてパニックする (`docs/design_principles.md` 原則2)。
-  計算セルの値は依存元セルの更新から常に自動的に決まるべきであり、
-  これを破ると依存グラフと値ストアが不整合になる。
+`Engine::set_input` は計算セル (`Formula::Input` 以外) への直接代入を
+契約違反としてパニックする (`docs/design_principles.md` 原則2)。計算
+セルの値は依存元セルの更新から常に自動的に決まるべきであり、これを
+破ると依存グラフと値ストアが不整合になる。

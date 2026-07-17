@@ -9,7 +9,7 @@ use std::collections::HashSet;
 use reactive_cells::antipattern::{build_diamond_demo, build_infinite_loop_demo};
 use reactive_cells::engine::Engine;
 use reactive_cells::fixtures::{cyclic_demo_sheet, default_sheet};
-use reactive_cells::schema::{CellId, Feeds};
+use reactive_cells::schema::{CellId, Feeds, Lhs, Rhs};
 
 fn id(s: &str) -> CellId {
     CellId(s.to_string())
@@ -107,13 +107,17 @@ fn topological_orderはgraph_dependency構造と整合する() {
     let order = engine.topological_order();
     assert_eq!(order.len(), 10);
     let pos = |k: &str| order.iter().position(|c| c.0 == k).unwrap();
-    // 全ての `Feeds(from -> to)` エッジについて pos(from) < pos(to)。
-    for (_id, edge) in Feeds::iter(engine.graph()) {
-        let from = edge.from();
-        let to = edge.to();
+    // 全ての `Feeds(from -> to)`/`Lhs(from -> to)`/`Rhs(from -> to)` エッジ
+    // について pos(from) < pos(to) (3種とも「依存元→依存先」という同じ
+    // 向きの意味を持つ、`src/schema.rs` 参照)。
+    for (from, to) in Feeds::iter(engine.graph())
+        .map(|(_id, edge)| (edge.from(), edge.to()))
+        .chain(Lhs::iter(engine.graph()).map(|(_id, edge)| (edge.from(), edge.to())))
+        .chain(Rhs::iter(engine.graph()).map(|(_id, edge)| (edge.from(), edge.to())))
+    {
         assert!(
             pos(&from.0) < pos(&to.0),
-            "Feeds {from:?} -> {to:?} はトポロジカル順序に反している"
+            "{from:?} -> {to:?} はトポロジカル順序に反している"
         );
     }
 }

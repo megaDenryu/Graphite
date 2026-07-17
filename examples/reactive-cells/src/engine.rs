@@ -15,12 +15,22 @@
 //! 全セルは既に最新値になっている」ことを保証する順序そのものなので、
 //! これが glitch (矛盾した中間状態の観測) が原理的に起きない理由になる
 //! (README「なぜグラフで直るのか」節)。
+//!
+//! ## 演算対象はグラフから読む (`Formula` はCellIdを持たない)
+//!
+//! `Sheet` の依存エッジは `Feeds` (可換な `Mul`/`Sum` の被演算子)・`Lhs`/
+//! `Rhs` (非可換な `Sub` の被減数/減数) の3種類 (`src/schema.rs` 参照)。
+//! [`Engine::eval_formula`] はセル自身の `Formula` (「どの演算か」だけを
+//! 持つ) と、このセルを終点とするエッジをその都度絞り込んで演算対象を
+//! 求める — `Formula` とグラフの両方に同じ依存情報を複製する二重管理を
+//! `docs/modeling_guide.md` §5 の適用で解消している (`README.md`
+//! 「モデリングガイド§5の適用例」節参照)。
 
 use std::collections::{HashMap, HashSet};
 
 use graphite::{CycleError, Graph};
 
-use crate::schema::{Cell, CellId, Feeds, Formula, Sheet, SheetNode};
+use crate::schema::{Cell, CellId, Feeds, Formula, Lhs, Rhs, Sheet, SheetNode};
 
 /// [`Engine::set_input`] が1回の更新で行った再計算1件分の記録。
 ///
@@ -35,9 +45,11 @@ pub struct RecomputeStep {
 /// 依存グラフ (不変) + 現在値ストア (可変) を束ねた再計算エンジン。
 pub struct Engine {
     graph: Sheet,
-    /// `feeds` エッジを射影した汎用グラフ。`reachable_from`/
-    /// `topological_sort` はここに1回だけ委譲する (`graphite::Graph` が
-    /// 既に持つ水準1アルゴリズムを再実装しない)。
+    /// `Feeds`/`Lhs`/`Rhs` エッジを1つに射影した汎用グラフ。
+    /// `reachable_from`/`topological_sort` はここに1回だけ委譲する
+    /// (`graphite::Graph` が既に持つ水準1アルゴリズムを再実装しない)。
+    /// 3種のエッジはいずれも「依存元→依存先」という同じ向きの意味を
+    /// 持つ (`src/schema.rs` 参照) ので、単純に合流させて良い。
     dependency_graph: Graph<(), (), CellId>,
     /// 構築時に1回だけ計算したトポロジカル順序。依存構造
     /// (`dependency_graph`) は構築後不変なので、この順序も更新ごとに
@@ -59,13 +71,27 @@ impl Engine {
     /// (README「循環の拒否」節)。`CycleError::cycle` には循環を構成する
     /// `CellId` の列がそのまま入っているので、`{cycle_error}` で
     /// 具体的な循環パスを表示できる。
+    ///
+    /// # Panics
+    /// `graph` 内のセルの `Formula` が要求するエッジ本数と実際のエッジ
+    /// 本数が一致しない場合 (例: `Formula::Sub` のセルに `Lhs`/`Rhs` の
+    /// どちらかが無い/2本以上ある)。これは `graph!`/`Sheet::create` の
+    /// 検証対象外 (端点存在と `unique pair` だけを見る、`src/fixtures.rs`
+    /// 参照) なので、`Formula` とエッジの整合性はドメイン側 (ここ) の
+    /// 責務として構築時に検査する (呼び出し規約違反はパニック、
+    /// `docs/design_principles.md` 原則2)。
     pub fn new(graph: Sheet) -> Result<Self, CycleError<CellId>> {
+        Self::validate_formula_wiring(&graph);
+
         let dependency_graph: Graph<(), (), CellId> = Graph::from_edges(
             Cell::ids(&graph).cloned(),
-            Feeds::iter(&graph).map(|(_id, edge)| (edge.from().clone(), edge.to().clone())),
+            Feeds::iter(&graph)
+                .map(|(_id, edge)| (edge.from().clone(), edge.to().clone()))
+                .chain(Lhs::iter(&graph).map(|(_id, edge)| (edge.from().clone(), edge.to().clone())))
+                .chain(Rhs::iter(&graph).map(|(_id, edge)| (edge.from().clone(), edge.to().clone()))),
         )
         .expect(
-            "Cell::ids()とFeeds::iter()の端点整合はSheet::create/create_collectingの検証で\
+            "Cell::ids()とFeeds/Lhs/Rhs::iter()の端点整合はSheet::create/create_collectingの検証で\
              既に保証されているはず (未知キー・重複キーはここでは起こらない)",
         );
 
@@ -83,6 +109,41 @@ impl Engine {
             topo_order,
             values,
         })
+    }
+
+    /// `Formula` が要求するエッジ本数と実際のエッジ本数の整合性を検査する。
+    ///
+    /// - `Mul`/`Sum` — このセルを終点とする `Feeds` エッジが1本以上必要
+    ///   (可換なので本数の上限は無い)。
+    /// - `Sub` — このセルを終点とする `Lhs`/`Rhs` エッジがそれぞれ
+    ///   ちょうど1本必要 (被減数/減数はどちらも一意でなければならない)。
+    /// - `Input` — エッジ本数を問わない (値は `set_input` で直接与える)。
+    fn validate_formula_wiring(graph: &Sheet) {
+        for (cell_id, cell) in Cell::iter(graph) {
+            match cell.formula {
+                Formula::Input => {}
+                Formula::Mul | Formula::Sum => {
+                    let count = Feeds::iter(graph).filter(|(_id, edge)| edge.to() == cell_id).count();
+                    assert!(
+                        count >= 1,
+                        "{cell_id:?}: {:?}セルには演算対象を表すFeedsエッジが1本以上必要です (実際: {count}本)",
+                        cell.formula
+                    );
+                }
+                Formula::Sub => {
+                    let lhs_count = Lhs::iter(graph).filter(|(_id, edge)| edge.to() == cell_id).count();
+                    let rhs_count = Rhs::iter(graph).filter(|(_id, edge)| edge.to() == cell_id).count();
+                    assert_eq!(
+                        lhs_count, 1,
+                        "{cell_id:?}: Subセルには被減数を表すLhsエッジがちょうど1本必要です (実際: {lhs_count}本)"
+                    );
+                    assert_eq!(
+                        rhs_count, 1,
+                        "{cell_id:?}: Subセルには減数を表すRhsエッジがちょうど1本必要です (実際: {rhs_count}本)"
+                    );
+                }
+            }
+        }
     }
 
     /// 依存グラフそのもの (schema/graph! が生成した不変な `Sheet`) への
@@ -148,9 +209,8 @@ impl Engine {
             }
             let formula = Cell::get(&self.graph, cell_id)
                 .expect("topo_orderに含まれるキーはCell::get()に必ず存在する")
-                .formula
-                .clone();
-            let new_value = self.eval_formula(&formula);
+                .formula;
+            let new_value = self.eval_formula(cell_id, formula);
             self.values.insert(cell_id.clone(), new_value);
             steps.push(RecomputeStep {
                 id: cell_id.clone(),
@@ -160,15 +220,51 @@ impl Engine {
         steps
     }
 
-    fn eval_formula(&self, formula: &Formula) -> f64 {
+    /// `cell_id` の `formula` を評価する。演算対象は `formula` 自身では
+    /// なく、`cell_id` を終点とする `Feeds`/`Lhs`/`Rhs` エッジから読む
+    /// (このファイル冒頭のモジュール doc 参照)。
+    fn eval_formula(&self, cell_id: &CellId, formula: Formula) -> f64 {
         match formula {
             Formula::Input => {
                 unreachable!("Inputセルはset_inputのトポロジカル走査で再計算対象にならない")
             }
-            Formula::Mul(a, b) => self.value(a) * self.value(b),
-            Formula::Sub(a, b) => self.value(a) - self.value(b),
-            Formula::Sum(ids) => ids.iter().map(|id| self.value(id)).sum(),
+            Formula::Mul => self.feeds_into(cell_id).product(),
+            Formula::Sum => self.feeds_into(cell_id).sum(),
+            Formula::Sub => self.lhs_value(cell_id) - self.rhs_value(cell_id),
         }
+    }
+
+    /// `cell_id` を終点とする `Feeds` エッジの起点セルの値を、挿入順
+    /// (`docs/schema_v4.md` §3.2 の順序保証) で列挙する。
+    fn feeds_into<'a>(&'a self, cell_id: &'a CellId) -> impl Iterator<Item = f64> + 'a {
+        Feeds::iter(&self.graph)
+            .filter(move |(_id, edge)| edge.to() == cell_id)
+            .map(move |(_id, edge)| self.value(edge.from()))
+    }
+
+    /// `cell_id` を終点とする `Lhs` エッジの起点セルの値 (被減数)。
+    ///
+    /// # Panics
+    /// `Lhs` エッジがちょうど1本であることは [`Self::validate_formula_wiring`]
+    /// が `Engine::new` の時点で検査済みなので、ここに到達した時点で
+    /// 見つからなければ実装の不整合 (バグ) である。
+    fn lhs_value(&self, cell_id: &CellId) -> f64 {
+        let (_id, edge) = Lhs::iter(&self.graph)
+            .find(|(_id, edge)| edge.to() == cell_id)
+            .expect("validate_formula_wiringで存在を検査済みのはず");
+        self.value(edge.from())
+    }
+
+    /// `cell_id` を終点とする `Rhs` エッジの起点セルの値 (減数)。
+    ///
+    /// # Panics
+    /// [`Self::lhs_value`] と同様、`Engine::new` の検査済み前提が破れて
+    /// いる場合のみパニックする (実装の不整合)。
+    fn rhs_value(&self, cell_id: &CellId) -> f64 {
+        let (_id, edge) = Rhs::iter(&self.graph)
+            .find(|(_id, edge)| edge.to() == cell_id)
+            .expect("validate_formula_wiringで存在を検査済みのはず");
+        self.value(edge.from())
     }
 }
 
@@ -342,5 +438,31 @@ mod tests {
     fn valueは未知のキーでパニックする() {
         let engine = Engine::new(default_sheet().unwrap()).unwrap();
         let _ = engine.value(&id("no_such_cell"));
+    }
+
+    #[test]
+    #[should_panic(expected = "Lhsエッジがちょうど1本必要です")]
+    fn engine_newはsubセルにlhsエッジが無いとパニックする() {
+        #[rustfmt::skip]
+        let broken = graphite::graph!(Sheet {
+            tax             = Cell { formula: Formula::Input },
+            discount_amount = Cell { formula: Formula::Input },
+            adjustment      = Cell { formula: Formula::Sub },
+
+            r_discount_amount_adjustment = Rhs(discount_amount -> adjustment),
+        })
+        .expect("構造としては正常に構築できる (Lhs不足は検証対象外)");
+        let _ = Engine::new(broken);
+    }
+
+    #[test]
+    #[should_panic(expected = "Feedsエッジが1本以上必要です")]
+    fn engine_newはmulセルにfeedsエッジが無いとパニックする() {
+        #[rustfmt::skip]
+        let broken = graphite::graph!(Sheet {
+            lonely = Cell { formula: Formula::Mul },
+        })
+        .expect("構造としては正常に構築できる (Feeds不足は検証対象外)");
+        let _ = Engine::new(broken);
     }
 }
