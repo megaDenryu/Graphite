@@ -1,35 +1,56 @@
 //! `graph!` の入力 DSL のパース。
 //!
-//! 対応する文法 (v3、`docs/graph_literal_v3.md` 参照):
+//! 対応する文法 (v4、`docs/schema_v4.md` §2 参照): **全行が `名前 = 値`**。
 //!
 //! ```text
-//! graph!(OrgChart {
-//!     tanaka = Employee { name: "田中".into(), id: 1 },
-//!     sato   = sato_value,                              // 外で作った値を move
-//!     sales  = Department { name: "営業".into() },
+//! graph!(Org {
+//!     alice = Person { name: "Alice".into() },
+//!     bob   = Person { name: "Bob".into() },
+//!     eng   = Team { name: "Engineering".into() },
 //!
-//!     tanaka -[belongs_to]-> sales,
-//!     tanaka -[boss = BossEdge { since: 2020 }]-> sato,
+//!     a_team = BelongsTo(alice -> eng),
+//!     b_boss = Boss(bob -[promo]-> alice),
+//!     lead   = Assigned(alice -[Role { name: "lead".into() }]-> proj),
 //! })
 //! ```
 //!
 //! `graph!` はスキーマの中身 (`graph_schema!` が何を生成したか) を一切知らない。
-//! ノード項・エッジ属性の右辺はいずれも任意の `syn::Expr` として受け取り、値の
-//! 型そのものはパースしない (型はマクロではなく rustc の型推論に委ねる。
-//! `docs/graph_literal_v3.md` §3 参照)。
-//! (`-`, `[`, ident, `=`, `]`, `-`, `>` のトークン列の扱いは
-//! `.claude/skills/proc-macro-dev/SKILL.md` の注意点を参照)。
+//! ノード項の値・エッジの積み荷はいずれも任意の `syn::Expr` として受け取り、
+//! 値の型そのものはパースしない (型はマクロではなく rustc の型推論に委ねる)。
+//!
+//! ## ノード項とエッジ項の判別 (v4 での新しい曖昧性)
+//!
+//! v4 は両方とも `key = ...` から始まるため (旧版はエッジが `a -[label]-> b`
+//! という別形だった)、`=` の右辺を見るまでノード項かエッジ項か分からない。
+//! エッジ項の右辺は `Kind(from -> to)` / `Kind(from -[式]-> to)` という
+//! 「識別子 + 丸括弧 1 つ」の形をしており、これは Rust の通常の呼び出し式
+//! (`Kind(args)`) と字面上区別が付かない場合がある (例: `Person(args)` という
+//! タプル struct 構築式もノード値として正当)。
+//!
+//! この曖昧性は **`->` が Rust の式構文には存在しない演算子である**ことを
+//! 使って解消できる: 丸括弧の中身が `Ident (-> | -[式]->) Ident` という形に
+//! **構造的に**マッチするなら、それは正当な Rust 式としては絶対に解釈できない
+//! (`->` は関数シグネチャ・クロージャの戻り値注釈以外の式位置には出現しない)
+//! ため、エッジ項として確定して良い。逆にこの形にマッチしなければ、丸括弧の
+//! 中身が何であれ通常の `syn::Expr` としてパースを試みる (ノード項)。
+//!
+//! 具体的には [`looks_like_edge_literal`] で「識別子 + 丸括弧」に続く最初の
+//! トークンが `-` (`->` と `-[` の共通の最初のトークン) かどうかだけを軽く
+//! 覗き見て判定する。この軽い判定で「エッジのつもりらしい」と分かった場合は
+//! [`EdgeLiteralInner`] の構造化パースへコミットし、そこで実際に失敗すれば
+//! (例: 積み荷の式が壊れている) そのエラーをそのまま利用者に返す (曖昧性が
+//! 無い以上、ノード式へフォールバックし直すと診断がかえって分かりにくくなる
+//! ため)。
 //!
 //! ## `syn::Expr` を回復パーサに混ぜる際のリスク (要実測・実装済み)
 //!
-//! v2 まではノード/エッジのペイロードを自前の
-//! `Punctuated::<FieldValue, Token![,]>::parse_terminated` で読んでいたため、
-//! パース失敗時に自分で `drain_rest` を呼んで安全に回復できていた。v3 は
-//! ペイロードを `syn::Expr` に丸投げするため、式の中に構文ミス (例:
-//! `Employee { name: "x".into() id: 1 }` のようなフィールド間カンマ抜け) が
-//! あると、**syn 自身が内部で開く struct リテラル用の `{ .. }` サブバッファ**
+//! ノード/エッジのペイロードを自前の
+//! `Punctuated::<FieldValue, Token![,]>::parse_terminated` ではなく `syn::Expr`
+//! に丸投げすると、式の中に構文ミス (例:
+//! `Person { name: "x".into() id: 1 }` のようなフィールド間カンマ抜け) が
+//! あるとき、**syn 自身が内部で開く struct リテラル用の `{ .. }` サブバッファ**
 //! でエラーが起き、そのサブバッファは呼び出し元 (このファイル) からは
-//! 見えないため `drain_rest` を挟めない。
+//! 見えないため `drain_rest` を挟めない、という問題がある。
 //!
 //! 実際に syn 2.0.118 のソースを確認したところ (`src/group.rs`
 //! `parse_delimited` の `crate::parse::get_unexpected(input)` 呼び出し、
@@ -56,35 +77,22 @@
 //!   を握り潰して続行し、全体としては `Ok` を返す」設計なので、この経路に
 //!   直撃する。
 //!
-//! つまり、壊れた1項目だけを回復してもトップレベル呼び出し自体が
-//! `Err(err_unexpected_token(..))` に化けてしまい、`lib.rs` 側の
-//! `GraphInput::parse_recovering.parse(input)` が `Err` 分岐 (ヘッダ壊れ扱い)
-//! に落ちて **全ての回復結果を握り潰してしまう** (v2 では発生しなかった
-//! 深刻な退行)。
-//!
 //! ### 対処 (実装済み)
 //!
-//! ノード項の値・エッジ属性の値を「トークン木の生の列」として
+//! ノード項の値・エッジの積み荷を「トークン木の生の列」として
 //! (`.parse::<TokenTree>()` の繰り返しで、syn の構造化パースを一切経由せず)
 //! 境界まで読み取り、**独立した新規トップレベル呼び出し**
-//! `syn::parse2::<Expr>(captured)` で改めて式としてパースする
-//! ([`parse_expr_isolated`])。`syn::parse2` は呼び出しごとに新しい
+//! `syn::parse2::<T>(captured)` で改めてパースする ([`parse_expr_isolated`]/
+//! [`try_parse_edge_literal`])。`syn::parse2` は呼び出しごとに新しい
 //! `Rc<Cell<Unexpected>>>` ルートを作るため、この独立呼び出し内で起きた
 //! 汚染はそのローカルな `Result` に閉じ込められ、外側の回復パーサが共有する
 //! セルには一切伝播しない。トークン木を生のまま読むだけの捕獲フェーズは
 //! syn の構造化パースを経由しないので、それ自体が新たな汚染源になることも
 //! ない。
-//!
-//! 実測は `crates/graphite/tests/ui/graph_partial_recovery.rs` (フィールド間
-//! カンマ抜けで壊れた項目1件 + 正常な項目群) で行った。対処前は本コメントで
-//! 説明した「トップレベル呼び出し自体が `Err` に化け、正常項目由来の型も
-//! 全て消える」という回帰が実際に再現し (壊れていない `sales`/`belongs_to`
-//! 由来のコードまで生成されなくなった)、対処後は壊れた項目1件分の
-//! `compile_error!` のみが出て他の項目は正常に生成されることを確認した。
 
-use proc_macro2::TokenTree;
+use proc_macro2::{Delimiter, TokenStream as TokenStream2, TokenTree};
 use syn::parse::{Parse, ParseStream};
-use syn::{braced, bracketed, Expr, Ident, Token};
+use syn::{braced, parenthesized, Expr, Ident, Token};
 
 /// 残りのトークンを丸ごと読み飛ばして `ParseStream` を空にする。
 ///
@@ -104,11 +112,10 @@ fn drain_rest(content: ParseStream) {
 /// 次のトップレベルの `,` (もしくは入力終端) まで、トークン木を1つずつ
 /// 捕獲する (構造化パースを一切経由しないため、これ自体が
 /// [`ParseBuffer`] の Drop 汚染を起こすことはない)。捕獲したトークン列は
-/// 呼び出し元が [`parse_expr_isolated`] で独立に再パースする。
-fn capture_until_top_level_comma(
-    content: ParseStream,
-) -> syn::Result<proc_macro2::TokenStream> {
-    let mut collected = proc_macro2::TokenStream::new();
+/// 呼び出し元が [`parse_expr_isolated`]/[`try_parse_edge_literal`] で
+/// 独立に再パースする。
+fn capture_until_top_level_comma(content: ParseStream) -> syn::Result<TokenStream2> {
+    let mut collected = TokenStream2::new();
     while !content.is_empty() && !content.peek(Token![,]) {
         let tt: TokenTree = content.parse()?;
         collected.extend(std::iter::once(tt));
@@ -121,50 +128,127 @@ fn capture_until_top_level_comma(
 /// を回復パーサに混ぜる際のリスク」参照: `syn::parse2` は呼ぶたびに新しい
 /// `Rc<Cell<Unexpected>>` を作るため、ここで起きるエラーは呼び出し元
 /// (G4b の回復パーサ) が共有する `Unexpected` セルを汚染しない。
-fn parse_expr_isolated(tokens: proc_macro2::TokenStream, empty_input_span: proc_macro2::Span) -> syn::Result<Expr> {
+fn parse_expr_isolated(tokens: TokenStream2, empty_input_span: proc_macro2::Span) -> syn::Result<Expr> {
     if tokens.is_empty() {
         return Err(syn::Error::new(empty_input_span, "式を期待しました"));
     }
     syn::parse2::<Expr>(tokens)
 }
 
-/// `tanaka = Employee { name: "田中".into(), id: 1 }` / `tanaka = tanaka_value`
+/// 捕獲したトークン列が「エッジリテラルのつもり」に見えるかどうかを軽く
+/// 判定する。ファイル冒頭のドキュメントコメント「ノード項とエッジ項の判別」
+/// 参照。
+///
+/// 判定基準: `識別子 + 丸括弧グループ` という形にまず一致し、丸括弧の中身の
+/// 最初の2トークンが `識別子` + `-` (パンクト) であること。`->`/`-[` は
+/// いずれも最初のトークンが `-` の punct であり、この判定だけで両方拾える。
+/// 通常の関数呼び出し・タプル struct 構築式の引数列がこの形 (最初の識別子の
+/// 直後がハイフン) になることは実質的に無い (`->` は式の中に出現しない
+/// トークン列のため)。
+fn looks_like_edge_literal(tokens: &TokenStream2) -> bool {
+    let mut top_level = tokens.clone().into_iter();
+    let Some(TokenTree::Ident(_kind)) = top_level.next() else {
+        return false;
+    };
+    let Some(TokenTree::Group(group)) = top_level.next() else {
+        return false;
+    };
+    if group.delimiter() != Delimiter::Parenthesis {
+        return false;
+    }
+    // 丸括弧グループの後に余分なトークンがあるなら (例: `Kind(..).method()`)
+    // エッジリテラルの形ではない。
+    if top_level.next().is_some() {
+        return false;
+    }
+
+    let mut inner = group.stream().into_iter();
+    let Some(TokenTree::Ident(_from)) = inner.next() else {
+        return false;
+    };
+    matches!(inner.next(), Some(TokenTree::Punct(p)) if p.as_char() == '-')
+}
+
+/// `Kind(from -> to)` / `Kind(from -[式]-> to)` の内側構造。
+/// [`looks_like_edge_literal`] が「エッジのつもり」と判定した捕獲済み
+/// トークン列を、**独立したトップレベル呼び出し** `syn::parse2` でこの型に
+/// パースする (ファイル冒頭のドキュメントコメント参照)。
+struct EdgeLiteralInner {
+    kind: Ident,
+    from: Ident,
+    attrs: Option<Expr>,
+    to: Ident,
+}
+
+impl Parse for EdgeLiteralInner {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let kind: Ident = input.parse()?;
+        let content;
+        parenthesized!(content in input);
+
+        let from: Ident = content.parse()?;
+        let attrs = if content.peek(Token![->]) {
+            content.parse::<Token![->]>()?;
+            None
+        } else {
+            content.parse::<Token![-]>()?;
+            let bracket_content;
+            syn::bracketed!(bracket_content in content);
+            let attrs_expr: Expr = match bracket_content.parse() {
+                Ok(e) => e,
+                Err(e) => {
+                    drain_rest(&bracket_content);
+                    return Err(e);
+                }
+            };
+            if !bracket_content.is_empty() {
+                let e = bracket_content.error("`-[式]->` の形式で指定してください");
+                drain_rest(&bracket_content);
+                return Err(e);
+            }
+            content.parse::<Token![->]>()?;
+            Some(attrs_expr)
+        };
+        let to: Ident = content.parse()?;
+        if !content.is_empty() {
+            return Err(content.error(
+                "`Kind(from -> to)` または `Kind(from -[式]-> to)` の形式で指定してください",
+            ));
+        }
+        if !input.is_empty() {
+            return Err(input.error("余分なトークンがあります"));
+        }
+
+        Ok(EdgeLiteralInner { kind, from, attrs, to })
+    }
+}
+
+/// [`looks_like_edge_literal`] が真を返した捕獲済みトークン列を、実際に
+/// [`EdgeLiteralInner`] としてパースする。ここで返る `Err` は「エッジの
+/// つもりだが壊れている」という確定した診断であり (曖昧性はもう無い)、
+/// ノード式へのフォールバックはしない (フォールバックすると `->` を含む
+/// トークン列が `syn::Expr` としても失敗し、かえって分かりにくい
+/// "expected expression" に化けてしまうため)。
+fn parse_edge_literal_isolated(tokens: TokenStream2) -> syn::Result<EdgeLiteralInner> {
+    syn::parse2::<EdgeLiteralInner>(tokens)
+}
+
+/// `alice = Person { name: "Alice".into() }` / `alice = alice_value`
 pub struct NodeInstance {
     pub key: Ident,
     pub value: Expr,
 }
 
-/// `tanaka -[belongs_to]-> sales` / `tanaka -[boss = BossEdge { since: 2020 }]-> sato`
+/// `a_team = BelongsTo(alice -> eng)` / `b_boss = Boss(bob -[promo]-> alice)`
+///
+/// `docs/schema_v4.md` §2: 全行が `名前 = 値` であり、エッジ項の名前も
+/// (ノードと同様) キーの束縛である。
 pub struct EdgeInstance {
+    pub key: Ident,
+    pub kind: Ident,
     pub from: Ident,
-    pub label: Ident,
     pub attrs: Option<Expr>,
     pub to: Ident,
-}
-
-/// `-[label]->` / `-[label = 式]->` の `[ .. ]` の中身。
-///
-/// エッジの属性値は既に `bracketed!` で囲われた `bracket_content` の中に
-/// あるため、境界は「`]` まで (=このバッファの残り全部)」で確定している。
-/// ノード項の値と違って「次のトップレベル `,`」を自前で探す必要はなく、
-/// 単純に残り全トークンを捕獲すればよい。
-fn parse_edge_label_and_attrs(bracket_content: ParseStream) -> syn::Result<(Ident, Option<Expr>)> {
-    let label: Ident = bracket_content.parse()?;
-    let attrs = if bracket_content.peek(Token![=]) {
-        bracket_content.parse::<Token![=]>()?;
-        let span = bracket_content.span();
-        // 構造化パースを経由せず生トークンとして残り全部を捕獲してから、
-        // 独立した新規トップレベル呼び出しで式としてパースする (このファイル
-        // 冒頭のドキュメントコメント参照)。
-        let captured: proc_macro2::TokenStream = bracket_content.parse()?;
-        Some(parse_expr_isolated(captured, span)?)
-    } else {
-        None
-    };
-    if !bracket_content.is_empty() {
-        return Err(bracket_content.error("`-[label]->` または `-[label = 式]->` の形式で指定してください"));
-    }
-    Ok((label, attrs))
 }
 
 pub enum GraphItem {
@@ -174,46 +258,26 @@ pub enum GraphItem {
 
 impl Parse for GraphItem {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        let first: Ident = input.parse()?;
+        let key: Ident = input.parse()?;
+        input.parse::<Token![=]>()?;
+        let span = input.span();
+        // 構造化パースを経由せず生トークンとして捕獲してから、独立した
+        // 新規トップレベル呼び出しで再パースする (ファイル冒頭のドキュメント
+        // コメント参照)。
+        let captured = capture_until_top_level_comma(input)?;
 
-        if input.peek(Token![=]) {
-            input.parse::<Token![=]>()?;
-            let span = input.span();
-            // ノード項の値は (エッジ属性と違って) 次のトップレベル `,` が
-            // 境界になる。構造化パースを経由せず生トークンとして捕獲してから、
-            // 独立した新規トップレベル呼び出しで式としてパースする (ファイル
-            // 冒頭のドキュメントコメント参照)。
-            let captured = capture_until_top_level_comma(input)?;
-            let value = parse_expr_isolated(captured, span)?;
-            Ok(GraphItem::Node(NodeInstance { key: first, value }))
-        } else if input.peek(Token![-]) {
-            input.parse::<Token![-]>()?;
-            let bracket_content;
-            bracketed!(bracket_content in input);
-            let (label, attrs) = match parse_edge_label_and_attrs(&bracket_content) {
-                Ok(v) => v,
-                Err(e) => {
-                    // G4b: drain_rest のコメント参照。ここは
-                    // `parse_edge_label_and_attrs` 内で syn 構造化パースを
-                    // 経由しない捕獲方式に変えたため、通常この分岐に来る
-                    // 頃には `bracket_content` は既に空だが、想定外の失敗
-                    // (例: ラベル自体の parse 失敗) に備えて保険で呼ぶ。
-                    drain_rest(&bracket_content);
-                    return Err(e);
-                }
-            };
-            input.parse::<Token![->]>()?;
-            let to: Ident = input.parse()?;
+        if looks_like_edge_literal(&captured) {
+            let EdgeLiteralInner { kind, from, attrs, to } = parse_edge_literal_isolated(captured)?;
             Ok(GraphItem::Edge(EdgeInstance {
-                from: first,
-                label,
+                key,
+                kind,
+                from,
                 attrs,
                 to,
             }))
         } else {
-            Err(input.error(
-                "`key = 式` (ノード) または `a -[label]-> b` (エッジ) の形式を期待しました",
-            ))
+            let value = parse_expr_isolated(captured, span)?;
+            Ok(GraphItem::Node(NodeInstance { key, value }))
         }
     }
 }
@@ -239,18 +303,14 @@ impl GraphInput {
     ///
     /// - ヘッダ (`SchemaName {`) 自体が壊れている場合は回復せず `Err` を
     ///   返す。
-    /// - ボディはカンマ区切りの項目 (ノード宣言 / エッジ) 単位でパースする。
-    ///   `graph_schema!` 側 (`node`/`edge` キーワードで境界を判定) とは違い、
-    ///   `graph!` の項目は先頭が常に識別子で、ノード宣言かエッジかは2番目の
-    ///   トークン (`=` か `-`) を見るまで分からない。そのため「次のキーワード
-    ///   まで」という境界定義が使えない。
-    /// - **境界の定義**: 代わりに「項目はカンマ区切り」という構文上の性質を
-    ///   使い、次のトップレベルの `,` (もしくは入力終端) まで、トークン木を
-    ///   1つずつ読み飛ばす境界とする。proc_macro2 では `{ .. }` (フィールド
-    ///   初期化子) や `[ .. ]` (エッジラベル) の中身がまるごと1つの `Group`
-    ///   トークン木として扱われるため、その中にあるカンマを誤ってトップ
-    ///   レベルの区切りだと誤認することはない (`graph_schema!` 側と同じ
-    ///   Group 単位読み飛ばしの原理)。
+    /// - ボディはカンマ区切りの項目 (ノード / エッジ、どちらも `key = ..`
+    ///   の形) 単位でパースする。
+    /// - **境界の定義**: 「項目はカンマ区切り」という構文上の性質を使い、
+    ///   次のトップレベルの `,` (もしくは入力終端) まで、トークン木を1つ
+    ///   ずつ読み飛ばす境界とする。proc_macro2 では `{ .. }`/`[ .. ]`/
+    ///   `( .. )` の中身がまるごと1つの `Group` トークン木として扱われる
+    ///   ため、その中にあるカンマを誤ってトップレベルの区切りだと誤認する
+    ///   ことはない。
     pub fn parse_recovering(input: ParseStream) -> syn::Result<GraphParse> {
         let schema_name: Ident = input.parse()?;
         let content;

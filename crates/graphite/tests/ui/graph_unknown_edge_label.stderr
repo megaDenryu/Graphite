@@ -1,12 +1,5 @@
-error[E0599]: no method named `not_a_real_edge` found for mutable reference `&mut OrgChartBuilder` in the current scope
-  --> tests/ui/graph_unknown_edge_label.rs:32:18
+error[E0425]: cannot find function, tuple struct or tuple variant `NotARealEdge` in this scope
+  --> tests/ui/graph_unknown_edge_label.rs:32:16
    |
-28 |       let _ = graphite::graph!(OrgChart {
-   |  _____________-
-29 | |         tanaka = Employee { name: "田中".into(), id: 1 },
-30 | |         sales = Department { name: "営業".into() },
-31 | |
-32 | |         tanaka -[not_a_real_edge]-> sales,
-   | |                 -^^^^^^^^^^^^^^^ method not found in `&mut OrgChartBuilder`
-   | |_________________|
-   |
+32 |         oops = NotARealEdge(tanaka -> sales),
+   |                ^^^^^^^^^^^^ not found in this scope

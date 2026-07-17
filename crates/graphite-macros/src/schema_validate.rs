@@ -2,8 +2,10 @@
 //!
 //! ここで弾く必要があるのは:
 //! - ノード型名の重複宣言
-//! - エッジ種別名の重複宣言
+//! - エッジ種別名 (Kind) の重複宣言
 //! - エッジの端点 (`from`/`to`) が未宣言のノード型を指している場合
+//! - `where each <FromType>: ..` の `<FromType>` がエッジの `from` と
+//!   一致しない場合 (`docs/schema_v4.md` §1)
 //!
 //! いずれも `syn::Error::new_spanned`/`syn::Error::new` で元トークンの span を
 //! 保ったまま返す (`.claude/skills/proc-macro-dev/SKILL.md` の方針通り、
@@ -14,10 +16,11 @@
 //! `SchemaInput` 全体ではなく `&[NodeDecl]`/`&[EdgeDecl]` というスライスを
 //! 受け取るシグネチャにしているのは、`lib.rs` 側がパース回復で「壊れた宣言を
 //! 除いた残り」だけを検証にかけられるようにするため。特に
-//! `validate_edge_endpoints` は、パース済みの宣言が1件でも壊れていた場合に
-//! `lib.rs` が直接は呼ばず、代わりに [`filter_edges_with_known_endpoints`] で
-//! 未知端点のエッジを黙って除外する (二次エラー抑制)。重複ノード名・重複
-//! エッジラベルの診断は回復の有無によらず常に実行する (現行維持)。
+//! `validate_edge_endpoints`/`validate_each_type_matches_from` は、パース済みの
+//! 宣言が1件でも壊れていた場合に `lib.rs` が直接は呼ばず、代わりに
+//! [`filter_edges_with_known_endpoints`] で未知端点のエッジを黙って除外する
+//! (二次エラー抑制)。重複ノード名・重複エッジ種別名の診断は回復の有無に
+//! よらず常に実行する (現行維持)。
 
 use std::collections::{HashMap, HashSet};
 
@@ -42,19 +45,19 @@ pub fn validate_unique_node_names(nodes: &[NodeDecl]) -> syn::Result<()> {
     Ok(())
 }
 
-pub fn validate_unique_edge_labels(edges: &[EdgeDecl]) -> syn::Result<()> {
+pub fn validate_unique_edge_kinds(edges: &[EdgeDecl]) -> syn::Result<()> {
     let mut seen: HashMap<String, proc_macro2::Span> = HashMap::new();
     for edge in edges {
-        let name = edge.label.to_string();
+        let name = edge.kind.to_string();
         if let Some(&prev_span) = seen.get(&name) {
             let mut err = syn::Error::new(
-                edge.label.span(),
+                edge.kind.span(),
                 format!("エッジ種別 `{name}` が重複して宣言されています"),
             );
             err.combine(syn::Error::new(prev_span, "最初の宣言はこちら"));
             return Err(err);
         }
-        seen.insert(name, edge.label.span());
+        seen.insert(name, edge.kind.span());
     }
     Ok(())
 }
@@ -70,9 +73,29 @@ pub fn validate_edge_endpoints(nodes: &[NodeDecl], edges: &[EdgeDecl]) -> syn::R
                     endpoint.to_token_stream(),
                     format!(
                         "エッジ `{}` の端点 `{}` は宣言されていないノード型です。宣言済みノード一覧: [{}]",
-                        edge.label,
+                        edge.kind,
                         endpoint,
                         declared.join(", ")
+                    ),
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+/// `where each <FromType>: ..` の `<FromType>` がエッジの `from` と一致するかを
+/// 検査する (`docs/schema_v4.md` §1「`<FromType>` は始点の型名と一致しなければ
+/// ならない」)。
+pub fn validate_each_type_matches_from(edges: &[EdgeDecl]) -> syn::Result<()> {
+    for edge in edges {
+        if let Some((from_type, _spec)) = &edge.constraints.each {
+            if from_type.to_string() != edge.from.to_string() {
+                return Err(syn::Error::new_spanned(
+                    from_type.to_token_stream(),
+                    format!(
+                        "`each {}` はエッジ `{}` の始点型 `{}` と一致しません (each は常に始点側の出次数を指定します)",
+                        from_type, edge.kind, edge.from
                     ),
                 ));
             }

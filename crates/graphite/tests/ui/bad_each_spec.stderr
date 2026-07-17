@@ -1,0 +1,5 @@
+error: `each <型>: 1` または `each <型>: 0..1` の形式で指定してください
+  --> tests/ui/bad_each_spec.rs:19:74
+   |
+19 |             edge BelongsTo = Employee -> Department where each Employee: 2..5;
+   |                                                                          ^

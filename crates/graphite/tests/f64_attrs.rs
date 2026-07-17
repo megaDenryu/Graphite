@@ -32,7 +32,7 @@ graphite::graph_schema! {
         node Sensor;
         node Reading;
 
-        edge measured: Sensor -[MeasuredEdge]-> Reading (0..*);
+        edge Measured = Sensor -[MeasuredEdge]-> Reading;
     }
 }
 
@@ -47,14 +47,17 @@ fn f64をエッジ属性とノードフィールドに持つスキーマがコ�
         );
         b.reading(ReadingId("r1".to_string()), Reading { value: 23.5 });
         b.measured(
-            SensorId("s1".to_string()),
-            ReadingId("r1".to_string()),
-            MeasuredEdge { confidence: 0.95 },
+            MeasuredId("m1".to_string()),
+            Measured(
+                SensorId("s1".to_string()),
+                ReadingId("r1".to_string()),
+                MeasuredEdge { confidence: 0.95 },
+            ),
         );
     })
     .expect("f64 フィールドを含むスキーマも正常に構築できるはず");
 
-    let readings = g.measured().of(&SensorId("s1".to_string()));
+    let readings = Measured::of(&g, &SensorId("s1".to_string()));
     assert_eq!(readings.len(), 1);
     assert_eq!(readings[0].0.value, 23.5);
     assert_eq!(readings[0].1.confidence, 0.95);

@@ -42,9 +42,9 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::parse::Parser;
 
-/// ノード種別・エッジ種別 (多重度付き) から図式グラフのスキーマ一式
-/// (ノード struct・newtype キー・エッジ属性 struct・スキーマ struct・
-/// builder・違反 enum) を生成する。
+/// ノード種別・エッジ種別 (where 制約付き) から図式グラフのスキーマ一式
+/// (ノード struct・newtype キー・エッジ種別ごとのタプル struct・エッジ
+/// newtype キー・スキーマ struct・builder・違反 enum) を生成する。
 ///
 /// ```text
 /// pub struct Employee { pub name: String, pub id: u32 }
@@ -56,17 +56,18 @@ use syn::parse::Parser;
 ///         node Employee;
 ///         node Department;
 ///
-///         edge belongs_to: Employee -> Department (1);
-///         edge boss:       Employee -[BossEdge]-> Employee (0..1);
-///         edge reports:    Employee -> Employee (0..*);
+///         edge BelongsTo = Employee -> Department              where each Employee: 1;
+///         edge Boss      = Employee -[BossEdge]-> Employee     where each Employee: 0..1;
+///         edge Reports   = Employee -> Employee;
 ///     }
 /// }
 /// ```
 ///
 /// `Employee`/`Department`/`BossEdge` はいずれもこのマクロの外でユーザーが
 /// 宣言した普通の struct への参照であり、このマクロは値の型そのものを一切
-/// 生成しない (`docs/edge_syntax_v3.md` 参照)。生成するのはグラフ機械
-/// (newtype キー・ストレージ・builder・アクセサ・違反 enum) だけ。
+/// 生成しない (`docs/schema_v4.md` 参照)。生成するのはグラフ機械
+/// (newtype キー・エッジタプル struct・ストレージ・builder・アクセサ・
+/// 違反 enum) だけ。
 #[proc_macro]
 pub fn graph_schema(input: TokenStream) -> TokenStream {
     // G4a: ヘッダ (`schema Name {`) 自体が壊れている場合はここで Err になり、
@@ -90,7 +91,7 @@ pub fn graph_schema(input: TokenStream) -> TokenStream {
         schema.edges
     };
 
-    // 重複ノード名・重複エッジラベル診断は現行維持: パース回復の有無に
+    // 重複ノード名・重複エッジ種別名診断は現行維持: パース回復の有無に
     // 関わらず常に検査し、見つかった場合はコード生成を行わない
     // (従来から「validate 失敗時はコード生成なし」という挙動だった)。
     let mut validate_errors: Vec<syn::Error> = Vec::new();
@@ -102,7 +103,10 @@ pub fn graph_schema(input: TokenStream) -> TokenStream {
             validate_errors.push(e);
         }
     }
-    if let Err(e) = schema_validate::validate_unique_edge_labels(&edges) {
+    if let Err(e) = schema_validate::validate_unique_edge_kinds(&edges) {
+        validate_errors.push(e);
+    }
+    if let Err(e) = schema_validate::validate_each_type_matches_from(&edges) {
         validate_errors.push(e);
     }
 
@@ -137,10 +141,10 @@ pub fn graph_schema(input: TokenStream) -> TokenStream {
 ///
 /// ```text
 /// let g = graphite::graph!(OrgChart {
-///     tanaka: Employee { name: "田中".into(), id: 1 },
-///     sales:  Department { name: "営業".into() },
+///     tanaka = Employee { name: "田中".into(), id: 1 },
+///     sales  = Department { name: "営業".into() },
 ///
-///     tanaka -[belongs_to]-> sales,
+///     belongs = BelongsTo(tanaka -> sales),
 /// });
 /// ```
 #[proc_macro]

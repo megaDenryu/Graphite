@@ -1,21 +1,22 @@
 //! `graph_schema!` の入力 DSL のパース (構文木を組み立てるだけで、
 //! ノード型の重複や未宣言参照といった意味検査は `schema_validate.rs` で行う)。
 //!
-//! 対応する文法 (`docs/edge_syntax_v3.md` 参照):
+//! 対応する文法 (v4、`docs/schema_v4.md` §1 参照):
 //!
 //! ```text
-//! pub struct Employee { pub name: String, pub id: u32 }
-//! pub struct Department { pub name: String }
+//! pub struct Person { pub name: String }
+//! pub struct Team { pub name: String }
 //! pub struct BossEdge { pub since: i32 }
 //!
 //! graphite::graph_schema! {
-//!     schema OrgChart {
-//!         node Employee;
-//!         node Department;
+//!     schema Org {
+//!         node Person;
+//!         node Team;
 //!
-//!         edge belongs_to: Employee -> Department (1);
-//!         edge boss:       Employee -[BossEdge]-> Employee (0..1);
-//!         edge reports:    Employee -> Employee (0..*);
+//!         edge BelongsTo = Person -> Team              where each Person: 1;
+//!         edge Boss      = Person -[BossEdge]-> Person where each Person: 0..1;
+//!         edge DependsOn = Service -> Service          where unique pair;
+//!         edge Assigned  = Person -[Role]-> Project;   // 制約なし
 //!     }
 //! }
 //! ```
@@ -26,10 +27,22 @@
 //! 場合は `use` で名前をこのスコープに持ち込む)。エッジ属性型は照合には
 //! 使わず参照するだけなので `syn::Path` (モジュール修飾可) を許す。
 //!
-//! エッジ宣言は `label: From -> To (mult);` (属性なし) または
-//! `label: From -[Attrs]-> To (mult);` (属性あり) の形。`label:` の右側
-//! 全体が関係型 (Rust の `f: impl Fn(A) -> B` と同じ読み方)、矢印内は
-//! 積み荷 (属性型) のみという v3 の設計 (`docs/edge_syntax_v3.md` 参照)。
+//! エッジ宣言は `edge Kind = From -> To (where ...)?;` (属性なし) または
+//! `edge Kind = From -[Attrs]-> To (where ...)?;` (属性あり) の形。
+//! **`Kind` は新しい nominal 型として生成される** (透過的別名ではない)。
+//! 旧多重度注釈 `(1)`/`(0..1)`/`(0..*)` は廃止 (字面ごと消滅、検出もしない)。
+//!
+//! `where` 節はカンマ区切りで複数の制約を書ける:
+//! - `each <FromType>: 1` — 各始点ノードにつきちょうど1本
+//! - `each <FromType>: 0..1` — 各始点につき高々1本
+//! - `unique pair` — 同じ (始点, 終点) の対に2本目を張ることを禁止
+//!
+//! `each` の `<FromType>` が宣言の `From` と一致するかは意味検査
+//! (`schema_validate.rs`) で行う。`each` と `unique pair` は独立した制約
+//! として扱い、両方を同時に書くことも許す (`each 0..1` の下では同対2本は
+//! 既に不可能なので `unique pair` の併記は冗長だが、実装を単純にするため
+//! 特別扱い・警告はしない — `docs/schema_v4.md` §1 が明記する「実装時に
+//! 単純な方を選ぶ」を適用した箇所)。
 
 use proc_macro2::TokenTree;
 use syn::parse::{Parse, ParseStream};
@@ -39,6 +52,9 @@ mod kw {
     syn::custom_keyword!(schema);
     syn::custom_keyword!(node);
     syn::custom_keyword!(edge);
+    syn::custom_keyword!(each);
+    syn::custom_keyword!(unique);
+    syn::custom_keyword!(pair);
 }
 
 /// 残りのトークンを丸ごと読み捨てて `ParseStream` を空にする。
@@ -56,17 +72,17 @@ fn drain_rest(content: ParseStream) {
     let _ = content.parse::<proc_macro2::TokenStream>();
 }
 
-/// `node Employee;`
+/// `node Person;`
 /// `node Category(categories);` — `(識別子)` は内部ストレージの複数形
 /// フィールド名を明示指定する省略可能な構文。省略時は素朴な `+ "s"`
 /// (`crate::naming::plural_field_name`) にフォールバックする。
 ///
-/// `Employee`/`Category` はユーザーが `graph_schema!` の外で宣言した普通の
-/// struct への参照であり、このマクロは生成しない (`docs/edge_syntax_v2.md`
-/// 参照)。型名は単純 `Ident` のみを受け付ける (エッジ端点の型名照合に文字列
-/// 比較で使うため、`syn::Path` にすると `crate::Employee` と `Employee` を
-/// 同一視できず照合が破綻する。モジュール修飾したい場合は `use` でこの
-/// スコープに名前を持ち込むのが Rust の作法どおりの解決)。
+/// `Person`/`Category` はユーザーが `graph_schema!` の外で宣言した普通の
+/// struct への参照であり、このマクロは生成しない。型名は単純 `Ident` のみを
+/// 受け付ける (エッジ端点の型名照合に文字列比較で使うため、`syn::Path` に
+/// すると `crate::Person` と `Person` を同一視できず照合が破綻する。
+/// モジュール修飾したい場合は `use` でこのスコープに名前を持ち込むのが
+/// Rust の作法どおりの解決)。
 pub struct NodeDecl {
     pub name: Ident,
     pub plural: Option<Ident>,
@@ -105,86 +121,116 @@ impl Parse for NodeDecl {
     }
 }
 
-/// 多重度。`(1)` / `(0..1)` / `(0..*)` の 3 種のみサポートする。
+/// `each <FromType>: 1` / `each <FromType>: 0..1` の右辺。
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum Multiplicity {
+pub enum EachSpec {
     One,
     ZeroOrOne,
-    ZeroOrMany,
 }
 
-const MULTIPLICITY_HELP: &str =
-    "多重度は (1) / (0..1) / (0..*) のいずれかのみサポートします";
+const EACH_HELP: &str = "`each <型>: 1` または `each <型>: 0..1` の形式で指定してください";
 
-impl Parse for Multiplicity {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let content;
-        parenthesized!(content in input);
-        let result = parse_multiplicity_body(&content);
-        if result.is_err() {
-            // G4a: drain_rest のコメント参照。分岐が多いためこの関数を
-            // 「本体を別関数に切り出し、エラー時は一括で drain する」形に
-            // している (各 `return Err(..)` のたびに drain を書くと漏れが
-            // 出やすいため)。
-            drain_rest(&content);
-        }
-        result
-    }
-}
-
-fn parse_multiplicity_body(content: ParseStream) -> syn::Result<Multiplicity> {
-    let lit: LitInt = content.parse()?;
+fn parse_each_spec(input: ParseStream) -> syn::Result<EachSpec> {
+    let lit: LitInt = input.parse()?;
     let value: u64 = lit.base10_parse()?;
     match value {
-        1 => {
-            if !content.is_empty() {
-                return Err(content.error(MULTIPLICITY_HELP));
-            }
-            Ok(Multiplicity::One)
-        }
+        1 => Ok(EachSpec::One),
         0 => {
-            content.parse::<Token![..]>()?;
-            if content.peek(Token![*]) {
-                content.parse::<Token![*]>()?;
-                if !content.is_empty() {
-                    return Err(content.error(MULTIPLICITY_HELP));
-                }
-                Ok(Multiplicity::ZeroOrMany)
-            } else {
-                let upper: LitInt = content.parse()?;
-                let upper_value: u64 = upper.base10_parse()?;
-                if upper_value != 1 {
-                    return Err(syn::Error::new(upper.span(), MULTIPLICITY_HELP));
-                }
-                if !content.is_empty() {
-                    return Err(content.error(MULTIPLICITY_HELP));
-                }
-                Ok(Multiplicity::ZeroOrOne)
+            input.parse::<Token![..]>()?;
+            let upper: LitInt = input.parse()?;
+            let upper_value: u64 = upper.base10_parse()?;
+            if upper_value != 1 {
+                return Err(syn::Error::new(upper.span(), EACH_HELP));
             }
+            Ok(EachSpec::ZeroOrOne)
         }
-        _ => Err(syn::Error::new(lit.span(), MULTIPLICITY_HELP)),
+        _ => Err(syn::Error::new(lit.span(), EACH_HELP)),
     }
 }
 
-/// `edge belongs_to: Employee -> Department (1);`
-/// `edge boss: Employee -[BossEdge]-> Employee (0..1);`
+/// `where` 節の制約1つ分。
+pub enum Constraint {
+    /// `each <FromType>: <spec>`。`FromType` は始点ノード型名との一致検証を
+    /// 意味検査 (`schema_validate.rs`) で行うため、トークンをそのまま保持する。
+    Each { from_type: Ident, spec: EachSpec },
+    /// `unique pair`。
+    UniquePair,
+}
+
+fn parse_constraint(input: ParseStream) -> syn::Result<Constraint> {
+    if input.peek(kw::each) {
+        input.parse::<kw::each>()?;
+        let from_type: Ident = input.parse()?;
+        input.parse::<Token![:]>()?;
+        let spec = parse_each_spec(input)?;
+        Ok(Constraint::Each { from_type, spec })
+    } else if input.peek(kw::unique) {
+        input.parse::<kw::unique>()?;
+        input.parse::<kw::pair>()?;
+        Ok(Constraint::UniquePair)
+    } else {
+        Err(input.error("`each <型>: <多重度>` または `unique pair` を期待しました"))
+    }
+}
+
+/// `where` 節全体 (カンマ区切りの制約の列、`where` キーワード自体は省略可)。
+#[derive(Default)]
+pub struct WhereClause {
+    pub each: Option<(Ident, EachSpec)>,
+    pub unique_pair: bool,
+}
+
+/// `where` 節 (存在すれば) をパースする。`where` キーワードが無ければ
+/// 制約なしの `WhereClause::default()` を返す。
+fn parse_optional_where_clause(input: ParseStream) -> syn::Result<WhereClause> {
+    if !input.peek(Token![where]) {
+        return Ok(WhereClause::default());
+    }
+    input.parse::<Token![where]>()?;
+
+    let mut clause = WhereClause::default();
+    loop {
+        match parse_constraint(input)? {
+            Constraint::Each { from_type, spec } => {
+                clause.each = Some((from_type, spec));
+            }
+            Constraint::UniquePair => {
+                clause.unique_pair = true;
+            }
+        }
+        if input.peek(Token![,]) {
+            input.parse::<Token![,]>()?;
+            // 末尾カンマの後 `;` が続く (次の制約が無い) ケースも許容する。
+            if input.peek(Token![;]) {
+                break;
+            }
+        } else {
+            break;
+        }
+    }
+    Ok(clause)
+}
+
+/// `edge Boss = Person -[BossEdge]-> Person where each Person: 0..1;`
 ///
 /// 属性型 (`BossEdge` 等) はユーザーが `graph_schema!` の外で宣言した普通の
-/// struct への参照であり、このマクロは生成しない (`docs/edge_syntax_v3.md`
-/// 参照)。
+/// struct への参照であり、このマクロは生成しない。
 pub struct EdgeDecl {
-    pub label: Ident,
+    /// エッジ種別名。新しい nominal 型として生成される (`docs/schema_v4.md`
+    /// §1)。型名なので慣習上 PascalCase だが、パース段階ではケースを検査
+    /// しない (単なる `Ident`)。
+    pub kind: Ident,
     pub from: Ident,
     pub to: Ident,
-    pub mult: Multiplicity,
     pub attrs_ty: Option<Path>,
+    pub constraints: WhereClause,
 }
 
 impl Parse for EdgeDecl {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         input.parse::<kw::edge>()?;
-        let label: Ident = input.parse()?;
-        input.parse::<Token![:]>()?;
+        let kind: Ident = input.parse()?;
+        input.parse::<Token![=]>()?;
         let from: Ident = input.parse()?;
         // `->` (属性なし) か `-[Attrs]->` (属性あり) かは、まず素の `->`
         // (単一の複合トークン) を先読みして判定する。`-[` は `-` と `[..]`
@@ -208,14 +254,14 @@ impl Parse for EdgeDecl {
             Some(attrs_ty)
         };
         let to: Ident = input.parse()?;
-        let mult: Multiplicity = input.parse()?;
+        let constraints = parse_optional_where_clause(input)?;
         input.parse::<Token![;]>()?;
         Ok(EdgeDecl {
-            label,
+            kind,
             from,
             to,
-            mult,
             attrs_ty,
+            constraints,
         })
     }
 }
@@ -231,7 +277,7 @@ fn parse_edge_bracket_body(content: ParseStream) -> syn::Result<Path> {
     Ok(path)
 }
 
-/// `schema OrgChart { ... }` 全体。
+/// `schema Org { ... }` 全体。
 pub struct SchemaInput {
     pub schema_name: Ident,
     pub nodes: Vec<NodeDecl>,
@@ -262,7 +308,7 @@ impl SchemaInput {
     ///   尽きるまで進める。`node`/`edge` いずれの宣言も `;` で終わるため
     ///   `;` 区切りの境界定義も選べるが、キーワード探索は proc_macro2 の
     ///   `( .. )`/`[ .. ]` がまるごと1つの `Group` トークン木として扱われる
-    ///   性質にただ乗りできる (多重度・エッジラベルの中身にどんなトークンが
+    ///   性質にただ乗りできる (where 節・エッジラベルの中身にどんなトークンが
     ///   あっても、Group 単位で一括に読み飛ばされるので誤って途中で止まらない)
     ///   うえ、両宣言に共通して使え実装も単純で誤爆しにくいためこちらを
     ///   採用した。

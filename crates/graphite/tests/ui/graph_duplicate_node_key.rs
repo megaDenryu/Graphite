@@ -1,6 +1,6 @@
-// フェーズ5 項目h: `graph!` 内のノード識別子はノード型を跨いで単一の
-// 平坦な名前空間 (README「名前空間に関する制約」節参照)。同じ識別子を
-// 2回ノード宣言するとコンパイルエラーになるはず。
+// v4: `graph!` 内の識別子はノード・エッジを跨いで単一の平坦な名前空間
+// (`docs/schema_v4.md` §0 規則1: 名前は常にキーの束縛)。同じ識別子を2回
+// 宣言するとコンパイルエラーになるはず。
 //
 // このケースでは `instance_codegen::generate` がコード生成前 (トークン
 // 列を1つも返す前) に `syn::Error` を返すため、マクロ呼び出し全体が
@@ -23,7 +23,7 @@ graphite::graph_schema! {
         node Employee;
         node Department;
 
-        edge belongs_to: Employee -> Department (1);
+        edge BelongsTo = Employee -> Department where each Employee: 1;
     }
 }
 
@@ -34,6 +34,6 @@ fn main() {
         sales = Department { name: "営業".into() },
         tanaka = Employee { name: "田中2".into(), id: 2 },
 
-        tanaka -[belongs_to]-> sales,
+        bt = BelongsTo(tanaka -> sales),
     });
 }

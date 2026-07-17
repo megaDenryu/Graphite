@@ -27,25 +27,6 @@ pub fn to_snake_case(ident: &str) -> String {
     result
 }
 
-/// `snake_case` の識別子を `PascalCase` に変換する。
-///
-/// 例: `boss` -> `Boss`, `belongs_to` -> `BelongsTo`。
-/// エッジ種別名から違反 enum のバリアント名
-/// (`{PascalCase}Multiplicity`/`{PascalCase}UnknownSource` 等) を導出するのに
-/// 使う。
-pub fn to_pascal_case(ident: &str) -> String {
-    ident
-        .split('_')
-        .map(|part| {
-            let mut chars = part.chars();
-            match chars.next() {
-                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
-                None => String::new(),
-            }
-        })
-        .collect()
-}
-
 /// ノード型の内部ストレージ用フィールド名 (複数形) を導出する。
 ///
 /// 英語の不規則複数形には対応しない素朴な "s" 付与だが、この名前は
@@ -64,13 +45,6 @@ mod tests {
         assert_eq!(to_snake_case("Employee"), "employee");
         assert_eq!(to_snake_case("OrgChart"), "org_chart");
         assert_eq!(to_snake_case("belongs_to"), "belongs_to");
-    }
-
-    #[test]
-    fn pascal_caseへ変換できる() {
-        assert_eq!(to_pascal_case("boss"), "Boss");
-        assert_eq!(to_pascal_case("belongs_to"), "BelongsTo");
-        assert_eq!(to_pascal_case("reports"), "Reports");
     }
 
     #[test]
