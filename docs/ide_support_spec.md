@@ -140,6 +140,24 @@ rust-analyzer での実測 (2026-07-15、`orgchart_macro.rs` の
 (項目G4 再計測の表) も、ハンドシェイクマクロ自体が存在しなくなったため
 構造的に解消した。G5 (同一ファイル制約) も同時に解消している (G5 節参照)。
 
+## 1.9 スキーマ v4 実装後の再計測 (2026-07-17)
+
+v4 (`docs/schema_v4.md`: 辺の第一級化・where 制約・型名前空間アクセス) 実装後、
+`crates/graphite/tests/orgchart_macro.rs` で実測:
+
+| 操作 | 結果 |
+|---|---|
+| schema `-[BossEdge]->` の積み荷型 → 定義 | ✅ ユーザー struct へ精密 |
+| `Boss::of(&g,..)` / マクロ外の `Boss(from,to,payload)` 構築 / リテラルの `Boss(..)` → 定義 | ✅ いずれも schema の `edge Boss` トークンへ精密着地 (辺種別 = 生成タプル struct の解決が全文脈で機能) |
+| リテラルのノードキー (`tanaka`)・積み荷フィールド (`since`)・辺キー束縛 (`tanaka_boss`) | ✅ v3 同様に精密 (let 束縛・式素通しの機構は v4 でも維持) |
+| schema `Boss` → 参照検索 | ✅ 宣言 + 全使用 15 件 (アクセス・リテラル・素の構築・型注釈) |
+| `where each Employee` の `Employee` → 定義 | ✅ 本コミットで修正済み。`EdgeInfo::each_from_token` にトークンを保持し、freeze 検証コード内にゼロコストの型検査文 (`let _: fn(&Type) = |_| {};`) として補間することで、このトークンが実在の型参照になった (再計測は次回) |
+| `Boss::of` の `of` 等、生成関連関数のメソッド名トークン → 定義 | ✅ 本コミットで修正済み。`gen_edge_query_impl`/`gen_node_trait_and_impls` が生成する fn ident に、由来する Kind/ノード型トークンのスパンを付与した (G3 ポリシー適用。再計測は次回) |
+
+計測手順の注意 (再確認): rust-analyzer の再起動直後は生成型 (`Boss` 等) の解決が
+数分間 [] を返すことがある。ユーザー struct が解決するのに生成型が解決しない場合は
+故障ではなくインデックス途中 — 対照実験 (`OrgChart` 等) で切り分けてから待つこと。
+
 ## 2. 仕様項目
 
 ### G1: `graph!` ノードキーの let 束縛化 (実装対象)
