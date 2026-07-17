@@ -25,6 +25,17 @@
 //! 求める — `Formula` とグラフの両方に同じ依存情報を複製する二重管理を
 //! `docs/modeling_guide.md` §5 の適用で解消している (`README.md`
 //! 「モデリングガイド§5の適用例」節参照)。
+//!
+//! この「終点で絞り込む」操作は `{Kind}::sources_of` (`docs/reverse_query.md`)
+//! の主要な適用先だが、実際に使えるのは**本数だけが要る**
+//! [`Self::validate_formula_wiring`] だけ ([`Feeds`]/[`Lhs`]/[`Rhs`] は
+//! いずれも積み荷なし・終点側 each 制約なしなので `sources_of(g,
+//! id).len()` がそのまま従来の `.filter(..).count()` を置き換える)。
+//! [`Engine::eval_formula`] が呼ぶ [`Self::feeds_into`]/[`Self::lhs_value`]/
+//! [`Self::rhs_value`] は**相手セルの `CellId`** (可変な値ストア
+//! `self.values` へ引くための鍵) が要るため `sources_of` (相手をノード値
+//! `&Cell` でだけ返す設計、キー版は最小方針により生やさない) の対象外
+//! — 各関数のコメントに詳細を記す。
 
 use std::collections::{HashMap, HashSet};
 
@@ -118,12 +129,17 @@ impl Engine {
     /// - `Sub` — このセルを終点とする `Lhs`/`Rhs` エッジがそれぞれ
     ///   ちょうど1本必要 (被減数/減数はどちらも一意でなければならない)。
     /// - `Input` — エッジ本数を問わない (値は `set_input` で直接与える)。
+    ///
+    /// 本数だけが要件で相手セルの値は不要なので、`{Kind}::iter` を毎回
+    /// 全走査して `.filter(.. edge.to() == cell_id ..)` する代わりに
+    /// `{Kind}::sources_of(graph, cell_id).len()` (`docs/reverse_query.md`)
+    /// を使う。freeze 時に構築済みの終点索引を引くだけの O(1) 償却になる。
     fn validate_formula_wiring(graph: &Sheet) {
         for (cell_id, cell) in Cell::iter(graph) {
             match cell.formula {
                 Formula::Input => {}
                 Formula::Mul | Formula::Sum => {
-                    let count = Feeds::iter(graph).filter(|(_id, edge)| edge.to() == cell_id).count();
+                    let count = Feeds::sources_of(graph, cell_id).len();
                     assert!(
                         count >= 1,
                         "{cell_id:?}: {:?}セルには演算対象を表すFeedsエッジが1本以上必要です (実際: {count}本)",
@@ -131,8 +147,8 @@ impl Engine {
                     );
                 }
                 Formula::Sub => {
-                    let lhs_count = Lhs::iter(graph).filter(|(_id, edge)| edge.to() == cell_id).count();
-                    let rhs_count = Rhs::iter(graph).filter(|(_id, edge)| edge.to() == cell_id).count();
+                    let lhs_count = Lhs::sources_of(graph, cell_id).len();
+                    let rhs_count = Rhs::sources_of(graph, cell_id).len();
                     assert_eq!(
                         lhs_count, 1,
                         "{cell_id:?}: Subセルには被減数を表すLhsエッジがちょうど1本必要です (実際: {lhs_count}本)"
@@ -236,6 +252,18 @@ impl Engine {
 
     /// `cell_id` を終点とする `Feeds` エッジの起点セルの値を、挿入順
     /// (`docs/schema_v4.md` §3.2 の順序保証) で列挙する。
+    ///
+    /// `{Kind}::sources_of` (`docs/reverse_query.md`) は使わない — 相手を
+    /// **ノード値** (`&Cell`、`formula` フィールドのみ) で返す設計であり、
+    /// ここで要る「相手セルの現在値 (`f64`)」は `self.values: HashMap<CellId,
+    /// f64>` (グラフ本体とは別の可変ストア、このファイル冒頭のモジュール doc
+    /// 決定2参照) から `CellId` で引く必要がある。`Cell` は自分の `CellId` を
+    /// 保持しないため `&Cell` から鍵を復元できず、`sources_of` は最小方針
+    /// (`docs/reverse_query.md`: 「キー版が要る場合は将来検討 (今回は生やさ
+    /// ない)」) によりキーを返さない。そのため相手のキーそのものが要る
+    /// ここでは、キーも一緒に読める `{Kind}::iter` の絞り込みを使い続ける
+    /// (`validate_formula_wiring` の本数チェックは値もキーも不要なので
+    /// `sources_of(..).len()` に置き換え済み、上記参照)。
     fn feeds_into<'a>(&'a self, cell_id: &'a CellId) -> impl Iterator<Item = f64> + 'a {
         Feeds::iter(&self.graph)
             .filter(move |(_id, edge)| edge.to() == cell_id)
@@ -243,6 +271,8 @@ impl Engine {
     }
 
     /// `cell_id` を終点とする `Lhs` エッジの起点セルの値 (被減数)。
+    /// `sources_of` を使わない理由は [`Self::feeds_into`] と同じ (相手の
+    /// `CellId` が要る)。
     ///
     /// # Panics
     /// `Lhs` エッジがちょうど1本であることは [`Self::validate_formula_wiring`]
@@ -256,6 +286,7 @@ impl Engine {
     }
 
     /// `cell_id` を終点とする `Rhs` エッジの起点セルの値 (減数)。
+    /// `sources_of` を使わない理由は [`Self::feeds_into`] と同じ。
     ///
     /// # Panics
     /// [`Self::lhs_value`] と同様、`Engine::new` の検査済み前提が破れて

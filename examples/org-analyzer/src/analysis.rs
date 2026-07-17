@@ -65,12 +65,10 @@ pub struct SummaryReport {
 pub fn summarize(org: &OrgChart) -> SummaryReport {
     let total_employees = Employee::ids(org).count();
 
-    // 部署別人数: BelongsTo::iter (each Employee: 1、社員ごとにちょうど1本) を
-    // 部署キーで集計する。
-    let mut dept_counter: HashMap<DepartmentId, usize> = HashMap::new();
-    for (_id, edge) in BelongsTo::iter(org) {
-        *dept_counter.entry(edge.to().clone()).or_insert(0) += 1;
-    }
+    // 部署別人数: 部署を終点とする BelongsTo エッジの本数。`docs/reverse_query.md`
+    // の `sources_of` (of の対称、終点で引いて始点側を返す) を使うと、
+    // 全エッジを走査して HashMap に集計する前段が不要になる (freeze 時に
+    // 構築済みの終点索引を `id` ごとに引くだけで済む)。
     let mut dept_counts: Vec<DeptCount> = Department::ids(org)
         .map(|id| DeptCount {
             department: id.clone(),
@@ -78,7 +76,7 @@ pub fn summarize(org: &OrgChart) -> SummaryReport {
                 .expect("Department::idsから得たキーは必ず存在する")
                 .name
                 .clone(),
-            count: dept_counter.get(id).copied().unwrap_or(0),
+            count: BelongsTo::sources_of(org, id).len(),
         })
         .collect();
     dept_counts.sort_by(|a, b| a.department.cmp(&b.department));
@@ -97,12 +95,9 @@ pub fn summarize(org: &OrgChart) -> SummaryReport {
         .collect();
     grade_counts.sort_by_key(|g| g.grade);
 
-    // span of control: Boss::iter から「boss -> 直属部下数」を集計する。
-    let mut direct_reports: HashMap<EmployeeId, usize> = HashMap::new();
-    for (_id, edge) in Boss::iter(org) {
-        *direct_reports.entry(edge.to().clone()).or_insert(0) += 1;
-    }
-
+    // span of control: 社員 (boss) を終点とする Boss エッジの本数 =
+    // 直属部下数。`Boss::sources_of` (`docs/reverse_query.md`) で直接引く
+    // (`direct_reports` を全エッジから事前に集計する HashMap は不要になる)。
     let managers: Vec<EmployeeId> = Employee::ids(org)
         .filter(|id| Employee::get(org, id).unwrap().grade >= MANAGER_GRADE_THRESHOLD)
         .cloned()
@@ -113,7 +108,7 @@ pub fn summarize(org: &OrgChart) -> SummaryReport {
     let mut zero_report_managers: Vec<(EmployeeId, String, String)> = Vec::new();
     let mut sum: usize = 0;
     for id in &managers {
-        let count = direct_reports.get(id).copied().unwrap_or(0);
+        let count = Boss::sources_of(org, id).len();
         sum += count;
         let emp = Employee::get(org, id).unwrap();
         if count > max {
@@ -131,16 +126,12 @@ pub fn summarize(org: &OrgChart) -> SummaryReport {
         sum as f64 / managers.len() as f64
     };
 
-    // プロジェクト別アサイン人数
-    let mut project_counter: HashMap<ProjectId, usize> = HashMap::new();
-    for (_id, edge) in Assigned::iter(org) {
-        *project_counter.entry(edge.to().clone()).or_insert(0) += 1;
-    }
+    // プロジェクト別アサイン人数。同じ理由で `Assigned::sources_of` を使う。
     let mut project_assignments: Vec<ProjectAssignmentCount> = Project::ids(org)
         .map(|id| ProjectAssignmentCount {
             project: id.clone(),
             name: Project::get(org, id).unwrap().name.clone(),
-            count: project_counter.get(id).copied().unwrap_or(0),
+            count: Assigned::sources_of(org, id).len(),
         })
         .collect();
     project_assignments.sort_by(|a, b| a.project.cmp(&b.project));
@@ -281,6 +272,14 @@ pub fn detect_anomalies(org: &OrgChart) -> AnomalyReport {
 
 /// 相互上司ペアの検出。README に載っている手法そのもの:
 /// 全ペアを集めておき、`(a, b)` かつ `(b, a)` が両方存在するものを拾う。
+///
+/// `Boss::sources_of` (`docs/reverse_query.md`) には書き換えない: ここで
+/// 判定に使っているのは `EmployeeId` の対 (`(a, b)`/`(b, a)`) そのものの
+/// 存在であり、相手の**キー**が要る。`sources_of` は of と対称に相手を
+/// ノード値 (`&Employee`) で返す設計 (キー版は最小方針により生やさない)
+/// なので、ここでは元の `Boss::iter` によるキー収集を使い続ける方が自然
+/// (`docs/reverse_query.md` の最小方針、`examples/reactive-cells` の
+/// `Engine::feeds_into` と同種の事情)。
 fn detect_mutual_boss_pairs(org: &OrgChart) -> Vec<(EmployeeId, EmployeeId)> {
     let all: Vec<(&EmployeeId, &EmployeeId)> =
         Boss::iter(org).map(|(_id, edge)| (edge.from(), edge.to())).collect();
@@ -361,21 +360,25 @@ fn detect_cross_department_bosses(org: &OrgChart) -> Vec<CrossDepartmentBoss> {
 }
 
 /// 誰もアサインされていないプロジェクト。
+///
+/// 「このプロジェクトを終点とする Assigned エッジが1本もない」を判定するには
+/// 「全エッジから staffed 集合を事前に作る」必要はなく、`Assigned::sources_of`
+/// (`docs/reverse_query.md`) をプロジェクトごとに直接引いて空かどうかを見れば
+/// 十分 (freeze 時に構築済みの終点索引を引くだけ)。
 fn detect_unstaffed_projects(org: &OrgChart) -> Vec<ProjectId> {
-    let staffed: HashSet<&ProjectId> = Assigned::iter(org).map(|(_id, edge)| edge.to()).collect();
     let mut result: Vec<ProjectId> = Project::ids(org)
-        .filter(|p| !staffed.contains(p))
+        .filter(|p| Assigned::sources_of(org, p).is_empty())
         .cloned()
         .collect();
     result.sort();
     result
 }
 
-/// どの部署からもスポンサーされていないプロジェクト。
+/// どの部署からもスポンサーされていないプロジェクト。同じ理由で
+/// `Sponsors::sources_of` を使う。
 fn detect_sponsorless_projects(org: &OrgChart) -> Vec<ProjectId> {
-    let sponsored: HashSet<&ProjectId> = Sponsors::iter(org).map(|(_id, edge)| edge.to()).collect();
     let mut result: Vec<ProjectId> = Project::ids(org)
-        .filter(|p| !sponsored.contains(p))
+        .filter(|p| Sponsors::sources_of(org, p).is_empty())
         .cloned()
         .collect();
     result.sort();
