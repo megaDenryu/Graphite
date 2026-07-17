@@ -1,5 +1,10 @@
 # graph! リテラル構文 v3 — `=` 束縛・式ペイロード・ハンドシェイク全廃
 
+> **[v4 (`docs/schema_v4.md`) で置換済み]** このファイルは歴史的記録として残す。
+> 現行のリテラル構文 (辺行も含め全行 `名前 = 値`、辺は `key = Kind(from -> to)` /
+> `key = Kind(from -[式]-> to)` でタプル struct を構築) は `docs/schema_v4.md`
+> を参照すること。
+
 2026-07-14 セッション2 でのユーザー決定。`docs/edge_syntax_v2.md` (スキーマ宣言
 構文 v2) と対になる、リテラル側の改訂。決定3 (`../Bullet/docs/graph_design_sketches.md`)
 のリテラル形 `key: Type { .. }` / `-[label { .. }]->` を置き換える。

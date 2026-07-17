@@ -1,5 +1,11 @@
 # エッジアクセス API — ビュー方式 (導出名の全廃)
 
+> **[v4 (`docs/schema_v4.md`) で置換済み]** このファイルは歴史的記録として残す。
+> ビュー6型 (`EdgeOne`/`EdgeOneWith`/`EdgeOption`/`EdgeOptionWith`/`EdgeMany`/
+> `EdgeManyWith`) は v4 で全廃され、型名前空間アクセス (`Kind::of`/`get`/
+> `between`/`iter`/`ids`/`len`) に置き換わった。現行のエッジアクセスAPIは
+> `docs/schema_v4.md` §3.2 を参照すること。
+
 2026-07-15 セッション2 でのユーザー決定。設計考察はオーケストレータ (本ドキュメント
 著者) によるもので、経緯は `docs/dev_history_2026-07-14_session2.md` を参照。
 

@@ -1,5 +1,9 @@
 # エッジ宣言構文 v3 — ラベルの型としての矢印式
 
+> **[v4 (`docs/schema_v4.md`) で置換済み]** このファイルは歴史的記録として残す。
+> 現行のエッジ宣言構文 (`edge Kind = From -> To;` / `where each ...`/`unique pair`
+> 制約・辺の第一級キー化) は `docs/schema_v4.md` を参照すること。
+
 2026-07-16 のユーザー決定。`docs/edge_syntax_v2.md` (v2) のエッジ宣言部の改訂。
 設計考察はオーケストレータによる (経緯・比較検討は
 `docs/dev_history_2026-07-14_session2.md` 参照)。
