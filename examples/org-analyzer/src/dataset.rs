@@ -6,9 +6,8 @@
 //! が拾うべき既知の異常を意図的に埋め込む。
 
 use crate::schema::{
-    Assigned, AssignedEdge, AssignedId, BelongsTo, BelongsToId, Boss, BossEdge, BossId,
-    Department, DepartmentId, Employee, EmployeeId, OrgChart, Project, ProjectId, Sponsors,
-    SponsorsId,
+    Assigned, AssignedEdge, BelongsTo, Boss, BossEdge, Department, DepartmentId, Employee,
+    EmployeeId, OrgChart, Project, ProjectId, Sponsors,
 };
 
 /// 社員数。
@@ -322,31 +321,33 @@ pub fn generate(seed: u64, inject_anomalies: bool) -> GeneratedOrg {
     // ここまでの生成ロジックは各多重度制約 (belongs_to はちょうど1、boss/
     // sponsors は高々1) を常に満たすように組んでいるので、合成データの
     // 構築自体が失敗することはない想定 (失敗したら生成ロジックのバグ)。
+    //
+    // 構築コード自体は `extend_nodes`/`extend_edges` (`docs/bulk_construction.md`)
+    // に集約し、for ループは上記の「データを生成する」部分だけに残す。
     let chart = OrgChart::create(|b| {
-        for (id, e) in employees {
-            b.employee(id, e);
-        }
-        for (id, d) in departments {
-            b.department(id, d);
-        }
-        for (id, p) in projects {
-            b.project(id, p);
-        }
-        for (e, d) in belongs_to_edges {
-            b.belongs_to(BelongsToId(format!("bt_{}", e.0)), BelongsTo(e, d));
-        }
-        for (from, to, attrs) in boss_edges {
-            b.boss(BossId(format!("boss_{}", from.0)), Boss(from, to, attrs));
-        }
-        for (e, p, attrs) in assigned_edges {
-            b.assigned(
-                AssignedId(format!("asn_{}_{}", e.0, p.0)),
-                Assigned(e, p, attrs),
-            );
-        }
-        for (d, p) in sponsors_edges {
-            b.sponsors(SponsorsId(format!("spon_{}", d.0)), Sponsors(d, p));
-        }
+        b.extend_nodes(employees.into_iter().map(|(id, e)| (id.0, e)));
+        b.extend_nodes(departments.into_iter().map(|(id, d)| (id.0, d)));
+        b.extend_nodes(projects.into_iter().map(|(id, p)| (id.0, p)));
+        b.extend_edges(
+            belongs_to_edges
+                .into_iter()
+                .map(|(e, d)| (format!("bt_{}", e.0), BelongsTo(e, d))),
+        );
+        b.extend_edges(
+            boss_edges
+                .into_iter()
+                .map(|(from, to, attrs)| (format!("boss_{}", from.0), Boss(from, to, attrs))),
+        );
+        b.extend_edges(
+            assigned_edges
+                .into_iter()
+                .map(|(e, p, attrs)| (format!("asn_{}_{}", e.0, p.0), Assigned(e, p, attrs))),
+        );
+        b.extend_edges(
+            sponsors_edges
+                .into_iter()
+                .map(|(d, p)| (format!("spon_{}", d.0), Sponsors(d, p))),
+        );
     })
     .expect("合成データ生成器は常に多重度制約を満たすよう組んでいるはず");
 
