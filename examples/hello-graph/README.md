@@ -114,6 +114,7 @@ cargo run
 | `unique pair` を対で検索する | `Reports::between(&g, &from, &to)` | `Option<&Reports>` |
 | 制約なしを辿る | `ReviewedBy::of(&g, &id)` (for ループで受ける) | `Vec<(&Person, &ReviewEdge)>` |
 | キーで辺1本を検索する | `BelongsTo::get(&g, &BelongsToId("bt1".to_string()))` | `Option<&BelongsTo>` |
+| 無向辺 (`--`) の両端を読む/対称に辿る (v4.1) | `Friends::get(&g,&id).endpoints()` / `Friends::of(&g, &id)` (どちらの位置でも対称) | `(&PersonId, &PersonId)` / `Vec<&Person>` |
 
 ### 一覧する (iter/ids/len)
 

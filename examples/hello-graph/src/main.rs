@@ -84,6 +84,18 @@ pub struct ReviewEdge {
 // | `Boss`         | `each Person: 0..1` | `BossEdge`     | 部分関数。上司がいない社員がいてもよいが、いるなら1人だけ |
 // | `Reports`      | `unique pair`       | なし           | 同じ (上司, 部下) の対を2回宣言できない (平行辺の禁止) |
 // | `ReviewedBy`   | 制約なし            | `ReviewEdge`   | 平行辺OK。同じ2人の間で複数年度の考課が積み重なってよい |
+//
+// `Friends` は上記4本とは別の軸 (向きの意味論) を確認するために追加した
+// **無向辺** です (`docs/edge_endpoints_v4_1.md` §2)。矢印 (`->`/`-[X]->`)
+// には必ず「向き」の意味が伴いますが、「友人関係」のように対称な (向きに
+// 意味が無い) 関係を無理に矢印で書くと、どちらが from でどちらが to かに
+// 嘘の意味が生まれてしまいます。無向の柄 `--` (積み荷ありなら `-[X]-`、
+// 有向の柄から矢尻を落とした形) はこれを解消し、端点を「位置0/位置1」
+// ではなく順序なし対として扱います。`Friends(alice -- bob)` と
+// `Friends(bob -- alice)` は同じ辺であり、生成されるアクセサも
+// `from()`/`to()` という嘘の語彙ではなく `endpoints() -> (&PersonId,
+// &PersonId)` になります。両端は同じノード型でなければならず、役割名も
+// 書けません (対称性を型にも及ぼす設計、詳細は §3 の実行例参照)。
 
 #[rustfmt::skip]
 graphite::graph_schema! {
@@ -95,6 +107,7 @@ graphite::graph_schema! {
         edge Boss       = Person -[BossEdge]-> Person where each Person: 0..1;
         edge Reports    = Person -> Person             where unique pair;
         edge ReviewedBy = Person -[ReviewEdge]-> Person; // 制約なし (平行辺も自由)
+        edge Friends    = Person -- Person             where unique pair; // 無向辺 (v4.1)
     }
 }
 
@@ -265,6 +278,8 @@ fn section3() {
     each_0か1のofはoptionを返す(&g);
     unique_pairのbetweenはoptionを返す(&g);
     制約なしのofはvecを返す(&g);
+    無向辺のendpointsアクセサで両端を読む(&g);
+    無向辺のofとbetweenは対称に辿れる(&g);
 
     // --- 一覧する (iter/ids/len) ---
     println!("\n--- 一覧する (iter/ids/len) ---");
@@ -306,6 +321,7 @@ fn インライン式でgraphリテラルを組み立てる() -> Org {
         alice_reports_carol = Reports(alice -> carol),
         review_2023 = ReviewedBy(bob -[ReviewEdge { year: 2023 }]-> alice),
         review_2024 = ReviewedBy(bob -[ReviewEdge { year: 2024 }]-> carol),
+        alice_bob_friends = Friends(alice -- bob),
     })
     .expect("正常なグラフは構築に成功するはず");
     let alice_person: &Person = Person::get(&g, &PersonId("alice".to_string())).unwrap();
@@ -456,6 +472,38 @@ fn 制約なしのofはvecを返す(g: &Org) {
             reviewer.name, attrs.year
         );
     }
+}
+
+// やりたいこと: 無向辺 (`Friends`) は `from()`/`to()` の代わりに
+// `endpoints() -> (&PersonId, &PersonId)` を持つ (`docs/edge_endpoints_v4_1.md`
+// §2)。位置0/1は `Friends(alice -- bob)` と書いた際の記述順そのままだが、
+// 意味論としては順序なし対であることに注意 (次の関数で確認する)。
+fn 無向辺のendpointsアクセサで両端を読む(g: &Org) {
+    let friends_id = FriendsId("alice_bob_friends".to_string());
+    let edge: &Friends = Friends::get(g, &friends_id).unwrap();
+    let (p0, p1) = edge.endpoints();
+    println!("(無向) Friends::get(&g, &alice_bob_friends).endpoints() = ({p0:?}, {p1:?})");
+}
+
+// やりたいこと: `of`/`between` はどちらの位置に置かれても対称に辿れる。
+// `unique pair` の同値判定も順序を無視する (`alice -- bob` と `bob -- alice`
+// は同じ対)。
+fn 無向辺のofとbetweenは対称に辿れる(g: &Org) {
+    let alice = PersonId("alice".to_string());
+    let bob = PersonId("bob".to_string());
+
+    let friends_of_bob: Vec<&Person> = Friends::of(g, &bob);
+    for friend in &friends_of_bob {
+        println!("(無向) Friends::of(&g, &bob) に {} が含まれる (aliceが位置0でも辿れる)", friend.name);
+    }
+
+    let forward: Option<&Friends> = Friends::between(g, &alice, &bob);
+    let backward: Option<&Friends> = Friends::between(g, &bob, &alice);
+    println!(
+        "(無向) between(alice, bob) = {} / between(bob, alice) = {} (順序を無視して同じ辺)",
+        forward.is_some(),
+        backward.is_some()
+    );
 }
 
 // --- 一覧する (iter/ids/len) ---
