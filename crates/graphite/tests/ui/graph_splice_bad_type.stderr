@@ -1,0 +1,22 @@
+error[E0271]: type mismatch resolving `<Vec<i32> as IntoIterator>::Item == (_, _)`
+  --> tests/ui/graph_splice_bad_type.rs:20:11
+   |
+19 |       let _ = graphite::graph!(SpliceBad {
+   |  _____________-
+20 | |         ..not_pairs,
+   | |           ^^^^^^^^^ expected `(_, _)`, found `i32`
+21 | |     });
+   | |______- required by a bound introduced by this call
+   |
+   = note: expected tuple `(_, _)`
+               found type `i32`
+note: required by a bound in `SpliceBadBuilder::extend`
+  --> tests/ui/graph_splice_bad_type.rs:11:1
+   |
+11 | / graphite::graph_schema! {
+12 | |     schema SpliceBad {
+13 | |         node Person;
+14 | |     }
+15 | | }
+   | |_^ required by this bound in `SpliceBadBuilder::extend`
+   = note: this error originates in the macro `graphite::graph_schema` (in Nightly builds, run with -Z macro-backtrace for more info)
