@@ -1,0 +1,5 @@
+error: 式を期待しました
+  --> tests/ui/flow_partial_recovery.rs:25:13
+   |
+25 |         1 -[]-> broken,
+   |             ^

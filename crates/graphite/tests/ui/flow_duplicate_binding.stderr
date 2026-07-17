@@ -1,0 +1,11 @@
+error: 束縛名 `doubled` は既に宣言されています
+  --> tests/ui/flow_duplicate_binding.rs:17:23
+   |
+17 |         2 -[negate]-> doubled,
+   |                       ^^^^^^^
+
+error: 最初の宣言はこちら
+  --> tests/ui/flow_duplicate_binding.rs:16:23
+   |
+16 |         1 -[double]-> doubled,
+   |                       ^^^^^^^
