@@ -303,11 +303,13 @@ fn gen_node_trait_and_impls(
             fn get<'g>(g: &'g #schema_name, id: &Self::Id) -> Option<&'g Self>
             where
                 Self: 'g;
-            /// このノード種別の全キーを列挙する。
+            /// このノード種別の全キーを列挙する。挿入順を保持する
+            /// (`KeyedTable` の仕様、`crates/graphite/src/keyed_table.rs`)。
             fn ids<'g>(g: &'g #schema_name) -> impl Iterator<Item = &'g Self::Id>
             where
                 Self: 'g;
-            /// このノード種別の全要素を `(キー, 値)` で走査する。
+            /// このノード種別の全要素を `(キー, 値)` で走査する。挿入順を
+            /// 保持する (`KeyedTable` の仕様)。
             fn iter<'g>(g: &'g #schema_name) -> impl Iterator<Item = (&'g Self::Id, &'g Self)>
             where
                 Self: 'g;
@@ -1021,7 +1023,7 @@ fn gen_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream 
     } else {
         quote! {
             /// 対 (始点, 終点) で辺を検索する (制約なしなら平行辺を許すため
-            /// `Vec`)。
+            /// `Vec`)。格納順 (構築時の追加順) を保持する。
             pub fn between<'g>(g: &'g #schema_name, from: &#from_id, to: &#to_id) -> Vec<&'g #kind> {
                 match g.#from_index.get(from) {
                     Some(ids) => ids
@@ -1046,12 +1048,14 @@ fn gen_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream 
 
             #between
 
-            /// 表全体を `(キー, 値)` で走査する。
+            /// 表全体を `(キー, 値)` で走査する。挿入順 (構築時の追加順) を
+            /// 保持する (`KeyedTable` の仕様)。
             pub fn iter(g: &#schema_name) -> impl Iterator<Item = (&#id_ty, &#kind)> {
                 g.#accessor.iter()
             }
 
-            /// この辺種別の全キーを列挙する。
+            /// この辺種別の全キーを列挙する。挿入順 (構築時の追加順) を
+            /// 保持する (`KeyedTable` の仕様)。
             pub fn ids(g: &#schema_name) -> impl Iterator<Item = &#id_ty> {
                 g.#accessor.ids()
             }

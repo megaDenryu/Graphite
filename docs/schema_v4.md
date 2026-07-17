@@ -122,6 +122,13 @@ Boss::ids(&g);  Boss::len(&g);
   再構成する (ノード表と辺表で共有できるはず。実装時に設計)。
 - builder: `b.insert(key, node_value)` (v3 の総称 insert を維持) +
   `b.add(key, edge_value)` (辺版の総称。命名は原則3で実装時調整)。
+- **順序保証 (仕様):** `KeyedTable` (`crates/graphite/src/keyed_table.rs`)
+  の `ids`/`iter` は挿入順 (`insert` を呼んだ順) を保持する。これにより
+  制約なし辺の `{Kind}::of`/`iter`/`between` (Vec を返す各所) は格納順
+  (構築時の追加順) を保持する — 旧フェーズ5 項目 i で仕様化された
+  「正式な順序保証」の言語の約束であり、実装の副産物ではなく仕様として
+  扱う (同一始点からの平行辺が複数ある場合でも、`of()` はリテラル/builder
+  での記述順どおりに返る)。
 
 ### 3.3 検証 (freeze 時)
 
