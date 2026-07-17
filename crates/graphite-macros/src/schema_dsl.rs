@@ -43,6 +43,17 @@
 //! 既に不可能なので `unique pair` の併記は冗長だが、実装を単純にするため
 //! 特別扱い・警告はしない — `docs/schema_v4.md` §1 が明記する「実装時に
 //! 単純な方を選ぶ」を適用した箇所)。
+//!
+//! ## v4.1 での拡張 (`docs/edge_endpoints_v4_1.md`)
+//!
+//! - 端点は `Ident` (型名のみ) または `(役割名: 型名)` の2形。役割名は
+//!   両端同時か両方省略かの二択 (片方だけは構文エラー)。
+//! - 柄は4形: `->` / `-[Attrs]->` (有向) / `--` / `-[Attrs]-` (無向)。
+//!   無向辺には役割名を書けない (構文エラー)。
+//! - `each <参照名>` の `<参照名>` は役割名つきの辺では役割名 (型名参照は
+//!   意味検査でエラー)、無向辺ではノード型名 (次数制約) を指す。役割名により
+//!   終点側の入次数制約 (`each <終点役割名>: ..`) も書けるようになる
+//!   (意味解決は `schema_validate.rs::resolve_each_side`)。
 
 use proc_macro2::TokenTree;
 use syn::parse::{Parse, ParseStream};
@@ -150,9 +161,13 @@ fn parse_each_spec(input: ParseStream) -> syn::Result<EachSpec> {
 
 /// `where` 節の制約1つ分。
 pub enum Constraint {
-    /// `each <FromType>: <spec>`。`FromType` は始点ノード型名との一致検証を
-    /// 意味検査 (`schema_validate.rs`) で行うため、トークンをそのまま保持する。
-    Each { from_type: Ident, spec: EachSpec },
+    /// `each <参照名>: <spec>`。`<参照名>` は役割名なしの辺では始点ノード型名、
+    /// 役割名つきの辺では役割名 (始点側 = 出次数 / 終点側 = 入次数)、無向辺
+    /// では (両端同型の) ノード型名 (= 次数) のいずれかを指す
+    /// (`docs/edge_endpoints_v4_1.md`)。どの意味になるかの解決は意味検査
+    /// (`schema_validate.rs::resolve_each_side`) で行うため、ここではトークン
+    /// をそのまま保持する。
+    Each { ref_ident: Ident, spec: EachSpec },
     /// `unique pair`。
     UniquePair,
 }
@@ -160,10 +175,10 @@ pub enum Constraint {
 fn parse_constraint(input: ParseStream) -> syn::Result<Constraint> {
     if input.peek(kw::each) {
         input.parse::<kw::each>()?;
-        let from_type: Ident = input.parse()?;
+        let ref_ident: Ident = input.parse()?;
         input.parse::<Token![:]>()?;
         let spec = parse_each_spec(input)?;
-        Ok(Constraint::Each { from_type, spec })
+        Ok(Constraint::Each { ref_ident, spec })
     } else if input.peek(kw::unique) {
         input.parse::<kw::unique>()?;
         input.parse::<kw::pair>()?;
@@ -191,8 +206,8 @@ fn parse_optional_where_clause(input: ParseStream) -> syn::Result<WhereClause> {
     let mut clause = WhereClause::default();
     loop {
         match parse_constraint(input)? {
-            Constraint::Each { from_type, spec } => {
-                clause.each = Some((from_type, spec));
+            Constraint::Each { ref_ident, spec } => {
+                clause.each = Some((ref_ident, spec));
             }
             Constraint::UniquePair => {
                 clause.unique_pair = true;
@@ -212,9 +227,16 @@ fn parse_optional_where_clause(input: ParseStream) -> syn::Result<WhereClause> {
 }
 
 /// `edge Boss = Person -[BossEdge]-> Person where each Person: 0..1;`
+/// `edge Boss = (subordinate: Employee) -> (superior: Employee) where each subordinate: 0..1;`
+/// `edge Friends = Person -- Person where unique pair;`
 ///
 /// 属性型 (`BossEdge` 等) はユーザーが `graph_schema!` の外で宣言した普通の
 /// struct への参照であり、このマクロは生成しない。
+///
+/// v4.1 (`docs/edge_endpoints_v4_1.md`) で追加された2点:
+/// - 端点に役割名を付けられる (`(役割名: 型名)`)。両端同時か両方省略かの
+///   二択で、無向辺には付けられない (いずれも構文エラーとして案内する)。
+/// - 柄が4形になる: `->` / `-[Attrs]->` (有向) / `--` / `-[Attrs]-` (無向)。
 pub struct EdgeDecl {
     /// エッジ種別名。新しい nominal 型として生成される (`docs/schema_v4.md`
     /// §1)。型名なので慣習上 PascalCase だが、パース段階ではケースを検査
@@ -222,8 +244,95 @@ pub struct EdgeDecl {
     pub kind: Ident,
     pub from: Ident,
     pub to: Ident,
+    /// 始点の役割名 (`(subordinate: Employee)` の `subordinate`)。役割名を
+    /// 書いた辺のみ `Some`。両端同時か両方省略かのいずれかであることは
+    /// パース時点で検査済み (`docs/edge_endpoints_v4_1.md` §1)。
+    pub from_role: Option<Ident>,
+    /// 終点の役割名。
+    pub to_role: Option<Ident>,
+    /// 有向 (`->`/`-[Attrs]->`) か無向 (`--`/`-[Attrs]-`) か。
+    pub directed: bool,
     pub attrs_ty: Option<Path>,
     pub constraints: WhereClause,
+}
+
+/// 端点1つ分 (`Ident` または `(役割名: 型名)`)。
+struct Endpoint {
+    role: Option<Ident>,
+    ty: Ident,
+}
+
+/// 端点をパースする。`(` で始まれば役割名つき `(役割名: 型名)`、そうでなければ
+/// 型名のみの `Ident`。
+fn parse_endpoint(input: ParseStream) -> syn::Result<Endpoint> {
+    if input.peek(syn::token::Paren) {
+        let content;
+        parenthesized!(content in input);
+        match parse_endpoint_paren_body(&content) {
+            Ok(v) => Ok(v),
+            Err(e) => {
+                // G4a: drain_rest のコメント参照。
+                drain_rest(&content);
+                Err(e)
+            }
+        }
+    } else {
+        let ty: Ident = input.parse()?;
+        Ok(Endpoint { role: None, ty })
+    }
+}
+
+/// `(役割名: 型名)` の `( .. )` の中身。
+fn parse_endpoint_paren_body(content: ParseStream) -> syn::Result<Endpoint> {
+    let role: Ident = content.parse()?;
+    content.parse::<Token![:]>()?;
+    let ty: Ident = content.parse()?;
+    if !content.is_empty() {
+        return Err(content.error("端点は `(役割名: 型名)` の形式で指定してください"));
+    }
+    Ok(Endpoint { role: Some(role), ty })
+}
+
+/// 柄 (4形: `->` / `-[Attrs]->` / `--` / `-[Attrs]-`) をパースし、
+/// `(積み荷型, 有向か)` を返す。
+///
+/// 有向の柄 `-` + `>` から矢尻を落とすと無向の柄になる、という
+/// `docs/edge_endpoints_v4_1.md` §2 の導出規則どおりに実装する: 最初の `-`
+/// を読んだ後、`[Attrs]` (積み荷、あれば) を読み、最後に `->` (有向) か `-`
+/// (無向) かで向きを判定する。
+fn parse_edge_arrow(input: ParseStream) -> syn::Result<(Option<Path>, bool)> {
+    // 素の `->` (単一の複合トークン) を先読みして判定する。`-[`/`--` は
+    // いずれも `-` と別トークンの2トークンなので `->` と誤って先読み
+    // マッチすることはない。
+    if input.peek(Token![->]) {
+        input.parse::<Token![->]>()?;
+        return Ok((None, true));
+    }
+    input.parse::<Token![-]>()?;
+    if input.peek(syn::token::Bracket) {
+        let bracket_content;
+        bracketed!(bracket_content in input);
+        let attrs_ty = match parse_edge_bracket_body(&bracket_content) {
+            Ok(v) => v,
+            Err(e) => {
+                // G4a: drain_rest のコメント参照。
+                drain_rest(&bracket_content);
+                return Err(e);
+            }
+        };
+        if input.peek(Token![->]) {
+            input.parse::<Token![->]>()?;
+            Ok((Some(attrs_ty), true))
+        } else {
+            input.parse::<Token![-]>()?;
+            Ok((Some(attrs_ty), false))
+        }
+    } else {
+        // 積み荷なし。ここまでで最初の `-` を消費済みなので、残りの `-`
+        // (無向の柄 `--` の2文字目) を読む。
+        input.parse::<Token![-]>()?;
+        Ok((None, false))
+    }
 }
 
 impl Parse for EdgeDecl {
@@ -231,48 +340,59 @@ impl Parse for EdgeDecl {
         input.parse::<kw::edge>()?;
         let kind: Ident = input.parse()?;
         input.parse::<Token![=]>()?;
-        let from: Ident = input.parse()?;
-        // `->` (属性なし) か `-[Attrs]->` (属性あり) かは、まず素の `->`
-        // (単一の複合トークン) を先読みして判定する。`-[` は `-` と `[..]`
-        // の2トークンなので `->` と誤って先読みマッチすることはない。
-        let attrs_ty = if input.peek(Token![->]) {
-            input.parse::<Token![->]>()?;
-            None
+        let from_ep = parse_endpoint(input)?;
+        let (attrs_ty, directed) = parse_edge_arrow(input)?;
+        let to_ep = parse_endpoint(input)?;
+
+        // 役割名の妥当性検査 (`docs/edge_endpoints_v4_1.md` §1/§2)。
+        if !directed {
+            // 無向辺には役割名を書けない (役割の区別がある時点で対称ではない)。
+            if let Some(bad_role) = from_ep.role.as_ref().or(to_ep.role.as_ref()) {
+                return Err(syn::Error::new(
+                    bad_role.span(),
+                    "無向辺 (`--`/`-[Attrs]-`) には役割名を書けません。役割の区別がある場合は役割名つき有向辺を使ってください",
+                ));
+            }
         } else {
-            input.parse::<Token![-]>()?;
-            let bracket_content;
-            bracketed!(bracket_content in input);
-            let attrs_ty = match parse_edge_bracket_body(&bracket_content) {
-                Ok(v) => v,
-                Err(e) => {
-                    // G4a: drain_rest のコメント参照。
-                    drain_rest(&bracket_content);
-                    return Err(e);
+            match (&from_ep.role, &to_ep.role) {
+                (Some(_), Some(_)) | (None, None) => {}
+                (Some(r), None) => {
+                    return Err(syn::Error::new(
+                        r.span(),
+                        "役割名は両端同時に書くか、両方省略するかのいずれかにしてください (この辺は始点にだけ役割名があります)",
+                    ));
                 }
-            };
-            input.parse::<Token![->]>()?;
-            Some(attrs_ty)
-        };
-        let to: Ident = input.parse()?;
+                (None, Some(r)) => {
+                    return Err(syn::Error::new(
+                        r.span(),
+                        "役割名は両端同時に書くか、両方省略するかのいずれかにしてください (この辺は終点にだけ役割名があります)",
+                    ));
+                }
+            }
+        }
+
         let constraints = parse_optional_where_clause(input)?;
         input.parse::<Token![;]>()?;
         Ok(EdgeDecl {
             kind,
-            from,
-            to,
+            from: from_ep.ty,
+            to: to_ep.ty,
+            from_role: from_ep.role,
+            to_role: to_ep.role,
+            directed,
             attrs_ty,
             constraints,
         })
     }
 }
 
-/// `-[型パス]->` の `[ .. ]` の中身。`syn::Path` として受けるため
+/// `-[型パス]->` / `-[型パス]-` の `[ .. ]` の中身。`syn::Path` として受けるため
 /// `edges::BossEdge` のようなモジュール修飾も許す (ノード型名と違い端点照合
 /// に使わないため、単純 `Ident` に制限する必要がない)。
 fn parse_edge_bracket_body(content: ParseStream) -> syn::Result<Path> {
     let path: Path = content.parse()?;
     if !content.is_empty() {
-        return Err(content.error("`-[型パス]->` の形式で指定してください"));
+        return Err(content.error("`-[型パス]->` または `-[型パス]-` の形式で指定してください"));
     }
     Ok(path)
 }

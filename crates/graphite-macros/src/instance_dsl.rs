@@ -187,32 +187,11 @@ impl Parse for EdgeLiteralInner {
         parenthesized!(content in input);
 
         let from: Ident = content.parse()?;
-        let attrs = if content.peek(Token![->]) {
-            content.parse::<Token![->]>()?;
-            None
-        } else {
-            content.parse::<Token![-]>()?;
-            let bracket_content;
-            syn::bracketed!(bracket_content in content);
-            let attrs_expr: Expr = match bracket_content.parse() {
-                Ok(e) => e,
-                Err(e) => {
-                    drain_rest(&bracket_content);
-                    return Err(e);
-                }
-            };
-            if !bracket_content.is_empty() {
-                let e = bracket_content.error("`-[式]->` の形式で指定してください");
-                drain_rest(&bracket_content);
-                return Err(e);
-            }
-            content.parse::<Token![->]>()?;
-            Some(attrs_expr)
-        };
+        let attrs = parse_instance_arrow_payload(&content)?;
         let to: Ident = content.parse()?;
         if !content.is_empty() {
             return Err(content.error(
-                "`Kind(from -> to)` または `Kind(from -[式]-> to)` の形式で指定してください",
+                "`Kind(from -> to)` / `Kind(from -[式]-> to)` / `Kind(from -- to)` / `Kind(from -[式]- to)` の形式で指定してください",
             ));
         }
         if !input.is_empty() {
@@ -220,6 +199,46 @@ impl Parse for EdgeLiteralInner {
         }
 
         Ok(EdgeLiteralInner { kind, from, attrs, to })
+    }
+}
+
+/// 柄 (4形: `->` / `-[式]->` / `--` / `-[式]-`) をパースし、積み荷式
+/// (あれば) を返す。`graph!` リテラルは有向/無向の区別を一切使わない
+/// (脱糖は従来どおり素通し、`docs/edge_endpoints_v4_1.md` §3「graph! 側:
+/// 辺コンストラクタ内の柄も同4形。脱糖は従来の機構のまま」) ため、
+/// 戻り値は積み荷の有無だけで、向きの情報は捨てる。
+fn parse_instance_arrow_payload(content: ParseStream) -> syn::Result<Option<Expr>> {
+    if content.peek(Token![->]) {
+        content.parse::<Token![->]>()?;
+        return Ok(None);
+    }
+    content.parse::<Token![-]>()?;
+    if content.peek(syn::token::Bracket) {
+        let bracket_content;
+        syn::bracketed!(bracket_content in content);
+        let attrs_expr: Expr = match bracket_content.parse() {
+            Ok(e) => e,
+            Err(e) => {
+                drain_rest(&bracket_content);
+                return Err(e);
+            }
+        };
+        if !bracket_content.is_empty() {
+            let e = bracket_content.error("`-[式]->` または `-[式]-` の形式で指定してください");
+            drain_rest(&bracket_content);
+            return Err(e);
+        }
+        if content.peek(Token![->]) {
+            content.parse::<Token![->]>()?;
+        } else {
+            content.parse::<Token![-]>()?;
+        }
+        Ok(Some(attrs_expr))
+    } else {
+        // 積み荷なしの無向 (`--`): 最初の `-` は既に消費済みなので、2文字目の
+        // `-` を読む。
+        content.parse::<Token![-]>()?;
+        Ok(None)
     }
 }
 

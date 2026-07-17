@@ -4,8 +4,11 @@
 //! - ノード型名の重複宣言
 //! - エッジ種別名 (Kind) の重複宣言
 //! - エッジの端点 (`from`/`to`) が未宣言のノード型を指している場合
-//! - `where each <FromType>: ..` の `<FromType>` がエッジの `from` と
-//!   一致しない場合 (`docs/schema_v4.md` §1)
+//! - `where each <参照名>: ..` の `<参照名>` の意味解決 (`docs/schema_v4.md`
+//!   §1 / `docs/edge_endpoints_v4_1.md`): 役割名なしの辺では型名が `from` と
+//!   一致するか、役割名つきの辺では役割名 (始点/終点いずれか) と一致するか、
+//!   無向辺では (両端同型の) 型名と一致するか
+//! - 無向辺の両端が同じノード型であること (`docs/edge_endpoints_v4_1.md` §2)
 //!
 //! いずれも `syn::Error::new_spanned`/`syn::Error::new` で元トークンの span を
 //! 保ったまま返す (`.claude/skills/proc-macro-dev/SKILL.md` の方針通り、
@@ -25,6 +28,7 @@
 use std::collections::{HashMap, HashSet};
 
 use quote::ToTokens;
+use syn::Ident;
 
 use crate::schema_dsl::{EdgeDecl, NodeDecl};
 
@@ -84,21 +88,107 @@ pub fn validate_edge_endpoints(nodes: &[NodeDecl], edges: &[EdgeDecl]) -> syn::R
     Ok(())
 }
 
-/// `where each <FromType>: ..` の `<FromType>` がエッジの `from` と一致するかを
-/// 検査する (`docs/schema_v4.md` §1「`<FromType>` は始点の型名と一致しなければ
-/// ならない」)。
-pub fn validate_each_type_matches_from(edges: &[EdgeDecl]) -> syn::Result<()> {
-    for edge in edges {
-        if let Some((from_type, _spec)) = &edge.constraints.each {
-            if from_type.to_string() != edge.from.to_string() {
-                return Err(syn::Error::new_spanned(
-                    from_type.to_token_stream(),
+/// `where each <参照名>` が意味する側 (出次数/入次数/次数)。
+///
+/// - `Source`: 出次数制約 (役割名なしの辺の従来どおりの意味 / 役割名つきの辺で
+///   始点側の役割名を参照した場合)
+/// - `Target`: 入次数制約 (役割名つきの辺で終点側の役割名を参照した場合、
+///   `docs/edge_endpoints_v4_1.md` §1 の新規解禁項目)
+/// - `Degree`: 次数制約 (無向辺、`docs/edge_endpoints_v4_1.md` §2)
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum EachSide {
+    Source,
+    Target,
+    Degree,
+}
+
+/// `where each <参照名>: ..` の `<参照名>` がどちら側 (どの制約) を指すかを
+/// 解決する。解決できない場合は診断つきの `syn::Error` を返す。
+///
+/// - 無向辺: `<参照名>` は (両端同型の) ノード型名と一致しなければならない
+///   (次数制約、`docs/edge_endpoints_v4_1.md` §2)。役割名は無向辺には
+///   存在しない (パース時点で既に拒否済み)。
+/// - 役割名つきの有向辺: `<参照名>` は始点/終点いずれかの役割名と一致しなければ
+///   ならない。型名参照はエラー (`docs/edge_endpoints_v4_1.md` §1「型名参照は
+///   エラー (同型端点で曖昧なため)」)。
+/// - 役割名なしの有向辺: `<参照名>` は始点の型名と一致しなければならない
+///   (`docs/schema_v4.md` §1、旧来どおり)。
+pub fn resolve_each_side(edge: &EdgeDecl, each_ident: &Ident) -> syn::Result<EachSide> {
+    if !edge.directed {
+        if each_ident.to_string() == edge.from.to_string() {
+            return Ok(EachSide::Degree);
+        }
+        return Err(syn::Error::new_spanned(
+            each_ident.to_token_stream(),
+            format!(
+                "無向辺 `{}` の each は接続先の型 `{}` を指定してください (次数制約であり、役割名は存在しません)",
+                edge.kind, edge.from
+            ),
+        ));
+    }
+
+    match (&edge.from_role, &edge.to_role) {
+        (Some(from_role), Some(to_role)) => {
+            let s = each_ident.to_string();
+            if s == from_role.to_string() {
+                Ok(EachSide::Source)
+            } else if s == to_role.to_string() {
+                Ok(EachSide::Target)
+            } else {
+                Err(syn::Error::new_spanned(
+                    each_ident.to_token_stream(),
+                    format!(
+                        "役割名つきの辺 `{}` の each は役割名 (`{}`/`{}`) で参照してください。型名参照はできません: `{}`",
+                        edge.kind, from_role, to_role, s
+                    ),
+                ))
+            }
+        }
+        (None, None) => {
+            if each_ident.to_string() == edge.from.to_string() {
+                Ok(EachSide::Source)
+            } else {
+                Err(syn::Error::new_spanned(
+                    each_ident.to_token_stream(),
                     format!(
                         "`each {}` はエッジ `{}` の始点型 `{}` と一致しません (each は常に始点側の出次数を指定します)",
-                        from_type, edge.kind, edge.from
+                        each_ident, edge.kind, edge.from
                     ),
-                ));
+                ))
             }
+        }
+        _ => unreachable!("役割名は両端同時か両方省略かのいずれかであることをparse時に検査済み"),
+    }
+}
+
+/// `where each <参照名>: ..` の意味解決が成功するかを検査する
+/// (`resolve_each_side` 参照)。
+pub fn validate_each_reference(edges: &[EdgeDecl]) -> syn::Result<()> {
+    for edge in edges {
+        if let Some((each_ident, _spec)) = &edge.constraints.each {
+            resolve_each_side(edge, each_ident)?;
+        }
+    }
+    Ok(())
+}
+
+/// 無向辺の両端が同じノード型であることを検査する
+/// (`docs/edge_endpoints_v4_1.md` §2「両端は同じノード型でなければならない」)。
+pub fn validate_undirected_same_type(edges: &[EdgeDecl]) -> syn::Result<()> {
+    for edge in edges {
+        if !edge.directed && edge.from.to_string() != edge.to.to_string() {
+            let mut err = syn::Error::new_spanned(
+                edge.to.to_token_stream(),
+                format!(
+                    "無向辺 `{}` の両端は同じノード型でなければなりません (`{}` != `{}`)。異なる型を対称に繋ぎたい場合は有向辺として書くか、ノードを昇格してください",
+                    edge.kind, edge.from, edge.to
+                ),
+            );
+            err.combine(syn::Error::new_spanned(
+                edge.from.to_token_stream(),
+                "始点側の型はこちら",
+            ));
+            return Err(err);
         }
     }
     Ok(())

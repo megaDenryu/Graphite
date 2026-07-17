@@ -1,4 +1,5 @@
-//! `graph_schema!` のコード生成本体 (v4、`docs/schema_v4.md` §3 参照)。
+//! `graph_schema!` のコード生成本体 (v4、`docs/schema_v4.md` §3 参照。
+//! v4.1 の役割名・無向辺は `docs/edge_endpoints_v4_1.md` 参照)。
 //!
 //! ## 生成物の全体像 (1エッジ種別分)
 //!
@@ -22,17 +23,33 @@
 //! impl OrgEdge for Boss { .. } // 書き込み側 (graph! の総称 add 用)
 //! ```
 //!
+//! v4.1 で役割名つき有向辺 (`(subordinate: Employee) -> (superior: Employee)`)
+//! は `.from()`/`.to()` の代わりに `.subordinate()`/`.superior()` を生やす。
+//! 無向辺 (`Person -- Person`) は `.from()`/`.to()` の代わりに
+//! `.endpoints() -> (&PersonId, &PersonId)` を生やし、`of`/`between` は
+//! どちらの位置に置かれても対称に検索できる。内部の freeze/query 実装は
+//! いずれもタプル位置 (`.0`/`.1`) を直接使い、公開アクセサ名 (from/to,
+//! 役割名, endpoints) とは独立させている。
+//!
 //! 辺は「マクロが生成する型」なのでノードと異なり**固有 impl (inherent impl)
 //! で読み取り API を生やせる** (`docs/schema_v4.md` §3.2「辺 — 種別型
-//! (マクロ生成) への固有 impl」)。ノード型はユーザーが `graph_schema!` の外で
+//! (マクロ生成) への固有 impl」)。ノード型はユーザーが `graph_schema!` の外に
 //! 宣言する型で複数 schema 間の共有もありうるため、代わりに `{Schema}Node`
 //! トレイトの関連関数として生やす (README/`gen_node_trait_and_impls` 参照)。
 //!
-//! where 制約 → 戻り型の対応表 (`docs/schema_v4.md` §3.2):
+//! where 制約 → 戻り型の対応表 (`docs/schema_v4.md` §3.2、有向・始点側のみ):
 //! - `each X: 1`    -> `of` は直接参照 (未知キーはパニック、非パニック版 `get_of`)
 //! - `each X: 0..1` -> `of` は `Option`
 //! - 制約なし        -> `of` は `Vec`
 //! - `unique pair`  -> `between` は `Option`、それ以外は `Vec`
+//!
+//! 役割名つきの辺で `each` が終点側 (入次数) を指定した場合、`of` の戻り型は
+//! 上記表に従わず常に `Vec` になる (`of` は常に始点側キーで検索するため、
+//! 始点側が無制約なら平行辺を許すのが自然。終点側の制約は freeze 検証のみに
+//! 使われ、新規のクエリ API は追加しない — `docs/edge_endpoints_v4_1.md` §1)。
+//! 無向辺の `each` は次数制約であり、`of`/`between` の戻り型は有向の表と同じ
+//! 規則 (次数制約が Option/直接参照を、無制約が Vec を、`unique pair` が
+//! `between` の戻り型を決める) で決まる。
 
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
@@ -40,6 +57,7 @@ use syn::{Ident, Path};
 
 use crate::naming::{plural_field_name, to_snake_case};
 use crate::schema_dsl::{EachSpec, EdgeDecl, NodeDecl, SchemaInput};
+use crate::schema_validate::{self, EachSide};
 
 /// ノード宣言 1 つ分の、生成コードで使う識別子一式。
 ///
@@ -85,7 +103,9 @@ impl NodeInfo {
 ///
 /// `from_node`/`to_node` は `node_infos` (呼び出し元 `generate` のローカル変数)
 /// への参照であり、両者の借用が同じ関数スコープに収まるよう単一のライフタイム
-/// パラメータで表現する。
+/// パラメータで表現する。無向辺では `from_node`/`to_node` は常に同一の
+/// `NodeInfo` (両端同型、`schema_validate::validate_undirected_same_type` で
+/// 検証済み) を指す。
 struct EdgeInfo<'a> {
     kind: &'a Ident,
     /// エッジ種別の newtype キー型名 (`BossId`)。
@@ -94,21 +114,32 @@ struct EdgeInfo<'a> {
     /// snake_case (`boss`)。`Kind` は既に PascalCase (型名) なので
     /// ノードと同じ `to_snake_case` 変換で導出できる。
     accessor_ident: Ident,
-    /// from 索引の内部フィールド名 (`boss_from_index`)。freeze 時に構築する
-    /// (`docs/schema_v4.md` §3.2)。
-    from_index_ident: Ident,
+    /// 位置0キー -> その位置0からの (有向: 出る / 無向: 接続する) エッジキー
+    /// 一覧の内部フィールド名。freeze 時に構築する (`docs/schema_v4.md`
+    /// §3.2)。有向辺は従来どおり `{accessor}_from_index` (既存の手書きコード
+    /// `orgchart_macro.rs` がこのフィールド名を直接参照しているため後方互換で
+    /// 固定)、無向辺は方向の意味を持たないため `{accessor}_index`。
+    index_field_ident: Ident,
     from_node: &'a NodeInfo,
     to_node: &'a NodeInfo,
     /// エッジ属性型への参照。ユーザーがマクロの外で宣言した型を指すだけで、
     /// このマクロは属性型そのものを生成しない。
     attrs_ty: Option<Path>,
+    /// 有向 (`->`/`-[Attrs]->`) か無向 (`--`/`-[Attrs]-`) か。
+    directed: bool,
+    /// 役割名 (役割名つき有向辺のみ `Some`)。
+    from_role: Option<Ident>,
+    to_role: Option<Ident>,
     each: Option<EachSpec>,
-    /// `where each <FromType>: ..` の `<FromType>` トークンそのもの
-    /// (検証意味論には使わず、IDE 支援専用: `gen_edge_freeze_block` が
-    /// このトークンのスパンを使ったゼロコスト型検査文を生成することで、
-    /// rust-analyzer の定義ジャンプ (F12) がこのトークンからノード型の
-    /// 宣言へ着地できるようにする。`docs/ide_support_spec.md` §1.9)。
-    each_from_token: Option<Ident>,
+    /// `each` 制約がどちら側 (出次数/入次数/次数) を指すか。
+    each_side: Option<EachSide>,
+    /// `where each <参照名>: ..` の `<参照名>` トークンそのもの
+    /// (検証意味論には使わず、IDE 支援専用: `gen_each_type_check` が
+    /// このトークンのスパンを使ったゼロコスト検査文を生成することで、
+    /// rust-analyzer の定義ジャンプ (F12) がこのトークンから対応するノード型/
+    /// アクセサメソッドの宣言へ着地できるようにする。
+    /// `docs/ide_support_spec.md` §1.9)。
+    each_token: Option<Ident>,
     unique_pair: bool,
 }
 
@@ -121,6 +152,10 @@ impl<'a> EdgeInfo<'a> {
     }
     fn unknown_target_variant(&self) -> Ident {
         format_ident!("{}UnknownTarget", self.kind, span = self.kind.span())
+    }
+    /// 無向辺用: 位置の区別が無いため未知端点は1種類の variant で足りる。
+    fn unknown_endpoint_variant(&self) -> Ident {
+        format_ident!("{}UnknownEndpoint", self.kind, span = self.kind.span())
     }
     fn each_violation_variant(&self) -> Ident {
         format_ident!("{}EachViolation", self.kind, span = self.kind.span())
@@ -170,9 +205,7 @@ pub fn generate(schema: &SchemaInput) -> TokenStream {
         gen_node_trait_and_impls(&node_trait_ident, &builder_ident, schema_name, &node_infos);
     let edge_trait_and_impls =
         gen_edge_trait_and_impls(&edge_trait_ident, &builder_ident, &edge_infos);
-    let edge_query_impls = edge_infos
-        .iter()
-        .map(|e| gen_edge_query_impl(schema_name, e));
+    let edge_query_impls = edge_infos.iter().map(|e| gen_edge_query_impl(schema_name, e));
 
     quote! {
         #(#node_id_defs)*
@@ -201,17 +234,32 @@ fn build_edge_info<'a>(decl: &'a EdgeDecl, node_infos: &'a [NodeInfo]) -> EdgeIn
     let kind = &decl.kind;
     let span = kind.span();
     let accessor_ident = Ident::new(&to_snake_case(&kind.to_string()), span);
-    let from_index_ident = format_ident!("{}_from_index", accessor_ident);
+    // 有向辺の内部索引フィールド名は既存の手書きコード
+    // (`crates/graphite/tests/orgchart_macro.rs` の `colleagues()`) が
+    // `self.belongs_to_from_index` を直接参照しているため後方互換で固定する。
+    let index_field_ident = if decl.directed {
+        format_ident!("{}_from_index", accessor_ident)
+    } else {
+        format_ident!("{}_index", accessor_ident)
+    };
+    let each_side = decl.constraints.each.as_ref().map(|(ident, _)| {
+        schema_validate::resolve_each_side(decl, ident)
+            .expect("validate_each_reference() を通過していれば必ず解決できるはず")
+    });
     EdgeInfo {
         kind,
         id_ident: format_ident!("{}Id", kind, span = span),
         accessor_ident,
-        from_index_ident,
+        index_field_ident,
         from_node,
         to_node,
         attrs_ty: decl.attrs_ty.clone(),
+        directed: decl.directed,
+        from_role: decl.from_role.clone(),
+        to_role: decl.to_role.clone(),
         each: decl.constraints.each.as_ref().map(|(_, spec)| *spec),
-        each_from_token: decl.constraints.each.as_ref().map(|(ident, _)| ident.clone()),
+        each_side,
+        each_token: decl.constraints.each.as_ref().map(|(ident, _)| ident.clone()),
         unique_pair: decl.constraints.unique_pair,
     }
 }
@@ -412,27 +460,35 @@ fn gen_edge_id_types(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
         .collect()
 }
 
-/// エッジ種別ごとのタプル struct とその `from`/`to`/`payload` メソッド。
+/// エッジ種別ごとのタプル struct とその位置アクセサ・`payload` メソッド。
 ///
 /// `docs/schema_v4.md` §3.1: 「タプル struct として実在し、マクロ外でも
 /// `Boss(from_id, to_id, payload)` で普通に構築できる」(原則6: 消去可能な
 /// 拡張のみ)。読み取りは位置 (`.0`/`.1`/`.2`) を人間に晒さず、固定語彙の
 /// メソッドを生成する。
+///
+/// v4.1 (`docs/edge_endpoints_v4_1.md`) での分岐:
+/// - 役割名なしの有向辺: `.from()`/`.to()` (従来どおり)。
+/// - 役割名つきの有向辺: `.from()`/`.to()` の**代わりに**役割名そのままの
+///   メソッド (`.subordinate()`/`.superior()`)。生成する ident は役割名
+///   トークンのスパンを持つ (F12 で宣言の役割名に着地、G3 スパン規約)。
+/// - 無向辺: `.from()`/`.to()` という嘘の語彙を避け、`.endpoints()` を
+///   1つだけ生やす。
 fn gen_edge_tuple_structs(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
     edges
         .iter()
         .map(|e| {
             let kind = e.kind;
-            let from_id = &e.from_node.id_ident;
-            let to_id = &e.to_node.id_ident;
+            let p0_id = &e.from_node.id_ident;
+            let p1_id = &e.to_node.id_ident;
 
             let (struct_def, payload_method) = match &e.attrs_ty {
                 None => (
-                    quote! { pub struct #kind(pub #from_id, pub #to_id); },
+                    quote! { pub struct #kind(pub #p0_id, pub #p1_id); },
                     quote! {},
                 ),
                 Some(attrs) => (
-                    quote! { pub struct #kind(pub #from_id, pub #to_id, pub #attrs); },
+                    quote! { pub struct #kind(pub #p0_id, pub #p1_id, pub #attrs); },
                     quote! {
                         /// この辺の積み荷 (属性値) を返す。
                         pub fn payload(&self) -> &#attrs {
@@ -442,19 +498,50 @@ fn gen_edge_tuple_structs(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
                 ),
             };
 
+            let position_accessors = if !e.directed {
+                quote! {
+                    /// この辺の両端点を返す (無向辺には from/to という向きの
+                    /// 語彙が無いため `endpoints` を使う)。
+                    pub fn endpoints(&self) -> (&#p0_id, &#p1_id) {
+                        (&self.0, &self.1)
+                    }
+                }
+            } else {
+                match (&e.from_role, &e.to_role) {
+                    (Some(from_role), Some(to_role)) => {
+                        let m0 = Ident::new(&from_role.to_string(), from_role.span());
+                        let m1 = Ident::new(&to_role.to_string(), to_role.span());
+                        quote! {
+                            /// この辺の始点キーを返す (役割名: 宣言側の役割名
+                            /// アクセサ、`.from()` は生成しない)。
+                            pub fn #m0(&self) -> &#p0_id {
+                                &self.0
+                            }
+                            /// この辺の終点キーを返す (役割名アクセサ)。
+                            pub fn #m1(&self) -> &#p1_id {
+                                &self.1
+                            }
+                        }
+                    }
+                    _ => quote! {
+                        /// この辺の始点キーを返す。
+                        pub fn from(&self) -> &#p0_id {
+                            &self.0
+                        }
+                        /// この辺の終点キーを返す。
+                        pub fn to(&self) -> &#p1_id {
+                            &self.1
+                        }
+                    },
+                }
+            };
+
             quote! {
                 #[derive(Debug, Clone, PartialEq)]
                 #struct_def
 
                 impl #kind {
-                    /// この辺の始点キーを返す。
-                    pub fn from(&self) -> &#from_id {
-                        &self.0
-                    }
-                    /// この辺の終点キーを返す。
-                    pub fn to(&self) -> &#to_id {
-                        &self.1
-                    }
+                    #position_accessors
                     #payload_method
                 }
             }
@@ -467,12 +554,16 @@ fn gen_edge_tuple_structs(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
 /// - ノード重複 (`Duplicate{Node}`) は v3 から維持。
 /// - 辺キー重複 (`{Kind}DuplicateKey`) は v4 で新規追加 (辺も第一級キーを
 ///   持つため)。
-/// - 未知の端点参照 (`{Kind}UnknownSource`/`{Kind}UnknownTarget`) はどの辺
-///   (`edge: {Kind}Id`) がどの端点キー (`source`/`target`) を参照している
-///   かを両方型付きで持つ (`docs/design_principles.md` 原則1: stringly-typed
-///   API 禁止)。
-/// - `each` 制約違反 (`{Kind}EachViolation`) と `unique pair` 違反
-///   (`{Kind}UniquePairViolation`) は宣言されている場合のみ生成する。
+/// - 未知の端点参照: 有向は `{Kind}UnknownSource`/`{Kind}UnknownTarget`
+///   (どの辺がどちらの端点で未知キーを参照したかを型付きで持つ)、無向は
+///   位置の区別が無いため `{Kind}UnknownEndpoint` 1種類。
+/// - `each` 制約違反 (`{Kind}EachViolation`) は解決された側
+///   (出次数/入次数/次数) に応じてフィールド名 (`source`/`target`/`node`) が
+///   変わる。役割名は変数命名 (フィールド名) には混ぜない
+///   (`docs/edge_endpoints_v4_1.md` §1「違反バリアントの命名は従来規約の
+///   まま」)。
+/// - `unique pair` 違反 (`{Kind}UniquePairViolation`) は有向なら
+///   `source`/`target`、無向なら順序の意味が無いため `a`/`b`。
 fn gen_violation_enum(
     violation_ident: &Ident,
     nodes: &[NodeInfo],
@@ -497,10 +588,6 @@ fn gen_violation_enum(
     for edge in edges {
         let kind_str = edge.kind.to_string();
         let edge_id = &edge.id_ident;
-        let from_id = &edge.from_node.id_ident;
-        let to_id = &edge.to_node.id_ident;
-        let from_type_str = edge.from_node.type_ident.to_string();
-        let to_type_str = edge.to_node.type_ident.to_string();
 
         let dup_key = edge.duplicate_key_variant();
         edge_variants.push(quote! {
@@ -513,65 +600,143 @@ fn gen_violation_enum(
             )
         });
 
-        let unk_src = edge.unknown_source_variant();
-        edge_variants.push(quote! {
-            /// このエッジが未知の始点キーを参照している。
-            #unk_src { edge: #edge_id, source: #from_id }
-        });
-        edge_display_arms.push(quote! {
-            #violation_ident::#unk_src { edge, source } => write!(
-                f,
-                "未知のキーが参照されています (辺 `{}` {:?} の始点, {}): {:?}",
-                #kind_str, edge, #from_type_str, source
-            )
-        });
+        if edge.directed {
+            let from_id = &edge.from_node.id_ident;
+            let to_id = &edge.to_node.id_ident;
+            let from_type_str = edge.from_node.type_ident.to_string();
+            let to_type_str = edge.to_node.type_ident.to_string();
 
-        let unk_dst = edge.unknown_target_variant();
-        edge_variants.push(quote! {
-            /// このエッジが未知の終点キーを参照している。
-            #unk_dst { edge: #edge_id, target: #to_id }
-        });
-        edge_display_arms.push(quote! {
-            #violation_ident::#unk_dst { edge, target } => write!(
-                f,
-                "未知のキーが参照されています (辺 `{}` {:?} の終点, {}): {:?}",
-                #kind_str, edge, #to_type_str, target
-            )
-        });
-
-        if let Some(spec) = edge.each {
-            let expected_str = match spec {
-                EachSpec::One => "ちょうど1",
-                EachSpec::ZeroOrOne => "0または1",
-            };
-            let v = edge.each_violation_variant();
+            let unk_src = edge.unknown_source_variant();
             edge_variants.push(quote! {
-                /// このエッジ種別の `each` 制約違反。
-                #v { source: #from_id, count: usize }
+                /// このエッジが未知の始点キーを参照している。
+                #unk_src { edge: #edge_id, source: #from_id }
             });
             edge_display_arms.push(quote! {
-                #violation_ident::#v { source, count } => write!(
+                #violation_ident::#unk_src { edge, source } => write!(
                     f,
-                    "each制約違反: エッジ `{}` は {} {:?} について本数 {} を期待しますが実際は {} 本です",
-                    #kind_str, #from_type_str, source, #expected_str, count
+                    "未知のキーが参照されています (辺 `{}` {:?} の始点, {}): {:?}",
+                    #kind_str, edge, #from_type_str, source
                 )
             });
-        }
 
-        if edge.unique_pair {
-            let v = edge.unique_pair_violation_variant();
+            let unk_dst = edge.unknown_target_variant();
             edge_variants.push(quote! {
-                /// このエッジ種別の `unique pair` 違反 (同じ始点・終点の対に
-                /// 2本目の辺が張られた)。
-                #v { source: #from_id, target: #to_id }
+                /// このエッジが未知の終点キーを参照している。
+                #unk_dst { edge: #edge_id, target: #to_id }
             });
             edge_display_arms.push(quote! {
-                #violation_ident::#v { source, target } => write!(
+                #violation_ident::#unk_dst { edge, target } => write!(
                     f,
-                    "unique pair違反: エッジ `{}` は {:?} -> {:?} の対に既に辺が存在します",
-                    #kind_str, source, target
+                    "未知のキーが参照されています (辺 `{}` {:?} の終点, {}): {:?}",
+                    #kind_str, edge, #to_type_str, target
                 )
             });
+
+            if let (Some(spec), Some(side)) = (edge.each, edge.each_side) {
+                let expected_str = match spec {
+                    EachSpec::One => "ちょうど1",
+                    EachSpec::ZeroOrOne => "0または1",
+                };
+                let v = edge.each_violation_variant();
+                match side {
+                    EachSide::Source => {
+                        edge_variants.push(quote! {
+                            /// このエッジ種別の `each` 制約違反 (出次数)。
+                            #v { source: #from_id, count: usize }
+                        });
+                        edge_display_arms.push(quote! {
+                            #violation_ident::#v { source, count } => write!(
+                                f,
+                                "each制約違反: エッジ `{}` は {} {:?} について出次数 {} を期待しますが実際は {} 本です",
+                                #kind_str, #from_type_str, source, #expected_str, count
+                            )
+                        });
+                    }
+                    EachSide::Target => {
+                        edge_variants.push(quote! {
+                            /// このエッジ種別の `each` 制約違反 (入次数)。
+                            #v { target: #to_id, count: usize }
+                        });
+                        edge_display_arms.push(quote! {
+                            #violation_ident::#v { target, count } => write!(
+                                f,
+                                "each制約違反: エッジ `{}` は {} {:?} について入次数 {} を期待しますが実際は {} 本です",
+                                #kind_str, #to_type_str, target, #expected_str, count
+                            )
+                        });
+                    }
+                    EachSide::Degree => unreachable!("有向辺のeachはDegreeにはならない"),
+                }
+            }
+
+            if edge.unique_pair {
+                let v = edge.unique_pair_violation_variant();
+                edge_variants.push(quote! {
+                    /// このエッジ種別の `unique pair` 違反 (同じ始点・終点の対に
+                    /// 2本目の辺が張られた)。
+                    #v { source: #from_id, target: #to_id }
+                });
+                edge_display_arms.push(quote! {
+                    #violation_ident::#v { source, target } => write!(
+                        f,
+                        "unique pair違反: エッジ `{}` は {:?} -> {:?} の対に既に辺が存在します",
+                        #kind_str, source, target
+                    )
+                });
+            }
+        } else {
+            // 無向辺: 両端は同じノード型 (validate 済み) なので from_node で代表する。
+            let node_id = &edge.from_node.id_ident;
+            let node_type_str = edge.from_node.type_ident.to_string();
+
+            let unk = edge.unknown_endpoint_variant();
+            edge_variants.push(quote! {
+                /// このエッジが未知の端点キーを参照している (無向のため位置の
+                /// 区別は無い)。
+                #unk { edge: #edge_id, endpoint: #node_id }
+            });
+            edge_display_arms.push(quote! {
+                #violation_ident::#unk { edge, endpoint } => write!(
+                    f,
+                    "未知のキーが参照されています (辺 `{}` {:?} の端点, {}): {:?}",
+                    #kind_str, edge, #node_type_str, endpoint
+                )
+            });
+
+            if let (Some(spec), Some(EachSide::Degree)) = (edge.each, edge.each_side) {
+                let expected_str = match spec {
+                    EachSpec::One => "ちょうど1",
+                    EachSpec::ZeroOrOne => "0または1",
+                };
+                let v = edge.each_violation_variant();
+                edge_variants.push(quote! {
+                    /// このエッジ種別の `each` 制約違反 (次数、無向)。
+                    #v { node: #node_id, count: usize }
+                });
+                edge_display_arms.push(quote! {
+                    #violation_ident::#v { node, count } => write!(
+                        f,
+                        "each制約違反: エッジ `{}` は {} {:?} について次数 {} を期待しますが実際は {} 本です",
+                        #kind_str, #node_type_str, node, #expected_str, count
+                    )
+                });
+            }
+
+            if edge.unique_pair {
+                let v = edge.unique_pair_violation_variant();
+                edge_variants.push(quote! {
+                    /// このエッジ種別の `unique pair` 違反 (無向のため
+                    /// 順序を無視した対で判定)。
+                    #v { a: #node_id, b: #node_id }
+                });
+                edge_display_arms.push(quote! {
+                    #violation_ident::#v { a, b } => write!(
+                        f,
+                        "unique pair違反: エッジ `{}` は {{{:?}, {:?}}} の対に既に辺が存在します",
+                        #kind_str, a, b
+                    )
+                });
+            }
         }
     }
 
@@ -608,14 +773,17 @@ fn gen_schema_struct(
     });
     let edge_fields = edges.iter().map(|e| {
         let accessor = &e.accessor_ident;
-        let from_index = &e.from_index_ident;
+        let index_field = &e.index_field_ident;
         let id_ty = &e.id_ident;
         let kind = e.kind;
-        let from_id = &e.from_node.id_ident;
+        // 索引のキー型は位置0の型 (有向なら始点、無向なら両端同型なので
+        // どちらでも同じ)。
+        let key_id = &e.from_node.id_ident;
         quote! {
             #accessor: graphite::KeyedTable<#id_ty, #kind>,
-            /// 始点キー -> この始点から出るエッジキーの一覧 (freeze 時に構築)。
-            #from_index: std::collections::HashMap<#from_id, Vec<#id_ty>>
+            /// 位置0キー -> このキーから (有向: 出る / 無向: 接続する) エッジ
+            /// キーの一覧 (freeze 時に構築)。
+            #index_field: std::collections::HashMap<#key_id, Vec<#id_ty>>
         }
     });
 
@@ -770,22 +938,49 @@ fn gen_builder_impl(
     }
 }
 
-/// 辺1種別分の freeze 検査本体を生成する。
+/// `where each <参照名>: ..` の IDE 支援専用ゼロコスト検査文
+/// (`docs/ide_support_spec.md` §1.9)。
+///
+/// - 役割名なし (`each_from_role` が `None`): `<参照名>` はノード型名を指す
+///   ので、従来どおり型検査文 `let _: fn(&<参照名>) = |_| {};` を生成する
+///   (無向辺の次数制約もこちらに含まれる — 役割名を持たないため)。
+/// - 役割名あり: `<参照名>` はもはや型名ではなく役割名 (アクセサメソッド名)
+///   なので、型検査ではなく `Kind::<参照名>` というメソッド項参照に変える。
+///   これにより F12 は生成された `fn <役割名>(..)` (スパンは endpoint 宣言の
+///   役割名トークン) に着地する。
+fn gen_each_type_check(edge: &EdgeInfo<'_>) -> TokenStream {
+    let Some(tok) = &edge.each_token else {
+        return quote! {};
+    };
+    if edge.from_role.is_some() {
+        let kind = edge.kind;
+        quote! {
+            #[allow(unused)]
+            let _ = #kind::#tok;
+        }
+    } else {
+        quote! {
+            let _: fn(&#tok) = |_| {};
+        }
+    }
+}
+
+/// 有向辺1種別分の freeze 検査本体を生成する。
 ///
 /// 手順:
 /// 1. `Vec<(KindId, Kind)>` から `KeyedTable<KindId, Kind>` を構築 (重複キー
 ///    は `{Kind}DuplicateKey` 違反として記録し、その要素は捨てる)。
-/// 2. 生き残った各辺について端点 (from/to) がそれぞれのノード表に実在するか
+/// 2. 生き残った各辺について端点 (位置0/1) がそれぞれのノード表に実在するか
 ///    検査する (`{Kind}UnknownSource`/`{Kind}UnknownTarget`)。両端点とも
-///    正当な辺だけを from 索引 (`{accessor}_from_index`) に積む。
-///    `unique pair` 制約があれば、同じ (from, to) の対が2回目に現れた時点で
+///    正当な辺だけを位置0索引 (`{accessor}_from_index`) に積む。`unique pair`
+///    制約があれば、同じ (位置0, 位置1) の対が2回目に現れた時点で
 ///    `{Kind}UniquePairViolation` を記録する。
-/// 3. `each` 制約があれば、from 索引の本数を検査する
-///    (`each 1` は生存する全始点ノードについて、`each 0..1` は索引に現れた
-///    始点についてのみ検査すればよい — 現れない始点は本数0で自動的に合法)。
-fn gen_edge_freeze_block(violation_ident: &Ident, edge: &EdgeInfo<'_>) -> TokenStream {
+/// 3. `each` 制約があれば、`each_side` に応じて出次数 (位置0索引) または
+///    入次数 (位置1のローカル索引、構造体フィールドとしては保持しない) を
+///    検査する。
+fn gen_directed_edge_freeze_block(violation_ident: &Ident, edge: &EdgeInfo<'_>) -> TokenStream {
     let accessor = &edge.accessor_ident;
-    let from_index = &edge.from_index_ident;
+    let from_index = &edge.index_field_ident;
     let from_field = &edge.from_node.field_ident;
     let to_field = &edge.to_node.field_ident;
     let dup_key = edge.duplicate_key_variant();
@@ -816,39 +1011,31 @@ fn gen_edge_freeze_block(violation_ident: &Ident, edge: &EdgeInfo<'_>) -> TokenS
         (quote! {}, quote! {})
     };
 
-    // IDE 支援専用のゼロコスト型検査文 (`docs/ide_support_spec.md` §1.9)。
-    //
-    // where 節の `each <FromType>` の `<FromType>` トークン (`each_from_token`)
-    // は、意味検査 (`schema_validate.rs` が `decl.from` との一致を確認する)
-    // にしか使われておらず、生成コードのどこにもこのトークン自身は現れない。
-    // そのため rust-analyzer はこのトークンから何かへ定義ジャンプする先を
-    // 持てなかった (F12 が解決なしになる)。
-    //
-    // 検討した選択肢:
-    // (a) この文のように、トークンをそのまま型名として使う実在の型検査文を
-    //     生成コードへ新規に追加する。
-    // (b) 検証ロジックの中で既に `#from_field`/`#from_node.type_ident` 等を
-    //     使っている箇所のどれかに、無理にこのトークンを混ぜ込む。
-    // (a) を採用した。既存の検証コードは全て `edge.from_node` 側 (schema の
-    // `edge Kind = From -> ..` の `From` 位置) のスパンを使う識別子で構成
-    // されており、where 節のトークン (別の出現位置) を自然に差し込める箇所が
-    // 存在しない。無理に (b) をやると「たまたま型が一致するから使い回す」
-    // 不透明なコードになり、このスパンが何のためにここにあるのか読み手に
-    // 伝わらない。(a) は「このトークンが指す型はこれです」という主張を
-    // そのままコードとして表現できる。
-    //
-    // ゼロコスト性 (`docs/design_principles.md` 原則5): `fn(&Type) = |_| {}`
-    // という関数ポインタへの代入は実行時コストを持たない (最適化で消える)。
-    // 検証の意味論・違反判定ロジック (`each_check` 以下) には一切影響しない。
-    let each_type_check = match &edge.each_from_token {
-        Some(from_token) => quote! {
-            let _: fn(&#from_token) = |_| {};
-        },
-        None => quote! {},
+    let each_type_check = gen_each_type_check(edge);
+
+    // 終点側 (入次数) の each 制約が要る場合のみ、ローカルの位置1索引を
+    // 構築する (構造体フィールドとしては保持しない: クエリ API は常に
+    // 位置0側で検索するため永続化の必要が無い、
+    // `docs/edge_endpoints_v4_1.md` §1)。
+    let need_to_index = matches!(edge.each_side, Some(EachSide::Target));
+    let to_index_local = format_ident!("__{}_to_index", edge.accessor_ident);
+    let to_index_decl = if need_to_index {
+        quote! {
+            let mut #to_index_local: std::collections::HashMap<_, Vec<_>> = std::collections::HashMap::new();
+        }
+    } else {
+        quote! {}
+    };
+    let to_index_push = if need_to_index {
+        quote! {
+            #to_index_local.entry(to.clone()).or_default().push(id.clone());
+        }
+    } else {
+        quote! {}
     };
 
-    let each_check = match edge.each {
-        Some(EachSpec::One) => {
+    let each_check = match (edge.each, edge.each_side) {
+        (Some(EachSpec::One), Some(EachSide::Source)) => {
             let v = edge.each_violation_variant();
             quote! {
                 for key in #from_field.ids() {
@@ -862,13 +1049,145 @@ fn gen_edge_freeze_block(violation_ident: &Ident, edge: &EdgeInfo<'_>) -> TokenS
                 }
             }
         }
-        Some(EachSpec::ZeroOrOne) => {
+        (Some(EachSpec::ZeroOrOne), Some(EachSide::Source)) => {
             let v = edge.each_violation_variant();
             quote! {
                 for (key, ids) in &#from_index {
                     if ids.len() > 1 {
                         __violations.push(#violation_ident::#v {
                             source: key.clone(),
+                            count: ids.len(),
+                        });
+                    }
+                }
+            }
+        }
+        (Some(EachSpec::One), Some(EachSide::Target)) => {
+            let v = edge.each_violation_variant();
+            quote! {
+                for key in #to_field.ids() {
+                    let count = #to_index_local.get(key).map(Vec::len).unwrap_or(0);
+                    if count != 1 {
+                        __violations.push(#violation_ident::#v {
+                            target: key.clone(),
+                            count,
+                        });
+                    }
+                }
+            }
+        }
+        (Some(EachSpec::ZeroOrOne), Some(EachSide::Target)) => {
+            let v = edge.each_violation_variant();
+            quote! {
+                for (key, ids) in &#to_index_local {
+                    if ids.len() > 1 {
+                        __violations.push(#violation_ident::#v {
+                            target: key.clone(),
+                            count: ids.len(),
+                        });
+                    }
+                }
+            }
+        }
+        _ => quote! {},
+    };
+
+    quote! {
+        let mut #accessor: graphite::KeyedTable<_, _> = graphite::KeyedTable::new();
+        for (id, value) in self.#accessor {
+            if !#accessor.insert(id.clone(), value) {
+                __violations.push(#violation_ident::#dup_key(id));
+            }
+        }
+
+        let mut #from_index: std::collections::HashMap<_, Vec<_>> = std::collections::HashMap::new();
+        #to_index_decl
+        #seen_pairs_decl
+        for (id, edge) in #accessor.iter() {
+            let from = &edge.0;
+            let to = &edge.1;
+            let mut __ok = true;
+            if !#from_field.contains_key(from) {
+                __violations.push(#violation_ident::#unk_src { edge: id.clone(), source: from.clone() });
+                __ok = false;
+            }
+            if !#to_field.contains_key(to) {
+                __violations.push(#violation_ident::#unk_dst { edge: id.clone(), target: to.clone() });
+                __ok = false;
+            }
+            if __ok {
+                #unique_pair_check
+                #from_index.entry(from.clone()).or_default().push(id.clone());
+                #to_index_push
+            }
+        }
+        #each_type_check
+        #each_check
+    }
+}
+
+/// 無向辺1種別分の freeze 検査本体を生成する
+/// (`docs/edge_endpoints_v4_1.md` §2)。
+///
+/// 位置0/1索引 (`{accessor}_index`) は「その位置0キーに (有向の from_index
+/// と同じ形で) 接続するエッジキーの一覧」だが、無向のため対称に構築する:
+/// 位置0・位置1のどちらにも (自己ループなら1回だけ) 積む。これにより
+/// - 次数 (each) は `index.get(x).len()` で求まる (自己ループは1本と数える)。
+/// - `of`/`between` はどちらの位置に置かれてもこの索引から検索できる。
+/// - 格納順 (挿入順) は `KeyedTable::iter()` の走査順そのままなので、索引の
+///   `push` もその順で行われ、`docs/edge_endpoints_v4_1.md` §2 の
+///   「挿入順保持」がそのまま満たされる。
+fn gen_undirected_edge_freeze_block(violation_ident: &Ident, edge: &EdgeInfo<'_>) -> TokenStream {
+    let accessor = &edge.accessor_ident;
+    let index = &edge.index_field_ident;
+    let node_field = &edge.from_node.field_ident;
+    let dup_key = edge.duplicate_key_variant();
+    let unk = edge.unknown_endpoint_variant();
+
+    let (seen_pairs_decl, unique_pair_check) = if edge.unique_pair {
+        let v = edge.unique_pair_violation_variant();
+        (
+            quote! {
+                let mut __seen_pairs: std::collections::HashSet<_> = std::collections::HashSet::new();
+            },
+            quote! {
+                let __pair = if p0 <= p1 { (p0.clone(), p1.clone()) } else { (p1.clone(), p0.clone()) };
+                if !__seen_pairs.insert(__pair) {
+                    __violations.push(#violation_ident::#v {
+                        a: p0.clone(),
+                        b: p1.clone(),
+                    });
+                }
+            },
+        )
+    } else {
+        (quote! {}, quote! {})
+    };
+
+    let each_type_check = gen_each_type_check(edge);
+
+    let each_check = match edge.each {
+        Some(EachSpec::One) => {
+            let v = edge.each_violation_variant();
+            quote! {
+                for key in #node_field.ids() {
+                    let count = #index.get(key).map(Vec::len).unwrap_or(0);
+                    if count != 1 {
+                        __violations.push(#violation_ident::#v {
+                            node: key.clone(),
+                            count,
+                        });
+                    }
+                }
+            }
+        }
+        Some(EachSpec::ZeroOrOne) => {
+            let v = edge.each_violation_variant();
+            quote! {
+                for (key, ids) in &#index {
+                    if ids.len() > 1 {
+                        __violations.push(#violation_ident::#v {
+                            node: key.clone(),
                             count: ids.len(),
                         });
                     }
@@ -886,23 +1205,26 @@ fn gen_edge_freeze_block(violation_ident: &Ident, edge: &EdgeInfo<'_>) -> TokenS
             }
         }
 
-        let mut #from_index: std::collections::HashMap<_, Vec<_>> = std::collections::HashMap::new();
+        let mut #index: std::collections::HashMap<_, Vec<_>> = std::collections::HashMap::new();
         #seen_pairs_decl
         for (id, edge) in #accessor.iter() {
-            let from = edge.from();
-            let to = edge.to();
+            let p0 = &edge.0;
+            let p1 = &edge.1;
             let mut __ok = true;
-            if !#from_field.contains_key(from) {
-                __violations.push(#violation_ident::#unk_src { edge: id.clone(), source: from.clone() });
+            if !#node_field.contains_key(p0) {
+                __violations.push(#violation_ident::#unk { edge: id.clone(), endpoint: p0.clone() });
                 __ok = false;
             }
-            if !#to_field.contains_key(to) {
-                __violations.push(#violation_ident::#unk_dst { edge: id.clone(), target: to.clone() });
+            if p1 != p0 && !#node_field.contains_key(p1) {
+                __violations.push(#violation_ident::#unk { edge: id.clone(), endpoint: p1.clone() });
                 __ok = false;
             }
             if __ok {
                 #unique_pair_check
-                #from_index.entry(from.clone()).or_default().push(id.clone());
+                #index.entry(p0.clone()).or_default().push(id.clone());
+                if p1 != p0 {
+                    #index.entry(p1.clone()).or_default().push(id.clone());
+                }
             }
         }
         #each_type_check
@@ -929,11 +1251,17 @@ fn gen_freeze_body(
         }
     });
 
-    let edge_blocks = edges.iter().map(|e| gen_edge_freeze_block(violation_ident, e));
+    let edge_blocks = edges.iter().map(|e| {
+        if e.directed {
+            gen_directed_edge_freeze_block(violation_ident, e)
+        } else {
+            gen_undirected_edge_freeze_block(violation_ident, e)
+        }
+    });
 
     let node_field_names = nodes.iter().map(|n| &n.field_ident);
     let edge_field_names = edges.iter().map(|e| &e.accessor_ident);
-    let edge_from_index_names = edges.iter().map(|e| &e.from_index_ident);
+    let edge_index_names = edges.iter().map(|e| &e.index_field_ident);
 
     quote! {
         /// 検証ロジックの実体。最初の1件で打ち切らず全違反を `Vec` に
@@ -953,7 +1281,7 @@ fn gen_freeze_body(
             Ok(#schema_name {
                 #(#node_field_names,)*
                 #(#edge_field_names,)*
-                #(#edge_from_index_names,)*
+                #(#edge_index_names,)*
             })
         }
 
@@ -965,13 +1293,26 @@ fn gen_freeze_body(
     }
 }
 
-/// エッジ種別1つ分の読み取りAPI (`Kind` への固有 impl)。
-/// `docs/schema_v4.md` §3.2 の where 制約 → 戻り型対応表をそのまま実装する。
+/// エッジ種別1つ分の読み取りAPI (`Kind` への固有 impl) を生成する。
+/// 有向/無向で実装が大きく異なるためここで分岐する。
 fn gen_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream {
+    if edge.directed {
+        gen_directed_edge_query_impl(schema_name, edge)
+    } else {
+        gen_undirected_edge_query_impl(schema_name, edge)
+    }
+}
+
+/// 有向辺の読み取り API。`docs/schema_v4.md` §3.2 の where 制約 → 戻り型
+/// 対応表をそのまま実装する。`of`/`get_of` の戻り型は常に「出次数
+/// (`each_side == Source`)」の制約のみを見る (`docs/edge_endpoints_v4_1.md`
+/// §1: 入次数制約は freeze 検証のみに使われ、`of` の戻り型には影響しない —
+/// `of` は常に始点側キーで検索するため)。
+fn gen_directed_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream {
     let kind = edge.kind;
     let id_ty = &edge.id_ident;
     let accessor = &edge.accessor_ident;
-    let from_index = &edge.from_index_ident;
+    let from_index = &edge.index_field_ident;
     let from_id = &edge.from_node.id_ident;
     let to_id = &edge.to_node.id_ident;
     let to_field = &edge.to_node.field_ident;
@@ -991,8 +1332,8 @@ fn gen_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream 
     let ids_ident = Ident::new("ids", kind_span);
     let len_ident = Ident::new("len", kind_span);
 
-    // `of`/`get_of` の戻り値の型・実装は「積み荷の有無」「each 制約」の
-    // 組み合わせで分岐する。これらの関数はいずれも `&self` を取らず
+    // `of`/`get_of` の戻り値の型・実装は「積み荷の有無」「出次数 each 制約」
+    // の組み合わせで分岐する。これらの関数はいずれも `&self` を取らず
     // `g: &'g Schema` を第一引数に取る associated function なので、
     // 標準の省略規則 (`&self` があれば自動で結び付く規則) が使えない —
     // 参照引数が複数ある (`g` と `from`/`to`/`id`) ため、返り値に含まれる
@@ -1008,20 +1349,27 @@ fn gen_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream 
             None => quote! {
                 {
                     let e = g.#accessor.get(#edge_id_expr).expect("from_indexに載っている辺はstorageに必ず存在する");
-                    g.#to_field.get(e.to()).expect("freezeで端点存在を検証済みのはず")
+                    g.#to_field.get(&e.1).expect("freezeで端点存在を検証済みのはず")
                 }
             },
             Some(_) => quote! {
                 {
                     let e = g.#accessor.get(#edge_id_expr).expect("from_indexに載っている辺はstorageに必ず存在する");
-                    let target = g.#to_field.get(e.to()).expect("freezeで端点存在を検証済みのはず");
+                    let target = g.#to_field.get(&e.1).expect("freezeで端点存在を検証済みのはず");
                     (target, e.payload())
                 }
             },
         }
     };
 
-    let of_and_get_of = match edge.each {
+    // `of` の戻り型を決めるのは常に出次数側 (Source) の each のみ
+    // (`docs/edge_endpoints_v4_1.md` §1)。
+    let source_each = match edge.each_side {
+        Some(EachSide::Source) => edge.each,
+        _ => None,
+    };
+
+    let of_and_get_of = match source_each {
         Some(EachSpec::One) => {
             let resolved = resolve_one(quote! { &ids[0] });
             quote! {
@@ -1064,9 +1412,9 @@ fn gen_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream 
         None => {
             let resolved = resolve_one(quote! { id });
             quote! {
-                /// この辺種別の自然な戻り値 (制約なし → `Vec`)。無い/未知
-                /// キーはどちらも空 `Vec` に落ちる。格納順 (構築時の追加順)
-                /// を保持する。
+                /// この辺種別の自然な戻り値 (出次数に制約なし → `Vec`)。
+                /// 無い/未知キーはどちらも空 `Vec` に落ちる。格納順 (構築時の
+                /// 追加順) を保持する。
                 pub fn #of_ident<'g>(g: &'g #schema_name, from: &#from_id) -> Vec<#of_item_ty> {
                     match g.#from_index.get(from) {
                         Some(ids) => ids.iter().map(|id| #resolved).collect(),
@@ -1085,7 +1433,7 @@ fn gen_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream 
                     .get(from)?
                     .iter()
                     .filter_map(|id| g.#accessor.get(id))
-                    .find(|e| e.to() == to)
+                    .find(|e| &e.1 == to)
             }
         }
     } else {
@@ -1097,7 +1445,174 @@ fn gen_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream 
                     Some(ids) => ids
                         .iter()
                         .filter_map(|id| g.#accessor.get(id))
-                        .filter(|e| e.to() == to)
+                        .filter(|e| &e.1 == to)
+                        .collect(),
+                    None => Vec::new(),
+                }
+            }
+        }
+    };
+
+    quote! {
+        impl #kind {
+            #of_and_get_of
+
+            /// キーで辺1本を検索する。
+            pub fn #get_ident<'g>(g: &'g #schema_name, id: &#id_ty) -> Option<&'g #kind> {
+                g.#accessor.get(id)
+            }
+
+            #between
+
+            /// 表全体を `(キー, 値)` で走査する。挿入順 (構築時の追加順) を
+            /// 保持する (`KeyedTable` の仕様)。
+            pub fn #iter_ident(g: &#schema_name) -> impl Iterator<Item = (&#id_ty, &#kind)> {
+                g.#accessor.iter()
+            }
+
+            /// この辺種別の全キーを列挙する。挿入順 (構築時の追加順) を
+            /// 保持する (`KeyedTable` の仕様)。
+            pub fn #ids_ident(g: &#schema_name) -> impl Iterator<Item = &#id_ty> {
+                g.#accessor.ids()
+            }
+
+            /// この辺種別に含まれる辺の本数。
+            pub fn #len_ident(g: &#schema_name) -> usize {
+                g.#accessor.len()
+            }
+        }
+    }
+}
+
+/// 無向辺の読み取り API (`docs/edge_endpoints_v4_1.md` §2)。
+///
+/// `of(&g, &x)` は `x` が位置0/1のどちらに置かれていても、もう一方の端点を
+/// 返す (自己ループなら `x` 自身を返す)。戻り型は次数 (`each`) 制約が決める
+/// 規則で有向の表と同じ。`between(&g, &a, &b)` は対称 (順序を無視) に検索する。
+fn gen_undirected_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream {
+    let kind = edge.kind;
+    let id_ty = &edge.id_ident;
+    let accessor = &edge.accessor_ident;
+    let index = &edge.index_field_ident;
+    let node_id = &edge.from_node.id_ident;
+    let node_field = &edge.from_node.field_ident;
+    let node_ty = &edge.from_node.type_ident;
+
+    let kind_span = kind.span();
+    let of_ident = Ident::new("of", kind_span);
+    let get_of_ident = Ident::new("get_of", kind_span);
+    let get_ident = Ident::new("get", kind_span);
+    let between_ident = Ident::new("between", kind_span);
+    let iter_ident = Ident::new("iter", kind_span);
+    let ids_ident = Ident::new("ids", kind_span);
+    let len_ident = Ident::new("len", kind_span);
+
+    let other_ref_ty = quote! { &'g #node_ty };
+    let of_item_ty = match &edge.attrs_ty {
+        None => quote! { #other_ref_ty },
+        Some(attrs) => quote! { (#other_ref_ty, &'g #attrs) },
+    };
+    let resolve_one = |edge_id_expr: TokenStream| -> TokenStream {
+        match &edge.attrs_ty {
+            None => quote! {
+                {
+                    let e = g.#accessor.get(#edge_id_expr).expect("indexに載っている辺はstorageに必ず存在する");
+                    let other = if &e.0 == x { &e.1 } else { &e.0 };
+                    g.#node_field.get(other).expect("freezeで端点存在を検証済みのはず")
+                }
+            },
+            Some(_) => quote! {
+                {
+                    let e = g.#accessor.get(#edge_id_expr).expect("indexに載っている辺はstorageに必ず存在する");
+                    let other = if &e.0 == x { &e.1 } else { &e.0 };
+                    let node = g.#node_field.get(other).expect("freezeで端点存在を検証済みのはず");
+                    (node, e.payload())
+                }
+            },
+        }
+    };
+
+    let of_and_get_of = if let Some(EachSide::Degree) = edge.each_side {
+        match edge.each.expect("each_sideがDegreeならeachも必ずSome") {
+            EachSpec::One => {
+                let resolved = resolve_one(quote! { &ids[0] });
+                quote! {
+                    /// この辺種別の自然な戻り値 (`each 1` → 直接参照)。
+                    ///
+                    /// # Panics
+                    /// `x` がこのグラフに存在しない (このグラフが発行した
+                    /// ものではない) キーの場合パニックする
+                    /// (`docs/design_principles.md` 原則2)。非パニック版
+                    /// [`Self::get_of`] も併せて提供する。
+                    pub fn #of_ident<'g>(g: &'g #schema_name, x: &#node_id) -> #of_item_ty {
+                        Self::#get_of_ident(g, x).unwrap_or_else(|| {
+                            panic!(
+                                "{}::of: 未知のキーです (このグラフが発行したキーではありません): {:?}",
+                                stringify!(#kind), x
+                            )
+                        })
+                    }
+
+                    /// [`Self::of`] の非パニック版。未知キーは `None` を返す。
+                    pub fn #get_of_ident<'g>(g: &'g #schema_name, x: &#node_id) -> Option<#of_item_ty> {
+                        let ids = g.#index.get(x)?;
+                        Some(#resolved)
+                    }
+                }
+            }
+            EachSpec::ZeroOrOne => {
+                let resolved = resolve_one(quote! { &ids[0] });
+                quote! {
+                    /// この辺種別の自然な戻り値 (`each 0..1` → `Option`)。
+                    pub fn #of_ident<'g>(g: &'g #schema_name, x: &#node_id) -> Option<#of_item_ty> {
+                        let ids = g.#index.get(x)?;
+                        Some(#resolved)
+                    }
+                }
+            }
+        }
+    } else {
+        let resolved = resolve_one(quote! { id });
+        quote! {
+            /// この辺種別の自然な戻り値 (次数に制約なし → `Vec`)。無い/未知
+            /// キーはどちらも空 `Vec` に落ちる。格納順 (構築時の追加順) を
+            /// 保持する。
+            pub fn #of_ident<'g>(g: &'g #schema_name, x: &#node_id) -> Vec<#of_item_ty> {
+                match g.#index.get(x) {
+                    Some(ids) => ids.iter().map(|id| #resolved).collect(),
+                    None => Vec::new(),
+                }
+            }
+        }
+    };
+
+    let between = if edge.unique_pair {
+        quote! {
+            /// 対 (a, b) で辺を検索する (`unique pair` → 高々1本、順序は無視)。
+            pub fn #between_ident<'g>(g: &'g #schema_name, a: &#node_id, b: &#node_id) -> Option<&'g #kind> {
+                g.#index
+                    .get(a)?
+                    .iter()
+                    .filter_map(|id| g.#accessor.get(id))
+                    .find(|e| {
+                        let other = if &e.0 == a { &e.1 } else { &e.0 };
+                        other == b
+                    })
+            }
+        }
+    } else {
+        quote! {
+            /// 対 (a, b) で辺を検索する (制約なしなら平行辺を許すため `Vec`、
+            /// 順序は無視)。格納順 (構築時の追加順) を保持する。
+            pub fn #between_ident<'g>(g: &'g #schema_name, a: &#node_id, b: &#node_id) -> Vec<&'g #kind> {
+                match g.#index.get(a) {
+                    Some(ids) => ids
+                        .iter()
+                        .filter_map(|id| g.#accessor.get(id))
+                        .filter(|e| {
+                            let other = if &e.0 == a { &e.1 } else { &e.0 };
+                            other == b
+                        })
                         .collect(),
                     None => Vec::new(),
                 }

@@ -106,7 +106,10 @@ pub fn graph_schema(input: TokenStream) -> TokenStream {
     if let Err(e) = schema_validate::validate_unique_edge_kinds(&edges) {
         validate_errors.push(e);
     }
-    if let Err(e) = schema_validate::validate_each_type_matches_from(&edges) {
+    if let Err(e) = schema_validate::validate_undirected_same_type(&edges) {
+        validate_errors.push(e);
+    }
+    if let Err(e) = schema_validate::validate_each_reference(&edges) {
         validate_errors.push(e);
     }
 
