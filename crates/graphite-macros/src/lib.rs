@@ -30,6 +30,8 @@
 //! 宣言由来の型・アクセサは生成され続け、利用側コードが一斉に赤くならない
 //! (rust-analyzer の speculative expansion にも効く可能性がある)。
 
+mod flow_codegen;
+mod flow_dsl;
 mod instance_codegen;
 mod instance_dsl;
 mod naming;
@@ -192,6 +194,63 @@ pub fn graph(input: TokenStream) -> TokenStream {
             // あれば併記する。この形は式位置では不正になり得るため、
             // 既存テスト (`graph_duplicate_node_key.rs`) と同様に
             // `graph!` の呼び出しは文 (statement) 位置で使うこと。
+            let mut all = error_tokens;
+            all.extend(err.to_compile_error());
+            all.into()
+        }
+    }
+}
+
+/// データフロー矢印 `始点 -[関数式]-> 束縛名` を並べる文位置マクロ
+/// (`docs/flow_macro.md` 参照)。
+///
+/// ```text
+/// graphite::flow! {
+///     input -[parse]-> parsed,
+///     parsed -[validate]-> valid,          // fan-out: parsed を
+///     parsed -[stats]-> report,            //   2本の矢印に流す
+///     (valid, report) -[merge]-> out,      // fan-in: タプル始点
+/// };
+/// println!("{}", out.summary);             // 束縛は flow! の後で普通に見える
+/// ```
+///
+/// **即時実行の純粋な脱糖** (消去可能な拡張)。項の記述順に
+/// `let 束縛名 = (関数式)(始点..);` を並べるだけで、graph!/graph_schema!
+/// のようなスキーマ・builder は一切関与しない。`x -[f]-> y -[g]-> z`
+/// (チェーン形) は `x -[f]-> y, y -[g]-> z` の糖衣。束縛名は普通の `let`
+/// 束縛としてこのマクロ呼び出しの後に見える (`graph!` の項目キーが builder
+/// クロージャの中に閉じるのとは異なり、`flow!` は文位置マクロなので
+/// call-site スパンの識別子がそのまま呼び出し元のスコープに現れる)。
+#[proc_macro]
+pub fn flow(input: TokenStream) -> TokenStream {
+    // flow! には graph!/graph_schema! のような「壊れていたら全体を諦める」
+    // ヘッダが無いため、parse_recovering は実質常に Ok を返す
+    // (`flow_dsl.rs` 参照)。他の2マクロと呼び出し規約を揃えるため、同じ
+    // match の形は残す。
+    let flow_dsl::FlowParse {
+        flow,
+        errors: parse_errors,
+    } = match flow_dsl::FlowInput::parse_recovering.parse(input) {
+        Ok(parsed) => parsed,
+        Err(header_err) => return header_err.to_compile_error().into(),
+    };
+
+    let error_tokens: TokenStream2 = parse_errors.iter().map(syn::Error::to_compile_error).collect();
+
+    match flow_codegen::generate(&flow) {
+        Ok(tokens) => {
+            // flow! は文位置マクロなので、graph! の式位置ラップ (ブロック式
+            // で包む) は不要。compile_error! はどの位置でも単体で正しく
+            // コンパイルエラーを発生させるため、そのまま並べて返す。
+            quote! {
+                #error_tokens
+                #tokens
+            }
+            .into()
+        }
+        Err(err) => {
+            // 束縛名重複などの意味検査エラー: コード生成なしで
+            // compile_error! のみ (現行の graph!/graph_schema! と同じ方針)。
             let mut all = error_tokens;
             all.extend(err.to_compile_error());
             all.into()
