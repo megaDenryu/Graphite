@@ -1,4 +1,4 @@
-//! 注文ライフサイクル FSM のグラフスキーマ。
+//! 注文ライフサイクル FSM のグラフスキーマ (`docs/schema_v4.md` 準拠)。
 //!
 //! 「ステートマシン地獄」(README §1 参照) をグラフで再定式化するときの
 //! 対応関係:
@@ -6,18 +6,23 @@
 //! | FSM の概念 | Graphite の概念 |
 //! |---|---|
 //! | 状態 (draft/paid/...) | ノードインスタンス (`OrderState` の各キー) |
-//! | イベント (submit/pay/...) | エッジ種別 (ラベル) |
-//! | 「この状態でこのイベントの行き先は高々1つ」という決定性 | 多重度 `(0..1)` |
+//! | イベント (submit/pay/...) | 辺種別 (Kind。nominal 型として生成される) |
+//! | 「この状態でこのイベントの行き先は高々1つ」という決定性 | `where each OrderState: 0..1` |
 //! | ガード条件・監査ログ用の付随情報 | エッジ属性型 (`CancelEdge`/`RefundEdge`) |
 //! | 遷移表そのもの | `schema` 宣言 + `graph!` リテラル (`fsm::build`) |
 //!
 //! 状態は全部同じノード型 `OrderState` のインスタンス (ノード同一性は
 //! ユーザーキーが担う — `docs/graph_design_sketches.md` 決定1)。イベントは
-//! `OrderState -> OrderState` の自己ループ的なエッジ種別として宣言する。
-//! 多重度 `(0..1)` は「ある状態から、あるイベントで遷移できる先は高々1つ」
-//! という FSM の決定性そのものを型に持たせている。始点ノードが違えば同じ
-//! ラベルでも別の辺として独立にカウントされるので、`cancel` のように複数
-//! の状態から出る遷移でも「状態ごとに高々1本」が保たれる。
+//! `OrderState -> OrderState` の自己ループ的な辺種別として宣言する。
+//! `where each OrderState: 0..1` は「ある状態から、あるイベントで遷移できる
+//! 先は高々1つ」という FSM の決定性そのものを型に持たせている。始点ノードが
+//! 違えば同じ Kind でも別の辺として独立にカウントされるので、`Cancel` の
+//! ように複数の状態から出る遷移でも「状態ごとに高々1本」が保たれる。
+//!
+//! `unique pair` は付けない: `each OrderState: 0..1` (同一始点からの出辺は
+//! 高々1本という決定性の制約) がすでに「同じ (始点, 終点) の対に2本目」を
+//! 禁止しているため、`unique pair` の併記は冗長になる
+//! (`docs/schema_v4.md` §1 「実装を単純にするため特別扱いしない」方針)。
 
 /// 状態ノード。注文ライフサイクル中の1状態を表す
 /// (draft/pending_payment/paid/shipped/delivered/cancelled/refunded)。
@@ -49,11 +54,11 @@ graphite::graph_schema! {
     schema OrderFsm {
         node OrderState;
 
-        edge submit:  OrderState -> OrderState (0..1);
-        edge pay:     OrderState -> OrderState (0..1);
-        edge ship:    OrderState -> OrderState (0..1);
-        edge deliver: OrderState -> OrderState (0..1);
-        edge cancel:  OrderState -[CancelEdge]-> OrderState (0..1);
-        edge refund:  OrderState -[RefundEdge]-> OrderState (0..1);
+        edge Submit  = OrderState -> OrderState              where each OrderState: 0..1;
+        edge Pay     = OrderState -> OrderState              where each OrderState: 0..1;
+        edge Ship    = OrderState -> OrderState              where each OrderState: 0..1;
+        edge Deliver = OrderState -> OrderState              where each OrderState: 0..1;
+        edge Cancel  = OrderState -[CancelEdge]-> OrderState where each OrderState: 0..1;
+        edge Refund  = OrderState -[RefundEdge]-> OrderState where each OrderState: 0..1;
     }
 }

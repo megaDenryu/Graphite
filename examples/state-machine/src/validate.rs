@@ -7,8 +7,8 @@
 //! - 「終端でないのに、そこから先へ進む辺が1本も無い状態」(定義漏れ) が
 //!   無いか。
 //!
-//! ここでは6種のイベントエッジ (`submit`/`pay`/`ship`/`deliver`/`cancel`/
-//! `refund`) を全部束ねて汎用 `graphite::Graph<(), (), OrderStateId>` に
+//! ここでは6種のイベント辺 (`Submit`/`Pay`/`Ship`/`Deliver`/`Cancel`/
+//! `Refund`) を全部束ねて汎用 `graphite::Graph<(), (), OrderStateId>` に
 //! 射影し、[`Graph::reachable_from`]/[`Graph::out_neighbors`] という
 //! ラベルを問わない汎用アルゴリズムだけで両方を機械的に検出する。
 
@@ -16,7 +16,7 @@ use std::collections::HashSet;
 
 use graphite::Graph;
 
-use crate::schema::{OrderFsm, OrderStateId};
+use crate::schema::{Cancel, Deliver, OrderFsm, OrderFsmNode, OrderState, OrderStateId, Pay, Refund, Ship, Submit};
 
 /// 検査結果。両方が空なら「設計として健全」ということ ([`ValidationReport::is_ok`])。
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -35,28 +35,20 @@ impl ValidationReport {
     }
 }
 
-/// 6種のイベントエッジを全部束ねて、ラベルの区別を捨てた汎用グラフへ
-/// 射影する。属性つきエッジ (`cancel`/`refund`) は `iter()` が3つ組
-/// (始点, 終点, 属性) を返すが、ここでは到達可否の構造しか見ないので
-/// 属性は捨てる。
+/// 6種のイベント辺を全部束ねて、ラベルの区別を捨てた汎用グラフへ射影する。
+/// `{Kind}::iter` は辺タプル struct を返す (属性つきの `Cancel`/`Refund` も
+/// 含め、`from()`/`to()` でキーだけ取り出せる) が、ここでは到達可否の構造
+/// しか見ないので属性は捨てる。
 fn project(fsm: &OrderFsm) -> Graph<(), (), OrderStateId> {
-    let nodes: Vec<OrderStateId> = fsm.order_state_ids().cloned().collect();
+    let nodes: Vec<OrderStateId> = OrderState::ids(fsm).cloned().collect();
 
     let mut edges: Vec<(OrderStateId, OrderStateId)> = Vec::new();
-    edges.extend(fsm.submit().iter().map(|(from, to)| (from.clone(), to.clone())));
-    edges.extend(fsm.pay().iter().map(|(from, to)| (from.clone(), to.clone())));
-    edges.extend(fsm.ship().iter().map(|(from, to)| (from.clone(), to.clone())));
-    edges.extend(fsm.deliver().iter().map(|(from, to)| (from.clone(), to.clone())));
-    edges.extend(
-        fsm.cancel()
-            .iter()
-            .map(|(from, to, _attrs)| (from.clone(), to.clone())),
-    );
-    edges.extend(
-        fsm.refund()
-            .iter()
-            .map(|(from, to, _attrs)| (from.clone(), to.clone())),
-    );
+    edges.extend(Submit::iter(fsm).map(|(_, e)| (e.from().clone(), e.to().clone())));
+    edges.extend(Pay::iter(fsm).map(|(_, e)| (e.from().clone(), e.to().clone())));
+    edges.extend(Ship::iter(fsm).map(|(_, e)| (e.from().clone(), e.to().clone())));
+    edges.extend(Deliver::iter(fsm).map(|(_, e)| (e.from().clone(), e.to().clone())));
+    edges.extend(Cancel::iter(fsm).map(|(_, e)| (e.from().clone(), e.to().clone())));
+    edges.extend(Refund::iter(fsm).map(|(_, e)| (e.from().clone(), e.to().clone())));
 
     Graph::from_edges(nodes, edges)
         .expect("OrderFsmのノードキー・6種のエッジの端点キーは常に整合しているはず")
