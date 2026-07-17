@@ -12,7 +12,7 @@
 
 use std::collections::HashSet;
 
-use crate::schema::{DialogueGraph, EndingId, SceneId};
+use crate::schema::{DialogueGraph, DialogueGraphNode, Ending, EndingId, Finale, Scene, SceneId};
 
 /// 検証結果一式。
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -50,31 +50,29 @@ pub fn validate(schema: &DialogueGraph, start: &SceneId) -> ValidationReport {
         .into_iter()
         .cloned()
         .collect();
-    let mut unreachable_scenes: Vec<SceneId> = schema
-        .scene_ids()
+    let mut unreachable_scenes: Vec<SceneId> = Scene::ids(schema)
         .filter(|id| !reachable.contains(*id))
         .cloned()
         .collect();
     unreachable_scenes.sort();
 
     // 2. デッドエンド
-    let mut dead_end_scenes: Vec<SceneId> = schema
-        .scene_ids()
+    let mut dead_end_scenes: Vec<SceneId> = Scene::ids(schema)
         .filter(|id| schema.is_dead_end(id))
         .cloned()
         .collect();
     dead_end_scenes.sort();
 
     // 3-a. finale を持つシーンの集合 (到達可能性チェックの終点候補)。
-    let finale_scene_ids: HashSet<SceneId> =
-        schema.finale().iter().map(|(from, _to)| from.clone()).collect();
+    let finale_scene_ids: HashSet<SceneId> = Finale::iter(schema)
+        .map(|(_key, edge)| edge.from().clone())
+        .collect();
 
     // 3-b. 「そのシーンから、finale を持つシーンへ到達できるか」を全シーン
     //      について計算する (自分自身が finale シーンなら当然到達できる —
     //      reachable_from は反射的なので finale_scene_ids に自身が含まれて
     //      いれば自動的に true になる)。
-    let can_reach_ending: HashSet<SceneId> = schema
-        .scene_ids()
+    let can_reach_ending: HashSet<SceneId> = Scene::ids(schema)
         .filter(|id| {
             scene_graph
                 .reachable_from(id)
@@ -86,14 +84,11 @@ pub fn validate(schema: &DialogueGraph, start: &SceneId) -> ValidationReport {
 
     // 4. 到達不能なエンディング: reachable な finale シーンが指す先だけを
     //    「到達可能エンディング」とし、その補集合を報告する。
-    let reachable_endings: HashSet<EndingId> = schema
-        .finale()
-        .iter()
-        .filter(|(from, _to)| reachable.contains(*from))
-        .map(|(_from, to)| to.clone())
+    let reachable_endings: HashSet<EndingId> = Finale::iter(schema)
+        .filter(|(_key, edge)| reachable.contains(edge.from()))
+        .map(|(_key, edge)| edge.to().clone())
         .collect();
-    let mut unreachable_endings: Vec<EndingId> = schema
-        .ending_ids()
+    let mut unreachable_endings: Vec<EndingId> = Ending::ids(schema)
         .filter(|id| !reachable_endings.contains(*id))
         .cloned()
         .collect();
