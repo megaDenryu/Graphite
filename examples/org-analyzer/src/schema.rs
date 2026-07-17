@@ -1,15 +1,23 @@
-//! 組織グラフのスキーマ定義。
+//! 組織グラフのスキーマ定義 (`docs/schema_v4.md` 準拠)。
 //!
 //! 3 ノード種別 (`Employee` / `Department` / `Project`) と 4 種の型付き
-//! エッジからなる。多重度の意味付け:
+//! エッジ (`Kind`) からなる。`where` 制約の意味付け:
 //!
-//! - `belongs_to (1)`    : 全社員は必ずちょうど1つの部署に所属する。
-//!   `OrgChart::create` はこれを一括検査するので、所属部署のない社員や
-//!   複数部署に所属する社員のデータは構築時点で `Err` になる。
-//! - `boss (0..1)`       : 上司は高々1人 (トップ層は0人)。
-//! - `assigned (0..*)`   : プロジェクトへの割当は0件以上 (兼務・未アサイン可)。
-//! - `sponsors (0..1)`   : 部署がスポンサーするプロジェクトは高々1件
-//!   (多くの部署はスポンサー活動をしないので0件が普通)。
+//! - `BelongsTo where each Employee: 1`     : 全社員は必ずちょうど1つの部署に
+//!   所属する。`OrgChart::create` はこれを一括検査するので、所属部署のない
+//!   社員や複数部署に所属する社員のデータは構築時点で `Err` になる。
+//! - `Boss where each Employee: 0..1`       : 上司は高々1人 (トップ層は0人)。
+//! - `Assigned` (制約なし)                   : プロジェクトへの割当は0件以上
+//!   (兼務・未アサイン可)。1人の社員が同じプロジェクトに異なる役割 (role) で
+//!   複数アサインされる (兼務・役割変更の履歴等) ケースを排除しない設計判断
+//!   のため、あえて `unique pair` を付けない。
+//! - `Sponsors where each Department: 0..1` : 部署がスポンサーするプロジェクト
+//!   は高々1件 (多くの部署はスポンサー活動をしないので0件が普通)。
+//!
+//! `BelongsTo`/`Boss`/`Sponsors` は既に `each` 制約が同一始点の重複を防いで
+//! いるので、`unique pair` の重ねづけは冗長 (`docs/schema_v4.md` §1 の
+//! 「実装を単純にするため特別扱いしない」方針に合わせ、冗長な併記自体を
+//! 避けている)。
 //!
 //! `graph_schema!` は同一ファイル内に `graph!` を書く場合のみ親切な
 //! コンパイルエラーのハンドシェイクが効く制約があるが、本アプリはデータを
@@ -38,13 +46,13 @@ pub struct Project {
     pub priority: u8,
 }
 
-/// `boss` エッジの属性。`graph_schema!` はこの型を生成せず参照するだけ。
+/// `Boss` エッジの積み荷。`graph_schema!` はこの型を生成せず参照するだけ。
 #[derive(Debug, Clone, PartialEq)]
 pub struct BossEdge {
     pub since: i32,
 }
 
-/// `assigned` エッジの属性。
+/// `Assigned` エッジの積み荷。
 #[derive(Debug, Clone, PartialEq)]
 pub struct AssignedEdge {
     pub role: String,
@@ -57,9 +65,9 @@ graphite::graph_schema! {
         node Department;
         node Project;
 
-        edge belongs_to: Employee -> Department (1);
-        edge boss:       Employee -[BossEdge]-> Employee (0..1);
-        edge assigned:   Employee -[AssignedEdge]-> Project (0..*);
-        edge sponsors:   Department -> Project (0..1);
+        edge BelongsTo = Employee -> Department              where each Employee: 1;
+        edge Boss      = Employee -[BossEdge]-> Employee     where each Employee: 0..1;
+        edge Assigned  = Employee -[AssignedEdge]-> Project;
+        edge Sponsors  = Department -> Project                where each Department: 0..1;
     }
 }

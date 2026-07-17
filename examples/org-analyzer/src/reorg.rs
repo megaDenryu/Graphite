@@ -20,8 +20,9 @@
 //! という Graphite の設計意図を実地で確認できる。
 
 use crate::schema::{
-    AssignedEdge, BossEdge, Department, DepartmentId, Employee, EmployeeId, OrgChart,
-    OrgChartViolation, Project, ProjectId,
+    Assigned, AssignedEdge, AssignedId, BelongsTo, BelongsToId, Boss, BossEdge, BossId,
+    Department, DepartmentId, Employee, EmployeeId, OrgChart, OrgChartNode, OrgChartViolation,
+    Project, ProjectId, Sponsors, SponsorsId,
 };
 
 /// `reorg` コマンドの結果。
@@ -49,10 +50,10 @@ pub enum ReorgOutcome {
 /// 指定した部署を廃止するシミュレーションを実行する。
 /// 部署キーが存在しなければ `None`。
 pub fn simulate_reorg(org: &OrgChart, target: &DepartmentId) -> Option<ReorgReport> {
-    let removed_department_name = org.department(target)?.name.clone();
+    let removed_department_name = Department::get(org, target)?.name.clone();
 
     let mut remaining_depts: Vec<DepartmentId> =
-        org.department_ids().filter(|d| *d != target).cloned().collect();
+        Department::ids(org).filter(|d| *d != target).cloned().collect();
     remaining_depts.sort();
     assert!(
         !remaining_depts.is_empty(),
@@ -61,8 +62,9 @@ pub fn simulate_reorg(org: &OrgChart, target: &DepartmentId) -> Option<ReorgRepo
 
     // 元の belongs_to を社員キー順にソートし、対象部署に所属していた社員を
     // 残存部署へラウンドロビンで機械的に再配置する。
-    let mut belongs_to: Vec<(EmployeeId, DepartmentId)> =
-        org.belongs_to().iter().map(|(e, d)| (e.clone(), d.clone())).collect();
+    let mut belongs_to: Vec<(EmployeeId, DepartmentId)> = BelongsTo::iter(org)
+        .map(|(_id, edge)| (edge.from().clone(), edge.to().clone()))
+        .collect();
     belongs_to.sort_by(|a, b| a.0.cmp(&b.0));
 
     let mut reassigned: Vec<(EmployeeId, DepartmentId)> = Vec::new();
@@ -80,36 +82,31 @@ pub fn simulate_reorg(org: &OrgChart, target: &DepartmentId) -> Option<ReorgRepo
     }
 
     // ノード集合の再構築 (対象部署だけ除く)。
-    let employees: Vec<(EmployeeId, Employee)> = org
-        .employee_ids()
-        .map(|id| (id.clone(), org.employee(id).unwrap().clone()))
+    let employees: Vec<(EmployeeId, Employee)> = Employee::ids(org)
+        .map(|id| (id.clone(), Employee::get(org, id).unwrap().clone()))
         .collect();
     let departments: Vec<(DepartmentId, Department)> = remaining_depts
         .iter()
-        .map(|id| (id.clone(), org.department(id).unwrap().clone()))
+        .map(|id| (id.clone(), Department::get(org, id).unwrap().clone()))
         .collect();
-    let projects: Vec<(ProjectId, Project)> = org
-        .project_ids()
-        .map(|id| (id.clone(), org.project(id).unwrap().clone()))
+    let projects: Vec<(ProjectId, Project)> = Project::ids(org)
+        .map(|id| (id.clone(), Project::get(org, id).unwrap().clone()))
         .collect();
 
     // boss / assigned は Employee が両端 (or 片端) なので部署削除の影響を
     // 受けない。素通しで良い。
-    let boss_edges: Vec<(EmployeeId, EmployeeId, BossEdge)> = org
-        .boss()
-        .iter()
-        .map(|(a, b, attrs)| (a.clone(), b.clone(), attrs.clone()))
+    let boss_edges: Vec<(EmployeeId, EmployeeId, BossEdge)> = Boss::iter(org)
+        .map(|(_id, edge)| (edge.from().clone(), edge.to().clone(), edge.payload().clone()))
         .collect();
-    let assigned_edges: Vec<(EmployeeId, ProjectId, AssignedEdge)> = org
-        .assigned()
-        .iter()
-        .map(|(e, p, attrs)| (e.clone(), p.clone(), attrs.clone()))
+    let assigned_edges: Vec<(EmployeeId, ProjectId, AssignedEdge)> = Assigned::iter(org)
+        .map(|(_id, edge)| (edge.from().clone(), edge.to().clone(), edge.payload().clone()))
         .collect();
 
     // 意図的に「素朴」なまま: sponsors 辺は対象部署の分もフィルタせず
     // そのまま引き継ぐ (モジュール doc コメント参照)。
-    let sponsors_edges: Vec<(DepartmentId, ProjectId)> =
-        org.sponsors().iter().map(|(d, p)| (d.clone(), p.clone())).collect();
+    let sponsors_edges: Vec<(DepartmentId, ProjectId)> = Sponsors::iter(org)
+        .map(|(_id, edge)| (edge.from().clone(), edge.to().clone()))
+        .collect();
 
     let result = OrgChart::create(|b| {
         for (id, e) in employees {
@@ -122,16 +119,19 @@ pub fn simulate_reorg(org: &OrgChart, target: &DepartmentId) -> Option<ReorgRepo
             b.project(id, p);
         }
         for (e, d) in new_belongs_to {
-            b.belongs_to(e, d);
+            b.belongs_to(BelongsToId(format!("bt_{}", e.0)), BelongsTo(e, d));
         }
         for (from, to, attrs) in boss_edges {
-            b.boss(from, to, attrs);
+            b.boss(BossId(format!("boss_{}", from.0)), Boss(from, to, attrs));
         }
         for (e, p, attrs) in assigned_edges {
-            b.assigned(e, p, attrs);
+            b.assigned(
+                AssignedId(format!("asn_{}_{}", e.0, p.0)),
+                Assigned(e, p, attrs),
+            );
         }
         for (d, p) in sponsors_edges {
-            b.sponsors(d, p);
+            b.sponsors(SponsorsId(format!("spon_{}", d.0)), Sponsors(d, p));
         }
     });
 

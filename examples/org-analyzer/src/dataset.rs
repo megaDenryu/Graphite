@@ -6,8 +6,9 @@
 //! が拾うべき既知の異常を意図的に埋め込む。
 
 use crate::schema::{
-    AssignedEdge, BossEdge, Department, DepartmentId, Employee, EmployeeId, OrgChart, Project,
-    ProjectId,
+    Assigned, AssignedEdge, AssignedId, BelongsTo, BelongsToId, Boss, BossEdge, BossId,
+    Department, DepartmentId, Employee, EmployeeId, OrgChart, Project, ProjectId, Sponsors,
+    SponsorsId,
 };
 
 /// 社員数。
@@ -332,16 +333,19 @@ pub fn generate(seed: u64, inject_anomalies: bool) -> GeneratedOrg {
             b.project(id, p);
         }
         for (e, d) in belongs_to_edges {
-            b.belongs_to(e, d);
+            b.belongs_to(BelongsToId(format!("bt_{}", e.0)), BelongsTo(e, d));
         }
         for (from, to, attrs) in boss_edges {
-            b.boss(from, to, attrs);
+            b.boss(BossId(format!("boss_{}", from.0)), Boss(from, to, attrs));
         }
         for (e, p, attrs) in assigned_edges {
-            b.assigned(e, p, attrs);
+            b.assigned(
+                AssignedId(format!("asn_{}_{}", e.0, p.0)),
+                Assigned(e, p, attrs),
+            );
         }
         for (d, p) in sponsors_edges {
-            b.sponsors(d, p);
+            b.sponsors(SponsorsId(format!("spon_{}", d.0)), Sponsors(d, p));
         }
     })
     .expect("合成データ生成器は常に多重度制約を満たすよう組んでいるはず");

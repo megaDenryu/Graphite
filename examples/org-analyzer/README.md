@@ -23,20 +23,20 @@ graphite::graph_schema! {
         node Department;
         node Project;
 
-        edge belongs_to: Employee -> Department (1);
-        edge boss:       Employee -[BossEdge]-> Employee (0..1);
-        edge assigned:   Employee -[AssignedEdge]-> Project (0..*);
-        edge sponsors:   Department -> Project (0..1);
+        edge BelongsTo = Employee -> Department              where each Employee: 1;
+        edge Boss      = Employee -[BossEdge]-> Employee     where each Employee: 0..1;
+        edge Assigned  = Employee -[AssignedEdge]-> Project;
+        edge Sponsors  = Department -> Project                where each Department: 0..1;
     }
 }
 ```
 
-| エッジ | 多重度 | 意味 |
+| エッジ (Kind) | where 制約 | 意味 |
 |---|---|---|
-| `belongs_to` | `Employee -> Department (1)` | 全社員は必ずちょうど1つの部署に所属する |
-| `boss` | `Employee -> Employee (0..1)` | 上司は高々1人 (トップ層は0人) |
-| `assigned` | `Employee -> Project (0..*)` | プロジェクトへの割当は0件以上 (兼務・未アサイン可) |
-| `sponsors` | `Department -> Project (0..1)` | 部署がスポンサーするプロジェクトは高々1件 |
+| `BelongsTo` | `where each Employee: 1` | 全社員は必ずちょうど1つの部署に所属する |
+| `Boss` | `where each Employee: 0..1` | 上司は高々1人 (トップ層は0人) |
+| `Assigned` | 制約なし | プロジェクトへの割当は0件以上 (兼務・未アサイン可)。同じ社員が同じプロジェクトに異なる役割で複数アサインされるケースを排除しないため、あえて `unique pair` を付けない |
+| `Sponsors` | `where each Department: 0..1` | 部署がスポンサーするプロジェクトは高々1件 |
 
 ## データ
 
@@ -109,7 +109,7 @@ cargo run -- summary
   ...
 ```
 
-「span of control」は `grade >= 3` (係長以上) を管理職とみなし、`boss().iter()`
+「span of control」は `grade >= 3` (係長以上) を管理職とみなし、`Boss::iter(&g)`
 を上司キーで集計した直属部下数から平均・最大・部下ゼロの管理職一覧を出す。
 
 ### 2. `chain <社員キー>` — 管理チェーンを根まで辿る
@@ -127,10 +127,10 @@ cargo run -- chain E003 --seed 7 --inject-anomalies
 [警告] 循環を検出したため打ち切りました (社員 E003 まで戻っています)
 ```
 
-`boss().of` (多重度 0..1) は `Option<(&Employee, &BossEdge)>` を返すだけで
-上司の ID そのものは含まないため、`boss().iter()` から `EmployeeId -> (EmployeeId,
-since)` の索引を作ってから辿っている。訪問済み集合を持ちながら辿ることで、
-途中で循環に入った場合も無限ループせず検出・打ち切りできる。
+`Boss::of` (`where each Employee: 0..1`) は `Option<(&Employee, &BossEdge)>` を
+返すだけで上司の ID そのものは含まないため、`Boss::iter(&g)` から
+`EmployeeId -> (EmployeeId, since)` の索引を作ってから辿っている。訪問済み集合を
+持ちながら辿ることで、途中で循環に入った場合も無限ループせず検出・打ち切りできる。
 
 存在しない社員キーを渡すとエラー終了する:
 
@@ -168,20 +168,19 @@ cargo run -- anomalies --seed 7 --inject-anomalies
 
 検出手法:
 
-- **相互上司ペア**: `boss().iter()` で全ペアを集めておき、`(a, b)` かつ
+- **相互上司ペア**: `Boss::iter(&g)` で全ペアを集めておき、`(a, b)` かつ
   `(b, a)` が両方存在するものを拾う (README (Graphite本体) に載っている手法
   そのもの)。
-- **上司循環**: `boss` エッジを `Graph::from_edges` (フェーズ5追加) で汎用
+- **上司循環**: `Boss` エッジを `Graph::from_edges` で汎用
   `graphite::Graph<(), (), EmployeeId>` に射影し、`topological_sort()` で
-  検出する。`CycleError::cycle` (フェーズ5から循環メンバー全体を返す形に拡張)
-  をそのまま使えるので、以前のような「boss辺を手で辿って復元する」処理は
-  不要になった。長さ2の循環 (相互上司) は上の項目と重複するのでここには
-  含めない。
-- **部署跨ぎ上司**: `belongs_to().iter()` で作った所属索引と `boss().iter()`
+  検出する。`CycleError::cycle` (循環メンバー全体を返す) をそのまま使えるので
+  「boss辺を手で辿って復元する」処理は不要。長さ2の循環 (相互上司) は上の
+  項目と重複するのでここには含めない。
+- **部署跨ぎ上司**: `BelongsTo::iter(&g)` で作った所属索引と `Boss::iter(&g)`
   を突き合わせ、上司と部下の部署が異なるものを拾う。
-- **無人プロジェクト / スポンサー無しプロジェクト**: `assigned().iter()` /
-  `sponsors().iter()` に現れないプロジェクトキーを `project_ids()` との差分
-  で求める。
+- **無人プロジェクト / スポンサー無しプロジェクト**: `Assigned::iter(&g)` /
+  `Sponsors::iter(&g)` に現れないプロジェクトキーを `Project::ids(&g)` との
+  差分で求める。
 
 ### 4. `reorg <部署キー>` — 組織改編シミュレーション
 
@@ -210,11 +209,11 @@ cargo run -- reorg D01
 (Graphite は構築後不変) ので、これが唯一の編集手段になる。
 
 この再構築ロジックは意図的に「素朴」なままにしている箇所が1つある: 廃止部署
-が発していた `sponsors` 辺 (Department -> Project) をカスケード削除せず、
+が発していた `Sponsors` 辺 (Department -> Project) をカスケード削除せず、
 そのまま新しいノード集合に持ち込む。廃止対象の部署がどのプロジェクトもスポン
 サーしていなければ何も起こらず成功するが、スポンサーしていた場合は
 存在しない部署キーを参照する辺が残ったまま `create` に渡り、`freeze` 検証が
-`OrgChartViolation::UnknownDepartment` を検出してエラーになる:
+`OrgChartViolation::SponsorsUnknownSource` を検出してエラーになる:
 
 ```
 $ cargo run -- reorg D03
@@ -224,8 +223,8 @@ $ cargo run -- reorg D03
 ...
 
 [NG] freeze検証がViolationを検出し、再構築は失敗しました:
-  未知のDepartmentキーが参照されています: DepartmentId("D03")
-  詳細: UnknownDepartment(DepartmentId("D03"))
+  未知のキーが参照されています (辺 `Sponsors` SponsorsId("spon_D03") の始点, Department): DepartmentId("D03")
+  詳細: SponsorsUnknownSource { edge: SponsorsId("spon_D03"), source: DepartmentId("D03") }
 
   解説: 廃止部署が指すsponsors辺(部署->プロジェクト)をカスケード削除
 し忘れたまま再構築しようとしたため、存在しない部署キーを参照する辺が
@@ -246,18 +245,18 @@ $ cargo run -- reorg D03
 を手で管理する実装と対比すると、`graph_schema!` が肩代わりしてくれる点は
 以下の通り具体的である。
 
-### 1. 多重度(1)による「全社員は必ず1部署」保証
+### 1. `where each Employee: 1` による「全社員は必ず1部署」保証
 
 生HashMap実装では「社員を登録したが部署未設定」「部署を2つ登録してしまった」
-といった不整合が **実行時に静かに** 残り得る。`belongs_to().iter()` を毎回
+といった不整合が **実行時に静かに** 残り得る。`BelongsTo::iter(&g)` を毎回
 自分で数えて検査するコードを書かない限り気づけない。
 
-Graphiteでは `edge belongs_to: Employee -> Department (1)` と宣言した時点で、
-`OrgChart::create()` が全社員について「ちょうど1本」であることを一括検査し、
-満たさなければ `OrgChartViolation::MultiplicityViolation` で構築自体が失敗
-する。本アプリの合成データ生成器 (`dataset.rs`) がバグって所属漏れの社員を
-作ってしまえば、`summary` を実行する前の `OrgChart::create()` の時点で
-即座に検出される (`.expect(...)` で握りつぶさない限り必ず気づける)。
+Graphiteでは `edge BelongsTo = Employee -> Department where each Employee: 1;`
+と宣言した時点で、`OrgChart::create()` が全社員について「ちょうど1本」で
+あることを一括検査し、満たさなければ `OrgChartViolation::BelongsToEachViolation`
+で構築自体が失敗する。本アプリの合成データ生成器 (`dataset.rs`) がバグって
+所属漏れの社員を作ってしまえば、`summary` を実行する前の `OrgChart::create()`
+の時点で即座に検出される (`.expect(...)` で握りつぶさない限り必ず気づける)。
 
 ### 2. freezeによる一括検証 (「不変+再構築」パターン)
 
@@ -271,32 +270,33 @@ Graphiteには可変な削除APIが存在せず、「新しいノード集合と
 再構築のたびに `freeze` が全エッジの端点を検査するため、カスケード削除の
 モレは (今回のように) 必ずその場で `Violation` として浮かび上がる。
 
-### 3. 型付きビューによる誤り耐性
+### 3. 型付きアクセサによる誤り耐性
 
-`g.belongs_to().of(&emp_id)` は `&Department` を、`g.boss().of(&emp_id)` は
-`Option<(&Employee, &BossEdge)>` を、`g.assigned().of(&emp_id)` は
-`Vec<(&Project, &AssignedEdge)>` を返す — 多重度がそのまま戻り値の型
-(直接返却 / `Option` / `Vec`) に反映されている。生HashMap実装で
+`BelongsTo::of(&g, &emp_id)` は `&Department` を、`Boss::of(&g, &emp_id)` は
+`Option<(&Employee, &BossEdge)>` を、`Assigned::of(&g, &emp_id)` は
+`Vec<(&Project, &AssignedEdge)>` を返す — `where each` 制約がそのまま戻り値
+の型 (直接返却 / `Option` / `Vec`) に反映されている。生HashMap実装で
 `HashMap<EmployeeId, Vec<DepartmentId>>` のように多重度を型で表現し忘れると、
 「本当は1つのはずの部署が複数入っている」バグを型システムが教えてくれない。
 
-`belongs_to().get()` (非パニック版) と `belongs_to().of()` (パニック版) の
+`BelongsTo::get_of()` (非パニック版) と `BelongsTo::of()` (パニック版) の
 対も、「このグラフが発行したキーだけを渡す」という呼び出し規約と、「外部
 入力かもしれないキーを安全に検査する」という用途を型シグネチャで自然に
 書き分けられる (`main.rs` の `chain`/`reorg` サブコマンドで未知キー入力を
-扱う箇所は `get`、内部で確実に存在するキーを使う箇所は `of`、と使い分けて
-いる)。ビューの操作語彙 (`of`/`get`/`id_of`/`get_id`/`ids_of`/`iter`) は
-ラベルによらず共通なので、覚えることは増えない (`docs/edge_view_api.md`
-参照)。
+扱う箇所は `get_of`、内部で確実に存在するキーを使う箇所は `of`、と使い分けて
+いる)。アクセサの操作語彙 (`of`/`get_of`/`get`/`between`/`iter`/`ids`/`len`)
+は `Kind` によらず共通なので、覚えることは増えない (`docs/schema_v4.md`
+§3.2 参照)。
 
 ### 4. `iter()` による宣言的なクエリ
 
 `anomalies` コマンドの相互上司検出・部署跨ぎ上司検出は、生HashMapなら
 「全社員をループしてO(N)の検索を都度行う」か「逆引きインデックスを自分で
-構築・保守する」必要がある。Graphiteの `boss().iter()`/`belongs_to().iter()`
-は最初からその形 (`(&EmployeeId, &EmployeeId[, &Attrs])` のイテレータ) で
-提供されるため、`filter`/`collect`/`contains` といった通常のイテレータ
-コンビネータだけで検出ロジックを書ける (`src/analysis.rs` 参照)。
+構築・保守する」必要がある。Graphiteの `Boss::iter(&g)`/`BelongsTo::iter(&g)`
+は最初からその形 (`(&{Kind}Id, &{Kind})` のイテレータ、`.from()`/`.to()`/
+`.payload()` で分解) で提供されるため、`filter`/`collect`/`contains` といった
+通常のイテレータコンビネータだけで検出ロジックを書ける (`src/analysis.rs`
+参照)。
 
 ## 構成
 
@@ -323,12 +323,15 @@ tests/
   Option<&DstId>` のような「相手キーだけを返す」アクセサがあると、
   グラフを辿るタイプの処理 (経路探索・チェーン追跡) がもう一段書きやすい。
   → **解決 (フェーズ5で `{label}_id` として追加、その後ビュー方式
-  (`docs/edge_view_api.md`) へ移行)**: 現在は `boss().id_of(&EmployeeId) ->
-  Option<&EmployeeId>` としてキーだけを取得できる。`management_chain` は
-  依然として自前でインデックスを作っているが、これは「上司を根まで辿る」
-  という探索そのものが `id_of` 単体では表現できない (毎回グラフに問い合わせ
-  直すより索引を1回作る方が効率的な) ためであり、キー取得手段が無いことに
-  よる回避策ではなくなった。
+  (`docs/edge_view_api.md`) へ、さらにスキーマv4 (`docs/schema_v4.md`) で
+  辺の第一級キー化へ移行)**: v4 では辺そのものがキー付き要素 (`{Kind}Id`)
+  であり、`Kind::iter(&g)` が返す `(&{Kind}Id, &Kind)` の `Kind` 値に
+  `.from()`/`.to()` があるため、相手キーは `iter()` から直接取れる。
+  `management_chain` は `Boss::iter(&g)` から
+  `HashMap<EmployeeId, (EmployeeId, i32)>` の索引を1回作って辿っており、
+  これは「上司を根まで辿る」という探索自体が単発アクセサでは表現できない
+  (毎回グラフに問い合わせ直すより索引を1回作る方が効率的な) ためであって、
+  キー取得手段が無いことによる回避策ではない。
 - **`Graph<N, E, K>::topological_sort()` の `CycleError` が循環メンバーを
   1つしか返さない**。今回の `boss` は「各ノードの出次数が高々1」という
   特殊な形 (関数グラフ) だったため自前で辿って復元できたが、一般のグラフ

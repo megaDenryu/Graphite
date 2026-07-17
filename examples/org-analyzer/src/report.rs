@@ -3,7 +3,7 @@
 
 use crate::analysis::{AnomalyReport, ChainResult, SummaryReport};
 use crate::reorg::{ReorgOutcome, ReorgReport};
-use crate::schema::{EmployeeId, OrgChart};
+use crate::schema::{Department, Employee, EmployeeId, OrgChart, OrgChartNode, Project};
 
 pub fn print_summary(report: &SummaryReport) {
     println!("=== 組織サマリ ===");
@@ -79,8 +79,8 @@ pub fn print_anomalies(org: &OrgChart, report: &AnomalyReport) {
         println!("  なし");
     } else {
         for (a, b) in &report.mutual_boss_pairs {
-            let name_a = org.employee(a).map(|e| e.name.as_str()).unwrap_or("?");
-            let name_b = org.employee(b).map(|e| e.name.as_str()).unwrap_or("?");
+            let name_a = Employee::get(org, a).map(|e| e.name.as_str()).unwrap_or("?");
+            let name_b = Employee::get(org, b).map(|e| e.name.as_str()).unwrap_or("?");
             println!("  {} ({}) <-> {} ({})", name_a, a.0, name_b, b.0);
         }
     }
@@ -93,7 +93,7 @@ pub fn print_anomalies(org: &OrgChart, report: &AnomalyReport) {
             let names: Vec<String> = cycle
                 .iter()
                 .map(|id| {
-                    let name = org.employee(id).map(|e| e.name.as_str()).unwrap_or("?");
+                    let name = Employee::get(org, id).map(|e| e.name.as_str()).unwrap_or("?");
                     format!("{}({})", name, id.0)
                 })
                 .collect();
@@ -131,7 +131,7 @@ fn print_project_list(org: &OrgChart, ids: &[crate::schema::ProjectId]) {
         return;
     }
     for id in ids {
-        let name = org.project(id).map(|p| p.name.as_str()).unwrap_or("?");
+        let name = Project::get(org, id).map(|p| p.name.as_str()).unwrap_or("?");
         println!("  {} ({})", name, id.0);
     }
 }
@@ -146,8 +146,8 @@ pub fn print_reorg(org: &OrgChart, report: &ReorgReport) {
 
     println!("--- 再配置先 (社員キー順、ラウンドロビン) ---");
     for (emp_id, new_dept) in report.reassigned.iter().take(10) {
-        let name = org.employee(emp_id).map(|e| e.name.as_str()).unwrap_or("?");
-        let dept_name = org.department(new_dept).map(|d| d.name.as_str()).unwrap_or("?");
+        let name = Employee::get(org, emp_id).map(|e| e.name.as_str()).unwrap_or("?");
+        let dept_name = Department::get(org, new_dept).map(|d| d.name.as_str()).unwrap_or("?");
         println!("  {} ({}) -> {} ({})", name, emp_id.0, dept_name, new_dept.0);
     }
     if report.reassigned.len() > 10 {
@@ -160,9 +160,9 @@ pub fn print_reorg(org: &OrgChart, report: &ReorgReport) {
             println!("[OK] 再構築に成功しました (freeze検証をパス)");
             println!(
                 "  新組織: 社員{}人 / 部署{}人 / プロジェクト{}件",
-                new_org.employee_ids().count(),
-                new_org.department_ids().count(),
-                new_org.project_ids().count()
+                Employee::ids(new_org).count(),
+                Department::ids(new_org).count(),
+                Project::ids(new_org).count()
             );
         }
         ReorgOutcome::Violated(violation) => {
