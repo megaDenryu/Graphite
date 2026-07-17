@@ -8,7 +8,7 @@
 //! 実装を1回書けば済む — アプリ側が「並行実行できる集合をどう求めるか」
 //! を自分で再発明する必要が無い、というのが README の主張。
 
-use crate::schema::{Orchestration, Service, ServiceId};
+use crate::schema::{DependsOn, Orchestration, OrchestrationNode, Service, ServiceId};
 use graphite::{CycleError, Graph};
 
 /// ノード値・辺値のいずれも不要 (依存関係の「形」だけが要る) なので
@@ -18,27 +18,29 @@ pub type ServiceDependencyGraph = Graph<(), (), ServiceId>;
 
 /// `Orchestration` から実行順序グラフを射影する。
 ///
-/// `depends_on().iter()` は `(dependent, prerequisite)` の順で
-/// `(A -[depends_on]-> B` の `(A, B)`)` を返す。実行順序としては
-/// `prerequisite` (B) が先に完了していなければならないので、汎用
+/// `DependsOn::iter(g)` は `(from, to)` = `(dependent, prerequisite)` の
+/// 辺 (`DependsOn(dependent -> prerequisite)`) を返す。実行順序としては
+/// `prerequisite` (to) が先に完了していなければならないので、汎用
 /// `Graph` 上の辺は向きを反転し `prerequisite -> dependent`
-/// (`B -> A`) として積む。これにより `topological_sort`/
+/// (`to -> from`) として積む。これにより `topological_sort`/
 /// `topological_levels` が仮定する「辺の始点が先」という向きと
 /// 実行順序が一致する。
 ///
-/// `depends_on` の終点キーは常に `g.service_ids()` 由来 (schema の
+/// `DependsOn` の終点キーは常に `Service::ids(g)` 由来 (schema の
 /// 図式適合検査が保証する) なので、`Graph::build` が `UnknownEndpoint`
 /// を返すことはない。
 pub fn build_dependency_graph(g: &Orchestration) -> ServiceDependencyGraph {
-    let nodes: Vec<(ServiceId, ())> = g.service_ids().map(|id| (id.clone(), ())).collect();
+    let nodes: Vec<(ServiceId, ())> = Service::ids(g).map(|id| (id.clone(), ())).collect();
 
     let mut edges: Vec<(ServiceId, ServiceId, ())> = Vec::new();
-    for (dependent, prerequisite) in g.depends_on().iter() {
+    for (_id, edge) in DependsOn::iter(g) {
+        let dependent = edge.from();
+        let prerequisite = edge.to();
         edges.push((prerequisite.clone(), dependent.clone(), ()));
     }
 
     Graph::build(nodes, edges)
-        .expect("depends_onの端点は必ずg.service_ids()由来なので未知キーにはならない")
+        .expect("DependsOnの端点は必ずService::ids(g)由来なので未知キーにはならない")
 }
 
 /// 「並行実行できる波」を依存関係グラフから計算する。
@@ -59,7 +61,7 @@ pub fn compute_waves(g: &Orchestration) -> Result<Vec<Vec<ServiceId>>, CycleErro
 /// 波1つ分の想定所要時間 (無限並列ワーカーを仮定した `max(startup_ms)`)。
 pub fn wave_duration_ms(g: &Orchestration, wave: &[ServiceId]) -> u64 {
     wave.iter()
-        .filter_map(|id| g.service(id))
+        .filter_map(|id| Service::get(g, id))
         .map(|s: &Service| s.startup_ms)
         .max()
         .unwrap_or(0)
@@ -67,8 +69,8 @@ pub fn wave_duration_ms(g: &Orchestration, wave: &[ServiceId]) -> u64 {
 
 /// 全サービスの起動時間の総和 (直列実行した場合の下限見積り)。
 pub fn total_serial_ms(g: &Orchestration) -> u64 {
-    g.service_ids()
-        .filter_map(|id| g.service(id))
+    Service::ids(g)
+        .filter_map(|id| Service::get(g, id))
         .map(|s| s.startup_ms)
         .sum()
 }
@@ -86,10 +88,10 @@ mod tests {
             cache  = Service { name: "cache".into(), startup_ms: 15 },
             api    = Service { name: "api".into(), startup_ms: 25 },
 
-            db    -[depends_on]-> config,
-            cache -[depends_on]-> config,
-            api   -[depends_on]-> db,
-            api   -[depends_on]-> cache,
+            db_config    = DependsOn(db -> config),
+            cache_config = DependsOn(cache -> config),
+            api_db       = DependsOn(api -> db),
+            api_cache    = DependsOn(api -> cache),
         })
         .unwrap();
 
@@ -112,9 +114,9 @@ mod tests {
             b = Service { name: "b".into(), startup_ms: 10 },
             c = Service { name: "c".into(), startup_ms: 10 },
 
-            a -[depends_on]-> b,
-            b -[depends_on]-> c,
-            c -[depends_on]-> a,
+            a_b = DependsOn(a -> b),
+            b_c = DependsOn(b -> c),
+            c_a = DependsOn(c -> a),
         })
         .unwrap();
 

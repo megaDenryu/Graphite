@@ -90,34 +90,36 @@ graphite::graph_schema! {
     schema Orchestration {
         node Service;
 
-        edge depends_on: Service -> Service (0..*);
+        edge DependsOn = Service -> Service where unique pair;
     }
 }
 ```
 
-`A -[depends_on]-> B` は「A は B に依存する (B が起動完了していないと
-A は起動できない)」と読む。これは実行順序 (トポロジカル順序) とは
-**逆**の向きになる点に注意 — `depends_on` は「これから作るもの→先に
+`DependsOn(a -> b)` は「a は b に依存する (b が起動完了していないと
+a は起動できない)」と読む。これは実行順序 (トポロジカル順序) とは
+**逆**の向きになる点に注意 — `DependsOn` は「これから作るもの→先に
 必要なもの」の向き、実行順序は「先に必要なもの→これから作るもの」の
 向きだから。この反転は `src/depgraph.rs::build_dependency_graph` が
 1箇所で引き受け、以後 `topological_sort`/`topological_levels` が仮定する
 「辺の始点が先」という向きに揃える (`examples/build-pipeline` の
-`consumes ∘ produces⁻¹` 射影と同じ発想)。
+`Consumes ∘ Produces⁻¹` 射影と同じ発想)。`where unique pair` は「同じ
+(a, b) に2本目の依存を張ることに意味は無い」という判断 (依存は有るか
+無いかの二値であり、平行辺を許す積極的な理由が無い)。
 
 ## 4. 対応表 — 非同期オーケストレーションの概念 ↔ Graphite の概念
 
 | 非同期オーケストレーションの概念 | 素朴な実装 | Graphite での対応 |
 |---|---|---|
-| 「AはBの後に起動する」という制約 | `spawn` の中の `recv().await` / 手書きの `await` の並び | `edge depends_on: Service -> Service (0..*);` の1本のエッジ |
+| 「AはBの後に起動する」という制約 | `spawn` の中の `recv().await` / 手書きの `await` の並び | `edge DependsOn = Service -> Service where unique pair;` の1本のエッジ |
 | 「今並行に起動できるものは何か」 | 人間が依存を目で追って手計算 | `topological_levels()` が波として自動導出 |
 | 循環依存の検出 | 実行時にハングして気づく (エラーなし) | 構築直後に `CycleError { cycle }` として拒否 (循環パス付き) |
-| 依存を1本追加する | チャネル配線・`spawn` ブロックを複数箇所手直し | `graph!` に1行 `-[depends_on]->` を追加するだけ。波は再計算されるだけ |
+| 依存を1本追加する | チャネル配線・`spawn` ブロックを複数箇所手直し | `graph!` に1行 `key = DependsOn(a -> b)` を追加するだけ。波は再計算されるだけ |
 | 「実際に並行に実行する」実行主体 | 自作 `spawn` + 同期プリミティブ | 波ごとに `std::thread::scope` (§5) |
-| 依存順序が守られているかの検証 | 手作業でログを目で確認 (or 検証コード無し) | 実行ログの `start`/`end` を `depends_on().iter()` で全数検査可能 (`tests/integration.rs`) |
+| 依存順序が守られているかの検証 | 手作業でログを目で確認 (or 検証コード無し) | 実行ログの `start`/`end` を `DependsOn::iter(&g)` で全数検査可能 (`tests/integration.rs`) |
 
 ## 5. 実装の要点
 
-- `src/schema.rs` — `Service` ノード + `depends_on` エッジのスキーマ宣言。
+- `src/schema.rs` — `Service` ノード + `DependsOn` エッジのスキーマ宣言。
 - `src/fixtures.rs` — `main.rs`/`tests/` が共有する固定サンプル
   (本編10サービスグラフ・循環依存デモ用の3サービスグラフ)。
 - `src/depgraph.rs` — `Orchestration` から汎用 `graphite::Graph<(), (),
@@ -137,7 +139,7 @@ A は起動できない)」と読む。これは実行順序 (トポロジカル
 has_cycle() = true
 波の計算は CycleError で拒否された (実行を試みる前に判明): グラフに循環があります: ServiceId("c") -> ServiceId("b") -> ServiceId("a") -> ServiceId("c")
 
-=== 2. 本編サービスグラフを構築 (サービス数=10, depends_on本数=13) ===
+=== 2. 本編サービスグラフを構築 (サービス数=10, DependsOn本数=13) ===
 
 === 3. topological_levels() で波を計算 ===
 wave 1: [config] (この波の所要時間 = 15ms)
@@ -189,7 +191,7 @@ cargo test
 - 循環依存サンプルが `has_cycle()`/`compute_waves()` の両方で検出され、
   具体的な循環パス (`CycleError.cycle`) が得られること
 - `run_waves` の実行ログから、依存先 (`prerequisite`) が依存元
-  (`dependent`) より先に完了していることを `depends_on().iter()` の
+  (`dependent`) より先に完了していることを `DependsOn::iter(&g)` の
   全ペアについて検証すること
 - 並列実行が直列実行より実測で速いこと
 - 未知の依存先を参照すると `DependsOnUnknownTarget` 違反になること

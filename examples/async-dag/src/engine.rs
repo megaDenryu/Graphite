@@ -12,7 +12,7 @@
 //! 波を始めない」という依存関係の遵守そのものであり、`Graph` 側で計算
 //! した波の境界をそのまま同期点として使っているだけである点がポイント。
 
-use crate::schema::{Orchestration, ServiceId};
+use crate::schema::{Orchestration, OrchestrationNode, Service, ServiceId};
 use std::sync::Mutex;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -65,9 +65,8 @@ pub fn run_waves(g: &Orchestration, waves: &[Vec<ServiceId>]) -> ExecutionReport
     for (wave_index, wave) in waves.iter().enumerate() {
         thread::scope(|scope| {
             for id in wave {
-                let service = g
-                    .service(id)
-                    .unwrap_or_else(|| panic!("波に含まれるキー{id:?}はg.service_ids()由来のはず"));
+                let service = Service::get(g, id)
+                    .unwrap_or_else(|| panic!("波に含まれるキー{id:?}はService::ids(g)由来のはず"));
                 let records = &records;
                 scope.spawn(move || {
                     let start = overall_start.elapsed();
@@ -98,7 +97,7 @@ pub fn run_waves(g: &Orchestration, waves: &[Vec<ServiceId>]) -> ExecutionReport
 pub fn run_serial(g: &Orchestration, order: &[ServiceId]) -> Duration {
     let start = Instant::now();
     for id in order {
-        if let Some(service) = g.service(id) {
+        if let Some(service) = Service::get(g, id) {
             simulate_startup(service.startup_ms);
         }
     }
@@ -109,7 +108,7 @@ pub fn run_serial(g: &Orchestration, order: &[ServiceId]) -> Duration {
 mod tests {
     use super::*;
     use crate::depgraph::compute_waves;
-    use crate::schema::Service;
+    use crate::schema::{DependsOn, OrchestrationNode, Service};
 
     #[test]
     #[rustfmt::skip]
@@ -120,10 +119,10 @@ mod tests {
             cache  = Service { name: "cache".into(), startup_ms: 8 },
             api    = Service { name: "api".into(), startup_ms: 5 },
 
-            db    -[depends_on]-> config,
-            cache -[depends_on]-> config,
-            api   -[depends_on]-> db,
-            api   -[depends_on]-> cache,
+            db_config    = DependsOn(db -> config),
+            cache_config = DependsOn(cache -> config),
+            api_db       = DependsOn(api -> db),
+            api_cache    = DependsOn(api -> cache),
         })
         .unwrap();
 
@@ -132,9 +131,11 @@ mod tests {
 
         assert_eq!(report.records.len(), 4);
 
-        // depends_on の全ペアについて、依存先 (prerequisite) の完了時刻が
+        // DependsOn の全ペアについて、依存先 (prerequisite) の完了時刻が
         // 依存元 (dependent) の開始時刻より前 (以下) であることを確認する。
-        for (dependent, prerequisite) in g.depends_on().iter() {
+        for (_id, edge) in DependsOn::iter(&g) {
+            let dependent = edge.from();
+            let prerequisite = edge.to();
             let dependent_record = report.record_of(dependent);
             let prerequisite_record = report.record_of(prerequisite);
             assert!(
@@ -155,17 +156,17 @@ mod tests {
             cache  = Service { name: "cache".into(), startup_ms: 40 },
             api    = Service { name: "api".into(), startup_ms: 10 },
 
-            db    -[depends_on]-> config,
-            cache -[depends_on]-> config,
-            api   -[depends_on]-> db,
-            api   -[depends_on]-> cache,
+            db_config    = DependsOn(db -> config),
+            cache_config = DependsOn(cache -> config),
+            api_db       = DependsOn(api -> db),
+            api_cache    = DependsOn(api -> cache),
         })
         .unwrap();
 
         let waves = compute_waves(&g).unwrap();
         let report = run_waves(&g, &waves);
 
-        let order: Vec<ServiceId> = g.service_ids().cloned().collect();
+        let order: Vec<ServiceId> = Service::ids(&g).cloned().collect();
         let serial = run_serial(&g, &order);
 
         // 直列: 20+40+40+10=110ms。並列: 20 (config) + 40 (db,cacheの最大) +
