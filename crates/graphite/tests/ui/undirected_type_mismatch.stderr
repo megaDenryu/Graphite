@@ -1,0 +1,11 @@
+error: 無向辺 `WorksWith` の両端は同じノード型でなければなりません (`Person` != `Company`)。異なる型を対称に繋ぎたい場合は有向辺として書くか、ノードを昇格してください
+  --> tests/ui/undirected_type_mismatch.rs:18:40
+   |
+18 |             edge WorksWith = Person -- Company;
+   |                                        ^^^^^^^
+
+error: 始点側の型はこちら
+  --> tests/ui/undirected_type_mismatch.rs:18:30
+   |
+18 |             edge WorksWith = Person -- Company;
+   |                              ^^^^^^

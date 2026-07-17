@@ -1,0 +1,5 @@
+error: 役割名つきの辺 `Boss` の each は役割名 (`subordinate`/`superior`) で参照してください。型名参照はできません: `Employee`
+  --> tests/ui/role_edge_each_type_name.rs:13:84
+   |
+13 |             edge Boss = (subordinate: Employee) -> (superior: Employee) where each Employee: 0..1;
+   |                                                                                    ^^^^^^^^

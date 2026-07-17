@@ -1,0 +1,5 @@
+error: 役割名は両端同時に書くか、両方省略するかのいずれかにしてください (この辺は始点にだけ役割名があります)
+  --> tests/ui/endpoint_role_one_sided.rs:13:26
+   |
+13 |             edge Boss = (subordinate: Employee) -> Employee where each subordinate: 0..1;
+   |                          ^^^^^^^^^^^

@@ -8,6 +8,12 @@
 //! - ノードアクセスは `{Schema}Node` トレイト経由 (`Employee::get(&g, &id)` 等)、
 //!   辺アクセスは各 `Kind` への固有 impl (`Kind::of`/`get`/`between`/`iter`/
 //!   `ids`/`len`)。`g.メソッド` は一切生成されない。
+//!
+//! v4.1 (`docs/edge_endpoints_v4_1.md`) の実証: `Boss` を役割名つき
+//! (`subordinate`/`superior`) に書き換え、終点側 (`superior`) の each 制約
+//! (入次数制約) を検証する。役割名を書いたので `.from()`/`.to()` は生成
+//! されず、`.subordinate()`/`.superior()` を使う。`graph!` リテラルの構文
+//! (`Boss(bob -[..]-> alice)`) は不変 (役割名は宣言側だけの語彙)。
 
 /// ノード型。`graph_schema!` はこの型を生成せず参照するだけ。
 #[derive(Debug, Clone, PartialEq)]
@@ -34,9 +40,13 @@ graphite::graph_schema! {
         node Employee;
         node Department;
 
-        edge BelongsTo = Employee -> Department              where each Employee: 1;
-        edge Boss      = Employee -[BossEdge]-> Employee     where each Employee: 0..1;
-        edge Reports   = Employee -> Employee                where unique pair;
+        edge BelongsTo = Employee -> Department                        where each Employee: 1;
+        edge Boss      = (subordinate: Employee) -[BossEdge]-> (superior: Employee)
+                                                                        where each subordinate: 0..1;
+        edge Reports   = Employee -> Employee                          where unique pair;
+        // v4.1 (`docs/edge_endpoints_v4_1.md` §1) の実証: 終点側 (役割名
+        // `department`) の each、つまり入次数制約 (「各部署の代表は高々1人」)。
+        edge Leads     = (leader: Employee) -> (department: Department) where each department: 0..1;
     }
 }
 
@@ -396,6 +406,68 @@ mod tests {
 
         let b = Boss(emp("佐藤"), emp("田中"), BossEdge { since: 2020 });
         assert_eq!(b.payload().since, 2020);
+    }
+
+    #[test]
+    fn 役割名つき辺はfromtoの代わりに役割名アクセサを持つ() {
+        // `docs/edge_endpoints_v4_1.md` §1: 役割名を書いた辺は `.from()`/
+        // `.to()` の代わりに `.subordinate()`/`.superior()` を生成する
+        // (from/to は生成しない)。
+        let b = Boss(emp("佐藤"), emp("田中"), BossEdge { since: 2020 });
+        assert_eq!(b.subordinate(), &emp("佐藤"));
+        assert_eq!(b.superior(), &emp("田中"));
+    }
+
+    #[test]
+    fn leadsは部署ごとに代表を高々1人までしか持てない() {
+        // 終点側 (役割名 `department`) の each 制約 = 入次数制約
+        // (`docs/edge_endpoints_v4_1.md` §1 の新規解禁項目)。健全な構築では
+        // 各部署に代表が0人または1人。
+        let g = OrgChart::create(|b| {
+            b.employee(emp("田中"), Employee { name: "田中".to_string(), id: 1 });
+            b.employee(emp("佐藤"), Employee { name: "佐藤".to_string(), id: 2 });
+            b.department(dept("営業部"), Department { name: "営業".to_string() });
+            b.belongs_to(BelongsToId("bt1".to_string()), BelongsTo(emp("田中"), dept("営業部")));
+            b.belongs_to(BelongsToId("bt2".to_string()), BelongsTo(emp("佐藤"), dept("営業部")));
+            b.leads(LeadsId("l1".to_string()), Leads(emp("田中"), dept("営業部")));
+        })
+        .expect("代表が1人の部署は健全なはず");
+
+        // `of` は常に始点側 (`leader`) キーで検索する (入次数制約は `of` の
+        // 戻り型には影響しない、`docs/edge_endpoints_v4_1.md` §1)。始点側は
+        // 無制約なので `Vec` を返す。
+        let departments_led_by_tanaka: Vec<&Department> = Leads::of(&g, &emp("田中"));
+        assert_eq!(departments_led_by_tanaka.len(), 1);
+        assert_eq!(departments_led_by_tanaka[0].name, "営業");
+
+        let leads_edge = Leads::get(&g, &LeadsId("l1".to_string())).unwrap();
+        assert_eq!(leads_edge.leader(), &emp("田中"));
+        assert_eq!(leads_edge.department(), &dept("営業部"));
+    }
+
+    #[test]
+    fn 同じ部署に2人のleaderをつけると入次数違反になる() {
+        let result = OrgChart::create(|b| {
+            b.employee(emp("田中"), Employee { name: "田中".to_string(), id: 1 });
+            b.employee(emp("佐藤"), Employee { name: "佐藤".to_string(), id: 2 });
+            b.department(dept("営業部"), Department { name: "営業".to_string() });
+            b.belongs_to(BelongsToId("bt1".to_string()), BelongsTo(emp("田中"), dept("営業部")));
+            b.belongs_to(BelongsToId("bt2".to_string()), BelongsTo(emp("佐藤"), dept("営業部")));
+            // 営業部に代表を2人つける (each department: 0..1 違反、入次数)。
+            b.leads(LeadsId("l1".to_string()), Leads(emp("田中"), dept("営業部")));
+            b.leads(LeadsId("l2".to_string()), Leads(emp("佐藤"), dept("営業部")));
+        });
+
+        match result {
+            Err(violation) => assert_eq!(
+                violation,
+                OrgChartViolation::LeadsEachViolation {
+                    target: dept("営業部"),
+                    count: 2,
+                }
+            ),
+            Ok(_) => panic!("入次数違反が検出されるはず"),
+        }
     }
 }
 
