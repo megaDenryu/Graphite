@@ -45,11 +45,25 @@
 //!
 //! 役割名つきの辺で `each` が終点側 (入次数) を指定した場合、`of` の戻り型は
 //! 上記表に従わず常に `Vec` になる (`of` は常に始点側キーで検索するため、
-//! 始点側が無制約なら平行辺を許すのが自然。終点側の制約は freeze 検証のみに
-//! 使われ、新規のクエリ API は追加しない — `docs/edge_endpoints_v4_1.md` §1)。
-//! 無向辺の `each` は次数制約であり、`of`/`between` の戻り型は有向の表と同じ
-//! 規則 (次数制約が Option/直接参照を、無制約が Vec を、`unique pair` が
-//! `between` の戻り型を決める) で決まる。
+//! 始点側が無制約なら平行辺を許すのが自然)。無向辺の `each` は次数制約であり、
+//! `of`/`between` の戻り型は有向の表と同じ規則 (次数制約が Option/直接参照を、
+//! 無制約が Vec を、`unique pair` が `between` の戻り型を決める) で決まる。
+//!
+//! ## 終点側クエリ `{Kind}::sources_of` (`docs/reverse_query.md`)
+//!
+//! 有向辺には `of` の対称として `sources_of`/`get_sources_of` を生成する
+//! (無向辺には生成しない — `of` が既に対称なので同じものになるため)。
+//! `sources_of(g, to)` は `to` を終点とする辺の**始点側**(相手ノード値+積み荷)
+//! を返す。戻り型は上記表と同じ規則だが、判定に使う制約は **終点側
+//! (入次数、`each_side == Target`)** の `each` のみ (役割名つきの辺でしか
+//! 起こらない。役割名なしの辺・無向辺は必ず `Vec`)。相手はノード値で返す
+//! (キー版は生やさない — `docs/reverse_query.md` の最小方針)。
+//!
+//! 実装は freeze 時に構築・永続化する終点索引 `{accessor}_to_index`
+//! (`ToId -> Vec<KindId>`、`gen_schema_struct`/`gen_directed_edge_freeze_block`
+//! 参照) を検索するだけなので O(1) 償却。この索引は v4.1 で入次数 each 検証
+//! のためだけに一時構築していたものを構造体フィールドとして格上げ・統合した
+//! もの (`docs/reverse_query.md` 実装ノート)。
 
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
@@ -120,6 +134,13 @@ struct EdgeInfo<'a> {
     /// `orgchart_macro.rs` がこのフィールド名を直接参照しているため後方互換で
     /// 固定)、無向辺は方向の意味を持たないため `{accessor}_index`。
     index_field_ident: Ident,
+    /// 位置1キー (終点) -> そこへ入るエッジキー一覧の内部フィールド名
+    /// (`{accessor}_to_index`)。**有向辺のみ**構造体フィールドとして持つ
+    /// (無向辺は `index_field_ident` が既に対称なので不要)。freeze 時に
+    /// 構築・永続化する (`docs/reverse_query.md`)。`{Kind}::sources_of` の
+    /// 索引であり、v4.1 で入次数 each 検証のためだけに一時構築していた索引を
+    /// これに統合した。
+    to_index_field_ident: Ident,
     from_node: &'a NodeInfo,
     to_node: &'a NodeInfo,
     /// エッジ属性型への参照。ユーザーがマクロの外で宣言した型を指すだけで、
@@ -242,6 +263,9 @@ fn build_edge_info<'a>(decl: &'a EdgeDecl, node_infos: &'a [NodeInfo]) -> EdgeIn
     } else {
         format_ident!("{}_index", accessor_ident)
     };
+    // 無向辺では使わないが、無条件に計算しておいて差し支えない (単なる
+    // Ident の合成であり、無向辺では単に参照されないだけ)。
+    let to_index_field_ident = format_ident!("{}_to_index", accessor_ident);
     let each_side = decl.constraints.each.as_ref().map(|(ident, _)| {
         schema_validate::resolve_each_side(decl, ident)
             .expect("validate_each_reference() を通過していれば必ず解決できるはず")
@@ -251,6 +275,7 @@ fn build_edge_info<'a>(decl: &'a EdgeDecl, node_infos: &'a [NodeInfo]) -> EdgeIn
         id_ident: format_ident!("{}Id", kind, span = span),
         accessor_ident,
         index_field_ident,
+        to_index_field_ident,
         from_node,
         to_node,
         attrs_ty: decl.attrs_ty.clone(),
@@ -779,11 +804,28 @@ fn gen_schema_struct(
         // 索引のキー型は位置0の型 (有向なら始点、無向なら両端同型なので
         // どちらでも同じ)。
         let key_id = &e.from_node.id_ident;
+        // 有向辺のみ終点索引を永続化する (`docs/reverse_query.md`)。
+        // `{Kind}::sources_of` の索引であり、v4.1 で入次数 each 検証のためだけに
+        // 一時構築していた索引をこれに統合した (無向辺は `index_field` が
+        // 既に対称に両端を積むので不要)。
+        let to_index_decl = if e.directed {
+            let to_index_field = &e.to_index_field_ident;
+            let to_key_id = &e.to_node.id_ident;
+            quote! {
+                ,
+                /// 位置1キー (終点) -> そこへ入るエッジキーの一覧 (freeze 時に
+                /// 構築。`{Kind}::sources_of` の索引、`docs/reverse_query.md`)。
+                #to_index_field: std::collections::HashMap<#to_key_id, Vec<#id_ty>>
+            }
+        } else {
+            quote! {}
+        };
         quote! {
             #accessor: graphite::KeyedTable<#id_ty, #kind>,
             /// 位置0キー -> このキーから (有向: 出る / 無向: 接続する) エッジ
             /// キーの一覧 (freeze 時に構築)。
             #index_field: std::collections::HashMap<#key_id, Vec<#id_ty>>
+            #to_index_decl
         }
     });
 
@@ -995,15 +1037,19 @@ fn gen_each_type_check(edge: &EdgeInfo<'_>) -> TokenStream {
 ///    は `{Kind}DuplicateKey` 違反として記録し、その要素は捨てる)。
 /// 2. 生き残った各辺について端点 (位置0/1) がそれぞれのノード表に実在するか
 ///    検査する (`{Kind}UnknownSource`/`{Kind}UnknownTarget`)。両端点とも
-///    正当な辺だけを位置0索引 (`{accessor}_from_index`) に積む。`unique pair`
-///    制約があれば、同じ (位置0, 位置1) の対が2回目に現れた時点で
-///    `{Kind}UniquePairViolation` を記録する。
+///    正当な辺だけを位置0索引 (`{accessor}_from_index`) と位置1索引
+///    (`{accessor}_to_index`) の両方に積む。後者は `docs/reverse_query.md`
+///    により構造体フィールドとして永続化する (`{Kind}::sources_of` が使う。
+///    v4.1 で入次数 each 検証のためだけに一時構築していた索引をこれに統合)。
+///    `unique pair` 制約があれば、同じ (位置0, 位置1) の対が2回目に現れた
+///    時点で `{Kind}UniquePairViolation` を記録する。
 /// 3. `each` 制約があれば、`each_side` に応じて出次数 (位置0索引) または
-///    入次数 (位置1のローカル索引、構造体フィールドとしては保持しない) を
+///    入次数 (位置1索引、手順2で作った永続化済みのものをそのまま使う) を
 ///    検査する。
 fn gen_directed_edge_freeze_block(violation_ident: &Ident, edge: &EdgeInfo<'_>) -> TokenStream {
     let accessor = &edge.accessor_ident;
     let from_index = &edge.index_field_ident;
+    let to_index = &edge.to_index_field_ident;
     let from_field = &edge.from_node.field_ident;
     let to_field = &edge.to_node.field_ident;
     let dup_key = edge.duplicate_key_variant();
@@ -1035,27 +1081,6 @@ fn gen_directed_edge_freeze_block(violation_ident: &Ident, edge: &EdgeInfo<'_>) 
     };
 
     let each_type_check = gen_each_type_check(edge);
-
-    // 終点側 (入次数) の each 制約が要る場合のみ、ローカルの位置1索引を
-    // 構築する (構造体フィールドとしては保持しない: クエリ API は常に
-    // 位置0側で検索するため永続化の必要が無い、
-    // `docs/edge_endpoints_v4_1.md` §1)。
-    let need_to_index = matches!(edge.each_side, Some(EachSide::Target));
-    let to_index_local = format_ident!("__{}_to_index", edge.accessor_ident);
-    let to_index_decl = if need_to_index {
-        quote! {
-            let mut #to_index_local: std::collections::HashMap<_, Vec<_>> = std::collections::HashMap::new();
-        }
-    } else {
-        quote! {}
-    };
-    let to_index_push = if need_to_index {
-        quote! {
-            #to_index_local.entry(to.clone()).or_default().push(id.clone());
-        }
-    } else {
-        quote! {}
-    };
 
     let each_check = match (edge.each, edge.each_side) {
         (Some(EachSpec::One), Some(EachSide::Source)) => {
@@ -1089,7 +1114,7 @@ fn gen_directed_edge_freeze_block(violation_ident: &Ident, edge: &EdgeInfo<'_>) 
             let v = edge.each_violation_variant();
             quote! {
                 for key in #to_field.ids() {
-                    let count = #to_index_local.get(key).map(Vec::len).unwrap_or(0);
+                    let count = #to_index.get(key).map(Vec::len).unwrap_or(0);
                     if count != 1 {
                         __violations.push(#violation_ident::#v {
                             target: key.clone(),
@@ -1102,7 +1127,7 @@ fn gen_directed_edge_freeze_block(violation_ident: &Ident, edge: &EdgeInfo<'_>) 
         (Some(EachSpec::ZeroOrOne), Some(EachSide::Target)) => {
             let v = edge.each_violation_variant();
             quote! {
-                for (key, ids) in &#to_index_local {
+                for (key, ids) in &#to_index {
                     if ids.len() > 1 {
                         __violations.push(#violation_ident::#v {
                             target: key.clone(),
@@ -1124,7 +1149,7 @@ fn gen_directed_edge_freeze_block(violation_ident: &Ident, edge: &EdgeInfo<'_>) 
         }
 
         let mut #from_index: std::collections::HashMap<_, Vec<_>> = std::collections::HashMap::new();
-        #to_index_decl
+        let mut #to_index: std::collections::HashMap<_, Vec<_>> = std::collections::HashMap::new();
         #seen_pairs_decl
         for (id, edge) in #accessor.iter() {
             let from = &edge.0;
@@ -1141,7 +1166,7 @@ fn gen_directed_edge_freeze_block(violation_ident: &Ident, edge: &EdgeInfo<'_>) 
             if __ok {
                 #unique_pair_check
                 #from_index.entry(from.clone()).or_default().push(id.clone());
-                #to_index_push
+                #to_index.entry(to.clone()).or_default().push(id.clone());
             }
         }
         #each_type_check
@@ -1284,7 +1309,19 @@ fn gen_freeze_body(
 
     let node_field_names = nodes.iter().map(|n| &n.field_ident);
     let edge_field_names = edges.iter().map(|e| &e.accessor_ident);
-    let edge_index_names = edges.iter().map(|e| &e.index_field_ident);
+    // 有向辺は位置0索引 (`{accessor}_from_index`) と位置1索引
+    // (`{accessor}_to_index`) の両方をフィールドとして持つ。無向辺は
+    // `index_field_ident` (対称な単一索引) のみ (`gen_schema_struct` 参照)。
+    let edge_index_names: Vec<&Ident> = edges
+        .iter()
+        .flat_map(|e| {
+            if e.directed {
+                vec![&e.index_field_ident, &e.to_index_field_ident]
+            } else {
+                vec![&e.index_field_ident]
+            }
+        })
+        .collect();
 
     quote! {
         /// 検証ロジックの実体。最初の1件で打ち切らず全違反を `Vec` に
@@ -1336,8 +1373,11 @@ fn gen_directed_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> Tok
     let id_ty = &edge.id_ident;
     let accessor = &edge.accessor_ident;
     let from_index = &edge.index_field_ident;
+    let to_index = &edge.to_index_field_ident;
     let from_id = &edge.from_node.id_ident;
     let to_id = &edge.to_node.id_ident;
+    let from_field = &edge.from_node.field_ident;
+    let from_ty = &edge.from_node.type_ident;
     let to_field = &edge.to_node.field_ident;
     let to_ty = &edge.to_node.type_ident;
 
@@ -1349,6 +1389,8 @@ fn gen_directed_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> Tok
     let kind_span = kind.span();
     let of_ident = Ident::new("of", kind_span);
     let get_of_ident = Ident::new("get_of", kind_span);
+    let sources_of_ident = Ident::new("sources_of", kind_span);
+    let get_sources_of_ident = Ident::new("get_sources_of", kind_span);
     let get_ident = Ident::new("get", kind_span);
     let between_ident = Ident::new("between", kind_span);
     let iter_ident = Ident::new("iter", kind_span);
@@ -1448,6 +1490,98 @@ fn gen_directed_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> Tok
         }
     };
 
+    // `sources_of`/`get_sources_of` (`docs/reverse_query.md`): `of` の対称、
+    // 終点で引いて始点側を返す。`of` が「積み荷の有無」×「出次数 each」で
+    // 分岐するのと同じ形で、「積み荷の有無」×「入次数 each
+    // (`each_side == Target`)」で分岐する。
+    let source_ref_ty = quote! { &'g #from_ty };
+    let sources_of_item_ty = match &edge.attrs_ty {
+        None => quote! { #source_ref_ty },
+        Some(attrs) => quote! { (#source_ref_ty, &'g #attrs) },
+    };
+    let resolve_source = |edge_id_expr: TokenStream| -> TokenStream {
+        match &edge.attrs_ty {
+            None => quote! {
+                {
+                    let e = g.#accessor.get(#edge_id_expr).expect("to_indexに載っている辺はstorageに必ず存在する");
+                    g.#from_field.get(&e.0).expect("freezeで端点存在を検証済みのはず")
+                }
+            },
+            Some(_) => quote! {
+                {
+                    let e = g.#accessor.get(#edge_id_expr).expect("to_indexに載っている辺はstorageに必ず存在する");
+                    let source = g.#from_field.get(&e.0).expect("freezeで端点存在を検証済みのはず");
+                    (source, e.payload())
+                }
+            },
+        }
+    };
+
+    // `sources_of` の戻り型を決めるのは常に入次数側 (Target) の each のみ
+    // (`of` の出次数版と対称、`docs/reverse_query.md`)。役割名なしの辺は
+    // 入次数 each を書けないので常に `None` になり `Vec` を返す。
+    let target_each = match edge.each_side {
+        Some(EachSide::Target) => edge.each,
+        _ => None,
+    };
+
+    let sources_of_and_get = match target_each {
+        Some(EachSpec::One) => {
+            let resolved = resolve_source(quote! { &ids[0] });
+            quote! {
+                /// `of` の対称 (`docs/reverse_query.md`): 終点で引き、始点側
+                /// (相手ノード値+積み荷) を返す。`each 1` (入次数) → 直接参照。
+                ///
+                /// # Panics
+                /// `to` がこのグラフに存在しない (このグラフが発行したもの
+                /// ではない) キーの場合パニックする
+                /// (`docs/design_principles.md` 原則2)。非パニック版
+                /// [`Self::get_sources_of`] も併せて提供する。
+                pub fn #sources_of_ident<'g>(g: &'g #schema_name, to: &#to_id) -> #sources_of_item_ty {
+                    Self::#get_sources_of_ident(g, to).unwrap_or_else(|| {
+                        panic!(
+                            "{}::sources_of: 未知のキーです (このグラフが発行したキーではありません): {:?}",
+                            stringify!(#kind), to
+                        )
+                    })
+                }
+
+                /// [`Self::sources_of`] の非パニック版。未知キーは `None` を返す。
+                pub fn #get_sources_of_ident<'g>(g: &'g #schema_name, to: &#to_id) -> Option<#sources_of_item_ty> {
+                    let ids = g.#to_index.get(to)?;
+                    Some(#resolved)
+                }
+            }
+        }
+        Some(EachSpec::ZeroOrOne) => {
+            let resolved = resolve_source(quote! { &ids[0] });
+            quote! {
+                /// `of` の対称 (`docs/reverse_query.md`): 終点で引き、始点側
+                /// (相手ノード値+積み荷) を返す。`each 0..1` (入次数) →
+                /// `Option`。無い/未知キーはどちらも `None` に落ちる。
+                pub fn #sources_of_ident<'g>(g: &'g #schema_name, to: &#to_id) -> Option<#sources_of_item_ty> {
+                    let ids = g.#to_index.get(to)?;
+                    Some(#resolved)
+                }
+            }
+        }
+        None => {
+            let resolved = resolve_source(quote! { id });
+            quote! {
+                /// `of` の対称 (`docs/reverse_query.md`): 終点で引き、始点側
+                /// (相手ノード値+積み荷) を返す。入次数に制約なし → `Vec`。
+                /// 無い/未知キーはどちらも空 `Vec` に落ちる。格納順 (構築時の
+                /// 追加順) を保持する。
+                pub fn #sources_of_ident<'g>(g: &'g #schema_name, to: &#to_id) -> Vec<#sources_of_item_ty> {
+                    match g.#to_index.get(to) {
+                        Some(ids) => ids.iter().map(|id| #resolved).collect(),
+                        None => Vec::new(),
+                    }
+                }
+            }
+        }
+    };
+
     let between = if edge.unique_pair {
         quote! {
             /// 対 (始点, 終点) で辺を検索する (`unique pair` → 高々1本)。
@@ -1479,6 +1613,8 @@ fn gen_directed_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> Tok
     quote! {
         impl #kind {
             #of_and_get_of
+
+            #sources_of_and_get
 
             /// キーで辺1本を検索する。
             pub fn #get_ident<'g>(g: &'g #schema_name, id: &#id_ty) -> Option<&'g #kind> {
