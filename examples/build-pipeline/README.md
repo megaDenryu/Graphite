@@ -2,7 +2,7 @@
 
 Graphite を使った「ビルドパイプライン・オーケストレータ」の実践example。
 CI/タスクランナーが内部で持っているような実行計画ツールを、`Task` と
-`Artifact` という異種ノード + `produces`/`consumes` の型付きエッジで表現する。
+`Artifact` という異種ノード + `Produces`/`Consumes` の型付きエッジで表現する。
 
 ## 概要
 
@@ -34,11 +34,15 @@ graphite::graph_schema! {
         node Task;
         node Artifact;
 
-        edge produces: Task -> Artifact (0..*);
-        edge consumes: Task -> Artifact (0..*);
+        edge Produces = Task -> Artifact where unique pair;
+        edge Consumes = Task -> Artifact where unique pair;
     }
 }
 ```
+
+`where unique pair` は「あるタスクがある成果物を生成/消費する」という事実は
+有るか無いかの二値であり、同じ (task, artifact) の対に2本目のエッジを張る
+ことに意味が無い、という判断 (`src/schema.rs` にコメントがある)。
 
 `src/schema.rs` に定義がある。
 
@@ -170,46 +174,49 @@ task <名前>: <コマンド...> (<秒数>s)      タスク定義
 ## Graphite を使う意味
 
 このアプリの本質的な難しさは「`Task` と `Artifact` という異種ノード」+
-「`produces`/`consumes` という2種類の型付きエッジ」+「タスク間依存はエッジの
-直接の中身ではなく、エッジ2本 (produces と consumes) を artifact 経由で
+「`Produces`/`Consumes` という2種類の型付きエッジ」+「タスク間依存はエッジの
+直接の中身ではなく、エッジ2本 (Produces と Consumes) を artifact 経由で
 合成して初めて得られる導出情報」という点にある。もし `HashMap` と `Vec` を
 素朴に自作していたら、以下を自分で手書きする羽目になっていたはずである。
 
 - **型付きアクセサの手書き**: `HashMap<String, Task>` と
   `HashMap<String, Artifact>` を別々に持つと、「このキーは Task 用か
   Artifact 用か」を呼び出し側が毎回意識する必要がある。`graphite` では
-  `g.task(&TaskId)` / `g.artifact(&ArtifactId)` のようにキー型自体が newtype
-  で区別されるため、`ArtifactId` を `task()` に渡すコードはコンパイルが通ら
-  ない。素朴な `HashMap<String, _>` 2枚構成ではこの区別が実行時までに検出
-  されない (例: `produces` のキーに誤って artifact のパスではなくタスク名を
-  入れてしまう、といったバグを型で防げない)。
-- **freeze による一括検証**: `produces`/`consumes` が指すタスク名・パスが
-  必ず宣言済みであること (`UnknownTask`/`UnknownArtifact`) は、素の
-  `HashMap<String, Vec<String>>` 自作では「エッジ追加のたびに毎回両端の
-  存在確認を書く」か「確認を省略して後で謎の `panic`/データ不整合に悩む」
-  かの二択になりがちである。`BuildPipeline::create` は builder に積んだ
-  内容をクロージャの外に一切漏らさず (借用検査器が保証)、戻ってきた瞬間に
-  一括で凍結・検証するため、「検証を書き忘れたパス」が原理的に存在しない。
-- **多重度 API と `Vec` の使い分け**: `produces`/`consumes` は `(0..*)` なので
-  `g.produces().of(&TaskId) -> Vec<&Artifact>` が自動生成される。自作なら
+  `Task::get(&g, &TaskId)` / `Artifact::get(&g, &ArtifactId)` のようにキー型
+  自体が newtype で区別されるため、`ArtifactId` を `Task::get()` に渡す
+  コードはコンパイルが通らない。素朴な `HashMap<String, _>` 2枚構成では
+  この区別が実行時までに検出されない (例: `Produces` のキーに誤って
+  artifact のパスではなくタスク名を入れてしまう、といったバグを型で防げ
+  ない)。
+- **freeze による一括検証**: `Produces`/`Consumes` が指すタスク名・パスが
+  必ず宣言済みであること (`ProducesUnknownSource`/`ProducesUnknownTarget`
+  等) は、素の `HashMap<String, Vec<String>>` 自作では「エッジ追加のたびに
+  毎回両端の存在確認を書く」か「確認を省略して後で謎の `panic`/データ不整合
+  に悩む」かの二択になりがちである。`BuildPipeline::create` は builder に
+  積んだ内容をクロージャの外に一切漏らさず (借用検査器が保証)、戻ってきた
+  瞬間に一括で凍結・検証するため、「検証を書き忘れたパス」が原理的に存在
+  しない。
+- **each制約 API と `Vec` の使い分け**: `Produces`/`Consumes` はどちらも
+  多重度の each 制約を付けていない (無制約 = `Vec` を返す) ので
+  `Produces::of(&g, &TaskId) -> Vec<&Artifact>` が自動生成される。自作なら
   `HashMap<String, Vec<String>>` を用意したうえで `.get(key).cloned()
   .unwrap_or_default()` のような空デフォルト処理を毎回書く必要がある
   (書き忘れると未知キーで `panic`)。
-- **`{label}().iter()`**: 本アプリのドメイン検証 (孤児成果物・
-  produce競合・循環依存) はどれも「全 produces ペア」「全 consumes ペア」を
+- **`Kind::iter(&g)`**: 本アプリのドメイン検証 (孤児成果物・
+  produce競合・循環依存) はどれも「全 Produces ペア」「全 Consumes ペア」を
   俯瞰して初めて判定できる (1本のエッジだけを見ても分からない)。
-  `g.produces().iter()`/`g.consumes().iter()` が無ければ、内部の
+  `Produces::iter(&g)`/`Consumes::iter(&g)` が無ければ、内部の
   `HashMap<K, Vec<V>>` を手でフラット化するイテレータをアプリ側に毎回書く
   ことになる。ここでは `analysis.rs` の `validate`/`task_dependency_graph`
   がこれをそのまま使い、artifactごとの producer/consumer 集合を
   `HashMap<&ArtifactId, Vec<&TaskId>>` へ畳み込むだけで済んでいる。
-- **`{node_snake}_ids()` による全件列挙**: `plan`/`critical-path` は
-  「全タスク」を起点にした波・経路の計算が要る。`g.task_ids()` が無ければ、
+- **`{Node}::ids(&g)` による全件列挙**: `plan`/`critical-path` は
+  「全タスク」を起点にした波・経路の計算が要る。`Task::ids(&g)` が無ければ、
   ノード用 `HashMap` のキー列挙を毎回 `.keys()` で取り出したうえで、それが
   「タスクのキーである」という前提をコメントで祈るしかない。
 - **タスク依存グラフへの射影と汎用アルゴリズムの再利用**: 「タスク A は
-  タスク B に依存する」という関係は `produces`/`consumes` のどちらの
-  フィールドにも直接存在せず、`consumes ∘ produces⁻¹` として2つのエッジ種別
+  タスク B に依存する」という関係は `Produces`/`Consumes` のどちらの
+  フィールドにも直接存在せず、`Consumes ∘ Produces⁻¹` として2つのエッジ種別
   を artifact をキーに合成して初めて得られる (README 本体の「導出エッジ」の
   考え方そのもの)。素朴な自作なら、この合成ロジックとグラフアルゴリズム
   (循環検出・トポロジカルソート) の両方を1から書く必要がある。ここでは
