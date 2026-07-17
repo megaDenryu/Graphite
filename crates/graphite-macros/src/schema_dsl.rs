@@ -84,51 +84,29 @@ fn drain_rest(content: ParseStream) {
 }
 
 /// `node Person;`
-/// `node Category(categories);` — `(識別子)` は内部ストレージの複数形
-/// フィールド名を明示指定する省略可能な構文。省略時は素朴な `+ "s"`
-/// (`crate::naming::plural_field_name`) にフォールバックする。
 ///
-/// `Person`/`Category` はユーザーが `graph_schema!` の外で宣言した普通の
-/// struct への参照であり、このマクロは生成しない。型名は単純 `Ident` のみを
-/// 受け付ける (エッジ端点の型名照合に文字列比較で使うため、`syn::Path` に
-/// すると `crate::Person` と `Person` を同一視できず照合が破綻する。
-/// モジュール修飾したい場合は `use` でこのスコープに名前を持ち込むのが
-/// Rust の作法どおりの解決)。
+/// `Person` はユーザーが `graph_schema!` の外で宣言した普通の struct への
+/// 参照であり、このマクロは生成しない。型名は単純 `Ident` のみを受け付ける
+/// (エッジ端点の型名照合に文字列比較で使うため、`syn::Path` にすると
+/// `crate::Person` と `Person` を同一視できず照合が破綻する。モジュール
+/// 修飾したい場合は `use` でこのスコープに名前を持ち込むのが Rust の作法
+/// どおりの解決)。
+///
+/// 内部ストレージの複数形フィールド名を明示指定する `node 型名(複数形);`
+/// 構文はかつて存在したが、v4 でストレージ名が内部専用 (利用者から不可視)
+/// になり明示する意義が消えたため廃止した (`docs/graph_splice.md` §3)。
+/// 検出・移行診断は行わない。内部フィールド名は常に素朴な `+ "s"`
+/// (`crate::naming::plural_field_name`) で生成する。
 pub struct NodeDecl {
     pub name: Ident,
-    pub plural: Option<Ident>,
-}
-
-/// `node Type(plural)` の `(plural)` 部分の中身。単一の識別子のみを許す。
-fn parse_plural_paren_body(content: ParseStream) -> syn::Result<Ident> {
-    let plural_ident: Ident = content.parse()?;
-    if !content.is_empty() {
-        return Err(content.error("複数形指定は識別子ひとつのみ指定してください: `node Type(plural);`"));
-    }
-    Ok(plural_ident)
 }
 
 impl Parse for NodeDecl {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         input.parse::<kw::node>()?;
         let name: Ident = input.parse()?;
-        let plural = if input.peek(syn::token::Paren) {
-            let content;
-            parenthesized!(content in input);
-            match parse_plural_paren_body(&content) {
-                Ok(plural_ident) => Some(plural_ident),
-                Err(e) => {
-                    // G4a: drain_rest のコメント参照。エラー時に `content`
-                    // (この `(..)` の中身) を読み捨ててから返す。
-                    drain_rest(&content);
-                    return Err(e);
-                }
-            }
-        } else {
-            None
-        };
         input.parse::<Token![;]>()?;
-        Ok(NodeDecl { name, plural })
+        Ok(NodeDecl { name })
     }
 }
 

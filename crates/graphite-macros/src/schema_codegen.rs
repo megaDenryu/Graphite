@@ -93,13 +93,12 @@ impl NodeInfo {
     fn new(decl: &NodeDecl) -> Self {
         let type_name = decl.name.to_string();
         let span = decl.name.span();
-        // `node Type(plural);` で明示指定があればそれを内部ストレージの
-        // フィールド名に使う。省略時は素朴な複数形化 (`+ "s"`) に
-        // フォールバックする。
-        let field_ident = match &decl.plural {
-            Some(plural) => Ident::new(&plural.to_string(), plural.span()),
-            None => Ident::new(&plural_field_name(&type_name), span),
-        };
+        // 内部ストレージのフィールド名は常に素朴な複数形化 (`+ "s"`)。
+        // 明示指定構文 (`node Type(plural);`) は v4 で廃止した
+        // (`docs/graph_splice.md` §3): このフィールドは利用者から不可視
+        // (非公開) なので、不規則複数形 (`Category` → `Categorys`) でも
+        // 機能上の問題はない。
+        let field_ident = Ident::new(&plural_field_name(&type_name), span);
         NodeInfo {
             type_ident: decl.name.clone(),
             id_ident: format_ident!("{}Id", decl.name, span = span),
