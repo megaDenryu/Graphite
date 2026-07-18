@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ラベルは何者か — Graphite 設計の足跡 (完全版)</title>
+<style>
+  :root {
+    --paper: #f6f7f9; --card: #ffffff; --ink: #23282e; --ink-soft: #5a6472;
+    --line: #d9dee5; --edge: #3b53b8; --edge-soft: #e7ebf7;
+    --quote: #9a6a1f; --quote-bg: #faf3e3; --code-bg: #eef0f4;
+    --dead: #a03d3d; --ok: #2e7d54;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #16181c; --card: #1e2126; --ink: #dde1e7; --ink-soft: #98a1ad;
+      --line: #333941; --edge: #8fa2f0; --edge-soft: #262c3f;
+      --quote: #d9a94e; --quote-bg: #2a2417; --code-bg: #24272d;
+      --dead: #e08a8a; --ok: #6fbd93;
+    }
+  }
+  html { background: var(--paper); }
+  body {
+    margin: 0; color: var(--ink);
+    font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", "Noto Sans JP", "Meiryo", sans-serif;
+    font-size: 16px; line-height: 1.95; -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 46rem; margin: 0 auto; padding: 0 1.4rem 6rem; }
+  code, pre, .mono { font-family: "Cascadia Code", "Consolas", "SF Mono", ui-monospace, monospace; }
+  code { background: var(--code-bg); padding: .1em .35em; border-radius: 4px; font-size: .88em; }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px;
+    padding: 1rem 1.2rem; overflow-x: auto; line-height: 1.7; font-size: .84rem;
+  }
+  pre code { background: none; padding: 0; font-size: 1em; }
+  pre .c { color: var(--ink-soft); }
+  pre .hl { color: var(--edge); font-weight: 600; }
+  header.hero { padding: 4.5rem 0 2.5rem; border-bottom: 2px solid var(--ink); margin-bottom: 3rem; }
+  .eyebrow { font-size: .78rem; letter-spacing: .14em; color: var(--edge); text-transform: uppercase; margin-bottom: 1.2rem; }
+  h1 { font-size: 2.1rem; line-height: 1.45; margin: 0 0 1rem; font-weight: 700; text-wrap: balance; }
+  .subtitle { color: var(--ink-soft); font-size: .98rem; margin: 0; }
+  .meta { margin-top: 1.6rem; font-size: .8rem; color: var(--ink-soft); display: flex; gap: 1.6em; flex-wrap: wrap; }
+  h2 { font-size: 1.42rem; margin: 4rem 0 1.2rem; line-height: 1.5; font-weight: 700; text-wrap: balance; }
+  h2 .no { color: var(--edge); font-size: .8rem; letter-spacing: .1em; display: block; margin-bottom: .3rem; }
+  h3 { font-size: 1.08rem; margin: 2.4rem 0 .8rem; font-weight: 700; }
+  p { margin: 0 0 1.15rem; }
+  a { color: var(--edge); text-decoration: underline; text-underline-offset: 3px; }
+  blockquote.user {
+    margin: 1.6rem 0; padding: .9rem 1.2rem; background: var(--quote-bg);
+    border-left: 3px solid var(--quote); border-radius: 0 8px 8px 0; font-size: .93rem;
+  }
+  blockquote.user p { margin: 0; }
+  blockquote.user cite { display: block; margin-top: .5rem; font-style: normal; font-size: .74rem; color: var(--quote); letter-spacing: .05em; }
+  .step { border-left: 2px solid var(--line); padding: 0 0 2.2rem 1.6rem; position: relative; }
+  .step:last-child { padding-bottom: .5rem; }
+  .step::before {
+    content: ""; position: absolute; left: -7px; top: .5em; width: 12px; height: 12px;
+    border-radius: 50%; background: var(--paper); border: 3px solid var(--edge);
+  }
+  .step.dead::before { border-color: var(--dead); }
+  .step h3 { margin-top: 0; }
+  .step .when { font-size: .74rem; color: var(--ink-soft); letter-spacing: .06em; margin-bottom: .4rem; }
+  table { border-collapse: collapse; width: 100%; font-size: .88rem; margin: 1.4rem 0; }
+  .tablewrap { overflow-x: auto; }
+  th, td { border: 1px solid var(--line); padding: .5rem .8rem; text-align: left; vertical-align: top; line-height: 1.7; }
+  th { background: var(--code-bg); font-size: .8rem; letter-spacing: .04em; }
+  .rejected { color: var(--dead); }
+  .lesson { counter-increment: lesson; margin: 1.8rem 0; padding-left: 1.6rem; position: relative; }
+  .lesson::before {
+    content: counter(lesson); position: absolute; left: 0; top: .1em; color: var(--edge);
+    font-weight: 700; font-size: .95rem; font-family: "Consolas", ui-monospace, monospace;
+  }
+  .lesson h3 { margin: 0 0 .4rem; font-size: 1rem; }
+  .lesson p { margin: 0; font-size: .93rem; color: var(--ink-soft); }
+  .lesson p strong { color: var(--ink); }
+  nav.toc { font-size: .9rem; border: 1px solid var(--line); border-radius: 8px; padding: 1.1rem 1.5rem; background: var(--card); }
+  nav.toc ol { margin: 0; padding-left: 1.3em; }
+  nav.toc li { margin: .25em 0; }
+  nav.toc a { text-decoration: none; }
+  nav.toc a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+  <div class="eyebrow mono">graphite -[design journal]-&gt; reader</div>
+  <h1>ラベルは何者か<br>— Graphite 設計の足跡 (完全版)</h1>
+  <p class="subtitle">IDE 対応の計測から始まった作業が、七度の改訂を経て一つの言語観 —「グラフとは名前を持つ個体たちについての主張の集合である」— に到達するまで。誤診・棄却案・発見を含む全過程の記録。</p>
+  <div class="meta mono">
+    <span>2026-07-14 → 07-18</span>
+    <span>schema v4.2 / graph! / flow! / ComputeGraph</span>
+    <span>Fudaba #1–#16 全消化</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <ol>
+    <li><a href="#sec1">問題意識 — 二つのゴール</a></li>
+    <li><a href="#sec2">足跡 I — 計測、誤診、そして真因</a></li>
+    <li><a href="#sec3">足跡 II — 構文の書き換え (v2 / v3)</a></li>
+    <li><a href="#sec4">足跡 III — 存在論の選び直し (v4)</a></li>
+    <li><a href="#sec5">足跡 IV — 矢印の意味論と flow!</a></li>
+    <li><a href="#sec6">足跡 V — キーとは何か (v4.2)</a></li>
+    <li><a href="#sec7">完成した世界観</a></li>
+    <li><a href="#sec8">外延 — この過程で得た設計原理</a></li>
+    <li><a href="#sec9">決着の一覧</a></li>
+  </ol>
+</nav>
+
+<h2 id="sec1"><span class="no mono">§1</span>問題意識 — 二つのゴール</h2>
+<p>出発点の要求はシンプルだった: <strong>独自構文 (graph_schema! / graph!) を書いたとき、VSCode が普通の Rust と同じように反応してほしい</strong>。参照ジャンプ、型追跡、rename。</p>
+<p>しかし IDE の不具合を潰していくと、根っこがほぼ毎回同じ場所 — <strong>「構文やマクロが、読み手に見えない何かを裏で発明している」</strong>こと — に行き着いた。隠れた生成型、文字列連結で合成されたメソッド名、識別子に見えて識別子でないトークン。IDE はこれらを解決できないし、人間も誤読する。だからこの記録の本当の主題は「<strong>構文が嘘をつかない言語にする</strong>」であり、IDE 対応はその検知器だった。</p>
+
+<h2 id="sec2"><span class="no mono">§2</span>足跡 I — 計測、誤診、そして真因</h2>
+
+<div class="step">
+<h3>まず測った</h3>
+<p class="when mono">07-14</p>
+<p>rust-analyzer の definition provider を直接叩き、F12 の正確な着地点まで確認する計測手法を確立。意外にもスパン保存は既に優秀で、本当の欠陥は 3 つだった: (1) graph! のノードキーが文字列に脱糖され LSP に不可視、(2) examples が未解析、(3) 編集途中にパースが壊れると生成型が全滅。<strong>いずれもスパンの付け替えでは直らない構造問題。</strong>let 束縛化・linkedProjects・宣言単位のエラー回復で解決した。</p>
+</div>
+
+<div class="step dead">
+<h3>誤診の記録 — rename と「ケース変換の壁」</h3>
+<p class="when mono">07-14</p>
+<blockquote class="user"><p>F2でbossをboss_edgeに変えてみたらなんか一括でいろいろ変わりました。…boss_edge_pair()をctrl+clickするとなぜか関数の定義ではなく、boss_edgeに飛びますが、これは適切？</p></blockquote>
+<p>F2 rename は派生名までカスケードしたのに、マクロが裏で生成していた <code>BossAttrs</code> だけが取り残された。<span class="rejected">最初の診断は「スパン継承漏れ」で、修正しても再発。</span>真因は「rust-analyzer の rename は派生名に元トークンが<em>原文ママ</em>含まれる場合しか部分置換できない — PascalCase 変換を跨げない」という壁。<strong>名前を文字列変換で合成する設計そのものが病巣</strong>だと確定した。</p>
+</div>
+
+<h2 id="sec3"><span class="no mono">§3</span>足跡 II — 構文の書き換え (v2 / v3)</h2>
+
+<div class="step">
+<h3>v2 — 「TypeScriptかよ」: 隠れた nominal 型の廃止</h3>
+<p class="when mono">07-14</p>
+<blockquote class="user"><p>確かに{since:i32}て名前ないの？何こいつ？てなってました。typescriptかよ！…無名型みたいなやつは意味不明だし、コードも構造化を邪魔してただの横着なので犯罪だと思っています。</p></blockquote>
+<p>ノード型も辺の積み荷型も<strong>ユーザーがマクロの外で普通の struct として宣言</strong>し、schema は参照するだけに。マクロは「グラフの機械」だけを生成することになった。旧構文は互換層も移行診断もなしの完全廃止 —</p>
+<blockquote class="user"><p>旧構文のにおいを一切残さないで欲しい。言語をクリーンに保って</p></blockquote>
+</div>
+
+<div class="step">
+<h3>v3 — 「= のほうが自然」: 束縛としての正直さ</h3>
+<p class="when mono">07-15</p>
+<blockquote class="user"><p>グラフインスタンスの中のノードインスタンスなのだから、alice: Person { … } ではなく、alice = Person { … }のほうが自然な気がする。</p></blockquote>
+<p>リテラルは <code>名前 = 式</code> に。マクロは型名を読むのをやめ、trait + 総称メソッド経由で <strong>rustc の型推論に委譲</strong>する設計転換。副産物としてハンドシェイクマクロが全廃でき、同一ファイル制約と二段マクロ展開の IDE 制約が同時に消えた。</p>
+</div>
+
+<div class="step">
+<h3>「テンプレート文字列」批判 — 導出名 API の全廃</h3>
+<p class="when mono">07-16</p>
+<blockquote class="user"><p>テンプレート文字列みたいなもんじゃないですか？確かに参照ジャンプできますが、これを読まないと無理ですし、覚えることが多すぎて複雑すぎると思います。</p></blockquote>
+<p>ラベル 1 個から <code>boss / try_boss / boss_id / boss_ids / boss_pairs …</code> を文字列連結で合成する設計は、ケース変換の壁と同族の病 — むしろ親玉だった。ビュー方式 (固定語彙) を経て、最終的に v4 の型名前空間アクセスへ収束する。</p>
+</div>
+
+<h2 id="sec4"><span class="no mono">§4</span>足跡 III — 存在論の選び直し (v4)</h2>
+
+<div class="step">
+<h3>「boss の型が BossEdge ではない」— 構文の嘘の摘発</h3>
+<p class="when mono">07-16</p>
+<blockquote class="user"><p>「boss の型が BossEdge」ではないの部分を何とか解決したいですね。BossEdgeはbossの何なのか？が宣言的に書けるようになってないといけないと思います。</p></blockquote>
+<p>そして辺そのものへの問いが続く:</p>
+<blockquote class="user"><p>edge depends_on: Service -> Service は…DependsOnであるべきだし、vscodeでは緑で認識されるべきでしょう。…db -[depends_on]-> config よりも depends_on = DependsOn(db -> config) の方がいいかも？</p></blockquote>
+</div>
+
+<div class="step">
+<h3>v4 — 辺の第一級化: 多重グラフを基盤に宣言する</h3>
+<p class="when mono">07-16〜17</p>
+<p>存在論を選び直した: <strong>辺種別は nominal 型 (生成される本物のタプル struct)、辺 1 本はキーを持つ第一級のインスタンス</strong>。ノードとの非対称が消滅。さらに「多重度は辺型の自己宣言ではなく、ノードの接続本数の制約では」というユーザーの直観が決め手になり、多重度注釈 <code>(0..1)</code> は <code>where</code> 制約に置き換わった。アクセスは型名前空間 (<code>Boss::of(&amp;g, ..)</code>) になり、<code>g.メソッド</code> とビュー 6 型は全廃。</p>
+</div>
+
+<div class="step">
+<h3>v4.1 — 端点役割名と無向辺: 矢印の意味を言語内に</h3>
+<p class="when mono">07-17</p>
+<blockquote class="user"><p>矢印というのはそれがどういう意味を持ってるのかで向きの解釈も何もかも変わる。したがって言語として記述するときはそこを明確にするようにしないといけないし、できるような記法になっていないといけない。</p></blockquote>
+<p>この原理から 2 つのプリミティブが生まれた。<strong>端点役割名</strong> <code>(subordinate: Employee) -&gt; (superior: Employee)</code> — 向きの意味がコメントでなく言語内に固定され、入次数制約も書けるように。<strong>無向辺</strong> <code>Person -- Person</code> — 対称な関係を矢印で書くのは嘘だった、という欠落プリミティブの補充 (ユーザー提起)。同時にモデリングガイド (グラフで書くべきもの vs 構造体で書くべきもの、二項関係の 4 分類、積み荷 = 間柄の属性) が確定した。</p>
+</div>
+
+<h2 id="sec5"><span class="no mono">§5</span>足跡 IV — 矢印の意味論と flow!</h2>
+
+<div class="step">
+<h3>flow! — データフロー矢印の輸入</h3>
+<p class="when mono">07-17〜18</p>
+<blockquote class="user"><p>Vertexには 引数 -[関数]-> 帰り値 の構文もあったはずですが、それは今どうなってますか？…むしろいれないといけないんじゃないか。脱糖するだけだから問題ない気がするんだけど。</p></blockquote>
+<p>過去に「原則 6 違反」と説明していたのは誤用で、訂正した。パイプ <code>|&gt;</code> が中間値を隠すのに対し、<strong>矢印は中間値に名前と型を与える</strong> — という Vertex の設計を、fan-out / fan-in 込みで輸入 (「計算グラフを見据えてました」というスコープ確定を受けて)。</p>
+<pre><code>graphite::flow! {
+    input -[parse]-&gt; parsed,
+    parsed -[validate]-&gt; valid,          <span class="c">// fan-out</span>
+    parsed -[stats]-&gt; report,
+    (valid, report) -[merge]-&gt; out,      <span class="c">// fan-in</span>
+};</code></pre>
+<p>脱糖は <code>let y = (f)(x);</code> の列のみ (消去可能)。「データの辺は宣言 (graph!)、関数の辺は実行 (flow!)」という統一 reading が構文レベルで成立。さらにその先の「計算グラフを実行時の値として持つ」レイヤは <strong>ComputeGraph</strong> (遅延評価 + 差分再計算のランタイムエンジン) として実装された。</p>
+</div>
+
+<h2 id="sec6"><span class="no mono">§6</span>足跡 V — キーとは何か (v4.2)</h2>
+
+<div class="step dead">
+<h3>需要駆動の先送り、という誤り</h3>
+<p class="when mono">07-18</p>
+<p>Id 型のユーザー宣言化を「実需要が出たら再訪」と先送りしようとしたところ:</p>
+<blockquote class="user"><p>今てなに？意味不明な問ですね。言語ですよこれ？</p></blockquote>
+<p>言語は永続する成果物であり、問いは「いつ要るか」ではなく「<strong>意味論として何が正しいか</strong>」。枠組みごと問い直した。</p>
+</div>
+
+<div class="step">
+<h3>v4.2 — キーは個体の名前</h3>
+<p class="when mono">07-18</p>
+<p>二つの首尾一貫した意味論 — (a) キーはグラフ内の名前 / (b) キーは個体の名前 — を比較し、ユーザーが <strong>(b)</strong> を選択。<strong>グラフとは、名前を持つ個体たちについての主張の集合</strong>である。導かれた規則:</p>
+<p style="text-align:center; font-weight:700;">「型を宣言した者が、その Id も宣言する」</p>
+<p><code>Person</code> はユーザーが宣言する → <code>PersonId</code> もユーザーが宣言する (その 1 行は「この型は名前で識別される個体である」という意味のある宣言)。<code>Boss</code> は schema が作る → <code>BossId</code> は生成のまま。複数の schema が同じ <code>PersonId</code> を共有できるのは、衝突ではなく<strong>当然の帰結</strong>になった — 組織図で得たキーで承認フローを引ける。</p>
+</div>
+
+<h2 id="sec7"><span class="no mono">§7</span>完成した世界観</h2>
+<pre><code><span class="c">// 意味を書く型は全部ユーザーの宣言。Id の宣言 = 「個体になれる」の宣言</span>
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct PersonId(pub String);
+pub struct Person { pub name: String }
+pub struct BossEdge { pub since: i32 }
+
+graphite::graph_schema! {
+    schema Org {
+        node Person;
+        node Team;
+
+        edge BelongsTo = Person -&gt; Team                          where each Person: 1;
+        edge Boss      = (subordinate: Person) -[BossEdge]-&gt; (superior: Person)
+                                                                  where each subordinate: 0..1;
+        edge Friends   = Person -- Person                        where unique pair;
+    }
+}
+
+let g = graphite::graph!(Org {
+    alice = Person { name: "Alice".into() },       <span class="c">// 名前 = 定義</span>
+    bob   = Person { name: "Bob".into() },
+    b1    = Boss(bob -[BossEdge { since: 2021 }]-&gt; alice),
+    f1    = Friends(alice -- bob),
+    ..load_more_people(),                           <span class="c">// 実行時データの合成</span>
+})?;
+
+let boss = Boss::of(&amp;g, &amp;bob_id);                  <span class="c">// アクセスは型名前空間</span>
+let subs = Boss::sources_of(&amp;g, &amp;alice_id);        <span class="c">// 逆引き</span></code></pre>
+<div class="tablewrap"><table>
+<tr><th>規則</th><th>意味</th></tr>
+<tr><td><strong>名前 = 定義</strong></td><td>名前が要る定義は schema もリテラルも全部 <code>名前 = 値/型式</code>。リテラルの名前は常にキーの束縛</td></tr>
+<tr><td><strong>矢印の中は積み荷だけ</strong></td><td><code>-[X]-&gt;</code> の X は schema では積み荷の型、リテラルでは積み荷の値、flow! では関数</td></tr>
+<tr><td><strong>where は制約</strong></td><td>多重度・一意性は辺の自己宣言ではなく、宣言される制約 (<code>each 役割: 1</code> / <code>unique pair</code>)</td></tr>
+<tr><td><strong>キーは個体の名前</strong></td><td>グラフ = 個体宇宙への主張の集合。型を宣言した者が Id も宣言する</td></tr>
+</table></div>
+
+<h2 id="sec8"><span class="no mono">§8</span>外延 — この過程で得た設計原理</h2>
+<div class="lesson"><h3>構文は嘘をつかない</h3><p><code>名前: 型</code> の顔をしたものは本当にその型宣言でなければならない。<strong>「〜っぽく見えるが実は違う」は、それ自体が欠陥</strong>。</p></div>
+<div class="lesson"><h3>導出名は病気</h3><p>文字列変換で名前を合成すると IDE と人間の両方が壊れる。名前はユーザートークン原文ママか、固定語彙か。例外は Rust 自身の慣例が要求する変換 (enum バリアント等) のみ。</p></div>
+<div class="lesson"><h3>借り物の読み方は本物から借りる</h3><p>新しい構文は Rust プログラマが既に持つ読解 (関数型の矢印、タプル struct のコンストラクタ、let 束縛、struct update の <code>..</code>) に乗せる。本物に実在しない形の発明は新しい嘘。</p></div>
+<div class="lesson"><h3>マクロは推論をエミュレートせず rustc に投げる</h3><p>マクロが型名をテキストで読むほど、見えない結合が増える。trait + ジェネリクスに委譲すれば、型検査・推論・エラーの全部が本物になる。</p></div>
+<div class="lesson"><h3>検証は実測で。誤診は記録する</h3><p>rust-analyzer の挙動は definition provider を直接叩いて確かめる。誤診 → 修正 → 再発 → 真因、の往復こそが「ケース変換の壁」のような法則の発見に繋がる。</p></div>
+<div class="lesson"><h3>互換の痕跡を残さない</h3><p>未配布の言語に移行診断・互換層は書かない。旧構文の検出コードは「旧構文の知識」をコードベースに残すこと自体が汚染。</p></div>
+<div class="lesson"><h3>言語の意味論を需要駆動で先送りしない</h3><p>「実需要が出たら」は アプリケーションコードの論理。言語の問いは<strong>「いつ要るか」ではなく「何が正しいか」</strong>。保留できるのは「正しさが未決」のときだけ。</p></div>
+<div class="lesson"><h3>完了した札に種を埋めない</h3><p>完了列は誰も読み返さない。将来の作業は、閉じる前に「出自 + 着手条件」つきの未着手札へ切り出す。</p></div>
+
+<h2 id="sec9"><span class="no mono">§9</span>決着の一覧</h2>
+<p>Fudaba #1〜#16 は全て決着した。主要な帰結:</p>
+<div class="tablewrap"><table>
+<tr><th>テーマ</th><th>決着</th></tr>
+<tr><td>IDE 対応 (発端のゴール)</td><td>DSL 内の全トークン種が定義解決・参照検索・hover 可能。「普通の Rust と同じ」を実測で達成 (ide_support_spec §1.1〜1.12)</td></tr>
+<tr><td>スキーマ構文</td><td>v4.2: 辺の第一級化・where 制約・端点役割名・無向辺・型名前空間アクセス</td></tr>
+<tr><td>リテラル</td><td>全行 <code>名前 = 値</code> + スプライス <code>..式</code> (実行時データの合成)</td></tr>
+<tr><td>構築 API</td><td>要素単位 (insert/add) + 総称一括 (extend)。構築ループは builder から消滅</td></tr>
+<tr><td>クエリ</td><td><code>of / get / between / iter / ids / sources_of</code> (逆引き) — 固定語彙</td></tr>
+<tr><td>関数の辺</td><td>flow! (即時実行の脱糖) + ComputeGraph (遅延・差分再計算エンジン)</td></tr>
+<tr><td>三大敵の実証</td><td>state-machine / async-dag / reactive-cells — 「暗黙の制御フローを宣言されたグラフデータに変え、検証をアルゴリズムに任せる」</td></tr>
+<tr><td>モデリング指針</td><td>modeling_guide.md — 同一性+接続性 / 二項関係の 4 分類 / 積み荷 = 間柄の属性 / 昇格手順</td></tr>
+</table></div>
+
+<p style="margin-top:3rem; font-size:.85rem; color:var(--ink-soft); border-top:1px solid var(--line); padding-top:1.2rem;">正本はリポジトリの docs/ (各仕様書と dev_history — ユーザー発言の原文引用つき)。本文書はその読み物版。テスト総数 252 件 (2026-07-18 時点)。</p>
+</div>
+</body>
+</html>
