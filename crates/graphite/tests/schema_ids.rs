@@ -129,11 +129,9 @@ fn violationは既定生成idだけを表示する() {
         Err(violation) => violation,
         Ok(_) => panic!("重複した既定IDは拒否されるはず"),
     };
-    assert!(
-        generated
-            .to_string()
-            .contains("AutomaticNodeId(\"duplicate\")")
-    );
+    assert!(generated
+        .to_string()
+        .contains("AutomaticNodeId(\"duplicate\")"));
 
     let explicit = match MixedIds::Graph::create(|builder| {
         builder.external_node(ExternalNodeId(900), ExternalNode { name: "first" });

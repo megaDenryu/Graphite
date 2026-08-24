@@ -67,8 +67,12 @@ graphite::graph_schema! {
 pub use OrderFsm::{Cancel, Deliver, OrderStateId, Pay, Refund, Ship, Submit};
 
 impl PartialOrd for OrderStateId {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> { Some(self.cmp(other)) }
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
 }
 impl Ord for OrderStateId {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering { self.0.cmp(&other.0) }
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.0.cmp(&other.0)
+    }
 }

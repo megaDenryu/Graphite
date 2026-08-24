@@ -79,11 +79,17 @@ pub fn validate_generated_type_names(
 
     let fixed = ["Graph", "Builder", "Violation"];
     for name in fixed {
-        names.insert(name.to_string(), (schema_name.span(), format!("生成型 `{name}`")));
+        names.insert(
+            name.to_string(),
+            (schema_name.span(), format!("生成型 `{name}`")),
+        );
     }
     for suffix in ["Node", "Edge", "Insertable", "DefaultId"] {
         let name = format!("{schema_name}{suffix}");
-        names.insert(name.clone(), (schema_name.span(), format!("生成trait `{name}`")));
+        names.insert(
+            name.clone(),
+            (schema_name.span(), format!("生成trait `{name}`")),
+        );
     }
 
     let mut register = |name: String, span: proc_macro2::Span, description: String| {

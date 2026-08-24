@@ -99,7 +99,10 @@ impl ToTokens for PublicIdType {
             return;
         };
 
-        let first = path.segments.first().map(|segment| segment.ident.to_string());
+        let first = path
+            .segments
+            .first()
+            .map(|segment| segment.ident.to_string());
         if path.leading_colon.is_some() || first.as_deref() == Some("crate") {
             path.to_tokens(tokens);
         } else if first.as_deref() == Some("self") {
