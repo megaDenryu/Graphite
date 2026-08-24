@@ -1654,7 +1654,9 @@ fn gen_directed_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> Tok
 
     // `of` の戻り型を決めるのは常に出次数側 (Source) の each のみ
     // (`docs/edge_endpoints_v4_1.md` §1)。
-    let source_each = edge.each_for(EachSide::Source).map(|constraint| constraint.spec);
+    let source_each = edge
+        .each_for(EachSide::Source)
+        .map(|constraint| constraint.spec);
 
     let of_and_get_of = match source_each {
         Some(spec) if spec.is_exactly_one() => {
@@ -1738,7 +1740,9 @@ fn gen_directed_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> Tok
 
     // `sources_of` の戻り型を決めるのは常に入次数側 (Target) の each のみ
     // (`of` の出次数版と対称、`docs/reverse_query.md`)。
-    let target_each = edge.each_for(EachSide::Target).map(|constraint| constraint.spec);
+    let target_each = edge
+        .each_for(EachSide::Target)
+        .map(|constraint| constraint.spec);
 
     let sources_of_and_get = match target_each {
         Some(spec) if spec.is_exactly_one() => {

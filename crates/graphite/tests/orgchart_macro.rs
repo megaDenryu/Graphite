@@ -60,9 +60,8 @@ use OrgChart::{
 /// schema module 内の私有ストレージと索引へ親 module からはアクセスできない。
 impl OrgChart::Graph {
     pub fn colleagues(&self, id: &EmployeeId) -> Vec<&Employee> {
-        let department_id =
-            BelongsTo::iter(self)
-                .find_map(|(_, edge)| (&edge.employee == id).then_some(&edge.department));
+        let department_id = BelongsTo::iter(self)
+            .find_map(|(_, edge)| (&edge.employee == id).then_some(&edge.department));
         let Some(department_id) = department_id else {
             return Vec::new();
         };
@@ -470,9 +469,10 @@ mod tests {
             Ok(_) => panic!("2件の違反が収集されるはず"),
         };
         assert_eq!(violations.len(), 2);
-        assert!(violations
-            .iter()
-            .any(|v| matches!(v, OrgChart::Violation::BelongsToEmployeeEachViolation { .. })));
+        assert!(violations.iter().any(|v| matches!(
+            v,
+            OrgChart::Violation::BelongsToEmployeeEachViolation { .. }
+        )));
         assert!(violations
             .iter()
             .any(|v| matches!(v, OrgChart::Violation::BossSubordinateEachViolation { .. })));
@@ -581,7 +581,10 @@ mod tests {
 
     #[test]
     fn named_field_edge値はマクロ外でも普通に構築できる() {
-        let e = BelongsTo { employee: emp("田中"), department: dept("営業部") };
+        let e = BelongsTo {
+            employee: emp("田中"),
+            department: dept("営業部"),
+        };
         assert_eq!(e.employee, emp("田中"));
         assert_eq!(e.department, dept("営業部"));
 

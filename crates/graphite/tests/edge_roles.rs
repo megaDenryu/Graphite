@@ -43,11 +43,7 @@ fn 両endpoint_roleのcardinalityを独立に検証する() {
         builder.product(book.clone(), Product);
         builder.purchase(
             Commerce::PurchaseId("alice-book".into()),
-            Commerce::Purchase::new(
-                alice.clone(),
-                book.clone(),
-                TransactionInfo { amount: 100 },
-            ),
+            Commerce::Purchase::new(alice.clone(), book.clone(), TransactionInfo { amount: 100 }),
         );
         builder.purchase(
             Commerce::PurchaseId("bob-book".into()),

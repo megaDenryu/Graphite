@@ -238,10 +238,7 @@ fn parse_optional_where_clause(input: ParseStream) -> syn::Result<WhereClause> {
     loop {
         match parse_constraint(input)? {
             Constraint::Each { ref_ident, spec } => {
-                if let Some((previous, _)) = clause
-                    .each
-                    .iter()
-                    .find(|(name, _)| name == &ref_ident)
+                if let Some((previous, _)) = clause.each.iter().find(|(name, _)| name == &ref_ident)
                 {
                     let mut error = syn::Error::new(
                         ref_ident.span(),
@@ -433,10 +430,7 @@ impl Parse for EdgeDecl {
                 roles.push(role);
             }
             for (index, role) in roles.iter().enumerate() {
-                if let Some(previous) = roles[..index]
-                    .iter()
-                    .find(|previous| *previous == role)
-                {
+                if let Some(previous) = roles[..index].iter().find(|previous| *previous == role) {
                     let mut error = syn::Error::new(
                         role.span(),
                         format!("同一edge内で役割名 `{role}` が重複しています"),
@@ -478,7 +472,8 @@ fn parse_edge_bracket_body(content: ParseStream) -> syn::Result<(Ident, Path)> {
     content.parse::<Token![:]>()?;
     let path: Path = content.parse()?;
     if !content.is_empty() {
-        return Err(content.error("`-[役割名: 型パス]->` または `-[役割名: 型パス]-` の形式で指定してください"));
+        return Err(content
+            .error("`-[役割名: 型パス]->` または `-[役割名: 型パス]-` の形式で指定してください"));
     }
     Ok((role, path))
 }

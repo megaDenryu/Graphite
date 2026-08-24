@@ -192,7 +192,9 @@ pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<Token
                 // `#kind::new(..)` がそのまま rustc の cannot-find-type/
                 // no-such-function に落ちることで検出される。
                 let ctor = match &edge.attrs {
-                    None => quote! { #schema_name::#kind::new(#from_ident.clone(), #to_ident.clone()) },
+                    None => {
+                        quote! { #schema_name::#kind::new(#from_ident.clone(), #to_ident.clone()) }
+                    }
                     Some(attrs_expr) => quote! {
                         #schema_name::#kind::new(#from_ident.clone(), #to_ident.clone(), #attrs_expr)
                     },
