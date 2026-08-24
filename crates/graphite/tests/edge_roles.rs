@@ -32,7 +32,7 @@ graphite::graph_schema! {
 }
 
 #[test]
-fn edge値はgraph外でnamed_fieldから構築できる() {
+fn 辺値はgraph外で名前付きフィールドから構築できる() {
     let purchase = Commerce::Purchase {
         buyer: Commerce::PersonId("alice".into()),
         product: Commerce::ProductId("book".into()),
@@ -45,7 +45,7 @@ fn edge値はgraph外でnamed_fieldから構築できる() {
 }
 
 #[test]
-fn 両endpoint_roleのcardinalityを独立に検証する() {
+fn 両端点の役割名の多重度を独立に検証する() {
     let result = Commerce::Graph::create_collecting(|builder| {
         let alice = Commerce::PersonId("alice".into());
         let bob = Commerce::PersonId("bob".into());
@@ -74,7 +74,7 @@ fn 両endpoint_roleのcardinalityを独立に検証する() {
 }
 
 #[test]
-fn 上限なしcardinalityも下限を検証する() {
+fn 上限なし多重度も下限を検証する() {
     let result = Commerce::Graph::create_collecting(|builder| {
         builder.person(Commerce::PersonId("alice".into()), Person);
         builder.product(Commerce::ProductId("book".into()), Product);
