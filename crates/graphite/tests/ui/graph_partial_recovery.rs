@@ -33,7 +33,7 @@ graphite::graph_schema! {
         node Employee;
         node Department;
 
-        edge BelongsTo = Employee -> Department where each Employee: 1;
+        edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1;
     }
 }
 

@@ -1,6 +1,4 @@
-// v4: 旧多重度注釈 `(1)`/`(0..1)`/`(0..*)` は字面ごと廃止された。where 節の
-// `each <型>: <spec>` の spec は `1` / `0..1` のいずれかのみサポートする。
-// それ以外 (`2..5` 等) はコンパイルエラーになるはず。
+// `each <role>: N..M` は下限が上限を超える範囲を拒否する。
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EmployeeId(pub String);
@@ -22,7 +20,7 @@ fn main() {
             node Employee;
             node Department;
 
-            edge BelongsTo = Employee -> Department where each Employee: 2..5;
+            edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 5..2;
         }
     }
 }

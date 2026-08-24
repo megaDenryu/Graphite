@@ -1,0 +1,11 @@
+error: 同一edge内で役割名 `person` が重複しています
+ --> tests/ui/duplicate_edge_role.rs:6:43
+  |
+6 |         edge Knows = (person: Person) -> (person: Person);
+  |                                           ^^^^^^
+
+error: 最初の役割はこちら
+ --> tests/ui/duplicate_edge_role.rs:6:23
+  |
+6 |         edge Knows = (person: Person) -> (person: Person);
+  |                       ^^^^^^

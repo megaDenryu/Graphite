@@ -1,5 +1,5 @@
-error[E0425]: cannot find function, tuple struct or tuple variant `NotARealEdge` in module `OrgChart`
+error[E0433]: failed to resolve: could not find `NotARealEdge` in `OrgChart`
   --> tests/ui/graph_unknown_edge_label.rs:38:16
    |
 38 |         oops = NotARealEdge(tanaka -> sales),
-   |                ^^^^^^^^^^^^ not found in `OrgChart`
+   |                ^^^^^^^^^^^^ could not find `NotARealEdge` in `OrgChart`

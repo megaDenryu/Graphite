@@ -16,7 +16,7 @@ help: the trait `ExplicitEdgeDefaultId` is not implemented for `Knows`
  6 | / graphite::graph_schema! {
  7 | |     schema ExplicitEdge {
  8 | |         node Person;
- 9 | |         edge Knows(id: ExternalEdgeId) = Person -> Person;
+ 9 | |         edge Knows(id: ExternalEdgeId) = (knower: Person) -> (known: Person);
    | |__________________^
 help: the trait `ExplicitEdgeDefaultId` is implemented for `Person`
   --> tests/ui/explicit_edge_id_requires_at.rs:6:1

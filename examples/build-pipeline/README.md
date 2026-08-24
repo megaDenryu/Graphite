@@ -34,8 +34,8 @@ graphite::graph_schema! {
         node Task;
         node Artifact;
 
-        edge Produces = Task -> Artifact where unique pair;
-        edge Consumes = Task -> Artifact where unique pair;
+        edge Produces = (task: Task) -> (artifact: Artifact) where unique pair;
+        edge Consumes = (task: Task) -> (artifact: Artifact) where unique pair;
     }
 }
 ```

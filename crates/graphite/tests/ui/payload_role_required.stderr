@@ -1,0 +1,5 @@
+error: 積み荷には役割名が必要です。`-[役割名: 型パス]->` または `-[役割名: 型パス]-` と書いてください
+ --> tests/ui/payload_role_required.rs:7:41
+  |
+7 |         edge Knows = (knower: Person) -[Details]-> (known: Person);
+  |                                         ^^^^^^^

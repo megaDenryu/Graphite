@@ -34,7 +34,7 @@ graphite::graph_schema! {
     schema Orchestration {
         node Service;
 
-        edge DependsOn = Service -> Service where unique pair;
+        edge DependsOn = (dependent: Service) -> (dependency: Service) where unique pair;
     }
 }
 

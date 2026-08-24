@@ -36,7 +36,7 @@ mod org_chart {
             node Person(id: PersonId);
             node Department(id: DepartmentId);
 
-            edge BelongsTo = Person -> Department where each Person: 0..1;
+            edge BelongsTo = (person: Person) -> (department: Department) where each person: 0..1;
         }
     }
 
@@ -84,7 +84,7 @@ mod approval_flow {
         schema ApprovalFlow {
             node Person(id: PersonId);
 
-            edge Approves = Person -> Person;
+            edge Approves = (approver: Person) -> (approved: Person);
         }
     }
 

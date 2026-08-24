@@ -23,20 +23,20 @@ graphite::graph_schema! {
         node Department;
         node Project;
 
-        edge BelongsTo = Employee -> Department              where each Employee: 1;
-        edge Boss      = Employee -[BossEdge]-> Employee     where each Employee: 0..1;
-        edge Assigned  = Employee -[AssignedEdge]-> Project;
-        edge Sponsors  = Department -> Project                where each Department: 0..1;
+        edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1;
+        edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1;
+        edge Assigned = (employee: Employee) -[assignment: AssignedEdge]-> (project: Project);
+        edge Sponsors = (department: Department) -> (project: Project) where each department: 0..1;
     }
 }
 ```
 
 | エッジ (Kind) | where 制約 | 意味 |
 |---|---|---|
-| `BelongsTo` | `where each Employee: 1` | 全社員は必ずちょうど1つの部署に所属する |
-| `Boss` | `where each Employee: 0..1` | 上司は高々1人 (トップ層は0人) |
+| `BelongsTo` | `where each employee: 1` | 全社員は必ずちょうど1つの部署に所属する |
+| `Boss` | `where each subordinate: 0..1` | 上司は高々1人 (トップ層は0人) |
 | `Assigned` | 制約なし | プロジェクトへの割当は0件以上 (兼務・未アサイン可)。同じ社員が同じプロジェクトに異なる役割で複数アサインされるケースを排除しないため、あえて `unique pair` を付けない |
-| `Sponsors` | `where each Department: 0..1` | 部署がスポンサーするプロジェクトは高々1件 |
+| `Sponsors` | `where each department: 0..1` | 部署がスポンサーするプロジェクトは高々1件 |
 
 ## データ
 
@@ -127,7 +127,7 @@ cargo run -- chain E003 --seed 7 --inject-anomalies
 [警告] 循環を検出したため打ち切りました (社員 E003 まで戻っています)
 ```
 
-`Boss::of` (`where each Employee: 0..1`) は `Option<(&Employee, &BossEdge)>` を
+`Boss::of` (`where each subordinate: 0..1`) は `Option<(&Employee, &BossEdge)>` を
 返すだけで上司の ID そのものは含まないため、`Boss::iter(&g)` から
 `EmployeeId -> (EmployeeId, since)` の索引を作ってから辿っている。訪問済み集合を
 持ちながら辿ることで、途中で循環に入った場合も無限ループせず検出・打ち切りできる。
@@ -245,15 +245,15 @@ $ cargo run -- reorg D03
 を手で管理する実装と対比すると、`graph_schema!` が肩代わりしてくれる点は
 以下の通り具体的である。
 
-### 1. `where each Employee: 1` による「全社員は必ず1部署」保証
+### 1. `where each employee: 1` による「全社員は必ず1部署」保証
 
 生HashMap実装では「社員を登録したが部署未設定」「部署を2つ登録してしまった」
 といった不整合が **実行時に静かに** 残り得る。`BelongsTo::iter(&g)` を毎回
 自分で数えて検査するコードを書かない限り気づけない。
 
-Graphiteでは `edge BelongsTo = Employee -> Department where each Employee: 1;`
+Graphiteでは `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1;`
 と宣言した時点で、`OrgChart::create()` が全社員について「ちょうど1本」で
-あることを一括検査し、満たさなければ `OrgChartViolation::BelongsToEachViolation`
+あることを一括検査し、満たさなければ `OrgChartViolation::BelongsToEmployeeEachViolation`
 で構築自体が失敗する。本アプリの合成データ生成器 (`dataset.rs`) がバグって
 所属漏れの社員を作ってしまえば、`summary` を実行する前の `OrgChart::create()`
 の時点で即座に検出される (`.expect(...)` で握りつぶさない限り必ず気づける)。

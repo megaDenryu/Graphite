@@ -9,7 +9,7 @@ pub struct Person {
 graphite::graph_schema! {
     schema Org {
         node Person;
-        edge Relation = Person -> Person;
+        edge Relation = (source: Person) -> (target: Person);
     }
 }
 
@@ -17,7 +17,7 @@ graphite::graph_schema! {
 graphite::graph_schema! {
     schema Social {
         node Person;
-        edge Relation = Person -> Person;
+        edge Relation = (source: Person) -> (target: Person);
     }
 }
 
@@ -49,11 +49,16 @@ pub struct 人物 {
     pub 名前: String,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct 取引情報 {
+    pub 金額: u64,
+}
+
 #[rustfmt::skip]
 graphite::graph_schema! {
     schema 世界 {
         node 人物;
-        edge 関係 = 人物 -> 人物;
+        edge 関係 = (始点: 人物) -[明細: 取引情報]-> (終点: 人物);
     }
 }
 
@@ -63,10 +68,17 @@ fn 日本語のschema名とノード名と辺名と束縛名を通常の識別�
     let graph: 世界::Graph = graphite::graph!(世界 {
         太郎 = 人物 { 名前: "太郎".into() },
         次郎 = 人物 { 名前: "次郎".into() },
-        知人 = 関係(太郎 -> 次郎),
+        知人 = 関係(太郎 -[取引情報 { 金額: 100 }]-> 次郎),
     })
     .expect("日本語識別子を使ったグラフの構築に成功するはず");
 
     assert_eq!(世界::人物::get(&graph, &世界::人物Id("太郎".into())).unwrap().名前, "太郎");
     assert_eq!(世界::関係::len(&graph), 1);
+    let edge = 世界::関係::ids(&graph)
+        .next()
+        .and_then(|id| 世界::関係::get(&graph, id))
+        .expect("日本語roleを持つedgeを取得できるはず");
+    assert_eq!(edge.始点, 世界::人物Id("太郎".into()));
+    assert_eq!(edge.終点, 世界::人物Id("次郎".into()));
+    assert_eq!(edge.明細.金額, 100);
 }

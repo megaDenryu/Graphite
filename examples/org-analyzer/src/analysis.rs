@@ -174,7 +174,7 @@ pub struct ChainResult {
 
 /// 指定した社員から `Boss` 辺を根 (トップ層) まで辿る。
 ///
-/// `Boss::of` (each Employee: 0..1) は `Option<(&Employee, &BossEdge)>` を
+/// `Boss::of` (each subordinate: 0..1) は `Option<(&Employee, &BossEdge)>` を
 /// 返すだけで上司の `EmployeeId` そのものは含まないため、辿るには
 /// `Boss::iter` から `EmployeeId -> (EmployeeId, since)` の索引を先に
 /// 作っておく必要がある。
@@ -301,7 +301,7 @@ fn detect_mutual_boss_pairs(org: &OrgChart::Graph) -> Vec<(EmployeeId, EmployeeI
 
 /// 上司関係の循環検出。
 ///
-/// `Boss` エッジ (Employee -[BossEdge]-> Employee, each Employee: 0..1) を
+/// `Boss` エッジ (`(subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee)`, each subordinate: 0..1) を
 /// 汎用 `graphite::Graph<(), (), EmployeeId>` に射影する (`Graph::from_edges`
 /// が `Kind::iter` からの定型的な射影をまとめてくれる)。`topological_sort`
 /// が返す `CycleError::cycle` はフェーズ5から循環メンバー全体を返すように

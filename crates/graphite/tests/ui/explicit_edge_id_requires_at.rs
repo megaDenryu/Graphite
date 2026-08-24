@@ -6,7 +6,7 @@ struct Person;
 graphite::graph_schema! {
     schema ExplicitEdge {
         node Person;
-        edge Knows(id: ExternalEdgeId) = Person -> Person;
+        edge Knows(id: ExternalEdgeId) = (knower: Person) -> (known: Person);
     }
 }
 
@@ -17,4 +17,3 @@ fn main() {
         relation = Knows(a -> b),
     });
 }
-

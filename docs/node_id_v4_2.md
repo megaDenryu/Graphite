@@ -10,7 +10,7 @@ ID型を省略すると、`graph_schema!` は schema module 内に型付き文�
 graphite::graph_schema! {
     schema Org {
         node Person;
-        edge Knows = Person -> Person;
+        edge Knows = (knower: Person) -> (known: Person);
     }
 }
 
@@ -35,7 +35,7 @@ pub struct RelationNumber(pub u64);
 graphite::graph_schema! {
     schema Org {
         node Person(id: EmployeeNumber);
-        edge Knows(id: RelationNumber) = Person -> Person;
+        edge Knows(id: RelationNumber) = (knower: Person) -> (known: Person);
     }
 }
 ```

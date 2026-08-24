@@ -14,8 +14,8 @@
 
 ## 1. 動機
 
-1. **無名ブロックの廃止 (ユーザー決定)**: 現行の `edge boss: Employee -> Employee
-   (0..1) { since: i32 }` は、見た目が TypeScript 的な構造的レコードなのに、実体は
+1. **無名ブロックの廃止 (ユーザー決定)**: 当時のedge宣言にあった無名の
+   属性fieldブロックは、見た目が TypeScript 的な構造的レコードなのに、実体は
    マクロが裏で `BossAttrs` という nominal 型を生成する「見た目は構造的、実体は
    隠された nominal」であり、Rust の哲学 (無名 struct 型は存在しない) にも
    ユーザーの美学にも反する。利用側では `BossAttrs` という「どこにも書かれていない
@@ -26,7 +26,7 @@
    この問題クラスごと消滅する (ラベルの rename は型に触れず、型の rename は
    普通の struct rename)。
 3. **宣言もリテラルと同じ矢印形に**: 決定3 はリテラル側だけ `-[ラベル]->` に統一し、
-   宣言側は `edge ラベル: A -> B` のままだった。宣言・リテラルの形を完全に揃える。
+   宣言側とリテラル側の形が揃っていなかった。現行はrole必須構文へ統一した。
 4. **ノードへの一貫性拡張 (ユーザー決定)**: エッジ属性型を外部 struct 参照に
    した以上、ノード型 `node Employee { name: String }` だけがマクロ生成の
    nominal 型として残るのは一貫性を欠く。ノードは宣言に名前が見えている分
@@ -81,9 +81,9 @@ graphite::graph_schema! {
         node Employee;
         node Department;
 
-        edge Employee -[belongs_to]-> Department (1);
-        edge Employee -[boss: BossEdge]-> Employee (0..1);
-        edge Employee -[reports]-> Employee (0..*);
+        edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1;
+        edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1;
+        edge Reports = (reporter: Employee) -> (recipient: Employee);
     }
 }
 ```
@@ -112,7 +112,7 @@ graphite::graph_schema! {
   なので外に置く)。
 - `edge` キーワードは維持する (G4 エラー回復パーサの宣言境界が `node`/`edge`
   キーワードに依存しているため。削ると回復境界が消える)。
-- **旧構文 `edge label: From -> To (mult) { fields }` は廃止** (v0 につき互換層
+- **旧label先行構文は廃止** (v0 につき互換層
   なし)。旧構文専用の検出・移行診断は設けない。まだ配布していない言語なので
   互換配慮は不要であり、「旧構文のにおいを一切残さず言語をクリーンに保つ」
   というユーザー決定に基づく。旧構文を書いた場合は syn の素のパースエラー

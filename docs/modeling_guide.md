@@ -26,7 +26,7 @@
 
 | 関係の性質 | 記法 | 例 |
 |---|---|---|
-| 向きが意味を持ち、from/to で自然に読める | `edge Kind = A -> B` | DependsOn, BelongsTo, 遷移 |
+| 向きが意味を持つ | `edge Kind = (role_a: A) -> (role_b: B)` | DependsOn, BelongsTo, 遷移 |
 | 向きはあるが、端点を役割名で読みたい | `edge Kind = (役割: A) -> (役割: B)` | Boss (subordinate → superior), Trade (buyer → seller) |
 | 対称 (役割の区別が存在しない) | `edge Kind = A -- A` | Friends, 相互接続, 隣接 |
 | 3 項以上の関係 / 関係にさらに関係が付く | **ノード昇格** (§4) | 取引 (buyer, seller, item), 承認つき任命 |
@@ -56,7 +56,7 @@
 「取引」を辺として書こうとして詰まったら (3 項ある / 取引自体を参照したい):
 
 ```rust
-// 昇格前 (書けない): edge Trade = Person -[?]-> Person   ← item はどこへ? 向きは?
+// 昇格前は二項edgeだけではitemを表せず、向きも曖昧になる。
 
 // 昇格後: 「取引」という関係そのものをノードにし、
 //         端点の役割は昇格後ノードから生える辺の種別名になる
@@ -80,7 +80,7 @@ reactive-cells の減算セル `Sub` は入力 2 本の**区別** (被減数/減
 「同種の辺の間の役割差」が要る場合は、**役割を辺種別に昇格**する:
 
 ```rust
-// 誤: edge Feeds = Cell -> Cell を 2 本張り、どちらが左かを別の場所で管理 (二重管理)
+// 誤: roleを区別しない同型edgeを2本張り、左右を別の場所で管理する (二重管理)
 // 正: 役割が辺の種類の名前になる
 edge Lhs = (operand: Cell) -> (consumer: Cell);
 edge Rhs = (operand: Cell) -> (consumer: Cell);

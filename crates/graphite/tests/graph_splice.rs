@@ -1,7 +1,7 @@
 //! `graph!` のスプライス項 (`..式`) を検証する統合テスト
 //! (`docs/graph_splice.md` §1)。
 //!
-//! `OrgChart` (`orgchart_macro.rs`) は `each Employee: 1` のようなノードごとの
+//! `OrgChart` (`orgchart_macro.rs`) は `each employee: 1` のようなroleごとの
 //! 制約を多く持つため、スプライスの挙動 (ノードのみ/辺のみ/混在/空/挿入順) を
 //! 単体で確かめるにはノイズが多い。ここでは制約なしの小さな専用スキーマ
 //! `SpliceDemo` を使う。
@@ -19,7 +19,7 @@ graphite::graph_schema! {
 
         // 制約なし (`where` 節を省略): 平行辺・自己ループを許す多重グラフ。
         // スプライスの挿入順保証をそのまま観測できる。
-        edge Knows = Person -> Person;
+        edge Knows = (knower: Person) -> (known: Person);
     }
 }
 
@@ -72,8 +72,8 @@ fn スプライスで辺のみを追加できる() {
 
     assert_eq!(Knows::len(&g), 2);
     let k1 = Knows::get(&g, &KnowsId("k1".to_string())).expect("k1が存在するはず");
-    assert_eq!(k1.from(), &PersonId("alice".to_string()));
-    assert_eq!(k1.to(), &PersonId("bob".to_string()));
+    assert_eq!(k1.knower, PersonId("alice".to_string()));
+    assert_eq!(k1.known, PersonId("bob".to_string()));
 }
 
 #[test]

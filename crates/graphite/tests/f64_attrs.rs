@@ -32,7 +32,7 @@ graphite::graph_schema! {
         node Sensor;
         node Reading;
 
-        edge Measured = Sensor -[MeasuredEdge]-> Reading;
+        edge Measured = (sensor: Sensor) -[measurement: MeasuredEdge]-> (reading: Reading);
     }
 }
 

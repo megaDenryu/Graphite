@@ -117,8 +117,8 @@ fn 実行ログは依存先が依存元より先に完了していることを�
     );
 
     for (_id, edge) in DependsOn::iter(&g) {
-        let dependent = edge.from();
-        let prerequisite = edge.to();
+        let dependent = &edge.dependent;
+        let prerequisite = &edge.dependency;
         let dependent_record = report.record_of(dependent);
         let prerequisite_record = report.record_of(prerequisite);
         assert!(

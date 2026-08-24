@@ -6,7 +6,7 @@ struct Person;
 graphite::graph_schema! {
     schema Collision {
         node Person(id: KnowsId);
-        edge Knows = Person -> Person;
+        edge Knows = (knower: Person) -> (known: Person);
     }
 }
 

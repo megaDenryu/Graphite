@@ -7,5 +7,5 @@ error: 明示ID型 `KnowsId` はschema moduleの自動生成ID型 `KnowsId`と�
 error: 衝突する生成名はこちら
  --> tests/ui/explicit_id_generated_name_collision.rs:9:14
   |
-9 |         edge Knows = Person -> Person;
+9 |         edge Knows = (knower: Person) -> (known: Person);
   |              ^^^^^

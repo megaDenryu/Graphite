@@ -2,7 +2,7 @@
 
 > **[v4 (`docs/schema_v4.md`) で置換済み]** このファイルは歴史的記録として残す。
 > 現行のリテラル構文 (`名前 = 値` または `名前 @ ID式 = 値`、辺は `key = Kind(from -> to)` /
-> `key @ ID式 = Kind(from -[式]-> to)` でタプル struct を構築) は `docs/schema_v4.md`
+> `key @ ID式 = Kind(from -[式]-> to)` でnamed-field structを構築) は `docs/schema_v4.md`
 > を参照すること。
 
 2026-07-14 セッション2 でのユーザー決定。`docs/edge_syntax_v2.md` (スキーマ宣言

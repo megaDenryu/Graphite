@@ -10,7 +10,7 @@
 //! - §1 ノード型・エッジ属性型の宣言 (普通の struct)
 //! - §2 `graph_schema!` によるスキーマ宣言 (v4: `edge Kind = ...;` は
 //!   新しい nominal 型の定義、`where` は制約)
-//! - §2.5 脱糖の実像 — 全要素キー・`KeyedTable` 格納・辺はタプル struct
+//! - §2.5 脱糖の実像 — 全要素キー・`KeyedTable` 格納・辺はnamed-field struct
 //!   として第一級、という v4 の実装を実測して解説する
 //! - §3 クックブック — `graph_schema!`/`graph!` が生成する公開APIの全列挙
 //! - §4 「できないこと」— コンパイルエラーになる例と、実際のエラー引用
@@ -60,7 +60,7 @@ pub struct ReviewEdge {
 //
 // v4 (`docs/schema_v4.md` §0) の骨格は3規則だけです:
 //
-// 1. **`名前 = 定義`** — `edge Kind = From -> To ...;` は **`Kind` という
+// 1. **`名前 = 定義`** — `edge Kind = (role: From) -> (role: To) ...;` は **`Kind` という
 //    新しい nominal 型 (名前で区別される型) を定義する宣言**です。透過的な
 //    別名ではありません。`Person -> Person` という同じ形の辺を2つ宣言
 //    しても (下記の `Boss` と `Reports` の関係と終点の型は同じですが)、
@@ -73,10 +73,7 @@ pub struct ReviewEdge {
 //    `edge Kind = ..` の左辺で言い切っているからです。
 // 3. **`where` は制約** — 制約があるときだけ書きます。省略時は「制約なし」
 //    (=平行辺も含めて自由) を意味します。
-//    - `each <FromType>: 1` — 各始点ノードにつきちょうど1本
-//      (数学的には: この辺は始点の型から終点の型への**全域関数**)
-//    - `each <FromType>: 0..1` — 各始点ノードにつき高々1本
-//      (数学的には: **部分関数**)
+//    - `each <role>: N | N..M | N..*` — endpoint roleごとの本数制約
 //    - `unique pair` — 同じ (始点, 終点) の対に2本目を張ることを禁止
 //      (=平行辺の禁止)
 //
@@ -85,8 +82,8 @@ pub struct ReviewEdge {
 //
 // | エッジ         | 制約                | 積み荷        | 読み方 |
 // |----------------|---------------------|----------------|--------|
-// | `BelongsTo`    | `each Person: 1`    | なし           | 全域関数。全社員は必ずどこか1つのチームに所属する |
-// | `Boss`         | `each Person: 0..1` | `BossEdge`     | 部分関数。上司がいない社員がいてもよいが、いるなら1人だけ |
+// | `BelongsTo`    | `each member: 1`    | なし           | 全域関数。全社員は必ずどこか1つのチームに所属する |
+// | `Boss`         | `each subordinate: 0..1` | `BossEdge` | 部分関数。上司がいない社員がいてもよいが、いるなら1人だけ |
 // | `Reports`      | `unique pair`       | なし           | 同じ (上司, 部下) の対を2回宣言できない (平行辺の禁止) |
 // | `ReviewedBy`   | 制約なし            | `ReviewEdge`   | 平行辺OK。同じ2人の間で複数年度の考課が積み重なってよい |
 //
@@ -108,11 +105,11 @@ graphite::graph_schema! {
         node Person;
         node Team;
 
-        edge BelongsTo  = Person -> Team              where each Person: 1;
-        edge Boss       = Person -[BossEdge]-> Person where each Person: 0..1;
-        edge Reports    = Person -> Person             where unique pair;
-        edge ReviewedBy = Person -[ReviewEdge]-> Person; // 制約なし (平行辺も自由)
-        edge Friends    = Person -- Person             where unique pair; // 無向辺 (v4.1)
+        edge BelongsTo = (member: Person) -> (team: Team) where each member: 1;
+        edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1;
+        edge Reports = (reporter: Person) -> (recipient: Person) where unique pair;
+        edge ReviewedBy = (reviewee: Person) -[review: ReviewEdge]-> (reviewer: Person);
+        edge Friends = Person -- Person where unique pair;
     }
 }
 
@@ -178,33 +175,30 @@ fn main() {
 // `alice` は `PersonId` です。「名前 = 値」の名前は常にキー、という規則が
 // ノード・エッジ双方に一貫して効いています。
 //
-// ## 2. 辺はタプル struct として実在する
+// ## 2. 辺はnamed-field structとして実在する
 //
-// `edge Boss = Person -[BossEdge]-> Person where each Person: 0..1;` から
+// `edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1;` から
 // `graph_schema!` が生成する実際の型は次の通りです
-// (`schema_codegen.rs::gen_edge_tuple_structs`):
+// (`schema_codegen.rs::gen_edge_value_structs`):
 //
 // ```rust
 // #[derive(Debug, Clone, PartialEq)]
-// pub struct Boss(pub PersonId, pub PersonId, pub BossEdge);
+// pub struct Boss {
+//     pub subordinate: PersonId,
+//     pub superior: PersonId,
+//     pub appointment: BossEdge,
+// }
 //
 // impl Boss {
-//     pub fn from(&self) -> &PersonId { &self.0 }
-//     pub fn to(&self) -> &PersonId { &self.1 }
-//     pub fn payload(&self) -> &BossEdge { &self.2 }
+//     pub fn new(from: PersonId, to: PersonId, payload: BossEdge) -> Self { .. }
 // }
 // ```
 //
-// 積み荷なしエッジ (`BelongsTo`) は3要素目が無いだけの2要素タプル struct
-// `pub struct BelongsTo(pub PersonId, pub TeamId);` になり、`payload()` は
-// 生成されません。**このタプル struct はマクロの内部表現ではなく、公開
-// struct として実在します** (`docs/schema_v4.md` §3.1 原則6) — マクロの
-// 外で `Boss(bob_id, tanaka_id, BossEdge { since: 2020 })` と普通に構築
+// 積み荷なしエッジ (`BelongsTo`) もrole名の公開fieldだけを持ちます。
+// **このEdge値型はマクロの内部表現ではなく、公開structとして実在します** —
+// マクロの外で `Boss { subordinate, superior, appointment }` と普通に構築
 // できることは、`crates/graphite/tests/orgchart_macro.rs` の
-// `タプルstructはマクロ外でも普通に構築できる`/`タプルstructを直接構築して
-// addできる` が実例です。読み取りは `.0`/`.1`/`.2` という位置アクセスを
-// 人間に晒さず、`from()`/`to()`/`payload()` という固定語彙のメソッドに
-// 統一されています。
+// `named_field_edge値はマクロ外でも普通に構築できる` が実例です。
 //
 // ## 3. 格納先は KeyedTable — HashMap 直書きではない
 //
@@ -467,7 +461,7 @@ fn personidの作り方とgraphのキーの対応を確認する(g: &Org::Graph)
 
 // --- エッジを辿る (Kind::of/get/between) ---
 
-// やりたいこと: `each Person: 1` のエッジは `of` が参照そのものを返す
+// やりたいこと: `each member: 1` のエッジは `of` が参照そのものを返す
 // (未知キーはパニックする契約。非パニック版は `get_of`)。
 fn each_1のofは直接参照を返す(g: &Org::Graph) {
     let team: &Team = BelongsTo::of(g, &PersonId("alice".to_string()));
@@ -482,7 +476,7 @@ fn each_1のofは直接参照を返す(g: &Org::Graph) {
     println!("(each 1) BelongsTo::get_of(&g, &dave) = {unknown:?} (未知キーはNone)");
 }
 
-// やりたいこと: `each Person: 0..1` のエッジは `of` が `Option` を返す。
+// やりたいこと: `each subordinate: 0..1` のエッジは `of` が `Option` を返す。
 // 積み荷ありなので `Option<(&Node, &Attrs)>` になり、積み荷へは "ふつうの
 // フィールドアクセス" で辿れる (`attrs.since`)。
 fn each_0か1のofはoptionを返す(g: &Org::Graph) {
@@ -725,7 +719,7 @@ fn 未知の終点キーの違反を受け取る() {
     }
 }
 
-// やりたいこと: `each Person: 1` を満たさない (0本の) エッジは `{Kind}EachViolation` になる。
+// やりたいこと: `each member: 1` を満たさない (0本の) エッジは役割名つきの違反になる。
 fn each違反を受け取る() {
     let result: Result<Org::Graph, Org::Violation> = Org::Graph::create(|b: &mut Org::Builder| {
         b.person(
@@ -734,10 +728,10 @@ fn each違反を受け取る() {
                 name: "Alice".to_string(),
             },
         );
-        // aliceをどのチームにも所属させない (BelongsTo は each Person: 1)
+        // aliceをどのチームにも所属させない (BelongsTo は each member: 1)
     });
     match result {
-        Err(Org::Violation::BelongsToEachViolation { source, count }) => {
+        Err(Org::Violation::BelongsToMemberEachViolation { source, count }) => {
             println!("(違反) each違反: {source:?} は {count} 本 (期待は1本)");
         }
         _ => panic!("each違反が検出されるはず"),
@@ -765,7 +759,7 @@ fn unique_pair違反を受け取る() {
                 name: "Engineering".to_string(),
             },
         );
-        // each Person: 1 (BelongsTo) が先に違反しないよう、両者ともチームに所属させておく。
+        // each member: 1 (BelongsTo) が先に違反しないよう、両者ともチームに所属させておく。
         b.belongs_to(
             BelongsToId("bt_alice".to_string()),
             BelongsTo(PersonId("alice".to_string()), TeamId("eng".to_string())),
@@ -854,26 +848,16 @@ fn create_collectingで全違反を集める() {
 
 // --- 4.1 Kind名を積み荷のように扱おうとする (フィールドは無い) ---
 //
-// `Boss` はスキーマ宣言で定義された1つのタプル struct 型です (§2.5)。
-// タプル struct 名は Rust 的にはそのコンストラクタ関数として式の位置に
-// 書ける値でもある (`Boss` 単体は `fn(PersonId, PersonId, BossEdge) ->
-// Boss` という関数) ため、「未定義」エラーにはなりません。しかし
-// `.since` のような名前付きフィールドは (積み荷は `.2`/`payload()` の
-// 位置アクセスでしか持たないため) 存在せず、フィールドなしエラーに
-// なります — `Boss.since` と直接書けるという誤解を正すのがこの例の
-// 意図です。
+// `Boss` はスキーマ宣言で定義されたnamed-field struct型です (§2.5)。
+// `since` は `BossEdge` のfieldなので、辺値からは `boss.appointment.since`
+// または `boss.payload().since` と辿ります。型名 `Boss` は辺の実体ではないため、
+// `Boss.since` とは書けません。
 //
 // fn section4_1() {
 //     let _ = Boss.since;
 // }
 //
-// 実際のエラー (コメントを外して `cargo build` した際に採取):
-//
-//   error[E0609]: no field `since` on type `fn(PersonId, PersonId, BossEdge) -> Boss {Boss}`
-//      --> src\main.rs:663:18
-//       |
-//   663 |     let _ = Boss.since;
-//       |                  ^^^^^ unknown field
+// コンパイラは型名を値として使ったことを報告します。
 
 // --- 4.2 フィールドに直接アクセスしようとする (内部ストレージの型が露出する) ---
 //
@@ -925,7 +909,7 @@ fn create_collectingで全違反を集める() {
 //
 // 実際のエラー (コメントを外して `cargo build` した際に採取):
 //
-//   error[E0425]: cannot find function, tuple struct or tuple variant `NoSuchKind` in this scope
+//   error[E0433]: failed to resolve: use of undeclared type `NoSuchKind`
 //      --> src\main.rs:722:19
 //       |
 //   722 |         no_such = NoSuchKind(alice -> eng),
@@ -960,10 +944,10 @@ fn create_collectingで全違反を集める() {
 //   746 | |     });
 //       | |______^ expected `TeamId`, found `PersonId`
 //       |
-//   note: tuple struct defined here
+//   note: `BelongsTo::new` requires a `TeamId` for the `team` role
 //      --> src\main.rs:94:14
 //       |
-//    94 |         edge BelongsTo  = Person -> Team              where each Person: 1;
+//    94 |         edge BelongsTo = (member: Person) -> (team: Team) where each member: 1;
 //       |              ^^^^^^^^^
 //       = note: this error originates in the macro `graphite::graph` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -973,7 +957,7 @@ fn create_collectingで全違反を集める() {
 //
 // `graph_schema!`/`graph!` の辺 (`edge Kind = ...` / `Kind(from -> to)`) は
 // **宣言**です — 構築 (`create`) 時にまとめて検証されるデータの繋がりで、
-// 矢印の中の値そのもの (積み荷) はグラフの外では意味を持ちません。対して
+// 矢印の中の値は `graph!` がnamed-fieldの辺値へ組み立てます。対して
 // `graphite::flow!` (`docs/flow_macro.md`) の矢印 `-[関数式]->` は
 // **実行**です — 書かれた順に `let 束縛名 = (関数式)(始点..);` という
 // ただの関数呼び出しへ即時に脱糖するだけで、スキーマや builder は一切
@@ -1227,7 +1211,7 @@ mod tests {
                     name: "Engineering".to_string(),
                 },
             );
-            // each Person: 1 (BelongsTo) が先に違反しないよう、両者ともチームに所属させておく。
+            // each member: 1 (BelongsTo) が先に違反しないよう、両者ともチームに所属させておく。
             b.belongs_to(
                 BelongsToId("bt_alice".to_string()),
                 BelongsTo(PersonId("alice".to_string()), TeamId("eng".to_string())),
@@ -1275,18 +1259,19 @@ mod tests {
     }
 
     #[test]
-    fn タプルstructはマクロ外でも普通に構築できる() {
-        // `docs/schema_v4.md` §3.1 原則6: 生成されたタプル struct はマクロの
-        // 外でも普通に構築できる。
-        let e = BelongsTo(PersonId("alice".to_string()), TeamId("eng".to_string()));
+    fn named_field_edge値はマクロ外でも普通に構築できる() {
+        let e = BelongsTo {
+            member: PersonId("alice".to_string()),
+            team: TeamId("eng".to_string()),
+        };
         assert_eq!(e.from(), &PersonId("alice".to_string()));
         assert_eq!(e.to(), &TeamId("eng".to_string()));
 
-        let b = Boss(
-            PersonId("bob".to_string()),
-            PersonId("alice".to_string()),
-            BossEdge { since: 2020 },
-        );
+        let b = Boss {
+            subordinate: PersonId("bob".to_string()),
+            superior: PersonId("alice".to_string()),
+            appointment: BossEdge { since: 2020 },
+        };
         assert_eq!(b.payload().since, 2020);
     }
 

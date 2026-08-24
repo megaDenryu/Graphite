@@ -37,10 +37,10 @@ graphite::graph_schema! {
         node Team;
         node Project;
 
-        edge BelongsTo = Person -> Team              where each Person: 1;
-        edge Boss      = Person -[BossEdge]-> Person where each Person: 0..1;
-        edge DependsOn = Service -> Service          where unique pair;
-        edge Assigned(id: ExistingRelationId) = Person -[Role]-> Project; // 制約なし
+        edge BelongsTo = (member: Person) -> (team: Team) where each member: 1;
+        edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1;
+        edge DependsOn = (dependent: Service) -> (dependency: Service) where unique pair;
+        edge Assigned(id: ExistingRelationId) = (person: Person) -[role: Role]-> (project: Project);
     }
 }
 ```
@@ -49,21 +49,18 @@ graphite::graph_schema! {
 参照する型も関数の外に宣言する。関数本体のローカル型は、関数内に生成された
 module から参照できない。
 
-- `edge Kind = From -> To;` / `edge Kind = From -[PayloadType]-> To;`
+- `edge Kind = (from_role: From) -> (to_role: To);` / `edge Kind = (from_role: From) -[payload_role: PayloadType]-> (to_role: To);`
   — **Kind は新しい nominal 型として生成される** (透過的別名ではない。
   同じ形の Boss と Mentor は別型。docs にこの旨明記)。
 - 旧多重度注釈 `(1)`/`(0..1)`/`(0..*)` は**廃止** (字面ごと消滅)。
 - `where` 節 (省略可、カンマ区切りで複数可):
-  - `each <FromType>: 1` — 各始点ノードにつきちょうど 1 本 (数学: 全域関数)
-  - `each <FromType>: 0..1` — 各始点につき高々 1 本 (部分関数)
+  - `each <role>: N` — roleごとにちょうどN本
+  - `each <role>: N..M` / `each <role>: N..*` — roleごとの範囲制約
   - `unique pair` — 同じ (始点, 終点) の対に 2 本目を張ることを禁止
-  - `<FromType>` は始点の型名と一致しなければならない (検証エラー)。
-    始点と終点が同型の場合も「each = 始点側の出次数」と読む (終点側の
-    入次数制約は将来拡張として保留)
-  - 矛盾する組合せ (例: `each X: 0..1` と平行辺は両立するか? →
-    each 0..1 の下では同対 2 本は自動的に不可能なので `unique pair` の
-    併記は冗長として警告なしで許容 or 拒否 — 実装時に単純な方を選び
-    docs に明記)
+  - 始点・終点のroleに独立指定できる。存在しないroleは検証エラー。
+    無向辺はendpoint roleを持たないため `each` を使えない。
+  - 同じroleへの `each` 重複は拒否する。始点側と終点側への独立した `each`、
+    および `each` と `unique pair` の併記は許可する。
 - `node 型名;` は schema module 内に `{型名}Id(pub String)` を生成する。`node 型名(id: 型パス);` は既存ID型を使う。エッジも同様に `edge Kind(id: 型パス) = ...;` で既存ID型を選べる。
 
 ## 2. graph! リテラル
@@ -84,8 +81,8 @@ let g = graphite::graph!(Org {
 ```
 
 - 静的項目は `名前 = 値`、または明示IDを渡す `名前 @ ID式 = 値`。名前はノードキーまたは辺キーの束縛になる。
-- 辺のコンストラクタはタプル struct の顔 `Kind(from -> to)` /
-  `Kind(from -[積み荷式]-> to)`。from/to はリテラル内で束縛済みのキー識別子。
+- 辺リテラルは `Kind(from -> to)` / `Kind(from -[積み荷式]-> to)`。
+  `graph!` はこれをnamed-field Edge値型の `Kind::new(..)` へ脱糖する。
 - 旧形 (`-[label]->` 中置形・無名辺) は完全廃止。検出・移行診断なし (既定方針)。
 
 ## 3. 生成物とアクセス API (型名前空間)
@@ -97,16 +94,14 @@ let g = graphite::graph!(Org {
 `Org::Boss` のように、この module 内へ配置される。グラフ本体のストレージと
 索引フィールドは module 外へ公開しない。
 
-- 辺種別ごと: `pub struct Boss(pub super::PersonId, pub super::PersonId, pub super::BossEdge);`
-  (積み荷なしは 2 要素)。**タプル struct として実在し、マクロ外でも
-  `Org::Boss(from_id, to_id, payload)` で普通に構築できる** (原則6)。
-  読み取りは位置 (.0/.1) を人間に晒さず、固定語彙のメソッドを生成:
+- 辺種別ごと: `pub struct Boss { pub subordinate: PersonId, pub superior: PersonId, pub appointment: BossEdge }`。
+  **named-field structとして実在し、マクロ外でも普通に構築できる** (原則6)。
+  role fieldに加え、互換の構造アクセサを生成:
   `fn from(&self) -> &PersonId` / `fn to(&self) -> &PersonId` /
   `fn payload(&self) -> &BossEdge` (積み荷ありのみ)。
 - ID型を省略したノード・辺: `pub struct PersonId(pub String);` / `pub struct BossId(pub String);`。どちらも schema module 内に生成される。`(id: 型パス)` を指定した宣言は生成型を持たない。
-- 違反 enum: 従来の each 系違反 (旧多重度違反) + `unique pair` 違反 +
-  辺キー重複違反。バリアント名は Kind 原文ママの合成 (`BossEachViolation` 等、
-  命名は実装時に原則3で調整) — ケース変換が消えるため rename 問題なし
+- 違反 enum: each系違反 + `unique pair` 違反 + 辺キー重複違反。
+  each違反variantはKindとroleから導出する (`BossSubordinateEachViolation` 等)。
 
 ### 3.2 アクセス (すべて型名前空間の関連関数。g.メソッドは廃止)
 
@@ -120,7 +115,7 @@ Org::Person::ids(&g);  Org::Person::iter(&g);   // (&PersonId, &Person)
 Org::Boss::of(&g, &bob);               // 走査: where の制約が戻り型を決める
                                         //   each:1 → (&Person, &BossEdge)
                                         //   each:0..1 → Option<..>
-                                        //   制約なし → Vec<..>
+                                        //   その他の範囲・制約なし → Vec<..>
 Org::Boss::get(&g, &boss_id);          // キーで辺 1 本: Option<&Boss>
 Org::Boss::between(&g, &bob, &alice);  // 対で検索: unique pair → Option、他 → Vec
 Org::Boss::iter(&g);                   // (&BossId, &Boss)
@@ -130,8 +125,8 @@ Org::Boss::ids(&g);  Org::Boss::len(&g);
 - 旧ビュー API (`g.boss().of(..)`、EdgeOne 等 6 型) は**全廃**。
   ランタイムの共通機構は「キー付き要素表」に対するジェネリクスとして
   再構成する (ノード表と辺表で共有できるはず。実装時に設計)。
-- builder: `b.insert(key, node_value)` (v3 の総称 insert を維持) +
-  `b.add(key, edge_value)` (辺版の総称。命名は原則3で実装時調整)。
+- builder: `b.insert(key, node_value)` (v3 の総称insertを維持) +
+  `b.add(key, edge_value)` (辺版の総称)。
 - **順序保証 (仕様):** `KeyedTable` (`crates/graphite/src/keyed_table.rs`)
   の `ids`/`iter` は挿入順 (`insert` を呼んだ順) を保持する。これにより
   制約なし辺の `{Kind}::of`/`iter`/`between` (Vec を返す各所) は格納順
@@ -165,8 +160,8 @@ Org::Boss::ids(&g);  Org::Boss::len(&g);
 
 ## 6. 見送り・保留 (根拠つき)
 
-- 終点側 (入次数) の each 制約 — 需要仮説のみのため。文法上は
-  `where each ...` の拡張で受けられる形を保つ
+- role名を使った `EdgeRef` アクセサ、role検索API、named static accessorは
+  後続Issueで扱う。Issue #1ではEdge値の公開fieldと既存の構造アクセサだけを生成する。
 - ノード宣言へのキーワード統一 (`node Person;` の再検討) — v4 安定後、
   Fudaba #1 後継として
 - 「グラフで書くべきもの vs 構造体で書くべきもの」のモデリング指針 —

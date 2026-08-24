@@ -2,18 +2,17 @@
 //! ノード・辺の読み書き一式を検証する統合テスト。
 //!
 //! v4 の要点 (このファイルで確認する項目):
-//! - `edge Kind = From -> To where ...;` 宣言と `where each ../unique pair` 制約
-//! - 辺は第一級キー付き要素 (`{Kind}Id`) であり、タプル struct
-//!   `Kind(from, to, payload?)` として実在する
+//! - `edge Kind = (role: From) -> (role: To) where ...;` 宣言と `where each ../unique pair` 制約
+//! - 辺は第一級キー付き要素 (`{Kind}Id`) であり、role名をfieldに持つ
+//!   named-field structとして実在する
 //! - ノードアクセスは `{Schema}Node` トレイト経由 (`Employee::get(&g, &id)` 等)、
 //!   辺アクセスは各 `Kind` への固有 impl (`Kind::of`/`get`/`between`/`iter`/
 //!   `ids`/`len`)。`g.メソッド` は一切生成されない。
 //!
 //! v4.1 (`docs/edge_endpoints_v4_1.md`) の実証: `Boss` を役割名つき
 //! (`subordinate`/`superior`) に書き換え、終点側 (`superior`) の each 制約
-//! (入次数制約) を検証する。役割名を書いたので `.from()`/`.to()` は生成
-//! されず、`.subordinate()`/`.superior()` を使う。`graph!` リテラルの構文
-//! (`Boss(bob -[..]-> alice)`) は不変 (役割名は宣言側だけの語彙)。
+//! (入次数制約) を検証する。Edge値の公開field `.subordinate`/`.superior` が
+//! role名の単一source of truthになる。
 
 /// ノード型。`graph_schema!` はこの型を生成せず参照するだけ。
 #[derive(Debug, Clone, PartialEq)]
@@ -40,10 +39,9 @@ graphite::graph_schema! {
         node Employee;
         node Department;
 
-        edge BelongsTo = Employee -> Department                        where each Employee: 1;
-        edge Boss      = (subordinate: Employee) -[BossEdge]-> (superior: Employee)
-                                                                        where each subordinate: 0..1;
-        edge Reports   = Employee -> Employee                          where unique pair;
+        edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1;
+        edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1;
+        edge Reports = (reporter: Employee) -> (recipient: Employee) where unique pair;
         // v4.1 (`docs/edge_endpoints_v4_1.md` §1) の実証: 終点側 (役割名
         // `department`) の each、つまり入次数制約 (「各部署の代表は高々1人」)。
         edge Leads     = (leader: Employee) -> (department: Department) where each department: 0..1;
@@ -63,7 +61,8 @@ use OrgChart::{
 impl OrgChart::Graph {
     pub fn colleagues(&self, id: &EmployeeId) -> Vec<&Employee> {
         let department_id =
-            BelongsTo::iter(self).find_map(|(_, edge)| (edge.from() == id).then(|| edge.to()));
+            BelongsTo::iter(self)
+                .find_map(|(_, edge)| (&edge.employee == id).then_some(&edge.department));
         let Some(department_id) = department_id else {
             return Vec::new();
         };
@@ -72,7 +71,7 @@ impl OrgChart::Graph {
             .filter(|other| *other != id)
             .filter(|other| {
                 BelongsTo::iter(self)
-                    .any(|(_, edge)| edge.from() == *other && edge.to() == department_id)
+                    .any(|(_, edge)| &edge.employee == *other && &edge.department == department_id)
             })
             .filter_map(|other| OrgChart::Employee::get(self, other))
             .collect()
@@ -217,7 +216,7 @@ mod tests {
         match result {
             Err(violation) => assert_eq!(
                 violation,
-                OrgChart::Violation::BelongsToEachViolation {
+                OrgChart::Violation::BelongsToEmployeeEachViolation {
                     source: emp("鈴木"),
                     count: 0,
                 }
@@ -281,7 +280,7 @@ mod tests {
 
         assert!(matches!(
             result,
-            Err(OrgChart::Violation::BossEachViolation { .. })
+            Err(OrgChart::Violation::BossSubordinateEachViolation { .. })
         ));
     }
 
@@ -411,8 +410,8 @@ mod tests {
     fn getは辺キーで1本を検索する() {
         let g = build_healthy_chart();
         let e = BelongsTo::get(&g, &BelongsToId("bt-tanaka".to_string())).expect("存在するはず");
-        assert_eq!(e.from(), &emp("田中"));
-        assert_eq!(e.to(), &dept("営業部"));
+        assert_eq!(e.employee, emp("田中"));
+        assert_eq!(e.department, dept("営業部"));
         assert!(BelongsTo::get(&g, &BelongsToId("存在しない".to_string())).is_none());
     }
 
@@ -473,10 +472,10 @@ mod tests {
         assert_eq!(violations.len(), 2);
         assert!(violations
             .iter()
-            .any(|v| matches!(v, OrgChart::Violation::BelongsToEachViolation { .. })));
+            .any(|v| matches!(v, OrgChart::Violation::BelongsToEmployeeEachViolation { .. })));
         assert!(violations
             .iter()
-            .any(|v| matches!(v, OrgChart::Violation::BossEachViolation { .. })));
+            .any(|v| matches!(v, OrgChart::Violation::BossSubordinateEachViolation { .. })));
     }
 
     #[test]
@@ -581,25 +580,24 @@ mod tests {
     }
 
     #[test]
-    fn タプルstructはマクロ外でも普通に構築できる() {
-        // `docs/schema_v4.md` §3.1 原則6: 生成されたタプル struct は
-        // マクロの外でも普通に構築できる。
-        let e = BelongsTo(emp("田中"), dept("営業部"));
-        assert_eq!(e.from(), &emp("田中"));
-        assert_eq!(e.to(), &dept("営業部"));
+    fn named_field_edge値はマクロ外でも普通に構築できる() {
+        let e = BelongsTo { employee: emp("田中"), department: dept("営業部") };
+        assert_eq!(e.employee, emp("田中"));
+        assert_eq!(e.department, dept("営業部"));
 
-        let b = Boss(emp("佐藤"), emp("田中"), BossEdge { since: 2020 });
-        assert_eq!(b.payload().since, 2020);
+        let b = Boss {
+            subordinate: emp("佐藤"),
+            superior: emp("田中"),
+            appointment: BossEdge { since: 2020 },
+        };
+        assert_eq!(b.appointment.since, 2020);
     }
 
     #[test]
-    fn 役割名つき辺はfromtoの代わりに役割名アクセサを持つ() {
-        // `docs/edge_endpoints_v4_1.md` §1: 役割名を書いた辺は `.from()`/
-        // `.to()` の代わりに `.subordinate()`/`.superior()` を生成する
-        // (from/to は生成しない)。
+    fn edge値のfield名はschemaのrole名と一致する() {
         let b = Boss(emp("佐藤"), emp("田中"), BossEdge { since: 2020 });
-        assert_eq!(b.subordinate(), &emp("佐藤"));
-        assert_eq!(b.superior(), &emp("田中"));
+        assert_eq!(b.subordinate, emp("佐藤"));
+        assert_eq!(b.superior, emp("田中"));
     }
 
     #[test]
@@ -651,8 +649,8 @@ mod tests {
         assert_eq!(departments_led_by_tanaka[0].name, "営業");
 
         let leads_edge = Leads::get(&g, &LeadsId("l1".to_string())).unwrap();
-        assert_eq!(leads_edge.leader(), &emp("田中"));
-        assert_eq!(leads_edge.department(), &dept("営業部"));
+        assert_eq!(leads_edge.leader, emp("田中"));
+        assert_eq!(leads_edge.department, dept("営業部"));
     }
 
     #[test]
@@ -858,7 +856,7 @@ mod tests {
         match result {
             Err(violation) => assert_eq!(
                 violation,
-                OrgChart::Violation::LeadsEachViolation {
+                OrgChart::Violation::LeadsDepartmentEachViolation {
                     target: dept("営業部"),
                     count: 2,
                 }
@@ -918,7 +916,7 @@ mod graph_literal_tests {
 
         assert!(matches!(
             result,
-            Err(OrgChart::Violation::BelongsToEachViolation { .. })
+            Err(OrgChart::Violation::BelongsToEmployeeEachViolation { .. })
         ));
     }
 
@@ -1004,13 +1002,11 @@ mod graph_literal_tests {
 
     #[test]
     #[rustfmt::skip]
-    fn タプルstructを直接構築してaddできる() {
-        // `docs/schema_v4.md` §3.1: タプル struct はマクロ外でも普通に
-        // 構築できる。graph! の脱糖結果と同じ形を手で書けることを示す。
+    fn named_field_edge値を直接構築してaddできる() {
         let g = OrgChart::Graph::create(|b| {
             let tanaka = b.insert("tanaka", Employee { name: "田中".into(), id: 1 });
             let sales = b.insert("sales", Department { name: "営業".into() });
-            b.add("bt1", BelongsTo(tanaka.clone(), sales.clone()));
+            b.add("bt1", BelongsTo { employee: tanaka.clone(), department: sales.clone() });
         })
         .expect("手動構築でも成功するはず");
 

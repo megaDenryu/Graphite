@@ -1,7 +1,7 @@
 // v4: ハンドシェイクマクロは使わないため、存在しない辺種別 (Kind) の参照は
 // 素の rustc 名前解決だけに委ねられる。`graph!` の辺項
-// `key = Kind(from -> to)` はタプル struct 構築式 `Kind(from.clone(), to.clone())`
-// へ脱糖するので、`Kind` が実在しなければ「そんな関数/型は無い」という
+// `key = Kind(from -> to)` は `Kind::new(from.clone(), to.clone())`
+// へ脱糖するので、`Kind` が実在しなければ「そんな型は無い」という
 // E0425 が単独で出る (`docs/schema_v4.md` は「利用可能な辺種別一覧」付きの
 // compile_error! を要求していない。v3 からの trade-off を踏襲)。
 
@@ -25,7 +25,7 @@ graphite::graph_schema! {
         node Employee;
         node Department;
 
-        edge BelongsTo = Employee -> Department where each Employee: 1;
+        edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1;
     }
 }
 

@@ -38,10 +38,10 @@ graphite::graph_schema! {
         node NodeA;
         node NodeB;
 
-        edge Unconstrained          = NodeA -[Weight]-> NodeB;
-        edge UnconstrainedNoPayload = NodeA -> NodeB;
+        edge Unconstrained = (source: NodeA) -[weight: Weight]-> (target: NodeB);
+        edge UnconstrainedNoPayload = (source: NodeA) -> (target: NodeB);
         edge AtMostOne              = (src: NodeA) -> (dst: NodeB)          where each dst: 0..1;
-        edge ExactlyOne             = (src: NodeA) -[Weight]-> (dst: NodeB) where each dst: 1;
+        edge ExactlyOne = (src: NodeA) -[weight: Weight]-> (dst: NodeB) where each dst: 1;
     }
 }
 

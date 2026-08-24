@@ -3,15 +3,15 @@
 //! 3 ノード種別 (`Employee` / `Department` / `Project`) と 4 種の型付き
 //! エッジ (`Kind`) からなる。`where` 制約の意味付け:
 //!
-//! - `BelongsTo where each Employee: 1`     : 全社員は必ずちょうど1つの部署に
+//! - `BelongsTo where each employee: 1`     : 全社員は必ずちょうど1つの部署に
 //!   所属する。`OrgChart::Graph::create` はこれを一括検査するので、所属部署のない
 //!   社員や複数部署に所属する社員のデータは構築時点で `Err` になる。
-//! - `Boss where each Employee: 0..1`       : 上司は高々1人 (トップ層は0人)。
+//! - `Boss where each subordinate: 0..1`       : 上司は高々1人 (トップ層は0人)。
 //! - `Assigned` (制約なし)                   : プロジェクトへの割当は0件以上
 //!   (兼務・未アサイン可)。1人の社員が同じプロジェクトに異なる役割 (role) で
 //!   複数アサインされる (兼務・役割変更の履歴等) ケースを排除しない設計判断
 //!   のため、あえて `unique pair` を付けない。
-//! - `Sponsors where each Department: 0..1` : 部署がスポンサーするプロジェクト
+//! - `Sponsors where each department: 0..1` : 部署がスポンサーするプロジェクト
 //!   は高々1件 (多くの部署はスポンサー活動をしないので0件が普通)。
 //!
 //! `BelongsTo`/`Boss`/`Sponsors` は既に `each` 制約が同一始点の重複を防いで
@@ -65,10 +65,10 @@ graphite::graph_schema! {
         node Department;
         node Project;
 
-        edge BelongsTo = Employee -> Department              where each Employee: 1;
-        edge Boss      = Employee -[BossEdge]-> Employee     where each Employee: 0..1;
-        edge Assigned  = Employee -[AssignedEdge]-> Project;
-        edge Sponsors  = Department -> Project                where each Department: 0..1;
+        edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1;
+        edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1;
+        edge Assigned = (employee: Employee) -[assignment: AssignedEdge]-> (project: Project);
+        edge Sponsors = (department: Department) -> (project: Project) where each department: 0..1;
     }
 }
 

@@ -10,7 +10,7 @@
 //! `N::Id` の型推論を rustc に委ねる。
 //!
 //! エッジ項 (`key = Kind(from -> to)` / `key = Kind(from -[式]-> to)`) は
-//! タプル struct `Kind(from_id.clone(), to_id.clone(), ..)` を構築したあと、
+//! named-field Edge値型を `Kind::new(from_id.clone(), to_id.clone(), ..)` で構築したあと、
 //! 同じ形の総称 `add` メソッド (`schema_codegen.rs::gen_edge_trait_and_impls`
 //! 参照) へ渡す。**辺の名前も (ノードと同様) 常にキーの束縛**
 //! (`docs/schema_v4.md` §0 規則1) なので、エッジ項も `let key = ..;` を生成する。
@@ -187,14 +187,14 @@ pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<Token
                 let from_ident = edge.from.clone();
                 let to_ident = edge.to.clone();
 
-                // タプル struct 構築 + 総称 add への脱糖
+                // Edge値の関連constructor + 総称 add への脱糖
                 // (`docs/schema_v4.md` §2/§3.2)。未知の Kind 名は
-                // `#kind(..)` がそのまま rustc の cannot-find-type/
+                // `#kind::new(..)` がそのまま rustc の cannot-find-type/
                 // no-such-function に落ちることで検出される。
                 let ctor = match &edge.attrs {
-                    None => quote! { #schema_name::#kind(#from_ident.clone(), #to_ident.clone()) },
+                    None => quote! { #schema_name::#kind::new(#from_ident.clone(), #to_ident.clone()) },
                     Some(attrs_expr) => quote! {
-                        #schema_name::#kind(#from_ident.clone(), #to_ident.clone(), #attrs_expr)
+                        #schema_name::#kind::new(#from_ident.clone(), #to_ident.clone(), #attrs_expr)
                     },
                 };
 

@@ -35,8 +35,8 @@ mod schema {
             node Employee(id: EmployeeId);
             node Department(id: DepartmentId);
 
-            edge BelongsTo = Employee -> Department where each Employee: 1;
-            edge Boss      = Employee -[BossEdge]-> Employee where each Employee: 0..1;
+            edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1;
+            edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1;
         }
     }
 }

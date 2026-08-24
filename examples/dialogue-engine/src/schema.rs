@@ -20,8 +20,8 @@ use graphite::Graph;
 //
 // node Scene:  1 場面。話者と本文を持つ。
 // node Ending: 1 エンディング。タイトルとエピローグ本文を持つ。
-// edge Choice = Scene -[ChoiceEdge]-> Scene — 選択肢。制約なし (下記参照)。
-// edge Finale = Scene -> Ending where each Scene: 0..1 — エンディングへの
+// edge Choice = (scene: Scene) -[choice: ChoiceEdge]-> (next: Scene) — 選択肢。制約なし。
+// edge Finale = (scene: Scene) -> (ending: Ending) where each scene: 0..1 — エンディングへの
 //               到達。各シーンにつき高々1つの結末。
 
 /// ノード型。`graph_schema!` はこの型を生成せず参照するだけ。
@@ -54,8 +54,8 @@ graphite::graph_schema! {
         // 対に対して、文言 (ラベル) が異なる複数の選択肢が正当にありうる
         // 設計 (例: 別々の経緯で同じシーンへ合流する選択肢が2つあっても
         // おかしくない) ため、平行辺を積極的に許す。
-        edge Choice = Scene -[ChoiceEdge]-> Scene;
-        edge Finale = Scene -> Ending where each Scene: 0..1;
+        edge Choice = (scene: Scene) -[choice: ChoiceEdge]-> (next: Scene);
+        edge Finale = (scene: Scene) -> (ending: Ending) where each scene: 0..1;
     }
 }
 

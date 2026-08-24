@@ -12,10 +12,10 @@ SF ミステリー短編「月面基地アルテミスIII、通信途絶」を�
 
 - ノード種別: `Scene { speaker, text }` (場面) / `Ending { title, epilogue }`
   (結末)
-- エッジ種別 (`docs/schema_v4.md` 準拠): `edge Choice = Scene -[ChoiceEdge]->
-  Scene;` (選択肢。制約なし — 同じ (from, to) の対に文言違いの選択肢が
-  複数あってもよいので `unique pair` は付けない) / `edge Finale = Scene ->
-  Ending where each Scene: 0..1;` (結末への到達。各シーンにつき高々1つ)
+- エッジ種別 (`docs/schema_v4.md` 準拠): `edge Choice = (scene: Scene) -[choice: ChoiceEdge]-> (next: Scene);`
+  (選択肢。制約なし — 同じendpoint pairに文言違いの選択肢が複数あってもよいので
+  `unique pair` は付けない) / `edge Finale = (scene: Scene) -> (ending: Ending) where each scene: 0..1;`
+  (結末への到達。各シーンにつき高々1つ)
 - 構造上の特徴:
   - **合流**: `central` (中央ホール) や `lower_hall` (地下ホール) は
     複数エリアから戻ってくる集合点。`seal_sacrifice`/`takashi_rescue` も
@@ -165,8 +165,8 @@ PS> cargo run -- stats
   管理すると、「エンディングIDのつもりでシーンIDを渡す」バグを型検査が
   拾えない。Graphite は `SceneId`/`EndingId` という別々の newtype を
   自動生成するので、取り違えはコンパイルエラーになる。
-- **多重度検査がタダで付いてくる**: `edge Finale = Scene -> Ending where each
-  Scene: 0..1;` と宣言するだけで、「1シーンに結末が2つある」というシナリオ
+- **多重度検査がタダで付いてくる**: `edge Finale = (scene: Scene) -> (ending: Ending) where each scene: 0..1;`
+  と宣言するだけで、「1シーンに結末が2つある」というシナリオ
   作成ミスを `DialogueGraph::create` の `Result::Err` として検出できる。
   手書きなら自分で「同じ from キーへの2回目の insert を弾く」ロジックを書き、
   テストも自分で用意する必要がある。

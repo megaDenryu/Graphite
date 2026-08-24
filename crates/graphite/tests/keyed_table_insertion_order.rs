@@ -31,7 +31,7 @@ graphite::graph_schema! {
         node Line;
 
         // 制約なし (each も unique pair も無し): 同一始点からの平行辺が自由。
-        edge Choice = Speaker -> Line;
+        edge Choice = (speaker: Speaker) -> (line: Line);
     }
 }
 
@@ -96,7 +96,7 @@ mod tests {
 
         let between_texts: Vec<String> = Choice::between(&g, &speaker_id(), &line_id(3))
             .into_iter()
-            .map(|c| c.to().0.clone())
+            .map(|c| c.line.0.clone())
             .collect();
         assert_eq!(between_texts, vec!["l3".to_string()]);
     }

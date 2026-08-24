@@ -1,7 +1,8 @@
 # エッジ宣言構文 v3 — ラベルの型としての矢印式
 
 > **[v4 (`docs/schema_v4.md`) で置換済み]** このファイルは歴史的記録として残す。
-> 現行のエッジ宣言構文 (`edge Kind = From -> To;` / `where each ...`/`unique pair`
+> この文書は旧v3構文の履歴資料。現行構文はrole必須の
+> `edge Kind = (from_role: From) -> (to_role: To);` / `where each <role> ...` / `unique pair`
 > 制約・辺の第一級キー化) は `docs/schema_v4.md` を参照すること。
 
 2026-07-16 のユーザー決定。`docs/edge_syntax_v2.md` (v2) のエッジ宣言部の改訂。
@@ -10,7 +11,7 @@
 
 ## 1. 動機 (ユーザー指摘)
 
-v2 の `edge Person -[boss: BossEdge]-> Person (0..1);` は、`boss: BossEdge` が
+旧v2では矢印内でedge名と型名を兼ねていたため、両者の区別が
 Rust のフィールド宣言 `name: Type` の顔をしているのに、**boss の型は BossEdge
 ではない** (BossEdge は辺 1 本のペイロード型)。構文が読み手に嘘をつく。
 
@@ -25,9 +26,9 @@ graphite::graph_schema! {
         node Person;
         node Team;
 
-        edge belongs_to: Person -> Team (1);
-        edge boss:       Person -[BossEdge]-> Person (0..1);
-        edge reports:    Person -> Person (0..*);
+        edge BelongsTo = (member: Person) -> (team: Team) where each member: 1;
+        edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1;
+        edge Reports = (reporter: Person) -> (recipient: Person);
     }
 }
 ```
@@ -45,7 +46,7 @@ graphite::graph_schema! {
 - 「schema は `:` (型付け)、リテラルは `=` (代入)」の言語規則は不変。
   **graph! リテラルは変更なし** (`bob -[boss = BossEdge { .. }]-> alice` —
   あちらは「boss 表に積み荷 = 値で 1 行入れる」文であり矢印の役割が違う)。
-- v2 形 (`edge From -[label]-> To` / `edge From -[label: Type]-> To`) は
+- v2 の矢印内label形式は
   **完全廃止** (既定方針どおり検出・移行診断なし。素のパースエラーに任せる)。
 
 検討済みの対案とその棄却理由 (`boss<BossEdge>` 型引数案 = リテラルとの対称性は

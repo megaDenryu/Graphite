@@ -18,6 +18,22 @@ pub fn generated_id_ident(source: &Ident) -> Ident {
     format_ident!("{}Id", source, span = source.span())
 }
 
+/// エッジ種別名とendpoint role名からcardinality違反variant名を導出する。
+pub fn each_violation_ident(kind: &Ident, role: &Ident) -> Ident {
+    let role_pascal = role
+        .to_string()
+        .split('_')
+        .map(|part| {
+            let mut chars = part.chars();
+            match chars.next() {
+                Some(first) => first.to_uppercase().chain(chars).collect::<String>(),
+                None => String::new(),
+            }
+        })
+        .collect::<String>();
+    format_ident!("{}{}EachViolation", kind, role_pascal, span = role.span())
+}
+
 /// freeze 中に使うエッジ表の一時変数名を生成する。
 pub fn edge_storage_ident(accessor: &Ident) -> Ident {
     format_ident!("__graphite_{}", accessor, span = accessor.span())
@@ -81,6 +97,16 @@ mod tests {
     fn 既定生成id型名を導出できる() {
         let source = Ident::new("Employee", proc_macro2::Span::call_site());
         assert_eq!(generated_id_ident(&source).to_string(), "EmployeeId");
+    }
+
+    #[test]
+    fn role名からcardinality違反variant名を導出できる() {
+        let kind = Ident::new("Purchase", proc_macro2::Span::call_site());
+        let role = Ident::new("line_item", proc_macro2::Span::call_site());
+        assert_eq!(
+            each_violation_ident(&kind, &role).to_string(),
+            "PurchaseLineItemEachViolation"
+        );
     }
 
     #[test]

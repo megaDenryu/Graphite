@@ -1,7 +1,7 @@
-# 端点宣言 v4.1 — 端点役割名 (任意) と無向辺
+# 端点宣言 — role必須の有向edgeと無向edge
 
-2026-07-17 のユーザー決定 (Fudaba #10 / #12)。v4 (`docs/schema_v4.md`) への追加
-であり、既存の v4 構文は全て有効なまま (破壊的変更なし)。
+v4.1で導入した端点roleと無向edgeを、Issue #1で有向role必須へ更新した仕様。
+旧省略構文は互換として残さない。
 
 発端の設計原理 (ユーザー、原文趣旨):
 > 矢印というのはそれがどういう意味を持っているかで向きの解釈も何もかも変わる。
@@ -10,43 +10,28 @@
 現状の欠落: 「from = 部下、to = 上司」という向きの意味がコメントにしか書けない。
 対称な関係 (友人・相互接続) は矢印の向きに意味がないのに矢印で書くしかない。
 
-## 1. 端点役割名 (任意)
+## 1. 有向edgeのendpoint role (必須)
 
 ```rust
-// 従来 (省略形、有効なまま): 向きが from/to で自然に読める辺
-edge DependsOn = Service -> Service where unique pair;
+edge DependsOn = (dependent: Service) -> (dependency: Service) where unique pair;
 
-// 役割名つき: 確立済みの「名前: 型」規則を端点に適用しただけ
-edge Boss = (subordinate: Employee) -> (superior: Employee)
-    where each subordinate: 0..1;
+edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1;
 ```
 
 規則:
 
-- 役割名は**両端同時に書くか、両方省略するか**の二択 (片方だけは構文エラー。
-  やり方を増やさない)。
-- 役割名を書いた場合、生成タプル struct のアクセサは `.from()`/`.to()` の
-  **代わりに** `.subordinate()`/`.superior()` になる (from/to は生成しない —
-  役割名を与えた辺で from/to を使い続けられるのは二重語彙)。
-- `where each` の参照名: 役割名を書いた辺では**役割名を使う** (`each subordinate: 1`)。
-  型名参照 (`each Employee`) はエラー (同型端点で曖昧なため。役割名がその曖昧さを
-  解消するために存在する)。省略形の辺では従来どおり型名。
-- **役割名により終点側の each 制約が書けるようになる** (`each superior: 0..*` は
-  無意味なので書けなくてよいが、`each superior: 0..1`/`1` = 入次数制約が新規に
-  有効)。schema_v4 §1 で「将来拡張として保留」とした項目の解消。freeze 検証に
-  入次数版の each 検査を追加する。
-- graph! リテラルは不変: `Boss(bob -> alice)`。役割名は宣言側だけの語彙。
-- 違反 enum のバリアント命名は従来規約のまま (役割名は違反名に混ぜない。
-  違反の位置情報はフィールドで運ぶ)。
-- スパン規約 (G3): 役割名 ident はユーザートークンそのまま。生成アクセサ
-  `fn subordinate` の ident は役割名トークンのスパンを持つ (F12 で宣言の
-  役割名に着地)。
+- endpoint roleは両端とも必須で、必ず `(role: Type)` と括弧で囲む。
+- 積み荷がある場合も `[role: Type]` のroleを必須とする。
+- 生成Edge値型はrole名を公開fieldに使う。`Boss { subordinate, superior, appointment }`。
+- `where each <role>: N | N..M | N..*` は両endpoint roleへ独立指定できる。
+- graph! リテラルは `Boss(bob -[attrs]-> alice)` のまま、`Boss::new(..)` へ脱糖する。
+- each違反variant名はKindとroleから導出する (`BossSubordinateEachViolation`)。
 
 ## 2. 無向辺
 
 ```rust
 edge Friends = Person -- Person where unique pair;      // 積み荷なし
-edge Wire    = Node -[Cable]- Node;                     // 積み荷あり
+edge Wire = Node -[cable: Cable]- Node;                 // 積み荷あり
 
 // リテラル (graph! 内) も同形
 f1 = Friends(alice -- bob),
@@ -64,31 +49,24 @@ w1 = Wire(n1 -[Cable { ohm: 5 }]- n2),
   対称関係は v1 では対象外 — 有向で書くかノード昇格。検証エラーで案内)。
 - **役割名は書けない** (役割の区別がある時点で対称ではない — その場合は
   役割名つき有向 (§1) を使う。構文エラーで案内)。
-- 自己ループ (`Friends(a -- a)`) は許可し、次数 (each) では 1 本と数える。
-- `where each Person: 1` / `0..1` は**次数制約** (入/出の区別が存在しないので
-  単に「その頂点に接続する本数」)。`unique pair` は順序無視の対で一意。
+- 自己ループ (`Friends(a -- a)`) は許可する。
+- 無向edgeにはendpoint roleが無いため `each` は使えない。利用可能な制約は
+  順序無視の対へ適用する `unique pair` のみ。
 - クエリ (型名前空間、有向と同じ語彙):
-  - `Friends::of(&g, &x)` — x に接続する相手側の一覧 (x がどちらの位置でも拾う)。
-    戻り型は where 制約で決まる (有向の of と同じ規則)
+  - `Friends::of(&g, &x)` — x に接続する相手側を挿入順の `Vec` で返す
   - `Friends::between(&g, &a, &b)` — 対称
   - `get`/`iter`/`ids`/`len` は有向と同じ
-- 生成タプル struct: `pub struct Friends(pub PersonId, pub PersonId);`
-  読み取りアクセサは `.endpoints() -> (&PersonId, &PersonId)` (from/to という
-  嘘の語彙を生成しない)。積み荷ありは `.payload()` (従来どおり)。
+- 生成named-field struct: `pub struct Friends { pub endpoints: (PersonId, PersonId) }`。
 - 格納: 実装の自由 (正規化 or 両方向索引) だが、`iter`/`of` の**挿入順保持**の
   仕様 (schema_v4 §3.2) は無向でも維持すること。
 
 ## 3. 実装ノート
 
-- パーサ: 端点は `Ident` または `( Ident : Ident )`。柄は `->` / `-[Path]->` /
-  `--` / `-[Path]-` の 4 形。G4 エラー回復 (edge キーワード境界) と drain_rest
+- パーサ: 有向端点は `(Ident: Ident)`、無向端点は `Ident`。柄は `->` /
+  `-[role: Path]->` / `--` / `-[role: Path]-` の4形。G4エラー回復とdrain_rest
   規約は従来どおり。
 - graph! 側: 辺コンストラクタ内の柄も同 4 形。脱糖は従来の機構のまま
   (無向は正規化を builder/freeze 側で行い、リテラルの脱糖は素通し)。
-- 入次数 each 検査 (役割名つき有向の to 側) と次数 each 検査 (無向) を freeze に
-  追加。違反バリアントは既存の each 系命名規約に従う。
-- examples の移行は**不要** (追加のみ)。ただし実証として:
-  - orgchart (コアテスト) の `Boss` を役割名つきに書き換え、入次数制約のテストを追加
-  - hello-graph に無向辺の最小例 (§2/§3 に 1 節) を追加
+- 始点・終点のeachを独立にfreeze検証する。無向eachは明示的に拒否する。
 - IDE 実測 (実装後、オーケストレータが実施): 役割名トークンの定義ジャンプ・
   生成アクセサ名からの着地・`--` リテラルのトークン解決

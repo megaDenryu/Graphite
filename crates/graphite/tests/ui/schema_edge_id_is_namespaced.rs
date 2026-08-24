@@ -3,14 +3,14 @@ struct Person;
 graphite::graph_schema! {
     schema Org {
         node Person;
-        edge Relation = Person -> Person;
+        edge Relation = (source: Person) -> (target: Person);
     }
 }
 
 graphite::graph_schema! {
     schema Social {
         node Person;
-        edge Relation = Person -> Person;
+        edge Relation = (source: Person) -> (target: Person);
     }
 }
 

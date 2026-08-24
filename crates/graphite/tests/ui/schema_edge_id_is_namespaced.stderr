@@ -38,7 +38,7 @@ note: `Social::RelationId` is defined in module `crate::Social` of the current c
 10 | / graphite::graph_schema! {
 11 | |     schema Social {
 12 | |         node Person;
-13 | |         edge Relation = Person -> Person;
+13 | |         edge Relation = (source: Person) -> (target: Person);
    | |_____________________^
 note: `Org::RelationId` is defined in module `crate::Org` of the current crate
   --> tests/ui/schema_edge_id_is_namespaced.rs:3:1
@@ -46,6 +46,6 @@ note: `Org::RelationId` is defined in module `crate::Org` of the current crate
  3 | / graphite::graph_schema! {
  4 | |     schema Org {
  5 | |         node Person;
- 6 | |         edge Relation = Person -> Person;
+ 6 | |         edge Relation = (source: Person) -> (target: Person);
    | |_____________________^
    = note: this error originates in the macro `graphite::graph_schema` (in Nightly builds, run with -Z macro-backtrace for more info)

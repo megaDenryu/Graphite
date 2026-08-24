@@ -81,7 +81,7 @@ proc-macro-dev スキルに「生成識別子はユーザートークン由来�
 - ノード型・エッジ属性型は**ユーザーがマクロ外で普通の struct として宣言**し、
   schema は参照するだけ。マクロはグラフ機械 ({Node}Id・ストレージ・builder・
   アクセサ・違反enum) のみ生成 (ドメイン型を発明しない)
-- エッジ宣言は矢印形 `edge Employee -[boss: BossEdge]-> Employee (0..1);`
+- 現行のエッジ宣言はrole必須形 `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1;`
   (ラベルは矢印内、多重度は矢印の後ろ)
 - `node Employee;` は残す (孤立ノード種別の宣言・端点 typo 検出・図式の可読性のため)。
   ノード型名は単純 Ident のみ (端点照合のため)、属性型は syn::Path 可
@@ -182,7 +182,7 @@ hello-graph §4引用再採取) → `a1fb360` (README/仕様書のv3反映) →
 > 『boss の型が BossEdge』ではないの部分を何とか解決したい。BossEdgeは
 > bossの何なのか？が宣言的に書けるようになってないといけない
 
-→ 対処: `edge boss: Person -[BossEdge]-> Person (0..1);` という形に改めた。
+→ 現行では `edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1;` に統一した。
 Rust の関数型 `f: impl Fn(A) -> B` の読み方を借用し、「`label:` の右側全体
 がそのラベルの関係型」と読める構文にした。矢印の中に置くのは積み荷
 (属性型) だけで、属性なしエッジは矢印内に何も書かない素の `->` になる。
@@ -233,13 +233,12 @@ Rust に実在しない形であるため棄却した。
 
 > boss: BossEdgeとかの属性の型はこの場合何を指すのでしょうか
 
-この疑問の背景には、v3 構文 (`edge boss: Person -[BossEdge]-> Person
-(0..1);`) が「`boss:` の右側全体が関係型」という読み方をユーザーに要求する
+この疑問の背景には、当時のv3構文が「`boss:` の右側全体が関係型」という読み方をユーザーに要求する
 一方で、実装上は依然として「ラベル=ビューを返すメソッド名」というモデルの
 ままであり、辺そのものがキーを持つ第一級の値になっていない、というねじれが
 あった。ユーザーは async-dag の schema.rs に直接メモを書いて代案を提示した。
 
-> edge DependsON = Service -> Service (0..*) の方が構文としていいかも？
+> DependsOnのような関係名を左辺へ置く方がよいのでは？
 
 ここから「ラベル: 型」という**型付け**の構文をやめ、「Kind = 定義」という
 **名前の束縛**の構文に転換する案が生まれた。エッジ種別を関数型的な関係
@@ -259,7 +258,7 @@ Rust に実在しない形であるため棄却した。
 > 多重度てどっちかというと、ノードが何本の線とつながってるかを見るとかそういう感じじゃね？前の設計思想が間違ってたとしか思えない
 
 この指摘により、多重度は「辺そのものの属性」ではなく「ノード側の出次数に
-対する制約」として捉え直された。これが `where each <FromType>: <spec>`
+対する制約」として捉え直された。現行構文では `where each <role>: <spec>`
 という、制約を矢印式の外側に完全に切り離した構文につながっている。加えて
 「関係 (対で一意)」という性質も基盤ではなく `where unique pair` という
 個別の制約として明示的に宣言する対象になった (基盤は多重グラフ、関係は
@@ -336,7 +335,7 @@ Fudaba #8 の議論をユーザーと実施。経緯の要点 (原文趣旨の�
   分割不要、非可換だけ分割 — reactive-cells の Sub 書き直しで実証。
   `Formula` との二重管理が完全解消し `graph!` から手動 clone も消えた)
 - **端点宣言 v4.1** (`docs/edge_endpoints_v4_1.md`、Fudaba #10/#12):
-  役割名は任意 (`edge Boss = (subordinate: Employee) -> (superior: Employee)`。
+  現行仕様では役割名が必須 (`edge Boss = (subordinate: Employee) -> (superior: Employee)`。
   指定時はアクセサが役割名に置換、where は役割名参照必須、**入次数 each 制約が
   新規に有効** — schema_v4 の保留項目が解消)。無向辺 `--` / 積み荷 `-[X]-`
   (順序なし対、同型端点のみ、役割名不可、自己ループは次数1)。破壊的変更なし

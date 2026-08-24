@@ -4,10 +4,7 @@
 //! - ノード型名の重複宣言
 //! - エッジ種別名 (Kind) の重複宣言
 //! - エッジの端点 (`from`/`to`) が未宣言のノード型を指している場合
-//! - `where each <参照名>: ..` の `<参照名>` の意味解決 (`docs/schema_v4.md`
-//!   §1 / `docs/edge_endpoints_v4_1.md`): 役割名なしの辺では型名が `from` と
-//!   一致するか、役割名つきの辺では役割名 (始点/終点いずれか) と一致するか、
-//!   無向辺では (両端同型の) 型名と一致するか
+//! - `where each <role>: ..` が有向edgeの始点/終点roleと一致するか
 //! - 無向辺の両端が同じノード型であること (`docs/edge_endpoints_v4_1.md` §2)
 //!
 //! いずれも `syn::Error::new_spanned`/`syn::Error::new` で元トークンの span を
@@ -63,6 +60,45 @@ pub fn validate_unique_edge_kinds(edges: &[EdgeDecl]) -> syn::Result<()> {
             return Err(err);
         }
         seen.insert(name, edge.kind.span());
+    }
+    Ok(())
+}
+
+/// role getterと既存のEdge APIが同じ値名前空間で衝突しないことを検査する。
+pub fn validate_edge_roles(edges: &[EdgeDecl]) -> syn::Result<()> {
+    const RESERVED: &[&str] = &[
+        "from",
+        "to",
+        "from_id",
+        "to_id",
+        "endpoints",
+        "payload",
+        "of",
+        "get_of",
+        "sources_of",
+        "get_sources_of",
+        "get",
+        "between",
+        "iter",
+        "ids",
+        "len",
+    ];
+    for edge in edges {
+        for role in edge
+            .from_role
+            .iter()
+            .chain(edge.to_role.iter())
+            .chain(edge.attrs_role.iter())
+        {
+            if RESERVED.contains(&role.to_string().as_str()) {
+                return Err(syn::Error::new(
+                    role.span(),
+                    format!(
+                        "役割名 `{role}` は生成されるEdge APIと衝突します。別の役割名を指定してください"
+                    ),
+                ));
+            }
+        }
     }
     Ok(())
 }
@@ -194,74 +230,48 @@ pub fn validate_edge_endpoints(nodes: &[NodeDecl], edges: &[EdgeDecl]) -> syn::R
 
 /// `where each <参照名>` が意味する側 (出次数/入次数/次数)。
 ///
-/// - `Source`: 出次数制約 (役割名なしの辺の従来どおりの意味 / 役割名つきの辺で
-///   始点側の役割名を参照した場合)
-/// - `Target`: 入次数制約 (役割名つきの辺で終点側の役割名を参照した場合、
-///   `docs/edge_endpoints_v4_1.md` §1 の新規解禁項目)
-/// - `Degree`: 次数制約 (無向辺、`docs/edge_endpoints_v4_1.md` §2)
+/// - `Source`: 始点roleの出次数制約
+/// - `Target`: 終点roleの入次数制約
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum EachSide {
     Source,
     Target,
-    Degree,
 }
 
 /// `where each <参照名>: ..` の `<参照名>` がどちら側 (どの制約) を指すかを
 /// 解決する。解決できない場合は診断つきの `syn::Error` を返す。
 ///
-/// - 無向辺: `<参照名>` は (両端同型の) ノード型名と一致しなければならない
-///   (次数制約、`docs/edge_endpoints_v4_1.md` §2)。役割名は無向辺には
-///   存在しない (パース時点で既に拒否済み)。
-/// - 役割名つきの有向辺: `<参照名>` は始点/終点いずれかの役割名と一致しなければ
-///   ならない。型名参照はエラー (`docs/edge_endpoints_v4_1.md` §1「型名参照は
-///   エラー (同型端点で曖昧なため)」)。
-/// - 役割名なしの有向辺: `<参照名>` は始点の型名と一致しなければならない
-///   (`docs/schema_v4.md` §1、旧来どおり)。
+/// - 有向edge: `<参照名>` は始点/終点いずれかのrole名と一致する必要がある。
+/// - 無向edge: endpoint roleが無いため `each` 自体を拒否する。
 pub fn resolve_each_side(edge: &EdgeDecl, each_ident: &Ident) -> syn::Result<EachSide> {
     if !edge.directed {
-        if each_ident.to_string() == edge.from.to_string() {
-            return Ok(EachSide::Degree);
-        }
         return Err(syn::Error::new_spanned(
             each_ident.to_token_stream(),
-            format!(
-                "無向辺 `{}` の each は接続先の型 `{}` を指定してください (次数制約であり、役割名は存在しません)",
-                edge.kind, edge.from
-            ),
+            format!("無向edge `{}` にはendpoint roleが無いため `each` は使えません。使える制約は `unique pair` のみです", edge.kind),
         ));
     }
 
-    match (&edge.from_role, &edge.to_role) {
-        (Some(from_role), Some(to_role)) => {
-            let s = each_ident.to_string();
-            if s == from_role.to_string() {
-                Ok(EachSide::Source)
-            } else if s == to_role.to_string() {
-                Ok(EachSide::Target)
-            } else {
-                Err(syn::Error::new_spanned(
-                    each_ident.to_token_stream(),
-                    format!(
-                        "役割名つきの辺 `{}` の each は役割名 (`{}`/`{}`) で参照してください。型名参照はできません: `{}`",
-                        edge.kind, from_role, to_role, s
-                    ),
-                ))
-            }
-        }
-        (None, None) => {
-            if each_ident.to_string() == edge.from.to_string() {
-                Ok(EachSide::Source)
-            } else {
-                Err(syn::Error::new_spanned(
-                    each_ident.to_token_stream(),
-                    format!(
-                        "`each {}` はエッジ `{}` の始点型 `{}` と一致しません (each は常に始点側の出次数を指定します)",
-                        each_ident, edge.kind, edge.from
-                    ),
-                ))
-            }
-        }
-        _ => unreachable!("役割名は両端同時か両方省略かのいずれかであることをparse時に検査済み"),
+    let from_role = edge
+        .from_role
+        .as_ref()
+        .expect("有向edgeの始点roleはparse時に検査済み");
+    let to_role = edge
+        .to_role
+        .as_ref()
+        .expect("有向edgeの終点roleはparse時に検査済み");
+    let s = each_ident.to_string();
+    if s == from_role.to_string() {
+        Ok(EachSide::Source)
+    } else if s == to_role.to_string() {
+        Ok(EachSide::Target)
+    } else {
+        Err(syn::Error::new_spanned(
+            each_ident.to_token_stream(),
+            format!(
+                "エッジ `{}` の each はendpoint role (`{}`/`{}`) を参照してください。存在しないroleです: `{}`",
+                edge.kind, from_role, to_role, s
+            ),
+        ))
     }
 }
 
@@ -269,7 +279,7 @@ pub fn resolve_each_side(edge: &EdgeDecl, each_ident: &Ident) -> syn::Result<Eac
 /// (`resolve_each_side` 参照)。
 pub fn validate_each_reference(edges: &[EdgeDecl]) -> syn::Result<()> {
     for edge in edges {
-        if let Some((each_ident, _spec)) = &edge.constraints.each {
+        for (each_ident, _spec) in &edge.constraints.each {
             resolve_each_side(edge, each_ident)?;
         }
     }

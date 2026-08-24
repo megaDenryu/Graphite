@@ -24,7 +24,7 @@ graphite::graph_schema! {
         node Person;
 
         edge Friends = Person -- Person where unique pair;
-        edge Wire    = Person -[Cable]- Person;
+        edge Wire = Person -[cable: Cable]- Person;
     }
 }
 
@@ -75,8 +75,7 @@ mod tests {
     fn endpointsアクセサで両端を取得できる() {
         let g = build_chart();
         let f = Friends::get(&g, &FriendsId("f1".to_string())).unwrap();
-        let (p0, p1) = f.endpoints();
-        assert_eq!((p0, p1), (&person("alice"), &person("bob")));
+        assert_eq!(f.endpoints, (person("alice"), person("bob")));
     }
 
     #[test]
@@ -206,8 +205,8 @@ mod tests {
         assert_eq!(cable.ohm, 5);
 
         let w = Wire::get(&g, &WireId("w1".to_string())).unwrap();
-        assert_eq!(w.endpoints(), (&person("alice"), &person("bob")));
-        assert_eq!(w.payload().ohm, 5);
+        assert_eq!(w.endpoints, (person("alice"), person("bob")));
+        assert_eq!(w.cable.ohm, 5);
     }
 
     #[test]

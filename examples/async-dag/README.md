@@ -90,7 +90,7 @@ graphite::graph_schema! {
     schema Orchestration {
         node Service;
 
-        edge DependsOn = Service -> Service where unique pair;
+        edge DependsOn = (dependent: Service) -> (dependency: Service) where unique pair;
     }
 }
 ```
@@ -110,7 +110,7 @@ a は起動できない)」と読む。これは実行順序 (トポロジカル
 
 | 非同期オーケストレーションの概念 | 素朴な実装 | Graphite での対応 |
 |---|---|---|
-| 「AはBの後に起動する」という制約 | `spawn` の中の `recv().await` / 手書きの `await` の並び | `edge DependsOn = Service -> Service where unique pair;` の1本のエッジ |
+| 「AはBの後に起動する」という制約 | `spawn` の中の `recv().await` / 手書きの `await` の並び | `edge DependsOn = (dependent: Service) -> (dependency: Service) where unique pair;` の1本のエッジ |
 | 「今並行に起動できるものは何か」 | 人間が依存を目で追って手計算 | `topological_levels()` が波として自動導出 |
 | 循環依存の検出 | 実行時にハングして気づく (エラーなし) | 構築直後に `CycleError { cycle }` として拒否 (循環パス付き) |
 | 依存を1本追加する | チャネル配線・`spawn` ブロックを複数箇所手直し | `graph!` に1行 `key = DependsOn(a -> b)` を追加するだけ。波は再計算されるだけ |

@@ -72,9 +72,9 @@ graphite::graph_schema! {
     schema Sheet {
         node Cell;
 
-        edge Feeds = Cell -> Cell where unique pair;
-        edge Lhs   = Cell -> Cell where unique pair;
-        edge Rhs   = Cell -> Cell where unique pair;
+        edge Feeds = (dependency: Cell) -> (dependent: Cell) where unique pair;
+        edge Lhs = (operand: Cell) -> (operation: Cell) where unique pair;
+        edge Rhs = (operand: Cell) -> (operation: Cell) where unique pair;
     }
 }
 

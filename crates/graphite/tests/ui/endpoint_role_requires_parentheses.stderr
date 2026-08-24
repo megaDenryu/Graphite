@@ -1,0 +1,5 @@
+error: 役割付き端点は括弧で囲み `(役割名: 型名)` と書いてください
+ --> tests/ui/endpoint_role_requires_parentheses.rs:6:22
+  |
+6 |         edge Knows = knower: Person -> (known: Person);
+  |                      ^^^^^^

@@ -50,8 +50,8 @@ graphite::graph_schema! {
         node Task(id: TaskId);
         node Artifact(id: ArtifactId);
 
-        edge Produces(id: ProducesId) = Task -> Artifact where unique pair;
-        edge Consumes = Task -> Artifact where unique pair;
+        edge Produces(id: ProducesId) = (task: Task) -> (artifact: Artifact) where unique pair;
+        edge Consumes = (task: Task) -> (artifact: Artifact) where unique pair;
     }
 }
 

@@ -25,7 +25,7 @@ mod 修飾済みid {
     graphite::graph_schema! {
         schema QualifiedIds {
             node Person(id: super::KnowsId);
-            edge Knows = Person -> Person;
+            edge Knows = (knower: Person) -> (known: Person);
         }
     }
 
@@ -48,14 +48,10 @@ graphite::graph_schema! {
         node AutomaticNode;
         node BooleanNode(id: bool);
 
-        edge ExternalLink(id: ExternalEdgeId) = ExternalNode -> ExternalNode
-            where each ExternalNode: 1;
-        edge ExternalIncoming(id: ExternalEdgeId) =
-            (source: ExternalNode) -> (target: ExternalNode)
-            where each target: 1;
-        edge ExternalFriend(id: ExternalEdgeId) = ExternalNode -- ExternalNode
-            where each ExternalNode: 1;
-        edge AutomaticLink = AutomaticNode -> AutomaticNode;
+        edge ExternalLink(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each source: 1;
+        edge ExternalIncoming(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each target: 1;
+        edge ExternalFriend(id: ExternalEdgeId) = ExternalNode -- ExternalNode;
+        edge AutomaticLink = (source: AutomaticNode) -> (target: AutomaticNode);
     }
 }
 

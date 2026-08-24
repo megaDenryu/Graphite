@@ -64,14 +64,14 @@ impl std::error::Error for TransitionError {}
 /// 遷移エンジン本体。
 ///
 /// イベントの `match` で `{Kind}::iter` を引き、`from` が `current` に
-/// 一致する辺を探して `to()` を返すだけ。`where each OrderState: 0..1`
+/// 一致する辺を探して `to()` を返すだけ。`where each before: 0..1`
 /// (schema 側の制約) により、一致する辺は高々1本しか無い。
 ///
 /// v4 の `{Kind}::of`/`get_of` は「終点ノードの値そのもの」(`&OrderState`)
 /// を返す設計であり、終点の**キー**は返さない
 /// (`docs/schema_v4.md` §3.2、`crates/graphite/tests/orgchart_macro.rs`)。
 /// `step` はキーを次の状態として返す必要があるため、`{Kind}::of` ではなく
-/// `{Kind}::iter` + `from()`/`to()` (辺タプル struct 自身が持つ、キーを
+/// `{Kind}::iter` + `from()`/`to()` (辺のnamed-field struct自身が持つ、キーを
 /// 返すアクセサ) を使う。遷移規則そのものはここには一切書かれていない
 /// (schema と `build` にしか無い) — enum+match 散在アンチパターンとの
 /// 決定的な違い。

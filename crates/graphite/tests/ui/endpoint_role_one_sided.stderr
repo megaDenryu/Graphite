@@ -1,5 +1,5 @@
-error: 役割名は両端同時に書くか、両方省略するかのいずれかにしてください (この辺は始点にだけ役割名があります)
-  --> tests/ui/endpoint_role_one_sided.rs:16:26
+error: 有向edgeの端点は役割名を付けて `(役割名: 型名)` と書いてください
+  --> tests/ui/endpoint_role_one_sided.rs:15:52
    |
-16 |             edge Boss = (subordinate: Employee) -> Employee where each subordinate: 0..1;
-   |                          ^^^^^^^^^^^
+15 |             edge Boss = (subordinate: Employee) -> Employee where each subordinate: 0..1;
+   |                                                    ^^^^^^^^

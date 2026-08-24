@@ -99,9 +99,9 @@ graphite::graph_schema! {
     schema Sheet {
         node Cell;
 
-        edge Feeds = Cell -> Cell where unique pair;
-        edge Lhs   = Cell -> Cell where unique pair;
-        edge Rhs   = Cell -> Cell where unique pair;
+        edge Feeds = (dependency: Cell) -> (dependent: Cell) where unique pair;
+        edge Lhs = (operand: Cell) -> (operation: Cell) where unique pair;
+        edge Rhs = (operand: Cell) -> (operation: Cell) where unique pair;
     }
 }
 ```
@@ -168,7 +168,7 @@ adjustment`) を含む見積シートで `unit_price` を変更しても、
 |---|---|---|
 | signal (入力値) | 入力ノード | `Formula::Input` を持つ `Cell` |
 | computed (計算値) | 計算ノード + そのノードへの入辺 | `Formula::Mul`/`Sub`/`Sum` を持つ `Cell` |
-| 依存関係の宣言 (JSで言えば `computed(() => a.get() + b.get())`) | `edge Feeds/Lhs/Rhs = Cell -> Cell where unique pair;` + `graph!` リテラル | `f_unit_price_subtotal = Feeds(unit_price -> subtotal)`、`l_tax_adjustment = Lhs(tax -> adjustment)` 等 |
+| 依存関係の宣言 (JSで言えば `computed(() => a.get() + b.get())`) | endpoint role付き `edge Feeds/Lhs/Rhs = (...) -> (...) where unique pair;` + `graph!` リテラル | `f_unit_price_subtotal = Feeds(unit_price -> subtotal)`、`l_tax_adjustment = Lhs(tax -> adjustment)` 等 |
 | 購読 (subscribe)・通知 (notify) | (存在しない — 不要になる) | `Engine::set_input` が影響範囲を一括で処理する |
 | 正しい再計算順序の保証 | `topological_sort()` | `Engine::topological_order()` (構築時に1回だけ計算) |
 | 影響範囲の特定 (dirty checking) | `reachable_from(id)` | `Engine::set_input` 内の `affected` 集合 |
@@ -221,9 +221,9 @@ enumの引数順序**だけ**が持っていた — つまり「`adjustment` は
 (`src/schema.rs`):
 
 ```rust
-edge Feeds = Cell -> Cell where unique pair; // 可換 (Mul/Sum) はそのまま1種
-edge Lhs   = Cell -> Cell where unique pair; // 非可換 (Sub) の被減数
-edge Rhs   = Cell -> Cell where unique pair; // 非可換 (Sub) の減数
+edge Feeds = (dependency: Cell) -> (dependent: Cell) where unique pair; // 可換 (Mul/Sum) はそのまま1種
+edge Lhs = (operand: Cell) -> (operation: Cell) where unique pair; // 非可換 (Sub) の被減数
+edge Rhs = (operand: Cell) -> (operation: Cell) where unique pair; // 非可換 (Sub) の減数
 ```
 
 これに合わせて `Formula` からも `CellId` を完全に取り除き、「どの演算か」

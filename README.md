@@ -47,8 +47,8 @@ graphite::graph_schema! {
         node Person;
         node Team;
 
-        edge BelongsTo = Person -> Team              where each Person: 1;
-        edge Boss      = Person -[BossEdge]-> Person where each Person: 0..1;
+        edge BelongsTo = (member: Person) -> (team: Team) where each member: 1;
+        edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1;
     }
 }
 
@@ -123,9 +123,9 @@ graphite::graph_schema! {
         node Employee;
         node Department;
 
-        edge BelongsTo = Employee -> Department              where each Employee: 1;
-        edge Boss      = Employee -[BossEdge]-> Employee     where each Employee: 0..1;
-        edge Reports   = Employee -> Employee                where unique pair;
+        edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1;
+        edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1;
+        edge Reports = (reporter: Employee) -> (recipient: Employee) where unique pair;
     }
 }
 ```
@@ -141,9 +141,9 @@ graphite::graph_schema! {
 Graphite の基盤は**多重グラフ**です。辺は独立した要素であり、辺種別
 (`Kind`) は**新しい nominal 型として生成されます** (透過的な別名ではない
 — 同じ形の `Boss` と仮に `Mentor` という別のエッジ種別を宣言したら、両者は
-別の型になります)。辺宣言は `edge Kind = From -> To;` (属性なし) または
-`edge Kind = From -[型パス]-> To;` (属性あり、例: `Boss = Employee
--[BossEdge]-> Employee`) の形です。**規則は3つだけ**
+別の型になります)。有向辺宣言は `edge Kind = (始点role: From) -> (終点role: To);`
+(積み荷なし) または `edge Kind = (始点role: From) -[積み荷role: 型パス]-> (終点role: To);`
+(積み荷あり) の形です。**規則は3つだけ**
 (`docs/schema_v4.md` §0):
 
 1. **`名前 = 定義`** — 名前が要る定義は schema もリテラルも全部この形
@@ -154,10 +154,9 @@ Graphite の基盤は**多重グラフ**です。辺は独立した要素であ�
 
 `where` 節 (省略可、カンマ区切りで複数書ける) が持つ語彙は2つです:
 
-- **`each <FromType>: 1`** — 各始点ノードにつきちょうど1本 (数学的には
-  全域関数)。`<FromType>` は宣言の `From` と一致している必要があります
-  (始点と終点が同型の自己参照エッジでも「each = 始点側の出次数」と読みます)。
-- **`each <FromType>: 0..1`** — 各始点につき高々1本 (部分関数)。
+- **`each <role>: N | N..M | N..*`** — endpoint roleごとの本数制約。
+  始点・終点の両roleへ独立に指定できます。無向辺にはendpoint roleがないため
+  `each` は使えず、制約は `unique pair` のみです。
 - **`unique pair`** — 同じ (始点, 終点) の対に2本目の辺を張ることを禁止
   (「関係」らしさ、平行辺の禁止)。`each` の制約と両立させても構いません
   (実装は単純さを優先し、冗長な組み合わせでも警告なく受け付けます)。
@@ -175,16 +174,16 @@ Graphite の基盤は**多重グラフ**です。辺は独立した要素であ�
 `use` でこのスコープに名前を持ち込んでください。
 
 これで `OrgChart` という Rust module が生成されます。その中にノード・辺種別ごとの
-newtype キー (`OrgChart::EmployeeId`/`DepartmentId`/`BelongsToId`/`BossId`/`ReportsId`) とタプル struct
+newtype キー (`OrgChart::EmployeeId`/`DepartmentId`/`BelongsToId`/`BossId`/`ReportsId`) とnamed-field struct
 (`OrgChart::Boss`)・グラフ本体 (`OrgChart::Graph`、フィールドは非公開)・
 builder (`OrgChart::Builder`)・違反 enum (`OrgChart::Violation`) が置かれます。
 ノード値の型 (`Employee`/
 `Department`) とエッジ属性型 (`BossEdge`) はいずれもユーザーが宣言した型を
 そのまま参照するだけで、`graph_schema!` は一切生成しません。ID型は宣言ごとに選べます。`node Employee;` と `edge Boss = ...;` は schema module 内に型付き文字列IDを生成し、`node Employee(id: EmployeeNumber);` と `edge Boss(id: RelationNumber) = ...;` は既存型を使います。
 
-辺のタプル struct は**マクロの外でも普通に構築できます**
-(`OrgChart::Boss(from_id, to_id, payload)`。原則6: 消去可能な拡張のみ)。読み取りは
-位置 (`.0`/`.1`/`.2`) を人間に晒さず、固定語彙のメソッドを生成します:
+辺のnamed-field structは**マクロの外でも普通に構築できます**
+(`OrgChart::Boss { subordinate, superior, appointment }`)。endpointと積み荷の
+公開field名はschemaのrole名そのものです。互換の構造アクセサとして
 `fn from(&self) -> &EmployeeId` / `fn to(&self) -> &EmployeeId` /
 `fn payload(&self) -> &BossEdge` (積み荷ありのみ)。
 
@@ -256,7 +255,7 @@ schema ごとの生成物は `OrgChart`/`ApprovalFlow` のように別々の Rus
   `Vec<(&T, &Attrs)>`)。無向辺には生成されません (`of` が既に対称なので不要。
   詳細: `docs/reverse_query.md`)。
 - **`Kind::get(&g, &{Kind}Id)`** — 辺そのものをキー (`{Kind}Id`) で1本検索
-  します。見つかれば `Some(&Kind)` (from/to/payload を持つタプル struct)。
+  します。見つかれば `Some(&Kind)` (role名の公開fieldを持つnamed-field struct)。
 - **`Kind::between(&g, &SrcId, &DstId)`** — (始点, 終点) の対で検索します。
   `where unique pair` が付いていれば `Option<&Kind>`、無ければ平行辺を
   許すため `Vec<&Kind>` を返します。
@@ -297,8 +296,8 @@ let g = graphite::graph!(OrgChart {
 ノードキー、辺の名前は辺キーの束縛であり、**ノードキー・辺キーは1つの
 `graph!` 呼び出しの中で単一の平坦な名前空間を共有します** (同じ識別子を
 2回使うとコンパイルエラー。詳細は後述「名前空間に関する制約」節)。辺の
-コンストラクタはタプル struct の顔 `Kind(from -> to)` /
-`Kind(from -[積み荷式]-> to)` で、`from`/`to` はその `graph!` 呼び出し内で
+リテラル構文は `Kind(from -> to)` / `Kind(from -[積み荷式]-> to)` で、
+内部ではnamed-field Edge値型の `Kind::new(..)` へ脱糖されます。`from`/`to` はその `graph!` 呼び出し内で
 既にノードとして宣言済みのキー識別子でなければなりません。`alice =
 alice_value` のように外部で構築済みの値をそのまま渡すこともできます
 (ノード項の値・エッジの積み荷はいずれも任意の Rust の式で、値の型は
@@ -380,16 +379,16 @@ let g = graphite::graph!(OrgChart {
   制約なしの辺の挿入順保証には記述順がそのまま現れます。
 - 詳細は `docs/graph_splice.md` §1 参照。
 
-未知の Kind 名は `#kind(..)` というタプル struct 構築式がそのまま rustc の
+未知の Kind 名は `#kind::new(..)` というEdge値構築式がそのまま rustc の
 cannot-find-type / no-such-function に落ちることで検出されます (「利用可能な
 エッジ一覧」付きの親切な `compile_error!` は無いという意図的なトレードオフ)。
 これにより `graph_schema!` と `graph!` を同一ファイルに置く制約も無く、
 `graph!` が参照するのは通常の型・メソッドだけです (別モジュールから `use`
 すれば足ります。実証は `crates/graphite/tests/graph_cross_module.rs`)。
 
-`Kind(from -> to)` の向きは「`from` = タプル struct の1番目、`to` = 2番目」に
-対応します。上の例の `edge Boss = Employee -[BossEdge]-> Employee` は
-`Boss(from, to, attrs)` という構築順のため、`Boss(tanaka -> sato)` は
+`Kind(from -> to)` の向きはschemaの始点role・終点roleに対応します。上の例の
+`edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee)` は
+`Boss::new(subordinate, superior, appointment)` へ脱糖されるため、`Boss(tanaka -> sato)` は
 「田中の上司は佐藤」を意味します (向きを取り違えやすい点なので、独自
 スキーマを書くときは意識してください)。
 
@@ -561,7 +560,7 @@ BelongsTo(..)` の `tanaka_dept` の部分) は**ノード・エッジの種別�
 
 - **`examples/state-machine/`** — ステートマシン地獄 (bool フラグの組合せ
   爆発、または enum + match の散在) を、状態=ノード・**イベント=エッジ
-  種別**・決定性=`where each OrderState: 0..1` として再定式化する。到達
+  種別**・決定性=`where each before: 0..1` として再定式化する。到達
   不能状態・行き止まり状態を `reachable_from`/`out_neighbors` で検出する。
   ```powershell
   cd examples/state-machine
@@ -627,7 +626,7 @@ cargo test
    に宣言したときに型名が衝突しないよう、スキーマ名をプレフィックスにして
    います。
 2. **違反 enum のバリアントはエッジ単位で型付き生成される
-   (`{Kind}EachViolation` / `{Kind}UniquePairViolation` /
+   (`{Kind}{Role}EachViolation` / `{Kind}UniquePairViolation` /
    `{Kind}DuplicateKey` / `{Kind}UnknownSource` / `{Kind}UnknownTarget`)**。
    手書き版は `MultiplicityViolation { employee: EmployeeId, .. }` という
    スキーマ共通の 1 バリアントでしたが、一般のスキーマではエッジごとに
@@ -635,8 +634,8 @@ cargo test
    違反を起こしうる) ため、エッジごとに専用バリアントを生成することで型を
    `String` に落とさず固定できるようにしています (「型の strictness」
    原則。`docs/design_principles.md` 原則1 参照)。例:
-   `edge BelongsTo = Employee -> Department where each Employee: 1;` からは
-   `BelongsToEachViolation { source: EmployeeId, count: usize }` /
+   `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1;` からは
+   `BelongsToEmployeeEachViolation { source: EmployeeId, count: usize }` /
    `BelongsToUnknownSource { edge: BelongsToId, source: EmployeeId }` /
    `BelongsToUnknownTarget { edge: BelongsToId, target: DepartmentId }` /
    `BelongsToDuplicateKey(BelongsToId)` が生成されます (v4 で辺キー重複・
@@ -644,9 +643,9 @@ cargo test
 3. **builder のエッジ追加メソッドの引数は `({Kind}Id, {Kind})`**。手書き版
    は `boss(employee, boss, attrs)`・`reports(manager, report)` のように
    端点を直接引数に取っていましたが、v4 では辺そのものが第一級のキー付き
-   要素になったため、builder のエッジメソッドは常に「辺キー + 辺値
-   (タプル struct)」のペアを取ります (`b.boss(OrgChart::BossId("b1".into()),
-   OrgChart::Boss(employee_id, boss_id, attrs))` のように)。
+   要素になったため、builder のエッジメソッドは常に「辺キー + named-field辺値」
+   のペアを取ります (`b.boss(OrgChart::BossId("b1".into()),
+   OrgChart::Boss { subordinate: employee_id, superior: boss_id, appointment: attrs })` のように)。
 4. **内部ストレージの複数形フィールド名は素朴な英語複数形 (`+ "s"`) 固定**。
    不規則複数形 (`Category` → `Categorys` になってしまう等) には自動対応
    していません。この名前は非公開フィールドで利用者から見えないため機能上の
@@ -658,8 +657,8 @@ cargo test
    宣言し、マクロは参照するだけ**。手書き版は `pub struct Employee { .. }` /
    `pub struct BossAttrs { pub since: i32 }` をテンプレート内に直接書いて
    いましたが、マクロはこれらの型を一切生成せず、スキーマ宣言
-   (`node Employee;` / `edge Boss = Employee -[BossEdge]-> Employee where
-   each Employee: 0..1;`) に書かれた型をそのまま参照します。派生する
+   (`node Employee;` / `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1;`)
+   に書かれた型をそのまま参照します。派生する
    trait 要求も無い (上記
    「ノード値の型・エッジ属性型に対する trait 要求」参照) ため、derive する
    かどうかも含めて完全に利用者の自由です。

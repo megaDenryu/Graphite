@@ -58,9 +58,9 @@ use syn::parse::Parser;
 ///         node Employee;
 ///         node Department(id: ExistingDepartmentId);
 ///
-///         edge BelongsTo = Employee -> Department              where each Employee: 1;
-///         edge Boss      = Employee -[BossEdge]-> Employee     where each Employee: 0..1;
-///         edge Reports   = Employee -> Employee;
+///         edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1;
+///         edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1;
+///         edge Reports = (reporter: Employee) -> (recipient: Employee);
 ///     }
 /// }
 /// ```
@@ -127,6 +127,9 @@ pub fn graph_schema(input: TokenStream) -> TokenStream {
         }
     }
     if let Err(e) = schema_validate::validate_undirected_same_type(&edges) {
+        validate_errors.push(e);
+    }
+    if let Err(e) = schema_validate::validate_edge_roles(&edges) {
         validate_errors.push(e);
     }
     if let Err(e) = schema_validate::validate_each_reference(&edges) {

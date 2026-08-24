@@ -99,9 +99,9 @@ Graphite ではこう考える:
   ユーザーキーが担う)。
 - **イベント = 辺種別 (Kind)。** `Submit`/`Pay`/`Ship`/`Deliver`/`Cancel`/
   `Refund` はそれぞれ独立した nominal 型として宣言する。
-- **決定性 = `where each OrderState: 0..1`。** 「ある状態から、あるイベント
+- **決定性 = `where each before: 0..1`。** 「ある状態から、あるイベント
   で遷移できる先は高々1つ」という FSM の決定性そのものが、`edge Pay =
-  OrderState -> OrderState where each OrderState: 0..1;` という**schemaの
+  `(before: OrderState) -> (after: OrderState) where each before: 0..1;` という**schemaの
   型**に乗る。bool フラグのような「表現可能な不正状態」は最初から存在
   しない — `OrderFsm::create` が `each` 制約違反を一括検査するので、
   同じ状態から同じイベントで2箇所以上に遷移するような矛盾したデータは
@@ -117,7 +117,7 @@ Graphite ではこう考える:
 |---|---|
 | 状態 (draft/pending_payment/paid/...) | ノードインスタンス (`OrderState` のキー) |
 | イベント (submit/pay/ship/...) | 辺種別 (Kind。`Submit`/`Pay`/... という nominal 型) |
-| 「この状態でこのイベントの行き先は高々1つ」という決定性 | `where each OrderState: 0..1` |
+| 「この状態でこのイベントの行き先は高々1つ」という決定性 | `where each before: 0..1` |
 | ガード条件・監査ログ用の付随情報 (キャンセル理由・返金要否・監査ラベル) | エッジ属性型 (`CancelEdge`/`RefundEdge`) |
 | 遷移表そのもの | `schema` 宣言 + `graph!` リテラル (`src/fsm.rs::build`) |
 | 「未定義の遷移」 | `TransitionError` (`Result::Err`、型で必ず処理を強制) |
@@ -135,12 +135,12 @@ graphite::graph_schema! {
     schema OrderFsm {
         node OrderState;
 
-        edge Submit  = OrderState -> OrderState              where each OrderState: 0..1;
-        edge Pay     = OrderState -> OrderState              where each OrderState: 0..1;
-        edge Ship    = OrderState -> OrderState              where each OrderState: 0..1;
-        edge Deliver = OrderState -> OrderState              where each OrderState: 0..1;
-        edge Cancel  = OrderState -[CancelEdge]-> OrderState where each OrderState: 0..1;
-        edge Refund  = OrderState -[RefundEdge]-> OrderState where each OrderState: 0..1;
+        edge Submit = (before: OrderState) -> (after: OrderState) where each before: 0..1;
+        edge Pay = (before: OrderState) -> (after: OrderState) where each before: 0..1;
+        edge Ship = (before: OrderState) -> (after: OrderState) where each before: 0..1;
+        edge Deliver = (before: OrderState) -> (after: OrderState) where each before: 0..1;
+        edge Cancel = (before: OrderState) -[cancellation: CancelEdge]-> (after: OrderState) where each before: 0..1;
+        edge Refund = (before: OrderState) -[refund: RefundEdge]-> (after: OrderState) where each before: 0..1;
     }
 }
 ```
@@ -150,7 +150,7 @@ graphite::graph_schema! {
 `Cancel`/`Refund` には属性型 (`CancelEdge`/`RefundEdge`) を持たせ、「なぜ
 キャンセルされたか」「返金が必要か」「監査ログ用ラベル」というガード条件・
 付随情報を辺そのものに積む例にしている。`unique pair` は付けていない —
-`each OrderState: 0..1` (同一始点からの出辺は高々1本という決定性の制約)
+`each before: 0..1` (同一始点からの出辺は高々1本という決定性の制約)
 がすでに「同じ (始点, 終点) の対に2本目」を禁止しているため、併記は冗長
 になる (§1「実装を単純にするため特別扱いしない」方針)。
 
@@ -212,7 +212,7 @@ v4 の `{Kind}::of`/`get_of` は「終点ノードの値そのもの」(`&OrderS
 を返す設計であり、終点の**キー**は返さない (`docs/schema_v4.md` §3.2)。
 `step` は次状態のキーを返す必要があるため、`{Kind}::iter` (辺タプル
 struct 自身が持つ `from()`/`to()` — キーを返すアクセサ) で `from` が
-一致する辺を探す形にしている。`where each OrderState: 0..1` により
+一致する辺を探す形にしている。`where each before: 0..1` により
 一致する辺は高々1本しか無いので `find` で十分。遷移規則そのものは一切
 書かれていない (規則は `build()` の `graph!` リテラルにしか存在しない)。
 enum+match 散在アンチパターンの「規則が複数関数に分散する」問題は、規則
@@ -282,7 +282,7 @@ enum+match 散在アンチパターンの「規則が複数関数に分散する
 
 - 正常遷移 (ライフサイクル一直線・cancel/refund属性の読み取り)
 - 不正遷移が `Result::Err` になること (未定義遷移・終端後の遷移)
-- 決定性 (同じ状態・同じイベントは常に同じ遷移先、`each OrderState: 0..1` の保証)
+- 決定性 (同じ状態・同じイベントは常に同じ遷移先、`each before: 0..1` の保証)
 - 検証アルゴリズム (正規FSMの健全性、壊れた変種2つそれぞれの検出)
 
 ```powershell

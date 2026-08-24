@@ -147,8 +147,8 @@ v4 (`docs/schema_v4.md`: 辺の第一級化・where 制約・型名前空間ア�
 
 | 操作 | 結果 |
 |---|---|
-| schema `-[BossEdge]->` の積み荷型 → 定義 | ✅ ユーザー struct へ精密 |
-| `OrgChart::Boss::of(&g,..)` / マクロ外の `OrgChart::Boss(from,to,payload)` 構築 / リテラルの `Boss(..)` → 定義 | ✅ いずれも schema の `edge Boss` トークンへ精密着地 (辺種別 = 生成タプル struct の解決が全文脈で機能) |
+| schema `-[appointment: BossEdge]->` の積み荷型 → 定義 | ✅ ユーザーstructへ精密 |
+| `OrgChart::Boss::of(&g,..)` / マクロ外の `OrgChart::Boss { subordinate, superior, appointment }` 構築 / リテラルの `Boss(..)` → 定義 | ✅ いずれもschemaの `edge Boss` トークンへ精密着地する。辺種別は生成named-field structとして全文脈で解決される。 |
 | リテラルのノードキー (`tanaka`)・積み荷フィールド (`since`)・辺キー束縛 (`tanaka_boss`) | ✅ v3 同様に精密 (let 束縛・式素通しの機構は v4 でも維持) |
 | schema `Boss` → 参照検索 | ✅ 宣言 + 全使用 15 件 (アクセス・リテラル・素の構築・型注釈) |
 | `where each Employee` の `Employee` → 定義 | ✅ `2dce96a` で修正し実測確認済み: ユーザーの `struct Employee` 宣言へ精密着地。`EdgeInfo::each_from_token` にトークンを保持し、freeze 検証コード内にゼロコストの型検査文 (`let _: fn(&Type) = \|_\| {};`) として補間することで、このトークンが実在の型参照になった |
@@ -360,7 +360,7 @@ G4 実装後に vscode-lsp-mcp の completion プロバイダで実測する:
 §1.5「rename カスケードの境界条件」の通り、ケース変換を挟む派生名
 (`{Label}Attrs` 等) は RA の rename に追従できない。検討した緩和策:
 
-- (a) 属性型名の明示構文 — `edge boss: Employee -> Employee (0..1) { since: i32 }`
+- (a) 積み荷型名の明示構文 — `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1;`
   に対し、属性型名をユーザーが書ける構文 (例: `{ since: i32 } as BossAttrs`) を
   足す。`BossAttrs` がユーザー自身のトークンになるため、ラベル rename と独立に
   なり (ラベルを変えても型名は変わらない = 取り残し自体が起きない)、型名の

@@ -36,8 +36,8 @@ pub fn build_dependency_graph(g: &Orchestration::Graph) -> ServiceDependencyGrap
 
     let mut edges: Vec<(ServiceId, ServiceId, ())> = Vec::new();
     for (_id, edge) in DependsOn::iter(g) {
-        let dependent = edge.from();
-        let prerequisite = edge.to();
+        let dependent = &edge.dependent;
+        let prerequisite = &edge.dependency;
         edges.push((prerequisite.clone(), dependent.clone(), ()));
     }
 
