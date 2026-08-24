@@ -293,7 +293,7 @@ Graphiteには可変な削除APIが存在せず、「新しいノード集合と
 `anomalies` コマンドの相互上司検出・部署跨ぎ上司検出は、生HashMapなら
 「全社員をループしてO(N)の検索を都度行う」か「逆引きインデックスを自分で
 構築・保守する」必要がある。Graphiteの `Boss::iter(&g)`/`BelongsTo::iter(&g)`
-は最初からその形 (`(&{Kind}Id, &{Kind})` のイテレータ、`.from()`/`.to()`/
+は最初からその形 (`(&{Kind}Id, &{Kind})` のイテレータ、役割名フィールドと
 `.payload()` で分解) で提供されるため、`filter`/`collect`/`contains` といった
 通常のイテレータコンビネータだけで検出ロジックを書ける (`src/analysis.rs`
 参照)。
@@ -326,7 +326,8 @@ tests/
   (`docs/edge_view_api.md`) へ、さらにスキーマv4 (`docs/schema_v4.md`) で
   辺の第一級キー化へ移行)**: v4 では辺そのものがキー付き要素 (`{Kind}Id`)
   であり、`Kind::iter(&g)` が返す `(&{Kind}Id, &Kind)` の `Kind` 値に
-  `.from()`/`.to()` があるため、相手キーは `iter()` から直接取れる。
+  役割名フィールド (`subordinate`/`superior` 等) があるため、相手キーは
+  `iter()` から直接取れる。
   `management_chain` は `Boss::iter(&g)` から
   `HashMap<EmployeeId, (EmployeeId, i32)>` の索引を1回作って辿っており、
   これは「上司を根まで辿る」という探索自体が単発アクセサでは表現できない

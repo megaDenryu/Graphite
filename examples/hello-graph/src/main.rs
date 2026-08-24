@@ -60,7 +60,7 @@ pub struct ReviewEdge {
 //
 // v4 (`docs/schema_v4.md` §0) の骨格は3規則だけです:
 //
-// 1. **`名前 = 定義`** — `edge Kind = (role: From) -> (role: To) ...;` は **`Kind` という
+// 1. **`名前 = 定義`** — `edge Kind = (役割名: From) -> (役割名: To) ...;` は **`Kind` という
 //    新しい nominal 型 (名前で区別される型) を定義する宣言**です。透過的な
 //    別名ではありません。`Person -> Person` という同じ形の辺を2つ宣言
 //    しても (下記の `Boss` と `Reports` の関係と終点の型は同じですが)、
@@ -159,13 +159,17 @@ fn main() {
 // tanaka_boss = Boss(bob -[promo]-> alice),
 // ```
 //
-// は次のように展開されます (実際の展開形そのまま。`__graphite_b` が
-// builder、`clone()` は from/to のキーを渡すため):
+// は次のように展開されます (実装が生成する呼び出し形。`__graphite_b` が
+// builder、`clone()` は端点のキーを渡すため):
 //
 // ```rust
 // let tanaka_boss = __graphite_b.add(
 //     "tanaka_boss",
-//     Boss(bob.clone(), alice.clone(), promo),
+//     <Org::Boss as graphite::DirectedEdgeLiteral<_, _, _>>::from_graph_literal(
+//         bob.clone(),
+//         alice.clone(),
+//         promo,
+//     ),
 // );
 // ```
 //
@@ -195,10 +199,10 @@ fn main() {
 // ```
 //
 // 積み荷なしの辺 (`BelongsTo`) も役割名の公開フィールドだけを持ちます。
-// **このEdge値型はマクロの内部表現ではなく、公開structとして実在します** —
+// **この辺値型はマクロの内部表現ではなく、公開structとして実在します** —
 // マクロの外で `Boss { subordinate, superior, appointment }` と普通に構築
 // できることは、`crates/graphite/tests/orgchart_macro.rs` の
-// `named_field_edge値はマクロ外でも普通に構築できる` が実例です。
+// `名前付きフィールドの辺値はマクロ外でも普通に構築できる` が実例です。
 //
 // ## 3. 格納先は KeyedTable — HashMap 直書きではない
 //
@@ -238,7 +242,7 @@ fn main() {
 // v4 ではさらに一歩進み、**辺という「行」自体が独立したキーを持つ実体**
 // になりました。`Boss::of(&g, &bob)` は「`boss` 表を `bob` で引く」ので
 // はなく、正確には「`boss_from_index` で `bob` から出る `BossId` の一覧を
-// 引き、`boss` 表からその `BossId` の `Boss` を取り、その `to()` で
+// 引き、`boss` 表からその `BossId` の `Boss` を取り、その `superior` で
 // `persons` 表を引く」という3段の索引です。§4.2 で実際に `g.boss` へ
 // 直接アクセスしようとした際の型不一致から、この `KeyedTable<BossId,
 // Boss>` という実際の格納型がそのまま見えます。
@@ -527,7 +531,7 @@ fn 制約なしのofはvecを返す(g: &Org::Graph) {
     }
 }
 
-// やりたいこと: 無向辺 (`Friends`) は `from()`/`to()` の代わりに
+// やりたいこと: 無向辺 (`Friends`) は方向を示すアクセサを持たず、
 // `endpoints() -> (&PersonId, &PersonId)` を持つ (`docs/edge_endpoints_v4_1.md`
 // §2)。位置0/1は `Friends(alice -- bob)` と書いた際の記述順そのままだが、
 // 意味論としては順序なし対であることに注意 (次の関数で確認する)。
@@ -944,7 +948,7 @@ fn create_collectingで全違反を集める() {
 //   746 | |     });
 //       | |______^ expected `TeamId`, found `PersonId`
 //       |
-//   note: `BelongsTo::new` requires a `TeamId` for the `team` role
+//   note: `BelongsTo::new` requires a `TeamId` for the `team` field
 //      --> src\main.rs:94:14
 //       |
 //    94 |         edge BelongsTo = (member: Person) -> (team: Team) where each member: 1;
@@ -1259,7 +1263,7 @@ mod tests {
     }
 
     #[test]
-    fn named_field_edge値はマクロ外でも普通に構築できる() {
+    fn 名前付きフィールドの辺値はマクロ外でも普通に構築できる() {
         let e = BelongsTo {
             member: PersonId("alice".to_string()),
             team: TeamId("eng".to_string()),

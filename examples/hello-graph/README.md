@@ -29,7 +29,7 @@ cargo run
 |---|---|
 | §1 | ノード型・エッジ積み荷型の宣言 (普通の struct) |
 | §2 | `graph_schema!` でのスキーマ宣言 (v4: `edge Kind = ...;` は新しい nominal 型の定義、`where` は制約) |
-| §2.5 | 脱糖の実像。全要素キー・`KeyedTable` 格納・辺はnamed-field structとして第一級、という実装を解説 |
+| §2.5 | 脱糖の実像。全要素キー・`KeyedTable` 格納・辺は名前付きフィールドの構造体として第一級、という実装を解説 |
 | §3 | クックブック — 生成される公開APIを1関数=1つのやりたいこと単位で全列挙 (`cargo run` で実行される) |
 | §4 | 「できないこと」— コメントアウトしたコード + 実際に採取したコンパイルエラー |
 | §5 | `flow!` — 関数の辺 (`graph!` の宣言される辺との対比。`cargo run` で実行される) |
@@ -54,8 +54,8 @@ cargo run
 | 生成されるもの | 命名規則 | `Boss` の場合 |
 |---|---|---|
 | 既定ID newtype | `{Node}Id` / `{Kind}Id` | `pub struct PersonId(pub String);` / `pub struct BossId(pub String);` |
-| named-field struct本体 | schemaのrole名 | `pub struct Boss { pub subordinate: PersonId, pub superior: PersonId, pub appointment: BossEdge }` |
-| 読み取りメソッド (固有 impl) | `from()`/`to()`/`payload()` | `Boss::from`/`Boss::to`/`Boss::payload` |
+| 名前付きフィールドの構造体本体 | スキーマの役割名 | `pub struct Boss { pub subordinate: PersonId, pub superior: PersonId, pub appointment: BossEdge }` |
+| 読み取り方法 | 端点はスキーマの役割名、積み荷は `payload()` | `boss.subordinate` / `boss.superior` / `Boss::payload` |
 | クエリ関連関数 (固有 impl) | `of`/`get`/`between`/`iter`/`ids`/`len` | `Boss::of(&g, &id)` 等 |
 | 違反 enum のバリアント | `{Kind}DuplicateKey`/`{Kind}UnknownSource`/`{Kind}UnknownTarget`/`{Kind}{Role}EachViolation`/`{Kind}UniquePairViolation` | `Violation::BossSubordinateEachViolation { .. }` |
 
@@ -72,11 +72,11 @@ cargo run
 
 「`Boss` を値として `.attr` で持っているのか?」という疑問には `src/main.rs`
 §2.5 (脱糖の実像) で直接回答しています。要点だけ言うと **No** —
-`Boss` はnamed-field structであり、積み荷は公開field `.appointment` として
+`Boss` は名前付きフィールドの構造体であり、積み荷は公開フィールド `.appointment` として
 保持します。格納先は `Org` 構造体の非公開フィールド
 (`graphite::KeyedTable<BossId, Boss>`) であり、`graph!` の
 `key = Boss(from -[積み荷式]-> to)` は
-`__graphite_b.add(key, Boss::new(from.clone(), to.clone(), 積み荷式))` という
+`__graphite_b.add(key, <Boss as graphite::DirectedEdgeLiteral<_, _, _>>::from_graph_literal(from.clone(), to.clone(), 積み荷式))` という
 ただのメソッド呼び出しに脱糖されるだけです。
 
 ## クックブック チートシート (`src/main.rs` §3 と1対1対応)

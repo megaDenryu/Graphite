@@ -222,7 +222,13 @@ struct EdgeLiteralInner {
     from: Ident,
     attrs: Option<Expr>,
     to: Ident,
-    directed: bool,
+    direction: EdgeDirection,
+}
+
+#[derive(Clone, Copy)]
+pub enum EdgeDirection {
+    Directed,
+    Undirected,
 }
 
 impl Parse for EdgeLiteralInner {
@@ -232,7 +238,7 @@ impl Parse for EdgeLiteralInner {
         parenthesized!(content in input);
 
         let from: Ident = content.parse()?;
-        let (attrs, directed) = parse_instance_arrow_payload(&content)?;
+        let (attrs, direction) = parse_instance_arrow_payload(&content)?;
         let to: Ident = content.parse()?;
         if !content.is_empty() {
             return Err(content.error(
@@ -248,7 +254,7 @@ impl Parse for EdgeLiteralInner {
             from,
             attrs,
             to,
-            directed,
+            direction,
         })
     }
 }
@@ -256,10 +262,12 @@ impl Parse for EdgeLiteralInner {
 /// 柄 (4形: `->` / `-[式]->` / `--` / `-[式]-`) をパースし、積み荷式の有無と
 /// 向きを返す。コード生成は向きに対応する辺種別専用コンストラクタを呼び、
 /// スキーマ宣言と異なる柄をコンパイルエラーにする。
-fn parse_instance_arrow_payload(content: ParseStream) -> syn::Result<(Option<Expr>, bool)> {
+fn parse_instance_arrow_payload(
+    content: ParseStream,
+) -> syn::Result<(Option<Expr>, EdgeDirection)> {
     if content.peek(Token![->]) {
         content.parse::<Token![->]>()?;
-        return Ok((None, true));
+        return Ok((None, EdgeDirection::Directed));
     }
     content.parse::<Token![-]>()?;
     if content.peek(syn::token::Bracket) {
@@ -279,16 +287,16 @@ fn parse_instance_arrow_payload(content: ParseStream) -> syn::Result<(Option<Exp
         }
         if content.peek(Token![->]) {
             content.parse::<Token![->]>()?;
-            Ok((Some(attrs_expr), true))
+            Ok((Some(attrs_expr), EdgeDirection::Directed))
         } else {
             content.parse::<Token![-]>()?;
-            Ok((Some(attrs_expr), false))
+            Ok((Some(attrs_expr), EdgeDirection::Undirected))
         }
     } else {
         // 積み荷なしの無向 (`--`): 最初の `-` は既に消費済みなので、2文字目の
         // `-` を読む。
         content.parse::<Token![-]>()?;
-        Ok((None, false))
+        Ok((None, EdgeDirection::Undirected))
     }
 }
 
@@ -320,7 +328,7 @@ pub struct EdgeInstance {
     pub from: Ident,
     pub attrs: Option<Expr>,
     pub to: Ident,
-    pub directed: bool,
+    pub direction: EdgeDirection,
 }
 
 /// `..式` — 実行時コレクションからノード/辺を一括で流し込む
@@ -378,7 +386,7 @@ impl Parse for GraphItem {
                 from,
                 attrs,
                 to,
-                directed,
+                direction,
             } = parse_edge_literal_isolated(captured)?;
             Ok(GraphItem::Edge(EdgeInstance {
                 key,
@@ -387,7 +395,7 @@ impl Parse for GraphItem {
                 from,
                 attrs,
                 to,
-                directed,
+                direction,
             }))
         } else {
             let value = parse_expr_isolated(captured, span)?;

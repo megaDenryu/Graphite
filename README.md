@@ -154,8 +154,8 @@ Graphite の基盤は**多重グラフ**です。辺は独立した要素であ�
 
 `where` 節 (省略可、カンマ区切りで複数書ける) が持つ語彙は2つです:
 
-- **`each <role>: N | N..M | N..*`** — endpoint roleごとの本数制約。
-  始点・終点の両roleへ独立に指定できます。無向辺にはendpoint roleがないため
+- **`each <役割名>: N | N..M | N..*`** — 端点の役割名ごとの多重度制約。
+  始点・終点の両方へ独立に指定できます。無向辺には役割名がないため
   `each` は使えず、制約は `unique pair` のみです。
 - **`unique pair`** — 同じ (始点, 終点) の対に2本目の辺を張ることを禁止
   (「関係」らしさ、平行辺の禁止)。`each` の制約と両立させても構いません
@@ -174,18 +174,18 @@ Graphite の基盤は**多重グラフ**です。辺は独立した要素であ�
 `use` でこのスコープに名前を持ち込んでください。
 
 これで `OrgChart` という Rust module が生成されます。その中にノード・辺種別ごとの
-newtype キー (`OrgChart::EmployeeId`/`DepartmentId`/`BelongsToId`/`BossId`/`ReportsId`) とnamed-field struct
+newtype キー (`OrgChart::EmployeeId`/`DepartmentId`/`BelongsToId`/`BossId`/`ReportsId`) と名前付きフィールドの構造体
 (`OrgChart::Boss`)・グラフ本体 (`OrgChart::Graph`、フィールドは非公開)・
 builder (`OrgChart::Builder`)・違反 enum (`OrgChart::Violation`) が置かれます。
 ノード値の型 (`Employee`/
 `Department`) とエッジ属性型 (`BossEdge`) はいずれもユーザーが宣言した型を
 そのまま参照するだけで、`graph_schema!` は一切生成しません。ID型は宣言ごとに選べます。`node Employee;` と `edge Boss = ...;` は schema module 内に型付き文字列IDを生成し、`node Employee(id: EmployeeNumber);` と `edge Boss(id: RelationNumber) = ...;` は既存型を使います。
 
-辺のnamed-field structは**マクロの外でも普通に構築できます**
-(`OrgChart::Boss { subordinate, superior, appointment }`)。endpointと積み荷の
-公開field名はschemaのrole名そのものです。互換の構造アクセサとして
-`fn from(&self) -> &EmployeeId` / `fn to(&self) -> &EmployeeId` /
-`fn payload(&self) -> &BossEdge` (積み荷ありのみ)。
+辺の名前付きフィールドの構造体は**マクロの外でも普通に構築できます**
+(`OrgChart::Boss { subordinate, superior, appointment }`)。端点と積み荷の
+公開フィールド名はスキーマの役割名そのものです。端点は
+`edge.subordinate` / `edge.superior` のように役割名で読み、積み荷ありの辺は
+`fn payload(&self) -> &BossEdge` も提供します。
 
 **ノード挿入トレイトと総称 `insert`**: builder には型名付きの
 挿入メソッド (`b.employee(id, value)` など、上記の各 `node` 宣言から1つずつ
@@ -255,7 +255,7 @@ schema ごとの生成物は `OrgChart`/`ApprovalFlow` のように別々の Rus
   `Vec<(&T, &Attrs)>`)。無向辺には生成されません (`of` が既に対称なので不要。
   詳細: `docs/reverse_query.md`)。
 - **`Kind::get(&g, &{Kind}Id)`** — 辺そのものをキー (`{Kind}Id`) で1本検索
-  します。見つかれば `Some(&Kind)` (role名の公開fieldを持つnamed-field struct)。
+  します。見つかれば `Some(&Kind)` (役割名の公開フィールドを持つ名前付きフィールドの構造体)。
 - **`Kind::between(&g, &SrcId, &DstId)`** — (始点, 終点) の対で検索します。
   `where unique pair` が付いていれば `Option<&Kind>`、無ければ平行辺を
   許すため `Vec<&Kind>` を返します。
@@ -297,7 +297,8 @@ let g = graphite::graph!(OrgChart {
 `graph!` 呼び出しの中で単一の平坦な名前空間を共有します** (同じ識別子を
 2回使うとコンパイルエラー。詳細は後述「名前空間に関する制約」節)。辺の
 リテラル構文は `Kind(from -> to)` / `Kind(from -[積み荷式]-> to)` で、
-内部ではnamed-field Edge値型の `Kind::new(..)` へ脱糖されます。`from`/`to` はその `graph!` 呼び出し内で
+内部では柄に対応する辺リテラルトレイトの構築関数へ脱糖されます。有向・無向の
+柄がスキーマ宣言と一致しなければコンパイルエラーになります。端点はその `graph!` 呼び出し内で
 既にノードとして宣言済みのキー識別子でなければなりません。`alice =
 alice_value` のように外部で構築済みの値をそのまま渡すこともできます
 (ノード項の値・エッジの積み荷はいずれも任意の Rust の式で、値の型は
@@ -333,8 +334,18 @@ OrgChart::Graph::create(|__graphite_b| {
     let tanaka = __graphite_b.insert("tanaka", Employee { .. });
     let sales = __graphite_b.insert("sales", Department { .. });
     // (2) 全エッジ (記述順)
-    let tanaka_dept = __graphite_b.add("tanaka_dept", OrgChart::BelongsTo(tanaka.clone(), sales.clone()));
-    let tanaka_boss = __graphite_b.add("tanaka_boss", OrgChart::Boss(tanaka.clone(), sato.clone(), BossEdge { since: 2020 }));
+    let tanaka_dept = __graphite_b.add(
+        "tanaka_dept",
+        <OrgChart::BelongsTo as graphite::DirectedEdgeLiteral<_, _, _>>::from_graph_literal(
+            tanaka.clone(), sales.clone(), (),
+        ),
+    );
+    let tanaka_boss = __graphite_b.add(
+        "tanaka_boss",
+        <OrgChart::Boss as graphite::DirectedEdgeLiteral<_, _, _>>::from_graph_literal(
+            tanaka.clone(), sato.clone(), BossEdge { since: 2020 },
+        ),
+    );
 })
 ```
 
@@ -379,16 +390,15 @@ let g = graphite::graph!(OrgChart {
   制約なしの辺の挿入順保証には記述順がそのまま現れます。
 - 詳細は `docs/graph_splice.md` §1 参照。
 
-未知の Kind 名は `#kind::new(..)` というEdge値構築式がそのまま rustc の
-cannot-find-type / no-such-function に落ちることで検出されます (「利用可能な
+未知の Kind 名は辺値型の解決をrustcへ委ねることで検出されます (「利用可能な
 エッジ一覧」付きの親切な `compile_error!` は無いという意図的なトレードオフ)。
 これにより `graph_schema!` と `graph!` を同一ファイルに置く制約も無く、
 `graph!` が参照するのは通常の型・メソッドだけです (別モジュールから `use`
 すれば足ります。実証は `crates/graphite/tests/graph_cross_module.rs`)。
 
-`Kind(from -> to)` の向きはschemaの始点role・終点roleに対応します。上の例の
+`Kind(from -> to)` の向きはスキーマの始点と終点の役割名に対応します。上の例の
 `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee)` は
-`Boss::new(subordinate, superior, appointment)` へ脱糖されるため、`Boss(tanaka -> sato)` は
+有向辺リテラルの構築関数へ `(subordinate, superior, appointment)` の順で渡されるため、`Boss(tanaka -> sato)` は
 「田中の上司は佐藤」を意味します (向きを取り違えやすい点なので、独自
 スキーマを書くときは意識してください)。
 
@@ -409,7 +419,7 @@ let dept_opt = OrgChart::BelongsTo::get_of(&g, &OrgChart::EmployeeId("no-such-id
 // iter(): match パターンの代替。イテレータチェーンでクエリを書く。
 // 例: 相互に上司であるペア (A の boss が B かつ B の boss が A) を検出する。
 let all: Vec<(&OrgChart::EmployeeId, &OrgChart::EmployeeId)> = OrgChart::Boss::iter(&g)
-    .map(|(_id, edge)| (edge.from(), edge.to()))
+    .map(|(_id, edge)| (&edge.subordinate, &edge.superior))
     .collect();
 let mutual_bosses: Vec<(&OrgChart::EmployeeId, &OrgChart::EmployeeId)> = all
     .iter()
@@ -626,12 +636,12 @@ cargo test
    に宣言したときに型名が衝突しないよう、スキーマ名をプレフィックスにして
    います。
 2. **違反 enum のバリアントはエッジ単位で型付き生成される
-   (`{Kind}{Role}EachViolation` / `{Kind}UniquePairViolation` /
+   (`{Kind}{役割名}EachViolation` / `{Kind}UniquePairViolation` /
    `{Kind}DuplicateKey` / `{Kind}UnknownSource` / `{Kind}UnknownTarget`)**。
    手書き版は `MultiplicityViolation { employee: EmployeeId, .. }` という
-   スキーマ共通の 1 バリアントでしたが、一般のスキーマではエッジごとに
+   スキーマ共通の 1 バリアントでしたが、一般のスキーマでは辺ごとに
    始点/終点ノード型が異なりうる (例: `A -> B` と `C -> D` が両方 each
-   違反を起こしうる) ため、エッジごとに専用バリアントを生成することで型を
+   違反を起こしうる) ため、辺ごとに専用バリアントを生成することで型を
    `String` に落とさず固定できるようにしています (「型の strictness」
    原則。`docs/design_principles.md` 原則1 参照)。例:
    `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1;` からは
@@ -643,7 +653,7 @@ cargo test
 3. **builder のエッジ追加メソッドの引数は `({Kind}Id, {Kind})`**。手書き版
    は `boss(employee, boss, attrs)`・`reports(manager, report)` のように
    端点を直接引数に取っていましたが、v4 では辺そのものが第一級のキー付き
-   要素になったため、builder のエッジメソッドは常に「辺キー + named-field辺値」
+   要素になったため、builder のエッジメソッドは常に「辺キー + 名前付きフィールドの辺値」
    のペアを取ります (`b.boss(OrgChart::BossId("b1".into()),
    OrgChart::Boss { subordinate: employee_id, superior: boss_id, appointment: attrs })` のように)。
 4. **内部ストレージの複数形フィールド名は素朴な英語複数形 (`+ "s"`) 固定**。

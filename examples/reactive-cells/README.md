@@ -168,7 +168,7 @@ adjustment`) を含む見積シートで `unit_price` を変更しても、
 |---|---|---|
 | signal (入力値) | 入力ノード | `Formula::Input` を持つ `Cell` |
 | computed (計算値) | 計算ノード + そのノードへの入辺 | `Formula::Mul`/`Sub`/`Sum` を持つ `Cell` |
-| 依存関係の宣言 (JSで言えば `computed(() => a.get() + b.get())`) | endpoint role付き `edge Feeds/Lhs/Rhs = (...) -> (...) where unique pair;` + `graph!` リテラル | `f_unit_price_subtotal = Feeds(unit_price -> subtotal)`、`l_tax_adjustment = Lhs(tax -> adjustment)` 等 |
+| 依存関係の宣言 (JSで言えば `computed(() => a.get() + b.get())`) | 端点の役割名付き `edge Feeds/Lhs/Rhs = (...) -> (...) where unique pair;` + `graph!` リテラル | `f_unit_price_subtotal = Feeds(unit_price -> subtotal)`、`l_tax_adjustment = Lhs(tax -> adjustment)` 等 |
 | 購読 (subscribe)・通知 (notify) | (存在しない — 不要になる) | `Engine::set_input` が影響範囲を一括で処理する |
 | 正しい再計算順序の保証 | `topological_sort()` | `Engine::topological_order()` (構築時に1回だけ計算) |
 | 影響範囲の特定 (dirty checking) | `reachable_from(id)` | `Engine::set_input` 内の `affected` 集合 |

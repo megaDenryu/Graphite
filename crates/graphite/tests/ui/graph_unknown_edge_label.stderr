@@ -1,5 +1,5 @@
-error[E0433]: failed to resolve: could not find `NotARealEdge` in `OrgChart`
+error[E0425]: cannot find type `NotARealEdge` in module `OrgChart`
   --> tests/ui/graph_unknown_edge_label.rs:38:16
    |
 38 |         oops = NotARealEdge(tanaka -> sales),
-   |                ^^^^^^^^^^^^ could not find `NotARealEdge` in `OrgChart`
+   |                ^^^^^^^^^^^^ not found in `OrgChart`

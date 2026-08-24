@@ -49,17 +49,17 @@ graphite::graph_schema! {
 参照する型も関数の外に宣言する。関数本体のローカル型は、関数内に生成された
 module から参照できない。
 
-- `edge Kind = (from_role: From) -> (to_role: To);` / `edge Kind = (from_role: From) -[payload_role: PayloadType]-> (to_role: To);`
+- `edge Kind = (始点の役割名: From) -> (終点の役割名: To);` / `edge Kind = (始点の役割名: From) -[積み荷の役割名: PayloadType]-> (終点の役割名: To);`
   — **Kind は新しい nominal 型として生成される** (透過的別名ではない。
   同じ形の Boss と Mentor は別型。docs にこの旨明記)。
 - 旧多重度注釈 `(1)`/`(0..1)`/`(0..*)` は**廃止** (字面ごと消滅)。
 - `where` 節 (省略可、カンマ区切りで複数可):
-  - `each <role>: N` — roleごとにちょうどN本
-  - `each <role>: N..M` / `each <role>: N..*` — roleごとの範囲制約
+  - `each <役割名>: N` — 役割名ごとにちょうどN本
+  - `each <役割名>: N..M` / `each <役割名>: N..*` — 役割名ごとの範囲制約
   - `unique pair` — 同じ (始点, 終点) の対に 2 本目を張ることを禁止
-  - 始点・終点のroleに独立指定できる。存在しないroleは検証エラー。
-    無向辺はendpoint roleを持たないため `each` を使えない。
-  - 同じroleへの `each` 重複は拒否する。始点側と終点側への独立した `each`、
+  - 始点・終点の役割名に独立指定できる。存在しない役割名は検証エラー。
+    無向辺は役割名を持たないため `each` を使えない。
+  - 同じ役割名への `each` 重複は拒否する。始点側と終点側への独立した `each`、
     および `each` と `unique pair` の併記は許可する。
 - `node 型名;` は schema module 内に `{型名}Id(pub String)` を生成する。`node 型名(id: 型パス);` は既存ID型を使う。エッジも同様に `edge Kind(id: 型パス) = ...;` で既存ID型を選べる。
 
@@ -82,7 +82,8 @@ let g = graphite::graph!(Org {
 
 - 静的項目は `名前 = 値`、または明示IDを渡す `名前 @ ID式 = 値`。名前はノードキーまたは辺キーの束縛になる。
 - 辺リテラルは `Kind(from -> to)` / `Kind(from -[積み荷式]-> to)`。
-  `graph!` はこれをnamed-field Edge値型の `Kind::new(..)` へ脱糖する。
+  `graph!` はこれを柄に対応する辺リテラルトレイトの構築関数へ脱糖する。
+  スキーマ宣言と柄の向きが一致しなければコンパイルエラーになる。
 - 旧形 (`-[label]->` 中置形・無名辺) は完全廃止。検出・移行診断なし (既定方針)。
 
 ## 3. 生成物とアクセス API (型名前空間)
@@ -95,13 +96,12 @@ let g = graphite::graph!(Org {
 索引フィールドは module 外へ公開しない。
 
 - 辺種別ごと: `pub struct Boss { pub subordinate: PersonId, pub superior: PersonId, pub appointment: BossEdge }`。
-  **named-field structとして実在し、マクロ外でも普通に構築できる** (原則6)。
-  role fieldに加え、互換の構造アクセサを生成:
-  `fn from(&self) -> &PersonId` / `fn to(&self) -> &PersonId` /
-  `fn payload(&self) -> &BossEdge` (積み荷ありのみ)。
+  **名前付きフィールドの構造体として実在し、マクロ外でも普通に構築できる** (原則6)。
+  端点は `edge.subordinate` / `edge.superior` のように役割名の公開フィールドで読む。
+  積み荷ありの辺だけ `fn payload(&self) -> &BossEdge` も生成する。
 - ID型を省略したノード・辺: `pub struct PersonId(pub String);` / `pub struct BossId(pub String);`。どちらも schema module 内に生成される。`(id: 型パス)` を指定した宣言は生成型を持たない。
 - 違反 enum: each系違反 + `unique pair` 違反 + 辺キー重複違反。
-  each違反variantはKindとroleから導出する (`BossSubordinateEachViolation` 等)。
+  each違反variantはKindと役割名から導出する (`BossSubordinateEachViolation` 等)。
 
 ### 3.2 アクセス (すべて型名前空間の関連関数。g.メソッドは廃止)
 
@@ -160,8 +160,8 @@ Org::Boss::ids(&g);  Org::Boss::len(&g);
 
 ## 6. 見送り・保留 (根拠つき)
 
-- role名を使った `EdgeRef` アクセサ、role検索API、named static accessorは
-  後続Issueで扱う。Issue #1ではEdge値の公開fieldと既存の構造アクセサだけを生成する。
+- 役割名を使った `EdgeRef` アクセサ、役割検索API、名前付き静的アクセサは
+  後続Issueで扱う。Issue #1では辺値の公開フィールドと型名前空間APIを生成する。
 - ノード宣言へのキーワード統一 (`node Person;` の再検討) — v4 安定後、
   Fudaba #1 後継として
 - 「グラフで書くべきもの vs 構造体で書くべきもの」のモデリング指針 —

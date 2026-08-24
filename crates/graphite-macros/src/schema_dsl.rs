@@ -144,7 +144,7 @@ fn parse_optional_id_type(input: ParseStream) -> syn::Result<Option<Path>> {
     }
 }
 
-/// `each <role>: N | N..M | N..*` の右辺。
+/// `each <役割名>: N | N..M | N..*` の右辺。
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct EachSpec {
     min: usize,
@@ -209,7 +209,7 @@ pub struct EachConstraint {
 
 /// `where` 節の制約1つ分。
 pub enum Constraint {
-    /// `each <role>: <spec>`。始点roleなら出次数、終点roleなら入次数を指す。
+    /// `each <役割名>: <spec>`。始点の役割名なら出次数、終点の役割名なら入次数を指す。
     /// どの意味になるかの解決は意味検査
     /// (`schema_validate.rs::resolve_each_side`) で行うため、ここではトークン
     /// をそのまま保持する。
@@ -290,7 +290,7 @@ fn parse_optional_where_clause(input: ParseStream) -> syn::Result<WhereClause> {
 /// 属性型 (`BossEdge` 等) はユーザーが `graph_schema!` の外で宣言した普通の
 /// struct への参照であり、このマクロは生成しない。
 ///
-/// role中心構文:
+/// 役割名中心構文:
 /// - 有向端点は役割名つき (`(役割名: 型名)`) が必須。
 /// - 積み荷も役割名つき (`[役割名: 型パス]`) が必須。
 /// - 無向辺には端点の役割名を書けない。
@@ -377,7 +377,7 @@ fn parse_endpoint_paren_body(content: ParseStream) -> syn::Result<Endpoint> {
     })
 }
 
-/// 柄 (4形: `->` / `-[role: Attrs]->` / `--` / `-[role: Attrs]-`) をパースし、
+/// 柄 (4形: `->` / `-[役割名: Attrs]->` / `--` / `-[役割名: Attrs]-`) をパースし、
 /// `(積み荷型, 有向か)` を返す。
 ///
 /// 有向の柄 `-` + `>` から矢尻を落とすと無向の柄になる、という
@@ -527,7 +527,7 @@ fn validate_unique_roles<'a>(roles: impl IntoIterator<Item = &'a Ident>) -> syn:
     Ok(())
 }
 
-/// `-[role: 型パス]->` / `-[role: 型パス]-` の `[ .. ]` の中身。
+/// `-[役割名: 型パス]->` / `-[役割名: 型パス]-` の `[ .. ]` の中身。
 /// `edges::BossEdge` のようなモジュール修飾も許す (ノード型名と違い端点照合
 /// に使わないため、単純 `Ident` に制限する必要がない)。
 fn parse_edge_bracket_body(content: ParseStream) -> syn::Result<EdgePayload> {

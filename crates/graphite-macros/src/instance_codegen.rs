@@ -62,10 +62,10 @@
 
 use std::collections::{HashMap, HashSet};
 
-use proc_macro2::{Ident, TokenStream};
+use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned};
 
-use crate::instance_dsl::{GraphInput, GraphItem};
+use crate::instance_dsl::{EdgeDirection, GraphInput, GraphItem};
 use crate::naming::graph_type_ident;
 
 /// v4 (`docs/schema_v4.md` §0 規則1): `graph!` 内の識別子はノード・エッジを
@@ -186,10 +186,9 @@ pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<Token
                 let kind = &edge.kind;
                 let from_ident = edge.from.clone();
                 let to_ident = edge.to.clone();
-                let constructor = if edge.directed {
-                    Ident::new("__graphite_directed", kind.span())
-                } else {
-                    Ident::new("__graphite_undirected", kind.span())
+                let literal_trait = match edge.direction {
+                    EdgeDirection::Directed => quote! { graphite::DirectedEdgeLiteral<_, _, _> },
+                    EdgeDirection::Undirected => quote! { graphite::UndirectedEdgeLiteral<_, _> },
                 };
 
                 // 辺値の関連コンストラクタ + 総称 add への脱糖
@@ -197,10 +196,20 @@ pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<Token
                 // 生成するため、未知の辺種別と向きの不一致はいずれも rustc が検出する。
                 let ctor = match &edge.attrs {
                     None => {
-                        quote! { #schema_name::#kind::#constructor(#from_ident.clone(), #to_ident.clone()) }
+                        quote! {
+                            <#schema_name::#kind as #literal_trait>::from_graph_literal(
+                                #from_ident.clone(),
+                                #to_ident.clone(),
+                                (),
+                            )
+                        }
                     }
                     Some(attrs_expr) => quote! {
-                        #schema_name::#kind::#constructor(#from_ident.clone(), #to_ident.clone(), #attrs_expr)
+                        <#schema_name::#kind as #literal_trait>::from_graph_literal(
+                            #from_ident.clone(),
+                            #to_ident.clone(),
+                            #attrs_expr,
+                        )
                     },
                 };
 

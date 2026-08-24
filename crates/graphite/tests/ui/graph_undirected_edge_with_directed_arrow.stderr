@@ -1,36 +1,19 @@
-error[E0599]: no associated item named `__graphite_directed` found for struct `Friends` in the current scope
-  --> tests/ui/graph_undirected_edge_with_directed_arrow.rs:15:20
+error[E0277]: the trait bound `Friends: DirectedEdgeLiteral<_, _, _>` is not satisfied
+  --> tests/ui/graph_undirected_edge_with_directed_arrow.rs:12:30
    |
- 4 | / graphite::graph_schema! {
- 5 | |     schema Social {
- 6 | |         node Person;
- 7 | |         edge Friends = Person -- Person;
-   | |____________________- associated item `__graphite_directed` not found for this struct
-...
 12 |       let _ = graphite::graph!(Social {
-   |  ______________________________-
+   |  ______________________________^
 13 | |         alice = Person,
 14 | |         bob = Person,
 15 | |         relation = Friends(alice -> bob),
-   | |                   -^^^^^^^ associated item not found in `Friends`
-   | |___________________|
+   | |__________________________^ unsatisfied trait bound
    |
-   |
-note: if you're trying to build a new `Friends` consider using one of the following associated functions:
-      Friends::new
-      Friends::__graphite_undirected
+help: the trait `DirectedEdgeLiteral<_, _, _>` is not implemented for `Friends`
   --> tests/ui/graph_undirected_edge_with_directed_arrow.rs:4:1
    |
  4 | / graphite::graph_schema! {
  5 | |     schema Social {
  6 | |         node Person;
  7 | |         edge Friends = Person -- Person;
- 8 | |     }
- 9 | | }
-   | |_^
+   | |____________________^
    = note: this error originates in the macro `graphite::graph_schema` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: there is an associated function `__graphite_undirected` with a similar name
-   |
-15 -         relation = Friends(alice -> bob),
-15 +         relation = __graphite_undirected(alice -> bob),
-   |

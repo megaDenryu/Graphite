@@ -36,8 +36,8 @@ impl ValidationReport {
 }
 
 /// 6種のイベント辺を全部束ねて、ラベルの区別を捨てた汎用グラフへ射影する。
-/// `{Kind}::iter` は辺のnamed-field structを返す (属性つきの `Cancel`/`Refund` も
-/// 含め、`from()`/`to()` でキーだけ取り出せる) が、ここでは到達可否の構造
+/// `{Kind}::iter` は辺の名前付きフィールドの構造体を返す (属性つきの `Cancel`/`Refund` も
+/// 含め、`before`/`after` でキーだけ取り出せる) が、ここでは到達可否の構造
 /// しか見ないので属性は捨てる。
 fn project(fsm: &OrderFsm::Graph) -> Graph<(), (), OrderStateId> {
     let nodes: Vec<OrderStateId> = OrderFsm::OrderState::ids(fsm).cloned().collect();

@@ -32,7 +32,10 @@ impl<T: Hash> Hash for UnorderedPair<T> {
         self.first.hash(&mut first_hasher);
         let mut second_hasher = DefaultHasher::new();
         self.second.hash(&mut second_hasher);
-        state.write_u64(first_hasher.finish() ^ second_hasher.finish());
+        let first_hash = first_hasher.finish();
+        let second_hash = second_hasher.finish();
+        state.write_u64(first_hash ^ second_hash);
+        state.write_u64(first_hash.wrapping_add(second_hash));
     }
 }
 
@@ -40,6 +43,13 @@ impl<T: Hash> Hash for UnorderedPair<T> {
 mod tests {
     use super::UnorderedPair;
     use std::collections::HashSet;
+    use std::hash::{DefaultHasher, Hash, Hasher};
+
+    fn hash_of<T: Hash>(value: &T) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        value.hash(&mut hasher);
+        hasher.finish()
+    }
 
     #[test]
     fn 等価性とhashは順序を区別しない() {
@@ -50,5 +60,12 @@ mod tests {
         let mut pairs = HashSet::new();
         pairs.insert(forward);
         assert!(pairs.contains(&reverse));
+    }
+
+    #[test]
+    fn 異なる自己対は異なるhashになる() {
+        let alice = UnorderedPair::new("alice", "alice");
+        let bob = UnorderedPair::new("bob", "bob");
+        assert_ne!(hash_of(&alice), hash_of(&bob));
     }
 }

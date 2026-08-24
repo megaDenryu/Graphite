@@ -33,7 +33,7 @@
 //! 無向辺 (`Person -- Person`) は
 //! `.endpoints() -> (&PersonId, &PersonId)` を生やし、`of`/`between` は
 //! どちらの位置に置かれても対称に検索できる。内部の freeze/query 実装は
-//! named fieldを直接使う。
+//! 名前付きフィールドを直接使う。
 //!
 //! 辺はスキーマ module 内の生成型なので固有 impl で読み取り API を生やす。
 //! ノード値型はユーザーが module 外に宣言し、複数 schema 間で共有できる。
@@ -648,7 +648,7 @@ fn gen_edge_value_structs(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
             let p0_id = &e.from_node.id_ty;
             let p1_id = &e.to_node.id_ty;
 
-            let (struct_def, constructor, debug_endpoints) = match &e.shape {
+            let (struct_def, constructor, literal_impl, debug_endpoints) = match &e.shape {
                 EdgeInfoShape::Directed {
                     from_role,
                     to_role,
@@ -664,9 +664,12 @@ fn gen_edge_value_structs(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
                             pub fn new(from: #p0_id, to: #p1_id) -> Self {
                                 Self { #from_role: from, #to_role: to }
                             }
-                            #[doc(hidden)]
-                            pub fn __graphite_directed(from: #p0_id, to: #p1_id) -> Self {
-                                Self::new(from, to)
+                        },
+                        quote! {
+                            impl graphite::DirectedEdgeLiteral<#p0_id, #p1_id, ()> for #kind {
+                                fn from_graph_literal(from: #p0_id, to: #p1_id, (): ()) -> Self {
+                                    Self::new(from, to)
+                                }
                             }
                         },
                         (quote! { self.#from_role }, quote! { self.#to_role }),
@@ -694,34 +697,40 @@ fn gen_edge_value_structs(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
                                     #payload_role: payload,
                                 }
                             }
-                            #[doc(hidden)]
-                            pub fn __graphite_directed(
-                                from: #p0_id,
-                                to: #p1_id,
-                                payload: #attrs,
-                            ) -> Self {
-                                Self::new(from, to, payload)
-                            }
                             pub fn payload(&self) -> &#attrs { &self.#payload_role }
+                        },
+                        quote! {
+                            impl graphite::DirectedEdgeLiteral<#p0_id, #p1_id, #attrs> for #kind {
+                                fn from_graph_literal(
+                                    from: #p0_id,
+                                    to: #p1_id,
+                                    payload: #attrs,
+                                ) -> Self {
+                                    Self::new(from, to, payload)
+                                }
+                            }
                         },
                         (quote! { self.#from_role }, quote! { self.#to_role }),
                     )
                 }
                 EdgeInfoShape::Undirected { payload: None } => (
-                        quote! { pub struct #kind { pub endpoints: graphite::UnorderedPair<#p0_id> } },
+                        quote! { pub struct #kind { endpoints: graphite::UnorderedPair<#p0_id> } },
                         quote! {
                             pub fn new(a: #p0_id, b: #p1_id) -> Self {
                                 Self { endpoints: graphite::UnorderedPair::new(a, b) }
-                            }
-                            #[doc(hidden)]
-                            pub fn __graphite_undirected(a: #p0_id, b: #p1_id) -> Self {
-                                Self::new(a, b)
                             }
                             pub fn endpoints(&self) -> (&#p0_id, &#p1_id) {
                                 self.endpoints.endpoints()
                             }
                         },
-                        (quote! { self.endpoints.endpoints().0 }, quote! { self.endpoints.endpoints().1 }),
+                        quote! {
+                            impl graphite::UndirectedEdgeLiteral<#p0_id, ()> for #kind {
+                                fn from_graph_literal(a: #p0_id, b: #p0_id, (): ()) -> Self {
+                                    Self::new(a, b)
+                                }
+                            }
+                        },
+                        (quote! { self.endpoints().0 }, quote! { self.endpoints().1 }),
                     ),
                 EdgeInfoShape::Undirected {
                     payload: Some(payload),
@@ -731,7 +740,7 @@ fn gen_edge_value_structs(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
                     (
                         quote! {
                             pub struct #kind {
-                                pub endpoints: graphite::UnorderedPair<#p0_id>,
+                                endpoints: graphite::UnorderedPair<#p0_id>,
                                 pub #payload_role: #attrs,
                             }
                         },
@@ -739,20 +748,23 @@ fn gen_edge_value_structs(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
                             pub fn new(a: #p0_id, b: #p1_id, payload: #attrs) -> Self {
                                 Self { endpoints: graphite::UnorderedPair::new(a, b), #payload_role: payload }
                             }
-                            #[doc(hidden)]
-                            pub fn __graphite_undirected(
-                                a: #p0_id,
-                                b: #p1_id,
-                                payload: #attrs,
-                            ) -> Self {
-                                Self::new(a, b, payload)
-                            }
                             pub fn endpoints(&self) -> (&#p0_id, &#p1_id) {
                                 self.endpoints.endpoints()
                             }
                             pub fn payload(&self) -> &#attrs { &self.#payload_role }
                         },
-                        (quote! { self.endpoints.endpoints().0 }, quote! { self.endpoints.endpoints().1 }),
+                        quote! {
+                            impl graphite::UndirectedEdgeLiteral<#p0_id, #attrs> for #kind {
+                                fn from_graph_literal(
+                                    a: #p0_id,
+                                    b: #p0_id,
+                                    payload: #attrs,
+                                ) -> Self {
+                                    Self::new(a, b, payload)
+                                }
+                            }
+                        },
+                        (quote! { self.endpoints().0 }, quote! { self.endpoints().1 }),
                     )
                 }
             };
@@ -792,6 +804,7 @@ fn gen_edge_value_structs(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
                     #constructor
                 }
 
+                #literal_impl
                 #debug_impl
             }
         })
@@ -1057,6 +1070,7 @@ fn gen_violation_enum(
     }
 
     quote! {
+        #[allow(clippy::enum_variant_names)]
         #[derive(Clone, PartialEq, Eq)]
         pub enum #violation_ident {
             #(#dup_variants,)*
@@ -1480,8 +1494,8 @@ fn gen_undirected_edge_freeze_block(violation_ident: &Ident, edge: &EdgeInfo<'_>
     let dup_key = edge.duplicate_key_variant();
     let unk = edge.unknown_endpoint_variant();
 
-    // 無向辺の `unique pair` は (p0, p1) と (p1, p0) を同一視する。ID型へ
-    // 順序比較を要求しないため、両方の順序で `__seen_pairs` を検索する。
+    // 無向辺の `unique pair` は `UnorderedPair` に同一性判定を委譲し、
+    // ID型へ順序比較を要求せず (p0, p1) と (p1, p0) を同一視する。
     let (seen_pairs_decl, unique_pair_check) = if edge.unique_pair {
         let v = edge.unique_pair_violation_variant();
         (
@@ -1489,13 +1503,11 @@ fn gen_undirected_edge_freeze_block(violation_ident: &Ident, edge: &EdgeInfo<'_>
                 let mut __seen_pairs: std::collections::HashSet<_> = std::collections::HashSet::new();
             },
             quote! {
-                if __seen_pairs.contains(&(p0.clone(), p1.clone())) || __seen_pairs.contains(&(p1.clone(), p0.clone())) {
+                if !__seen_pairs.insert(graphite::UnorderedPair::new(p0.clone(), p1.clone())) {
                     __violations.push(#violation_ident::#v {
                         a: p0.clone(),
                         b: p1.clone(),
                     });
-                } else {
-                    __seen_pairs.insert((p0.clone(), p1.clone()));
                 }
             },
         )
@@ -1514,7 +1526,7 @@ fn gen_undirected_edge_freeze_block(violation_ident: &Ident, edge: &EdgeInfo<'_>
         let mut #index: std::collections::HashMap<_, Vec<_>> = std::collections::HashMap::new();
         #seen_pairs_decl
         for (id, edge) in #storage.iter() {
-            let (p0, p1) = edge.endpoints.endpoints();
+            let (p0, p1) = edge.endpoints();
             let mut __ok = true;
             if !#node_field.contains_key(p0) {
                 __violations.push(#violation_ident::#unk { edge: id.clone(), endpoint: p0.clone() });
@@ -1949,7 +1961,7 @@ fn gen_undirected_edge_query_impl(
             None => quote! {
                 {
                     let e = g.#accessor.get(#edge_id_expr).expect("indexに載っている辺はstorageに必ず存在する");
-                    let (first, second) = e.endpoints.endpoints();
+                    let (first, second) = e.endpoints();
                     let other = if first == x { second } else { first };
                     g.#node_field.get(other).expect("freezeで端点存在を検証済みのはず")
                 }
@@ -1957,7 +1969,7 @@ fn gen_undirected_edge_query_impl(
             Some(_) => quote! {
                 {
                     let e = g.#accessor.get(#edge_id_expr).expect("indexに載っている辺はstorageに必ず存在する");
-                    let (first, second) = e.endpoints.endpoints();
+                    let (first, second) = e.endpoints();
                     let other = if first == x { second } else { first };
                     let node = g.#node_field.get(other).expect("freezeで端点存在を検証済みのはず");
                     (node, &e.#payload_role)
@@ -1987,7 +1999,7 @@ fn gen_undirected_edge_query_impl(
                     .iter()
                     .filter_map(|id| g.#accessor.get(id))
                     .find(|e| {
-                        let (first, second) = e.endpoints.endpoints();
+                        let (first, second) = e.endpoints();
                         let other = if first == a { second } else { first };
                         other == b
                     })
@@ -2003,7 +2015,7 @@ fn gen_undirected_edge_query_impl(
                         .iter()
                         .filter_map(|id| g.#accessor.get(id))
                         .filter(|e| {
-                            let (first, second) = e.endpoints.endpoints();
+                            let (first, second) = e.endpoints();
                             let other = if first == a { second } else { first };
                             other == b
                         })

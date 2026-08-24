@@ -23,4 +23,16 @@ pub use graph::{CycleError, Graph, GraphBuilder, GraphError};
 pub use keyed_table::KeyedTable;
 pub use unordered_pair::UnorderedPair;
 
+/// `graph!` が有向の柄から辺値を構築するための内部契約。
+#[doc(hidden)]
+pub trait DirectedEdgeLiteral<From, To, Payload>: Sized {
+    fn from_graph_literal(from: From, to: To, payload: Payload) -> Self;
+}
+
+/// `graph!` が無向の柄から辺値を構築するための内部契約。
+#[doc(hidden)]
+pub trait UndirectedEdgeLiteral<Endpoint, Payload>: Sized {
+    fn from_graph_literal(first: Endpoint, second: Endpoint, payload: Payload) -> Self;
+}
+
 pub use graphite_macros::{flow, graph, graph_schema};
