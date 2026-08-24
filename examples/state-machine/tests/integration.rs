@@ -35,7 +35,8 @@ fn draftからのsubmitはpending_paymentへ進む() {
 #[test]
 fn cancelの属性から理由と返金要否を読める() {
     let g = fsm::build();
-    let (_, attrs) = fsm::cancel_details(&g, &id("paid")).expect("paidからのcancelは定義済みのはず");
+    let (_, attrs) =
+        fsm::cancel_details(&g, &id("paid")).expect("paidからのcancelは定義済みのはず");
     assert_eq!(attrs.reason, "発送前キャンセル");
     assert!(attrs.refund_required);
 }
@@ -43,7 +44,8 @@ fn cancelの属性から理由と返金要否を読める() {
 #[test]
 fn refundの属性から監査ラベルを読める() {
     let g = fsm::build();
-    let (_, attrs) = fsm::refund_details(&g, &id("shipped")).expect("shippedからのrefundは定義済みのはず");
+    let (_, attrs) =
+        fsm::refund_details(&g, &id("shipped")).expect("shippedからのrefundは定義済みのはず");
     assert_eq!(attrs.audit_label, "AUDIT-REFUND-SHIPPED");
 }
 
@@ -90,8 +92,14 @@ fn deliveredに達した後はrefund以外の全イベントがerrになる() {
 fn shippedに達した後はcancelできずrefundになる() {
     let g = fsm::build();
     let shipped = id("shipped");
-    assert!(fsm::step(&g, &shipped, Event::Cancel).is_err(), "発送後のcancelは未定義のはず");
-    assert!(fsm::step(&g, &shipped, Event::Refund).is_ok(), "発送後はrefundが可能なはず");
+    assert!(
+        fsm::step(&g, &shipped, Event::Cancel).is_err(),
+        "発送後のcancelは未定義のはず"
+    );
+    assert!(
+        fsm::step(&g, &shipped, Event::Refund).is_ok(),
+        "発送後はrefundが可能なはず"
+    );
 }
 
 #[test]
@@ -111,7 +119,10 @@ fn 同じ状態と同じイベントは常に同じ遷移先を返す_決定性(
     let paid = id("paid");
     let first = fsm::step(&g, &paid, Event::Ship);
     let second = fsm::step(&g, &paid, Event::Ship);
-    assert_eq!(first, second, "同じ(状態,イベント)からの遷移先は決定的であるはず");
+    assert_eq!(
+        first, second,
+        "同じ(状態,イベント)からの遷移先は決定的であるはず"
+    );
 }
 
 #[test]

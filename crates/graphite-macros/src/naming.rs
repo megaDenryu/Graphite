@@ -75,6 +75,9 @@ mod tests {
     #[test]
     fn エッジ表の一時変数名を導出できる() {
         let accessor = Ident::new("belongs_to", proc_macro2::Span::call_site());
-        assert_eq!(edge_storage_ident(&accessor).to_string(), "__graphite_belongs_to");
+        assert_eq!(
+            edge_storage_ident(&accessor).to_string(),
+            "__graphite_belongs_to"
+        );
     }
 }

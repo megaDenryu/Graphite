@@ -42,7 +42,11 @@ pub fn print_cycle_error(err: &CycleError<CellId>) {
 pub fn print_diamond_demo(title: &str, demo: &DiamondDemo) {
     println!("{title}:");
     for (i, (b, c, d)) in demo.d_log.borrow().iter().enumerate() {
-        let marker = if i == 0 { "  [1回目] " } else { "  [2回目] " };
+        let marker = if i == 0 {
+            "  [1回目] "
+        } else {
+            "  [2回目] "
+        };
         println!("{marker}d再計算時点の観測値: b={b}, c={c} -> d={d}");
     }
     let (_b, _c, last) = *demo

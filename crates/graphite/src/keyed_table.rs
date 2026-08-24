@@ -36,7 +36,10 @@ pub struct KeyedTable<K, V> {
 impl<K, V> KeyedTable<K, V> {
     /// 空の表を作る。
     pub fn new() -> Self {
-        Self { entries: Vec::new(), index: HashMap::new() }
+        Self {
+            entries: Vec::new(),
+            index: HashMap::new(),
+        }
     }
 }
 

@@ -142,7 +142,10 @@ fn capture_until_top_level_comma(content: ParseStream) -> syn::Result<TokenStrea
 /// を回復パーサに混ぜる際のリスク」参照: `syn::parse2` は呼ぶたびに新しい
 /// `Rc<Cell<Unexpected>>` を作るため、ここで起きるエラーは呼び出し元
 /// (G4b の回復パーサ) が共有する `Unexpected` セルを汚染しない。
-fn parse_expr_isolated(tokens: TokenStream2, empty_input_span: proc_macro2::Span) -> syn::Result<Expr> {
+fn parse_expr_isolated(
+    tokens: TokenStream2,
+    empty_input_span: proc_macro2::Span,
+) -> syn::Result<Expr> {
     if tokens.is_empty() {
         return Err(syn::Error::new(empty_input_span, "式を期待しました"));
     }
@@ -212,7 +215,12 @@ impl Parse for EdgeLiteralInner {
             return Err(input.error("余分なトークンがあります"));
         }
 
-        Ok(EdgeLiteralInner { kind, from, attrs, to })
+        Ok(EdgeLiteralInner {
+            kind,
+            from,
+            attrs,
+            to,
+        })
     }
 }
 
@@ -326,7 +334,12 @@ impl Parse for GraphItem {
         let captured = capture_until_top_level_comma(input)?;
 
         if looks_like_edge_literal(&captured) {
-            let EdgeLiteralInner { kind, from, attrs, to } = parse_edge_literal_isolated(captured)?;
+            let EdgeLiteralInner {
+                kind,
+                from,
+                attrs,
+                to,
+            } = parse_edge_literal_isolated(captured)?;
             Ok(GraphItem::Edge(EdgeInstance {
                 key,
                 kind,

@@ -218,7 +218,11 @@ mod tests {
         demo.trigger(5.0);
 
         let log = demo.d_log.borrow();
-        assert_eq!(log.len(), 2, "dはbからの通知とcからの通知の両方で再計算される (2回)");
+        assert_eq!(
+            log.len(),
+            2,
+            "dはbからの通知とcからの通知の両方で再計算される (2回)"
+        );
 
         // 1回目: bは新しい値(10)だがcはまだ古い値(0)のまま (矛盾した中間状態)。
         let (b1, c1, d1) = log[0];
@@ -232,7 +236,11 @@ mod tests {
         assert_eq!(c2, 105.0); // a+100 = 5+100
         assert_eq!(d2, 115.0);
 
-        assert_eq!(demo.d.get(), 115.0, "最終的には正しい値に収束する (グリッチは過程の問題)");
+        assert_eq!(
+            demo.d.get(),
+            115.0,
+            "最終的には正しい値に収束する (グリッチは過程の問題)"
+        );
     }
 
     #[test]
@@ -261,6 +269,9 @@ mod tests {
     #[test]
     fn 循環購読は安全弁が無ければ止まらないことをcap到達で示す() {
         let count = build_infinite_loop_demo(200);
-        assert_eq!(count, 200, "安全弁のcapにちょうど到達する = 自然には止まらないことの証拠");
+        assert_eq!(
+            count, 200,
+            "安全弁のcapにちょうど到達する = 自然には止まらないことの証拠"
+        );
     }
 }

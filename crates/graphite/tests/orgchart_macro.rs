@@ -68,8 +68,8 @@ use OrgChart::{BelongsTo, BelongsToId, Boss, BossId, Leads, LeadsId, Reports, Re
 /// schema module 内の私有ストレージと索引へ親 module からはアクセスできない。
 impl OrgChart::Graph {
     pub fn colleagues(&self, id: &EmployeeId) -> Vec<&Employee> {
-        let department_id = BelongsTo::iter(self)
-            .find_map(|(_, edge)| (edge.from() == id).then(|| edge.to()));
+        let department_id =
+            BelongsTo::iter(self).find_map(|(_, edge)| (edge.from() == id).then(|| edge.to()));
         let Some(department_id) = department_id else {
             return Vec::new();
         };
@@ -77,9 +77,8 @@ impl OrgChart::Graph {
         OrgChart::Employee::ids(self)
             .filter(|other| *other != id)
             .filter(|other| {
-                BelongsTo::iter(self).any(|(_, edge)| {
-                    edge.from() == *other && edge.to() == department_id
-                })
+                BelongsTo::iter(self)
+                    .any(|(_, edge)| edge.from() == *other && edge.to() == department_id)
             })
             .filter_map(|other| OrgChart::Employee::get(self, other))
             .collect()

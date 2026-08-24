@@ -201,7 +201,10 @@ pub fn validate_undirected_same_type(edges: &[EdgeDecl]) -> syn::Result<()> {
 /// そのまま `validate_edge_endpoints` を呼ぶと「壊れた宣言由来の
 /// compile_error!」1件のはずが「未知端点エラー」まで重ねて出てしまう
 /// (二次噴出) ため。
-pub fn filter_edges_with_known_endpoints(nodes: &[NodeDecl], edges: Vec<EdgeDecl>) -> Vec<EdgeDecl> {
+pub fn filter_edges_with_known_endpoints(
+    nodes: &[NodeDecl],
+    edges: Vec<EdgeDecl>,
+) -> Vec<EdgeDecl> {
     let declared: HashSet<String> = nodes.iter().map(|n| n.name.to_string()).collect();
     edges
         .into_iter()

@@ -38,7 +38,11 @@ fn ダイヤモンド依存を通る更新でも影響セル数と再計算回�
     // 到達する (ダイヤモンド全体)。影響を受けるのはunit_price自身を除く5セル。
     let steps = engine.set_input(&id("unit_price"), 1500.0);
     let unique: HashSet<CellId> = steps.iter().map(|s| s.id.clone()).collect();
-    assert_eq!(steps.len(), unique.len(), "同じセルが2回再計算されてはならない (glitch-free)");
+    assert_eq!(
+        steps.len(),
+        unique.len(),
+        "同じセルが2回再計算されてはならない (glitch-free)"
+    );
     assert_eq!(unique.len(), 5);
 }
 
@@ -71,7 +75,11 @@ fn observerパターンのグリッチはgraphiteエンジンでは再現しな�
     // antipattern側はd (adjustment相当) を2回再計算し1回目が矛盾する。
     let naive = build_diamond_demo(false);
     naive.trigger(5.0);
-    assert_eq!(naive.d_log.borrow().len(), 2, "素朴なobserverパターンは2回再計算する");
+    assert_eq!(
+        naive.d_log.borrow().len(),
+        2,
+        "素朴なobserverパターンは2回再計算する"
+    );
 
     // 同じ形の依存 (a=subtotal, b=discount_amount, c=tax, d=adjustment)
     // をgraphiteエンジンで再計算すると、adjustmentはちょうど1回だけ
@@ -82,14 +90,20 @@ fn observerパターンのグリッチはgraphiteエンジンでは再現しな�
     engine.set_input(&id("discount_rate"), 0.05);
     let steps = engine.set_input(&id("unit_price"), 10.0);
     let adjustment_recomputes = steps.iter().filter(|s| s.id == id("adjustment")).count();
-    assert_eq!(adjustment_recomputes, 1, "graphite版はadjustmentをちょうど1回だけ再計算する");
+    assert_eq!(
+        adjustment_recomputes, 1,
+        "graphite版はadjustmentをちょうど1回だけ再計算する"
+    );
 }
 
 #[test]
 fn 循環購読の無限notifyは安全弁なしでは自然に止まらない() {
     let cap = 500;
     let count = build_infinite_loop_demo(cap);
-    assert_eq!(count, cap, "capに到達する = 循環があれば自然には止まらないことの証拠");
+    assert_eq!(
+        count, cap,
+        "capに到達する = 循環があれば自然には止まらないことの証拠"
+    );
 }
 
 #[test]

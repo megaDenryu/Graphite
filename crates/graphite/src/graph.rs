@@ -159,11 +159,13 @@ where
         }
 
         for (from, to, value) in edges {
-            let from_idx = *index.get(&from).ok_or_else(|| GraphError::UnknownEndpoint {
-                from: from.clone(),
-                to: to.clone(),
-                missing: from.clone(),
-            })?;
+            let from_idx = *index
+                .get(&from)
+                .ok_or_else(|| GraphError::UnknownEndpoint {
+                    from: from.clone(),
+                    to: to.clone(),
+                    missing: from.clone(),
+                })?;
             let to_idx = *index.get(&to).ok_or_else(|| GraphError::UnknownEndpoint {
                 from: from.clone(),
                 to: to.clone(),
@@ -201,7 +203,9 @@ where
 
     /// 全ノードを `(キー, 値)` で走査するイテレータ (順序は未規定)。
     pub fn nodes(&self) -> impl Iterator<Item = (&K, &N)> {
-        self.index.iter().map(move |(k, &idx)| (k, &self.inner[idx]))
+        self.index
+            .iter()
+            .map(move |(k, &idx)| (k, &self.inner[idx]))
     }
 
     /// ノード数。
@@ -278,7 +282,14 @@ where
 
         let mut in_degree: HashMap<NodeIndex, usize> = insertion_order
             .iter()
-            .map(|&idx| (idx, self.inner.neighbors_directed(idx, Direction::Incoming).count()))
+            .map(|&idx| {
+                (
+                    idx,
+                    self.inner
+                        .neighbors_directed(idx, Direction::Incoming)
+                        .count(),
+                )
+            })
             .collect();
         let mut remaining: HashSet<NodeIndex> = insertion_order.iter().copied().collect();
 
@@ -334,7 +345,9 @@ where
         let weight_of: HashMap<&K, W> = order
             .iter()
             .map(|&key| {
-                let value = self.node(key).expect("topological_sortが返すキーは必ず存在する");
+                let value = self
+                    .node(key)
+                    .expect("topological_sortが返すキーは必ず存在する");
                 (key, node_weight(key, value))
             })
             .collect();
@@ -373,7 +386,10 @@ where
     /// `indices` (循環を構成する `NodeIndex` 列) を `CycleError<K>` に変換する。
     fn cycle_error(&self, indices: Vec<NodeIndex>) -> CycleError<K> {
         CycleError {
-            cycle: indices.into_iter().map(|idx| self.keys[&idx].clone()).collect(),
+            cycle: indices
+                .into_iter()
+                .map(|idx| self.keys[&idx].clone())
+                .collect(),
         }
     }
 
@@ -748,7 +764,10 @@ mod tests {
 
         assert_eq!(g.node_count(), 3);
         assert_eq!(g.edge_count(), 1);
-        assert_eq!(g.out_neighbors(&"田中".to_string()), vec![&"佐藤".to_string()]);
+        assert_eq!(
+            g.out_neighbors(&"田中".to_string()),
+            vec![&"佐藤".to_string()]
+        );
     }
 
     #[test]
@@ -988,10 +1007,7 @@ mod tests {
             .cloned()
             .collect();
         in_neighbors.sort();
-        assert_eq!(
-            in_neighbors,
-            vec!["佐藤".to_string(), "田中".to_string()]
-        );
+        assert_eq!(in_neighbors, vec!["佐藤".to_string(), "田中".to_string()]);
 
         // 入る辺の無いノードは空。
         assert!(g.in_neighbors(&"田中".to_string()).is_empty());
@@ -1182,7 +1198,9 @@ mod tests {
         .unwrap();
 
         // 特定のID集合に含まれるノードだけ抽出する (値ではなくキーで判定)。
-        let allowed: HashSet<String> = ["田中".to_string(), "鈴木".to_string()].into_iter().collect();
+        let allowed: HashSet<String> = ["田中".to_string(), "鈴木".to_string()]
+            .into_iter()
+            .collect();
         let filtered = g.filter_nodes_with_key(|key, _person| allowed.contains(key));
 
         assert_eq!(filtered.node_count(), 2);
@@ -1201,15 +1219,10 @@ mod tests {
         )
         .unwrap();
 
-        let labeled: Graph<String> = g.map_nodes_with_key(|key, person| format!("{key}:{}", person.age));
+        let labeled: Graph<String> =
+            g.map_nodes_with_key(|key, person| format!("{key}:{}", person.age));
 
-        assert_eq!(
-            labeled.node(&"田中".to_string()).unwrap(),
-            "田中:30"
-        );
-        assert_eq!(
-            labeled.node(&"佐藤".to_string()).unwrap(),
-            "佐藤:25"
-        );
+        assert_eq!(labeled.node(&"田中".to_string()).unwrap(), "田中:30");
+        assert_eq!(labeled.node(&"佐藤".to_string()).unwrap(), "佐藤:25");
     }
 }

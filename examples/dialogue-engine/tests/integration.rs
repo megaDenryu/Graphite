@@ -3,7 +3,7 @@
 //! ライブラリ利用者として使い、モジュールをまたいだ挙動を確認する。
 
 use dialogue_engine::schema::{
-    build_broken_story, build_story, broken_start_scene_id, start_scene_id, EndingId, SceneId,
+    broken_start_scene_id, build_broken_story, build_story, start_scene_id, EndingId, SceneId,
 };
 use dialogue_engine::{engine, report, validate};
 
@@ -57,7 +57,10 @@ fn スクリプト化した選択列で犠牲エンディングに到達する()
     let outcome = engine::play(&story, &start, engine::scripted_choices(script), |_| {});
 
     assert_eq!(outcome.ending_title.as_deref(), Some("犠牲による静寂"));
-    assert_eq!(outcome.visited.last(), Some(&SceneId("seal_sacrifice".to_string())));
+    assert_eq!(
+        outcome.visited.last(),
+        Some(&SceneId("seal_sacrifice".to_string()))
+    );
 }
 
 /// `route` が返す経路は「実際にその選択肢ラベル通りに選び続けたら本当に
@@ -120,7 +123,11 @@ fn statsとmapはシナリオ全体を反映する() {
     let stats = report::compute_stats(&story, &start);
     assert_eq!(stats.scene_count, 30);
     assert_eq!(stats.ending_count, 4);
-    assert_eq!(stats.shortest_routes.len(), 4, "全エンディングが到達可能なはず");
+    assert_eq!(
+        stats.shortest_routes.len(),
+        4,
+        "全エンディングが到達可能なはず"
+    );
 
     let mermaid = report::to_mermaid(&story);
     for (ending_key, _) in [

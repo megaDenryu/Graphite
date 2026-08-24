@@ -268,7 +268,10 @@ fn parse_endpoint_paren_body(content: ParseStream) -> syn::Result<Endpoint> {
     if !content.is_empty() {
         return Err(content.error("端点は `(役割名: 型名)` の形式で指定してください"));
     }
-    Ok(Endpoint { role: Some(role), ty })
+    Ok(Endpoint {
+        role: Some(role),
+        ty,
+    })
 }
 
 /// 柄 (4形: `->` / `-[Attrs]->` / `--` / `-[Attrs]-`) をパースし、

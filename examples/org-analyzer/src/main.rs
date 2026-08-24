@@ -11,8 +11,8 @@
 //! org-analyzer reorg <部署キー>      [--seed N] [--inject-anomalies]
 //! ```
 
-use org_analyzer::{analysis, dataset, reorg, report};
 use org_analyzer::schema::{DepartmentId, EmployeeId};
+use org_analyzer::{analysis, dataset, reorg, report};
 
 const DEFAULT_SEED: u64 = 42;
 
@@ -103,7 +103,9 @@ fn main() {
         }
         "chain" => {
             let Some(key) = options.positional.first() else {
-                eprintln!("エラー: chain には社員キーを指定してください (例: org-analyzer chain E001)");
+                eprintln!(
+                    "エラー: chain には社員キーを指定してください (例: org-analyzer chain E001)"
+                );
                 std::process::exit(1);
             };
             let employee_id = EmployeeId(key.clone());
@@ -121,7 +123,9 @@ fn main() {
         }
         "reorg" => {
             let Some(key) = options.positional.first() else {
-                eprintln!("エラー: reorg には部署キーを指定してください (例: org-analyzer reorg D01)");
+                eprintln!(
+                    "エラー: reorg には部署キーを指定してください (例: org-analyzer reorg D01)"
+                );
                 std::process::exit(1);
             };
             let dept_id = DepartmentId(key.clone());

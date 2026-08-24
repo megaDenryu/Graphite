@@ -127,7 +127,12 @@ impl<V> ComputeGraphBuilder<V> {
     /// そのもの (`args[0]` = `deps` の0番目)。`deps` が参照するキーが未宣言
     /// だった場合のエラーは [`Self::freeze`] まで遅延する
     /// ([`ComputeGraphError::Graph`] の [`GraphError::UnknownEndpoint`])。
-    pub fn computed<D, S>(&mut self, key: impl Into<String>, deps: D, f: impl Fn(&[&V]) -> V + 'static) -> &mut Self
+    pub fn computed<D, S>(
+        &mut self,
+        key: impl Into<String>,
+        deps: D,
+        f: impl Fn(&[&V]) -> V + 'static,
+    ) -> &mut Self
     where
         D: IntoIterator<Item = S>,
         S: Into<String>,
@@ -267,10 +272,7 @@ impl<V> ComputeGraph<V> {
     /// `key` がこのグラフに存在しないキーの場合 (呼び出し規約違反。
     /// `docs/design_principles.md` 原則2)。
     pub fn get(&mut self, key: &str) -> &V {
-        assert!(
-            self.kinds.contains_key(key),
-            "get: 未知のキーです: {key:?}"
-        );
+        assert!(self.kinds.contains_key(key), "get: 未知のキーです: {key:?}");
         self.recompute_if_needed(key);
         &self.values[key]
     }
@@ -402,9 +404,15 @@ mod tests {
         let count_b = Rc::new(RefCell::new(0));
         let count_c = Rc::new(RefCell::new(0));
 
-        computed_counting(&mut b, "a", ["price"], count_a.clone(), |args| args[0] * 2.0);
-        computed_counting(&mut b, "b", ["price"], count_b.clone(), |args| args[0] + 100.0);
-        computed_counting(&mut b, "c", ["a", "b"], count_c.clone(), |args| args[0] + args[1]);
+        computed_counting(&mut b, "a", ["price"], count_a.clone(), |args| {
+            args[0] * 2.0
+        });
+        computed_counting(&mut b, "b", ["price"], count_b.clone(), |args| {
+            args[0] + 100.0
+        });
+        computed_counting(&mut b, "c", ["a", "b"], count_c.clone(), |args| {
+            args[0] + args[1]
+        });
 
         let mut g = b.freeze().expect("循環が無いので成功するはず");
 
@@ -476,7 +484,11 @@ mod tests {
 
         // eをgetしても再計算されない (dirtyになっていないため)。
         assert_eq!(*g.get("e"), 101.0);
-        assert_eq!(*count_e.borrow(), 1, "eは影響を受けていないので再計算されないはず");
+        assert_eq!(
+            *count_e.borrow(),
+            1,
+            "eは影響を受けていないので再計算されないはず"
+        );
     }
 
     #[test]
@@ -529,7 +541,10 @@ mod tests {
             Ok(_) => panic!("キー重複があるので失敗するはず"),
         };
 
-        assert_eq!(err, ComputeGraphError::Graph(GraphError::DuplicateKey("x".to_string())));
+        assert_eq!(
+            err,
+            ComputeGraphError::Graph(GraphError::DuplicateKey("x".to_string()))
+        );
     }
 
     #[test]

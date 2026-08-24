@@ -106,19 +106,13 @@ fn parse_task_line(rest: &str, line_no: usize) -> Result<ParsedTask, ParseError>
         return Err(err(line_no, "task 名が空です"));
     }
     if name.contains(char::is_whitespace) {
-        return Err(err(
-            line_no,
-            format!("task 名に空白は使えません: {name:?}"),
-        ));
+        return Err(err(line_no, format!("task 名に空白は使えません: {name:?}")));
     }
 
     let remainder = remainder.trim();
-    let open = remainder.rfind('(').ok_or_else(|| {
-        err(
-            line_no,
-            "末尾に想定実行時間 `(<秒数>s)` が見つかりません",
-        )
-    })?;
+    let open = remainder
+        .rfind('(')
+        .ok_or_else(|| err(line_no, "末尾に想定実行時間 `(<秒数>s)` が見つかりません"))?;
     if !remainder.ends_with(')') {
         return Err(err(
             line_no,
@@ -171,7 +165,9 @@ fn parse_edge_line(line: &str, line_no: usize) -> Result<ParsedEdge, ParseError>
         other => {
             return Err(err(
                 line_no,
-                format!("2番目のトークンは `produces` か `consumes` である必要があります (実際: {other:?})"),
+                format!(
+                "2番目のトークンは `produces` か `consumes` である必要があります (実際: {other:?})"
+            ),
             ))
         }
     };
