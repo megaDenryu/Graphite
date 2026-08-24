@@ -7,11 +7,11 @@
 
 use std::fmt;
 
+use crate::schema::OrderFsm::OrderStateRef;
 use crate::schema::{
     Cancel, CancelEdge, Deliver, OrderFsm, OrderState, OrderStateId, Pay, Refund, RefundEdge, Ship,
     Submit,
 };
-use crate::schema::OrderFsm::OrderStateRef;
 
 /// FSM が受理するイベント一覧。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

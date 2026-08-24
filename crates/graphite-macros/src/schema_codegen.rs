@@ -717,10 +717,7 @@ fn gen_default_id_types(nodes: &[NodeInfo], edges: &[EdgeInfo<'_>]) -> Vec<Token
 
 /// 公開IDとは別に、凍結済みグラフ内の密な位置を表す非公開型を生成する。
 /// 種別ごとのnewtypeにすることで、別のノード表・辺表の位置を取り違えない。
-fn gen_internal_position_types(
-    nodes: &[NodeInfo],
-    edges: &[EdgeInfo<'_>],
-) -> Vec<TokenStream> {
+fn gen_internal_position_types(nodes: &[NodeInfo], edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
     nodes
         .iter()
         .map(NodeInfo::internal_position_ident)
@@ -784,10 +781,7 @@ fn gen_edge_record_structs(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
 
 /// 完成済みグラフ上の辺個体を表す薄い参照値を生成する。端点getterは保存
 /// レコード内の内部位置からNodeRefを直接作り、公開ID索引を引かない。
-fn gen_edge_reference_types(
-    graph_ident: &Ident,
-    edges: &[EdgeInfo<'_>],
-) -> Vec<TokenStream> {
+fn gen_edge_reference_types(graph_ident: &Ident, edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
     edges
         .iter()
         .map(|edge| {

@@ -387,8 +387,7 @@ fn builderの型名メソッドで組み立てる() {
         );
     })
     .expect("builder の型名メソッドでも構築に成功するはず");
-    let dave: Org::PersonRef<'_> =
-        Org::Person::get(&g, &PersonId("dave".to_string())).unwrap();
+    let dave: Org::PersonRef<'_> = Org::Person::get(&g, &PersonId("dave".to_string())).unwrap();
     println!("(構築4: builderの型名メソッド) dave = {}", dave.name);
 }
 
@@ -413,8 +412,7 @@ fn builderの総称insertとaddで組み立てる() {
             b.add("eve_dept", BelongsTo::new(eve_id.clone(), sales_id.clone()));
     })
     .expect("insert/add 経由の構築も成功するはず");
-    let eve: Org::PersonRef<'_> =
-        Org::Person::get(&g, &PersonId("eve".to_string())).unwrap();
+    let eve: Org::PersonRef<'_> = Org::Person::get(&g, &PersonId("eve".to_string())).unwrap();
     println!("(構築5: builderの総称insert/add) eve = {}", eve.name);
 }
 
@@ -422,13 +420,11 @@ fn builderの総称insertとaddで組み立てる() {
 
 // やりたいこと: `{Type}::get(&g, &id)` で1件読む (無ければ None)。
 fn 人ノードを1件読む(g: &Org::Graph) {
-    let alice: Option<Org::PersonRef<'_>> =
-        Org::Person::get(g, &PersonId("alice".to_string()));
+    let alice: Option<Org::PersonRef<'_>> = Org::Person::get(g, &PersonId("alice".to_string()));
     if let Some(person) = alice {
         println!("(ノード) Person::get(&g, &alice) = {}", person.name);
     }
-    let unknown: Option<Org::PersonRef<'_>> =
-        Org::Person::get(g, &PersonId("dave".to_string()));
+    let unknown: Option<Org::PersonRef<'_>> = Org::Person::get(g, &PersonId("dave".to_string()));
     println!(
         "(ノード) Person::get(&g, &dave) で値が無い = {}",
         unknown.is_none()
@@ -463,14 +459,12 @@ fn each_1のofは直接参照を返す(g: &Org::Graph) {
     let team: Org::TeamRef<'_> = BelongsTo::of(g, &PersonId("alice".to_string()));
     println!("(each 1) BelongsTo::of(&g, &alice) = {}", team.name);
 
-    let safe: Option<Org::TeamRef<'_>> =
-        BelongsTo::get_of(g, &PersonId("alice".to_string()));
+    let safe: Option<Org::TeamRef<'_>> = BelongsTo::get_of(g, &PersonId("alice".to_string()));
     println!(
         "(each 1) BelongsTo::get_of(&g, &alice) = {:?}",
         safe.map(|t| t.value().name.as_str())
     );
-    let unknown: Option<Org::TeamRef<'_>> =
-        BelongsTo::get_of(g, &PersonId("dave".to_string()));
+    let unknown: Option<Org::TeamRef<'_>> = BelongsTo::get_of(g, &PersonId("dave".to_string()));
     println!(
         "(each 1) BelongsTo::get_of(&g, &dave) で値が無い = {}",
         unknown.is_none()
@@ -481,8 +475,7 @@ fn each_1のofは直接参照を返す(g: &Org::Graph) {
 // 積み荷ありなので `Option<(NodeRef, &Attrs)>` になり、積み荷へは
 // フィールドアクセスで辿れる (`attrs.since`)。
 fn each_0か1のofはoptionを返す(g: &Org::Graph) {
-    let boss: Option<(Org::PersonRef<'_>, &BossEdge)> =
-        Boss::of(g, &PersonId("bob".to_string()));
+    let boss: Option<(Org::PersonRef<'_>, &BossEdge)> = Boss::of(g, &PersonId("bob".to_string()));
     if let Some((boss_person, attrs)) = boss {
         println!(
             "(each 0..1) Boss::of(&g, &bob) = {} (就任年: {})",

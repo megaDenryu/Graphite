@@ -69,8 +69,9 @@ impl OrgChart::Graph {
         OrgChart::Employee::ids(self)
             .filter(|other| *other != id)
             .filter(|other| {
-                BelongsTo::iter(self)
-                    .any(|edge| edge.employee().id() == *other && edge.department().id() == &department_id)
+                BelongsTo::iter(self).any(|edge| {
+                    edge.employee().id() == *other && edge.department().id() == &department_id
+                })
             })
             .filter_map(|other| OrgChart::Employee::get(self, other))
             .map(|employee| employee.value())
@@ -735,7 +736,10 @@ mod tests {
                 .map(|edge| {
                     (
                         edge.id().clone(),
-                        BelongsTo::new(edge.employee().id().clone(), edge.department().id().clone()),
+                        BelongsTo::new(
+                            edge.employee().id().clone(),
+                            edge.department().id().clone(),
+                        ),
                     )
                 })
                 .collect()

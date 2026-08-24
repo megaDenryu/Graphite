@@ -77,7 +77,10 @@ mod tests {
         let g = build_chart();
         let f = Friends::get(&g, &FriendsId("f1".to_string())).unwrap();
         let (first, second) = f.endpoints();
-        assert_eq!((first.id(), second.id()), (&person("alice"), &person("bob")));
+        assert_eq!(
+            (first.id(), second.id()),
+            (&person("alice"), &person("bob"))
+        );
         assert_eq!(
             Friends::new(person("alice"), person("bob")),
             Friends::new(person("bob"), person("alice"))
@@ -212,7 +215,10 @@ mod tests {
 
         let w = Wire::get(&g, &WireId("w1".to_string())).unwrap();
         let (first, second) = w.endpoints();
-        assert_eq!((first.id(), second.id()), (&person("alice"), &person("bob")));
+        assert_eq!(
+            (first.id(), second.id()),
+            (&person("alice"), &person("bob"))
+        );
         assert_eq!(
             Wire::new(person("alice"), person("bob"), Cable { ohm: 5 }),
             Wire::new(person("bob"), person("alice"), Cable { ohm: 5 })

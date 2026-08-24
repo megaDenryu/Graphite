@@ -99,7 +99,12 @@ impl Engine {
         let dependency_graph: Graph<(), (), CellId> = Graph::from_edges(
             Sheet::Cell::ids(&graph).cloned(),
             Feeds::iter(&graph)
-                .map(|edge| (edge.dependency().id().clone(), edge.dependent().id().clone()))
+                .map(|edge| {
+                    (
+                        edge.dependency().id().clone(),
+                        edge.dependent().id().clone(),
+                    )
+                })
                 .chain(
                     Lhs::iter(&graph)
                         .map(|edge| (edge.operand().id().clone(), edge.operation().id().clone())),

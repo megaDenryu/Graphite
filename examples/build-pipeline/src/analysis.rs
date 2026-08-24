@@ -285,11 +285,8 @@ pub fn critical_path(g: &BuildPipeline::Graph) -> Result<CriticalPath, CycleErro
     let dep_graph = task_dependency_graph(g);
     let order = dep_graph.topological_sort()?;
 
-    let secs_of = |id: &TaskId| -> u32 {
-        BuildPipeline::Task::get(g, id)
-            .map(|t| t.secs)
-            .unwrap_or(0)
-    };
+    let secs_of =
+        |id: &TaskId| -> u32 { BuildPipeline::Task::get(g, id).map(|t| t.secs).unwrap_or(0) };
 
     if order.is_empty() {
         return Ok(CriticalPath {

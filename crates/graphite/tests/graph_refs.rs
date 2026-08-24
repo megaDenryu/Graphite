@@ -70,10 +70,17 @@ fn 日本語名のnoderefとedgerefを生成して完成済み個体を参照で
 #[test]
 fn iterはid付き値タプルではなくgraphに束縛されたrefを返す() {
     let graph = 構築する();
-    let 人物ids: Vec<_> = 世界::人物::iter(&graph).map(|person| person.id().clone()).collect();
-    let 購入ids: Vec<_> = 世界::購入::iter(&graph).map(|purchase| purchase.id().clone()).collect();
+    let 人物ids: Vec<_> = 世界::人物::iter(&graph)
+        .map(|person| person.id().clone())
+        .collect();
+    let 購入ids: Vec<_> = 世界::購入::iter(&graph)
+        .map(|purchase| purchase.id().clone())
+        .collect();
 
-    assert_eq!(人物ids, vec![世界::人物Id("太郎".into()), 世界::人物Id("花子".into())]);
+    assert_eq!(
+        人物ids,
+        vec![世界::人物Id("太郎".into()), 世界::人物Id("花子".into())]
+    );
     assert_eq!(購入ids, vec![世界::購入Id("太郎の購入".into())]);
 }
 
@@ -90,15 +97,24 @@ fn 無向edgerefは方向を持たず両端のnoderefを返す() {
 #[test]
 fn graphの可変借用からノード値と辺の積み荷だけを更新できる() {
     let mut graph = 構築する();
-    世界::人物::get_mut(&mut graph, &世界::人物Id("太郎".into())).unwrap().名前 = "太郎改".into();
-    世界::購入::payload_mut(&mut graph, &世界::購入Id("太郎の購入".into())).unwrap().金額 = 1500;
+    世界::人物::get_mut(&mut graph, &世界::人物Id("太郎".into()))
+        .unwrap()
+        .名前 = "太郎改".into();
+    世界::購入::payload_mut(&mut graph, &世界::購入Id("太郎の購入".into()))
+        .unwrap()
+        .金額 = 1500;
 
     assert_eq!(
-        世界::人物::get(&graph, &世界::人物Id("太郎".into())).unwrap().名前,
+        世界::人物::get(&graph, &世界::人物Id("太郎".into()))
+            .unwrap()
+            .名前,
         "太郎改"
     );
     assert_eq!(
-        世界::購入::get(&graph, &世界::購入Id("太郎の購入".into())).unwrap().payload().金額,
+        世界::購入::get(&graph, &世界::購入Id("太郎の購入".into()))
+            .unwrap()
+            .payload()
+            .金額,
         1500
     );
 }

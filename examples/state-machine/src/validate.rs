@@ -43,12 +43,23 @@ fn project(fsm: &OrderFsm::Graph) -> Graph<(), (), OrderStateId> {
     let nodes: Vec<OrderStateId> = OrderFsm::OrderState::ids(fsm).cloned().collect();
 
     let mut edges: Vec<(OrderStateId, OrderStateId)> = Vec::new();
-    edges.extend(Submit::iter(fsm).map(|edge| (edge.before().id().clone(), edge.after().id().clone())));
-    edges.extend(Pay::iter(fsm).map(|edge| (edge.before().id().clone(), edge.after().id().clone())));
-    edges.extend(Ship::iter(fsm).map(|edge| (edge.before().id().clone(), edge.after().id().clone())));
-    edges.extend(Deliver::iter(fsm).map(|edge| (edge.before().id().clone(), edge.after().id().clone())));
-    edges.extend(Cancel::iter(fsm).map(|edge| (edge.before().id().clone(), edge.after().id().clone())));
-    edges.extend(Refund::iter(fsm).map(|edge| (edge.before().id().clone(), edge.after().id().clone())));
+    edges.extend(
+        Submit::iter(fsm).map(|edge| (edge.before().id().clone(), edge.after().id().clone())),
+    );
+    edges
+        .extend(Pay::iter(fsm).map(|edge| (edge.before().id().clone(), edge.after().id().clone())));
+    edges.extend(
+        Ship::iter(fsm).map(|edge| (edge.before().id().clone(), edge.after().id().clone())),
+    );
+    edges.extend(
+        Deliver::iter(fsm).map(|edge| (edge.before().id().clone(), edge.after().id().clone())),
+    );
+    edges.extend(
+        Cancel::iter(fsm).map(|edge| (edge.before().id().clone(), edge.after().id().clone())),
+    );
+    edges.extend(
+        Refund::iter(fsm).map(|edge| (edge.before().id().clone(), edge.after().id().clone())),
+    );
 
     Graph::from_edges(nodes, edges)
         .expect("OrderFsmのノードキー・6種のエッジの端点キーは常に整合しているはず")

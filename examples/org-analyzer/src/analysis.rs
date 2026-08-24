@@ -278,7 +278,12 @@ pub fn detect_anomalies(org: &OrgChart::Graph) -> AnomalyReport {
 /// 判定には `EmployeeId` の対そのものが要るため、EdgeRefの両端からIDを集める。
 fn detect_mutual_boss_pairs(org: &OrgChart::Graph) -> Vec<(EmployeeId, EmployeeId)> {
     let all: Vec<(EmployeeId, EmployeeId)> = Boss::iter(org)
-        .map(|edge| (edge.subordinate().id().clone(), edge.superior().id().clone()))
+        .map(|edge| {
+            (
+                edge.subordinate().id().clone(),
+                edge.superior().id().clone(),
+            )
+        })
         .collect();
 
     let mut result: Vec<(EmployeeId, EmployeeId)> = Vec::new();
@@ -305,7 +310,10 @@ fn detect_boss_cycles(org: &OrgChart::Graph) -> Vec<Vec<EmployeeId>> {
     let mut graph: Graph<(), (), EmployeeId> = Graph::from_edges(
         OrgChart::Employee::ids(org).cloned(),
         Boss::iter(org).map(|edge| {
-            (edge.subordinate().id().clone(), edge.superior().id().clone())
+            (
+                edge.subordinate().id().clone(),
+                edge.superior().id().clone(),
+            )
         }),
     )
     .expect("Employee::idsは重複せず、Boss::iterの端点は全てEmployee::idsに含まれるはず");
