@@ -1,5 +1,6 @@
 //! `graph!` リテラルの脱糖はノード項ごとに
-//! `let key = __graphite_b.insert("key", 式);` という `let` 束縛を生成する
+//! `let (key, __graphite_named_key) = __graphite_b.insert_named("key", 式, permit);`
+//! という `let` 束縛を生成する
 //! (`crates/graphite-macros/src/instance_codegen.rs` 項目G1)。この束縛は
 //! そのノードが以後のエッジ項で参照されて初めて読まれるため、どのエッジにも
 //! 使われない**孤立ノード**では rustc の `unused variable` 警告が出る。

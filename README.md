@@ -201,8 +201,9 @@ builder (`OrgChart::Builder`)・違反 enum (`OrgChart::Violation`) が置かれ
 優先されます。値側を呼ぶには `(*node_ref).id()` のように `Deref` させます。
 
 `graph!` の左辺名は、完成後も名前付き要素として残ります。ノードと辺の
-どちらも、同じ呼び出しsiteで生成される名前付きwrapperから Graph-bound Refを
-直接取得できます。
+どちらも、同じ呼び出し箇所で生成される名前付きラッパーから `Graph` の借用に
+束縛された参照値 (NodeRef/EdgeRef) を直接取得できます (用語の定義は
+`docs/schema_v4.md` §3.1.1 参照)。
 
 ```rust
 let graph = graphite::graph!(OrgChart {
@@ -215,14 +216,19 @@ graph.alice();      // EmployeeRef<'_>
 graph.assignment(); // BelongsToRef<'_>
 ```
 
-`alice` というRust名、`EmployeeId("external-alice")` という公開ID、freeze後の
+`alice` というRust名、`EmployeeId("external-alice")` という公開ID、凍結後の
 内部位置は別概念です。名前付きアクセサはbuilderが挿入時に記録した内部位置を
-使うため公開IDのhash lookupを行いません。実行時にIDしか分からない場合は
-従来どおり `OrgChart::Employee::get(&graph, &id)` を使います。wrapperは
-`Deref<Target = OrgChart::Graph>` / `DerefMut` を実装するため既存の借用APIへ
-そのまま渡せます。名前付きAPIを関数境界の外へ持ち出さず素の型として返す場合は
-`graph.into_graph()` を明示します。`..items` でspliceした要素は公開IDを保ちますが、
-呼び出しsiteに左辺名が無いため静的アクセサを暗黙生成しません。
+使うため公開IDのハッシュ表での検索を行いません。実行時にIDしか分からない
+場合は従来どおり `OrgChart::Employee::get(&graph, &id)` を使います。名前付き
+ラッパーは `Deref<Target = OrgChart::Graph>` / `DerefMut` を実装するため
+既存の借用APIへそのまま渡せます。
+
+名前付きラッパーの型名は呼び出し箇所ローカルであり、外部から書けません。
+そのためこの型を関数の引数・戻り値の型として書くことができず、名前付き
+ラッパーのまま関数境界を越えることはできません (選択ではなく制約)。関数
+境界では `graph.into_graph()` で素の `OrgChart::Graph` へ戻します。
+`..items` でスプライスした要素は公開IDを保ちますが、呼び出し箇所に左辺名が
+無いため静的アクセサを暗黙生成しません。
 
 **ノード挿入トレイトと総称 `insert`**: builder には型名付きの
 挿入メソッド (`b.employee(id, value)` など、上記の各 `node` 宣言から1つずつ
@@ -253,7 +259,7 @@ rustc の型推論に任せます。実行時のリフレクション・型判�
 参照)。
 
 **ノード値の型・エッジ属性型に対する trait 要求**: `graph_schema!`/`graph!`
-の生成コードはこれらの値を builder → freeze → アクセサへ move/参照で受け
+の生成コードはこれらの値を builder → 凍結 → アクセサへ move/参照で受け
 渡すだけなので、`Clone`/`Debug`/`PartialEq` などの trait を一切要求しません
 (自動生成IDには `Debug + Clone + PartialEq + Eq + Hash` を導出します。明示ID型に必要なのは `Clone + Eq + Hash` だけで、`Debug`・`Display`・文字列変換は要求しません。これはID型の話でノード値の型とは別物です。詳細は後述「キーの設計」参照)。
 テストでの比較・表示のために `#[derive(Debug, Clone, PartialEq)]` を
@@ -275,7 +281,7 @@ schema ごとの生成物は `OrgChart`/`ApprovalFlow` のように別々の Rus
 (`get`/`get_mut`/`ids`/`iter`) はスキーマ module 内のノードマーカーに生えます
 (`OrgChart::Employee::get(&g, ..)`)。ユーザー struct (`Employee` 等) への
 固有 impl は追加しないため、複数 schema が同じ値型を共有できます。
-ここで廃止したのはschema由来のビューAPIであり、`graph!` 左辺名から呼び出しsite
+ここで廃止したのはschema由来のビューAPIであり、`graph!` 左辺名から呼び出し箇所
 ごとに生成される `graph.alice()` のような名前付き静的アクセサとは別物です。
 
 - **`Kind::of(&g, &SrcId)`** — そのエッジ種別の自然な戻り値。
@@ -309,7 +315,7 @@ schema ごとの生成物は `OrgChart`/`ApprovalFlow` のように別々の Rus
 **`create_collecting`**: `create` は最初の1件の違反で `Err`
 になりますが、組織図の全違反を一覧表示するような検証系ユースケースでは
 複数違反をまとめて見たいことがあります。`{Schema}::Graph::create_collecting(|b| { ... }) -> Result<{Schema}::Graph, Vec<{Schema}::Violation>>`
-が同じ builder クロージャを受け取り、freeze 検査を打ち切らず全違反を
+が同じ builder クロージャを受け取り、凍結検査を打ち切らず全違反を
 `Vec` に集めて返します。`create` はこの収集版に委譲し先頭の1件を返す
 薄いラッパーとして実装されています (検証ロジックの二重実装を避けるため)。
 
@@ -330,7 +336,7 @@ let g = graphite::graph!(OrgChart {
     tanaka_dept = BelongsTo(tanaka -> sales),
     sato_dept   = BelongsTo(sato -> sales),
     tanaka_boss = Boss(tanaka -[BossEdge { since: 2020 }]-> sato),
-})?; // 呼び出しsite固有の名前付きwrapper (Deref<Target = OrgChart::Graph>)
+})?; // 呼び出し箇所固有の名前付きラッパー (Deref<Target = OrgChart::Graph>)
 ```
 
 静的項目は `名前 = 値`、またはID値を渡す `名前 @ ID式 = 値` です (`docs/schema_v4.md` §0 規則1)。ノードの名前は
@@ -359,8 +365,8 @@ let g = graphite::graph!(OrgChart {
 })?;
 ```
 
-`graph!` は `OrgChart::Graph::create_named(|__graphite_b| { ... })` と
-呼び出しsiteローカルの名前付きwrapperへ脱糖します。スキーマの中身
+`graph!` は `OrgChart::Graph::create_named(|__graphite_b, __graphite_permit| { ... })` と
+呼び出し箇所ローカルの名前付きラッパーへ脱糖します。スキーマの中身
 (どのエッジが存在するか等) は一切知りません。値の型も一切パースせず、
 `graph_schema!` が生成した総称 `insert_named`/`add_named` メソッド
 (下記) へユーザーの式トークンをそのまま渡すだけです (型推論は rustc に
@@ -371,31 +377,34 @@ let g = graphite::graph!(OrgChart {
 `docs/ide_support_spec.md` 参照)。展開結果はおおよそ次の形になります:
 
 ```rust
-OrgChart::Graph::create_named(|__graphite_b| {
+OrgChart::Graph::create_named(|__graphite_b, __graphite_permit| {
     // (1) 全ノード宣言 (記述順)
     let (tanaka, tanaka_position) =
-        __graphite_b.insert_named("tanaka", Employee { .. });
+        __graphite_b.insert_named("tanaka", Employee { .. }, __graphite_permit);
     let (sales, sales_position) =
-        __graphite_b.insert_named("sales", Department { .. });
+        __graphite_b.insert_named("sales", Department { .. }, __graphite_permit);
     // (2) 全エッジ (記述順)
     let (tanaka_dept, tanaka_dept_position) = __graphite_b.add_named(
         "tanaka_dept",
         <OrgChart::BelongsTo as graphite::DirectedEdgeLiteral<_, _, _>>::from_graph_literal(
             tanaka.clone(), sales.clone(), (),
         ),
+        __graphite_permit,
     );
     let (tanaka_boss, tanaka_boss_position) = __graphite_b.add_named(
         "tanaka_boss",
         <OrgChart::Boss as graphite::DirectedEdgeLiteral<_, _, _>>::from_graph_literal(
             tanaka.clone(), sato.clone(), BossEdge { since: 2020 },
         ),
+        __graphite_permit,
     );
     (tanaka_position, sales_position, tanaka_dept_position, tanaka_boss_position)
 })
 ```
 
-成功時の `(Graph, positions)` はローカルwrapperへ移され、`g.tanaka()` 等は
-型付き位置handleからRefを直接作ります。上の展開図ではwrapperのstruct/implを
+成功時の `(Graph, positions)` はローカルの名前付きラッパーへ移され、`g.tanaka()`
+等は型付き名前付き位置から参照値を直接作ります。上の展開図では名前付き
+ラッパーのstruct/implを
 読みやすさのため省略しています。
 
 `insert`/`add` は `graph_schema!` が各スキーマごとに生成する総称メソッドで、
@@ -409,7 +418,7 @@ rename・参照検索・hover が「普通のローカル変数」として機�
 はエッジをノード宣言より前に書くこともできますが (キー→宣言の対応表は
 全項目を先に走査して作るため)、`let` 束縛は使用より前に必要なので、
 展開そのものは記述順によらず「全ノード → 全エッジ」の2段に並べ替えます
-(builder の検証は freeze 時に行われるため意味論は変わりません)。builder の
+(builder の検証は凍結時に行われるため意味論は変わりません)。builder の
 クロージャ引数名が `b` ではなく `__graphite_b` なのは、ノードキーに `b` を
 使ったときに生成される `let b = ..;` が builder 変数を隠してしまう衝突を
 避けるためです。
@@ -435,7 +444,7 @@ let g = graphite::graph!(OrgChart {
   スプライスの要素は静的な項と異なり名前を持たないため、戻り値のキー列は
   捨てます。
 - 実行順は「全ノードの `let` 束縛列 → 以降、静的な辺の項とスプライスを記述順」
-  です。検証は freeze 時に一括で行われるため意味論は順序に依存しませんが、
+  です。検証は凍結時に一括で行われるため意味論は順序に依存しませんが、
   制約なしの辺の挿入順保証には記述順がそのまま現れます。
 - 詳細は `docs/graph_splice.md` §1 参照。
 
@@ -558,7 +567,7 @@ let result: Result<OrgChart::Graph, Vec<OrgChart::Violation>> = OrgChart::Graph:
 - `node Person(id: EmployeeNumber);` と `edge Knows(id: RelationNumber) = ...;` は既存型を使い、`PersonId` や `KnowsId` を生成しません。明示ID型には `Clone + Eq + Hash` だけが必要です。
 - `graph!` の既定ID項は `alice = Person { ... }` と書き、束縛名 `alice` を内部文字列にします。明示ID項は `alice @ EmployeeNumber(42) = Person { ... }` と書きます。`@` の右側は普通のRust式です。明示ID宣言を `@` なしで使うとコンパイルエラーになります。
 - 既定IDにも `alice @ Org::PersonId("external-name".into()) = ...` と書けば、束縛名とは別の値を渡せます。
-- `insert`・`add`・`extend`・`..式` は文字列から既定IDを作る経路です。明示IDには `insert_with_id`・`add_with_id`、または `graph!` の `@` を使います。splice要素は動的ID経路に残り、静的アクセサを暗黙再公開しません。
+- `insert`・`add`・`extend`・`..式` は文字列から既定IDを作る経路です。明示IDには `insert_with_id`・`add_with_id`、または `graph!` の `@` を使います。スプライス要素は動的ID経路に残り、静的アクセサを暗黙再公開しません。
 
 IDは内部位置ではありません。`KeyedTable` はIDをハッシュキーとして扱い、挿入順は別に保持します。詳細は `docs/node_id_v4_2.md` を参照してください。
 

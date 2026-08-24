@@ -74,6 +74,14 @@ pub fn edge_storage_ident(accessor: &Ident) -> Ident {
     format_ident!("__graphite_{}", accessor, span = accessor.span())
 }
 
+/// `Builder`/`Graph`/名前付き位置型が共通で持つ、構築印 (`u64`) の
+/// 非公開フィールド名を返す。構築印は `graph!` の1回の構築を識別する印で、
+/// 名前付き位置が生成元と異なる `Graph` へ bind されるのを実行時に検出する
+/// ために使う (`crates/graphite/src/lib.rs` の構築印発行関数を参照)。
+pub fn construction_stamp_field_ident(span: proc_macro2::Span) -> Ident {
+    Ident::new("__graphite_construction_stamp", span)
+}
+
 /// `PascalCase` / `camelCase` の識別子を `snake_case` に変換する。
 ///
 /// 例: `Employee` -> `employee`, `OrgChart` -> `org_chart`。
@@ -182,6 +190,14 @@ mod tests {
         assert_eq!(
             edge_storage_ident(&accessor).to_string(),
             "__graphite_belongs_to"
+        );
+    }
+
+    #[test]
+    fn 構築印フィールド名を導出できる() {
+        assert_eq!(
+            construction_stamp_field_ident(proc_macro2::Span::call_site()).to_string(),
+            "__graphite_construction_stamp"
         );
     }
 }

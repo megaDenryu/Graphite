@@ -1,4 +1,4 @@
-error: 識別子 `into_graph` は名前付きグラフを素のGraphへ戻す予約メソッド名です
+error: 識別子 `into_graph` は名前付きグラフを素の `Graph` へ戻す予約メソッド名です。別の名前を付けてください
   --> tests/ui/graph_into_graph_name_is_reserved.rs:12:9
    |
 12 |         into_graph = Person,

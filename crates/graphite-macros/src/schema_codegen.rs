@@ -1,6 +1,7 @@
 //! `graph_schema!` のコード生成本体 (v4、`docs/schema_v4.md` §3 参照。
 //! v4.1 の役割名・無向辺は `docs/edge_endpoints_v4_1.md`、ID 型の既定生成と
-//! 明示指定は `docs/node_id_v4_2.md` 参照)。
+//! 明示指定は `docs/node_id_v4_2.md` 参照)。名前付きラッパー・名前付き位置型・
+//! 呼び出し箇所・凍結の用語定義は `docs/schema_v4.md` §3.1.1 参照。
 //!
 //! ## 生成物の全体像 (1エッジ種別分)
 //!
@@ -37,7 +38,7 @@
 //! 公開IDフィールドを保持する。完成済みの `EdgeRef` は役割名のメソッドで `NodeRef` を返す。
 //! 無向辺 (`Person -- Person`) は
 //! `.endpoints() -> (PersonRef<'_>, PersonRef<'_>)` を生やし、`of`/`between` は
-//! どちらの位置に置かれても対称に検索できる。内部の凍結処理(`freeze`)と検索処理は
+//! どちらの位置に置かれても対称に検索できる。内部の凍結処理 (`freeze()`) と検索処理は
 //! 名前付きフィールドを直接使う。
 //!
 //! 辺はスキーマ module 内の生成型なので固有 impl で読み取り API を生やす。
@@ -68,7 +69,7 @@
 //! 相手はノード値で返す
 //! (キー版は生やさない — `docs/reverse_query.md` の最小方針)。
 //!
-//! 実装は freeze 時に構築・永続化する終点索引 `{accessor}_to_index`
+//! 実装は凍結時に構築・永続化する終点索引 `{accessor}_to_index`
 //! (`ToId -> Vec<KindId>`、`gen_schema_struct`/`gen_directed_edge_freeze_block`
 //! 参照) を検索するだけなので O(1) 償却。この索引は v4.1 で入次数 each 検証
 //! のためだけに一時構築していたものを構造体フィールドとして格上げ・統合した
@@ -79,9 +80,9 @@ use quote::{format_ident, quote, ToTokens};
 use syn::{Ident, Path};
 
 use crate::naming::{
-    each_violation_ident, edge_record_ident, edge_storage_ident, generated_id_ident,
-    graph_type_ident, internal_position_ident, named_position_ident, plural_field_name,
-    reference_ident, to_snake_case,
+    construction_stamp_field_ident, each_violation_ident, edge_record_ident, edge_storage_ident,
+    generated_id_ident, graph_type_ident, internal_position_ident, named_position_ident,
+    plural_field_name, reference_ident, to_snake_case,
 };
 use crate::schema_dsl::{EachSpec, EdgeDecl, EdgePayload, EdgeShape, NodeDecl, SchemaInput};
 use crate::schema_validate::{self, EachSide};
@@ -189,13 +190,13 @@ struct EdgeInfo<'a> {
     /// ノードと同じ `to_snake_case` 変換で導出できる。
     accessor_ident: Ident,
     /// 位置0キー -> その位置0からの (有向: 出る / 無向: 接続する) エッジキー
-    /// 一覧の内部フィールド名。freeze 時に構築する (`docs/schema_v4.md`
+    /// 一覧の内部フィールド名。凍結時に構築する (`docs/schema_v4.md`
     /// §3.2)。有向辺は始点を表す `{accessor}_from_index`、無向辺は方向の
     /// 意味を持たないため `{accessor}_index` とする。
     index_field_ident: Ident,
     /// 位置1キー (終点) -> そこへ入るエッジキー一覧の内部フィールド名
     /// (`{accessor}_to_index`)。**有向辺のみ**構造体フィールドとして持つ
-    /// (無向辺は `index_field_ident` が既に対称なので不要)。freeze 時に
+    /// (無向辺は `index_field_ident` が既に対称なので不要)。凍結時に
     /// 構築・永続化する (`docs/reverse_query.md`)。`{Kind}::sources_of` の
     /// 索引であり、v4.1 で入次数 each 検証のためだけに一時構築していた索引を
     /// これに統合した。
@@ -475,33 +476,40 @@ fn gen_insertable_traits(
 ) -> TokenStream {
     quote! {
         /// 型付き ID を受け取るノード・エッジ共通の挿入トレイト。
+        ///
+        /// `insert_named_with_id` は [`graphite::NamedInsertPermit`] を要求する
+        /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
+        /// `insert_with_id` (許可証不要、名前付き位置を返さない) は独立した
+        /// 実装を持ち、`insert_named_with_id` を経由しない
+        /// (`create` のクロージャから許可証なしで呼べる必要があるため)。
         pub trait #insertable_trait_ident: Sized {
             type Id;
+            #[doc(hidden)]
             type NamedPosition;
 
+            #[doc(hidden)]
             fn insert_named_with_id(
                 self,
                 b: &mut #builder_ident,
                 id: Self::Id,
+                permit: &graphite::NamedInsertPermit,
             ) -> (Self::Id, Self::NamedPosition);
 
-            fn insert_with_id(self, b: &mut #builder_ident, id: Self::Id) -> Self::Id {
-                self.insert_named_with_id(b, id).0
-            }
+            fn insert_with_id(self, b: &mut #builder_ident, id: Self::Id) -> Self::Id;
         }
 
         /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
         /// 実装する。明示ID型には実装せず、文字列変換を要求しない。
         pub trait #default_id_trait_ident: #insertable_trait_ident {
+            #[doc(hidden)]
             fn insert_named_with_binding(
                 self,
                 b: &mut #builder_ident,
                 binding: String,
+                permit: &graphite::NamedInsertPermit,
             ) -> (Self::Id, Self::NamedPosition);
 
-            fn insert_with_binding(self, b: &mut #builder_ident, binding: String) -> Self::Id {
-                self.insert_named_with_binding(b, binding).0
-            }
+            fn insert_with_binding(self, b: &mut #builder_ident, binding: String) -> Self::Id;
         }
     }
 }
@@ -556,6 +564,7 @@ fn gen_node_trait_and_impls(
         let reference = n.reference_ident();
         let internal_position = n.internal_position_ident();
         let named_position = n.named_position_ident();
+        let stamp_field = construction_stamp_field_ident(ty.span());
         // IDE 支援 (`docs/ide_support_spec.md` §1.9, G3 ポリシー): このノード
         // 型への `{Schema}Node`/`{Schema}Insertable` impl が生やすメソッド名は
         // `n.type_ident` (ノード型そのもののトークン) のスパンを持たせる。
@@ -564,6 +573,7 @@ fn gen_node_trait_and_impls(
         // のままでよい (指示どおり、impl 側だけに適用する)。
         let span = ty.span();
         let insert_named_with_id_ident = Ident::new("insert_named_with_id", span);
+        let insert_with_id_ident = Ident::new("insert_with_id", span);
         let get_ident = Ident::new("get", span);
         let get_mut_ident = Ident::new("get_mut", span);
         let ids_ident = Ident::new("ids", span);
@@ -579,12 +589,18 @@ fn gen_node_trait_and_impls(
                         self,
                         b: &mut #builder_ident,
                         binding: String,
+                        permit: &graphite::NamedInsertPermit,
                     ) -> (Self::Id, Self::NamedPosition) {
                         #insertable_trait_ident::insert_named_with_id(
                             self,
                             b,
                             #generated_id(binding),
+                            permit,
                         )
+                    }
+
+                    fn insert_with_binding(self, b: &mut #builder_ident, binding: String) -> Self::Id {
+                        #insertable_trait_ident::insert_with_id(self, b, #generated_id(binding))
                     }
                 }
             }
@@ -600,11 +616,19 @@ fn gen_node_trait_and_impls(
                     self,
                     b: &mut #builder_ident,
                     id: Self::Id,
+                    _permit: &graphite::NamedInsertPermit,
                 ) -> (Self::Id, Self::NamedPosition) {
-                    let named_position = #named_position(#internal_position(b.#field.len()));
+                    let named_position =
+                        #named_position(#internal_position(b.#field.len()), b.#stamp_field);
                     let returned_id = id.clone();
                     b.#accessor(id, self);
                     (returned_id, named_position)
+                }
+
+                fn #insert_with_id_ident(self, b: &mut #builder_ident, id: Self::Id) -> Self::Id {
+                    let returned_id = id.clone();
+                    b.#accessor(id, self);
+                    returned_id
                 }
             }
 
@@ -625,14 +649,14 @@ fn gen_node_trait_and_impls(
                 pub fn #node_ref_id_ident(self) -> &'graph #id_ty {
                     self.graph.#field
                         .get_at(self.internal_position.0)
-                        .expect("NodeRefの内部位置は凍結後に不変のノード表を指す")
+                        .expect("NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)")
                         .0
                 }
 
                 pub fn #node_ref_value_ident(self) -> &'graph super::#ty {
                     self.graph.#field
                         .get_at(self.internal_position.0)
-                        .expect("NodeRefの内部位置は凍結後に不変のノード表を指す")
+                        .expect("NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)")
                         .1
                 }
             }
@@ -643,7 +667,7 @@ fn gen_node_trait_and_impls(
                 fn deref(&self) -> &Self::Target {
                     self.graph.#field
                         .get_at(self.internal_position.0)
-                        .expect("NodeRefの内部位置は凍結後に不変のノード表を指す")
+                        .expect("NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)")
                         .1
                 }
             }
@@ -652,6 +676,9 @@ fn gen_node_trait_and_impls(
                 type Reference<'graph> = #reference<'graph>;
 
                 fn bind<'graph>(&self, graph: &'graph #graph_ident) -> Self::Reference<'graph> {
+                    if graph.#stamp_field != self.1 {
+                        panic!("名前付き位置が生成元と異なる Graph へ bind されました。名前付き位置は生成元の graph! が返したグラフでのみ有効です");
+                    }
                     #reference {
                         graph,
                         internal_position: self.0,
@@ -724,10 +751,12 @@ fn gen_edge_trait_and_impls(
         let reference = e.reference_ident();
         let internal_position = e.internal_position_ident();
         let named_position = e.named_position_ident();
+        let stamp_field = construction_stamp_field_ident(kind.span());
         // 必須ではないが (このメソッドはユーザーが直接呼ぶ想定ではない)、
         // 他の生成メソッドとの一貫性のため `edge.kind` のスパンを付ける
         // (`docs/ide_support_spec.md` §1.9 の指示: 余裕があれば付けてよい)。
         let insert_named_with_id_ident = Ident::new("insert_named_with_id", kind.span());
+        let insert_with_id_ident = Ident::new("insert_with_id", kind.span());
         let default_id_impl = if e.id_ty.is_generated() {
             let generated_id = &e.id_ty.generated_ident;
             quote! {
@@ -736,12 +765,18 @@ fn gen_edge_trait_and_impls(
                         self,
                         b: &mut #builder_ident,
                         binding: String,
+                        permit: &graphite::NamedInsertPermit,
                     ) -> (Self::Id, Self::NamedPosition) {
                         #insertable_trait_ident::insert_named_with_id(
                             self,
                             b,
                             #generated_id(binding),
+                            permit,
                         )
+                    }
+
+                    fn insert_with_binding(self, b: &mut #builder_ident, binding: String) -> Self::Id {
+                        #insertable_trait_ident::insert_with_id(self, b, #generated_id(binding))
                     }
                 }
             }
@@ -757,11 +792,19 @@ fn gen_edge_trait_and_impls(
                     self,
                     b: &mut #builder_ident,
                     id: Self::Id,
+                    _permit: &graphite::NamedInsertPermit,
                 ) -> (Self::Id, Self::NamedPosition) {
-                    let named_position = #named_position(#internal_position(b.#accessor.len()));
+                    let named_position =
+                        #named_position(#internal_position(b.#accessor.len()), b.#stamp_field);
                     let returned_id = id.clone();
                     b.#accessor(id, self);
                     (returned_id, named_position)
+                }
+
+                fn #insert_with_id_ident(self, b: &mut #builder_ident, id: Self::Id) -> Self::Id {
+                    let returned_id = id.clone();
+                    b.#accessor(id, self);
+                    returned_id
                 }
             }
 
@@ -769,6 +812,9 @@ fn gen_edge_trait_and_impls(
                 type Reference<'graph> = #reference<'graph>;
 
                 fn bind<'graph>(&self, graph: &'graph #graph_ident) -> Self::Reference<'graph> {
+                    if graph.#stamp_field != self.1 {
+                        panic!("名前付き位置が生成元と異なる Graph へ bind されました。名前付き位置は生成元の graph! が返したグラフでのみ有効です");
+                    }
                     #reference {
                         graph,
                         internal_position: self.0,
@@ -824,9 +870,13 @@ fn gen_internal_position_types(nodes: &[NodeInfo], edges: &[EdgeInfo<'_>]) -> Ve
         .collect()
 }
 
-/// `graph!` の名前付きwrapperへfreezeをまたいで内部位置を運ぶ型を生成する。
+/// `graph!` の名前付きラッパーへ凍結をまたいで内部位置を運ぶ型を生成する。
 /// フィールドは非公開で、生成された挿入経路と `NamedGraphElement` 実装だけが
-/// 構築・参照する。公開IDやGraphへの参照は保持しない。
+/// 構築・参照する。公開IDや `Graph` への参照は保持しない。
+///
+/// 第2要素は構築印 (`u64`)。挿入時にその場の `Builder` が持つ構築印を
+/// そのまま埋め込み、`NamedGraphElement::bind` が `Graph` 側の構築印と
+/// 照合する (`crates/graphite/src/lib.rs` の構築印発行関数を参照)。
 fn gen_named_position_types(nodes: &[NodeInfo], edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
     nodes
         .iter()
@@ -836,7 +886,7 @@ fn gen_named_position_types(nodes: &[NodeInfo], edges: &[EdgeInfo<'_>]) -> Vec<T
             quote! {
                 #[doc(hidden)]
                 #[derive(Clone, Copy)]
-                pub struct #named_position(#internal_position);
+                pub struct #named_position(#internal_position, u64);
             }
         })
         .chain(edges.iter().map(|edge| {
@@ -845,7 +895,7 @@ fn gen_named_position_types(nodes: &[NodeInfo], edges: &[EdgeInfo<'_>]) -> Vec<T
             quote! {
                 #[doc(hidden)]
                 #[derive(Clone, Copy)]
-                pub struct #named_position(#internal_position);
+                pub struct #named_position(#internal_position, u64);
             }
         }))
         .collect()
@@ -901,14 +951,14 @@ fn edge_reference_core_methods(
         fn record(self) -> &'graph #record {
             self.graph.#accessor
                 .get_at(self.internal_position.0)
-                .expect("EdgeRefの内部位置は凍結後に不変の辺表を指す")
+                .expect("EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)")
                 .1
         }
 
         pub fn #id_ident(self) -> &'graph #id_ty {
             self.graph.#accessor
                 .get_at(self.internal_position.0)
-                .expect("EdgeRefの内部位置は凍結後に不変の辺表を指す")
+                .expect("EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)")
                 .0
         }
     }
@@ -1572,6 +1622,7 @@ fn gen_schema_struct(
     nodes: &[NodeInfo],
     edges: &[EdgeInfo<'_>],
 ) -> TokenStream {
+    let stamp_field = construction_stamp_field_ident(schema_name.span());
     let node_fields = nodes.iter().map(|n| {
         let field = &n.field_ident;
         let id = &n.id_ty;
@@ -1595,7 +1646,7 @@ fn gen_schema_struct(
             let to_key_position = e.to_node.internal_position_ident();
             quote! {
                 ,
-                /// 位置1キー (終点) -> そこへ入るエッジキーの一覧 (freeze 時に
+                /// 位置1キー (終点) -> そこへ入るエッジキーの一覧 (凍結時に
                 /// 構築。`{Kind}::sources_of` の索引、`docs/reverse_query.md`)。
                 #to_index_field: std::collections::HashMap<#to_key_position, Vec<#edge_position>>
             }
@@ -1605,7 +1656,7 @@ fn gen_schema_struct(
         quote! {
             #accessor: graphite::KeyedTable<#id_ty, #record>,
             /// 位置0キー -> このキーから (有向: 出る / 無向: 接続する) エッジ
-            /// キーの一覧 (freeze 時に構築)。
+            /// キーの一覧 (凍結時に構築)。
             #index_field: std::collections::HashMap<#key_position, Vec<#edge_position>>
             #to_index_decl
         }
@@ -1617,13 +1668,17 @@ fn gen_schema_struct(
         pub struct #schema_name {
             #(#node_fields,)*
             #(#edge_fields,)*
+            /// この `Graph` を生んだ構築の構築印。凍結元の `Builder` から
+            /// そのまま引き継ぐ。名前付き位置がこの `Graph` の生成元と一致
+            /// するかを `NamedGraphElement::bind` が照合するのに使う。
+            #stamp_field: u64,
         }
     }
 }
 
 /// スキーマ struct 本体の impl。IDによる動的読み取りは型名前空間の関連関数、
-/// `graph!` 左辺名の静的読み取りは呼び出しsite wrapperへ生成するため、素の
-/// Graphには個別アクセサを生やさない。ここには構築経路だけを置く。
+/// `graph!` 左辺名の静的読み取りは呼び出し箇所のラッパーへ生成するため、素の
+/// `Graph` には個別アクセサを生やさない。ここには構築経路だけを置く。
 fn gen_schema_impl(
     schema_name: &Ident,
     violation_ident: &Ident,
@@ -1644,16 +1699,17 @@ fn gen_schema_impl(
                 builder.freeze()
             }
 
-            /// `graph!` が名前付き要素の位置handleを凍結境界の外へ運ぶための
-            /// 内部構築経路。Graphの凍結に成功した場合だけhandleを返す。
+            /// `graph!` が名前付き要素の名前付き位置を凍結境界の外へ運ぶための
+            /// 内部構築経路。`Graph` の凍結に成功した場合だけ名前付き位置を返す。
+            /// [`graphite::build_named_graph`] へ薄く委譲するだけで、
+            /// [`graphite::NamedInsertPermit`] はそちらでしか作らない
+            /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
             #[doc(hidden)]
             pub fn create_named<F, N>(f: F) -> Result<(Self, N), #violation_ident>
             where
-                F: for<'b> FnOnce(&'b mut #builder_ident) -> N,
+                F: for<'b> FnOnce(&'b mut #builder_ident, &'b graphite::NamedInsertPermit) -> N,
             {
-                let mut builder = #builder_ident::new();
-                let named_positions = f(&mut builder);
-                builder.freeze().map(|graph| (graph, named_positions))
+                graphite::build_named_graph(#builder_ident::new, f)
             }
 
             /// [`Self::create`] の複数違反収集版。builder をクロージャに
@@ -1676,6 +1732,7 @@ fn gen_builder_struct(
     nodes: &[NodeInfo],
     edges: &[EdgeInfo<'_>],
 ) -> TokenStream {
+    let stamp_field = construction_stamp_field_ident(builder_ident.span());
     let node_fields = nodes.iter().map(|n| {
         let field = &n.field_ident;
         let id = &n.id_ty;
@@ -1690,10 +1747,14 @@ fn gen_builder_struct(
     });
 
     quote! {
-        /// 構築用 builder。凍結 (`freeze`) までは where 制約検査を一切行わない。
+        /// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
         pub struct #builder_ident {
             #(#node_fields,)*
             #(#edge_fields,)*
+            /// この構築を識別する構築印。`Builder::new()` が発行し、この
+            /// builder から挿入する全ての名前付き位置と、凍結成功後の
+            /// `Graph` へ同じ値を刻む。
+            #stamp_field: u64,
         }
     }
 }
@@ -1745,6 +1806,7 @@ fn gen_builder_impl(
     });
 
     let freeze_body = gen_freeze_body(schema_name, violation_ident, nodes, edges);
+    let stamp_field = construction_stamp_field_ident(builder_ident.span());
 
     quote! {
         impl #builder_ident {
@@ -1752,6 +1814,7 @@ fn gen_builder_impl(
                 Self {
                     #(#node_field_inits,)*
                     #(#edge_field_inits,)*
+                    #stamp_field: graphite::次の構築印を発行する(),
                 }
             }
 
@@ -1759,12 +1822,15 @@ fn gen_builder_impl(
             #(#edge_methods)*
 
             /// 型名付きメソッド (`b.#accessor(id, value)` 群、上記
-            /// `#node_methods`) の総称版。`graph!` はノード項の値の型を
-            /// 一切パースしないため (`key = 式` の「式」でしかない)、この
-            /// メソッドで値の型 (`N: #node_trait_ident`) から正しい内部
-            /// ストレージへの振り分けを rustc の型推論任せにする。
-            /// 命名判断・trait の形は `gen_node_trait_and_impls` の
-            /// ドキュメントコメント参照。
+            /// `#node_methods`) の総称版。`graph!` の左辺名付きノード項は
+            /// 下記 `insert_named` (名前付き位置を返す許可証付き経路) へ
+            /// 脱糖するため、このメソッド自体は `graph!` を経由しない。
+            /// 値の型を手書きで組み立てる場合 (プログラム的構築など) に使う。
+            /// `graph!` はノード項の値の型を一切パースしないため
+            /// (`key = 式` の「式」でしかない)、値の型 (`N: #node_trait_ident`)
+            /// から正しい内部ストレージへの振り分けを rustc の型推論任せに
+            /// する点は `insert_named` と共通。命名判断・trait の形は
+            /// `gen_node_trait_and_impls` のドキュメントコメント参照。
             pub fn insert<N>(&mut self, key: impl Into<String>, value: N) -> N::Id
             where
                 N: #node_trait_ident + #default_id_trait_ident,
@@ -1773,37 +1839,47 @@ fn gen_builder_impl(
             }
 
             /// `graph!` が公開IDと名前付き要素の内部位置を同時に受け取る経路。
+            /// [`graphite::NamedInsertPermit`] を要求する
+            /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
             #[doc(hidden)]
             pub fn insert_named<N>(
                 &mut self,
                 key: impl Into<String>,
                 value: N,
+                permit: &graphite::NamedInsertPermit,
             ) -> (N::Id, N::NamedPosition)
             where
                 N: #node_trait_ident + #default_id_trait_ident,
             {
-                value.insert_named_with_binding(self, key.into())
+                value.insert_named_with_binding(self, key.into(), permit)
             }
 
-            /// `@ ID式` を書いたノード項の脱糖先。明示ID型と既定ID型の
-            /// どちらにも使える。
+            /// 明示ID型と既定ID型のどちらにも使える、ID指定ノード挿入の
+            /// 手書き用API。`graph!` の `@ ID式` を書いたノード項は下記
+            /// `insert_named_with_id` へ脱糖するため、このメソッド自体は
+            /// `graph!` を経由しない。
             pub fn insert_with_id<N: #node_trait_ident>(&mut self, id: N::Id, value: N) -> N::Id {
                 value.insert_with_id(self, id)
             }
 
             /// `graph!` の `@ ID式` 付きノードを名前付き位置と共に挿入する経路。
+            /// [`graphite::NamedInsertPermit`] を要求する
+            /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
             #[doc(hidden)]
             pub fn insert_named_with_id<N: #node_trait_ident>(
                 &mut self,
                 id: N::Id,
                 value: N,
+                permit: &graphite::NamedInsertPermit,
             ) -> (N::Id, N::NamedPosition) {
-                value.insert_named_with_id(self, id)
+                value.insert_named_with_id(self, id, permit)
             }
 
             /// `insert` のエッジ版。`graph!` の辺行 `key = Kind(from -> to)`
             /// は名前付きフィールドの辺値型を関連コンストラクタで構築したあと、
-            /// この総称メソッドへ脱糖する (`docs/schema_v4.md` §2/§3.2)。
+            /// 下記 `add_named` へ脱糖する (`docs/schema_v4.md` §2/§3.2)。
+            /// このメソッド自体は値の型から内部ストレージへ振り分ける総称
+            /// ディスパッチを提供する手書き用APIで、`graph!` を直接経由しない。
             pub fn add<E>(&mut self, key: impl Into<String>, value: E) -> E::Id
             where
                 E: #edge_trait_ident + #default_id_trait_ident,
@@ -1812,38 +1888,46 @@ fn gen_builder_impl(
             }
 
             /// `graph!` が公開IDと名前付き辺の内部位置を同時に受け取る経路。
+            /// [`graphite::NamedInsertPermit`] を要求する
+            /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
             #[doc(hidden)]
             pub fn add_named<E>(
                 &mut self,
                 key: impl Into<String>,
                 value: E,
+                permit: &graphite::NamedInsertPermit,
             ) -> (E::Id, E::NamedPosition)
             where
                 E: #edge_trait_ident + #default_id_trait_ident,
             {
-                value.insert_named_with_binding(self, key.into())
+                value.insert_named_with_binding(self, key.into(), permit)
             }
 
-            /// `@ ID式` を書いたエッジ項の脱糖先。明示ID型と既定ID型の
-            /// どちらにも使える。
+            /// 明示ID型と既定ID型のどちらにも使える、ID指定エッジ挿入の
+            /// 手書き用API。`graph!` の `@ ID式` を書いたエッジ項は下記
+            /// `add_named_with_id` へ脱糖するため、このメソッド自体は
+            /// `graph!` を経由しない。
             pub fn add_with_id<E: #edge_trait_ident>(&mut self, id: E::Id, value: E) -> E::Id {
                 value.insert_with_id(self, id)
             }
 
             /// `graph!` の `@ ID式` 付き辺を名前付き位置と共に挿入する経路。
+            /// [`graphite::NamedInsertPermit`] を要求する
+            /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
             #[doc(hidden)]
             pub fn add_named_with_id<E: #edge_trait_ident>(
                 &mut self,
                 id: E::Id,
                 value: E,
+                permit: &graphite::NamedInsertPermit,
             ) -> (E::Id, E::NamedPosition) {
-                value.insert_named_with_id(self, id)
+                value.insert_named_with_id(self, id, permit)
             }
 
             /// `insert`/`add` のイテレータ版 (`docs/bulk_construction.md`、
             /// `docs/graph_splice.md` §2)。実行時データからの構築で for
             /// ループが構築コードに残るのを避けるため、要素単位 API の反復に
-            /// 完全に一致する意味論 (挿入順保持・検証は freeze 時) をまとめて
+            /// 完全に一致する意味論 (挿入順保持・検証は凍結時) をまとめて
             /// 提供する。ノード用・エッジ用の呼び分けが要らない単一の総称
             /// メソッドに統一している (v4 破壊的変更、旧 `extend_nodes`/
             /// `extend_edges` は廃止): 値の型が既定IDを生成できれば
@@ -1857,11 +1941,23 @@ fn gen_builder_impl(
                 K: Into<String>,
                 T: #default_id_trait_ident,
             {
-                // splice要素は公開IDだけを持ち、名前付き位置handleを返さない。
+                // スプライス要素は公開IDだけを持ち、名前付き位置を返さない。
                 items.into_iter().map(|(k, v)| v.insert_with_binding(self, k.into())).collect()
             }
 
             #freeze_body
+        }
+
+        /// [`graphite::build_named_graph`] が `#schema_name`/`#violation_ident`
+        /// の具体型を知らずに凍結を呼べるようにするための橋渡し。
+        /// `freeze_into_graph` は既存の私有 `freeze()` (上記) へそのまま委譲する。
+        impl graphite::FreezableBuilder for #builder_ident {
+            type Graph = #schema_name;
+            type Violation = #violation_ident;
+
+            fn freeze_into_graph(self) -> Result<Self::Graph, Self::Violation> {
+                self.freeze()
+            }
         }
     }
 }
@@ -1883,7 +1979,7 @@ fn gen_each_type_check(edge: &EdgeInfo<'_>) -> TokenStream {
     quote! { #(#checks)* }
 }
 
-/// 有向辺1種別分の freeze 検査本体を生成する。
+/// 有向辺1種別分の凍結検査本体を生成する。
 ///
 /// 手順:
 /// 1. `Vec<(KindId, Kind)>` から `KeyedTable<KindId, Kind>` を構築 (重複キー
@@ -2038,7 +2134,7 @@ fn gen_directed_edge_freeze_block(
     }
 }
 
-/// 無向辺1種別分の freeze 検査本体を生成する
+/// 無向辺1種別分の凍結検査本体を生成する
 /// (`docs/edge_endpoints_v4_1.md` §2)。
 ///
 /// 位置0/1索引 (`{accessor}_index`) は「その位置0キーに (有向の from_index
@@ -2192,13 +2288,16 @@ fn gen_freeze_body(
         })
         .collect();
 
+    let stamp_field = construction_stamp_field_ident(schema_name.span());
+
     quote! {
         /// 検証ロジックの実体。最初の1件で打ち切らず全違反を `Vec` に
-        /// 集めて返す。`freeze` (単一エラー版) はこちらに委譲し先頭の1件を
+        /// 集めて返す。`freeze()` (単一エラー版) はこちらに委譲し先頭の1件を
         /// 取り出すだけの薄いラッパーにすることで、検証ロジックが二重実装に
         /// ならないようにしている。
         fn freeze_collecting(self) -> Result<#schema_name, Vec<#violation_ident>> {
             let mut __violations: Vec<#violation_ident> = Vec::new();
+            let #stamp_field = self.#stamp_field;
 
             #(#node_table_builds)*
             #(#edge_blocks)*
@@ -2211,6 +2310,7 @@ fn gen_freeze_body(
                 #(#node_field_names,)*
                 #(#edge_field_inits,)*
                 #(#edge_index_names,)*
+                #stamp_field,
             })
         }
 
@@ -2269,7 +2369,7 @@ fn gen_edge_payload_mut_method(
 /// 有向辺の読み取り API。`docs/schema_v4.md` §3.2 の where 制約 → 戻り型
 /// 対応表をそのまま実装する。`of`/`get_of` の戻り型は常に「出次数
 /// (`each_side == Source`)」の制約のみを見る (`docs/edge_endpoints_v4_1.md`
-/// §1: 入次数制約は freeze 検証のみに使われ、`of` の戻り型には影響しない —
+/// §1: 入次数制約は凍結検証のみに使われ、`of` の戻り型には影響しない —
 /// `of` は常に始点側キーで検索するため)。
 fn gen_directed_edge_query_impl(
     schema_name: &Ident,

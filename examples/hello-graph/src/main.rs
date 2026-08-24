@@ -157,24 +157,29 @@ fn main() {
 // ```
 //
 // は次のように展開されます (実装が生成する呼び出し形。`__graphite_b` が
-// builder、`clone()` は端点のキーを渡すため):
+// builder、`__graphite_permit` は名前付き位置を積む操作の許可証
+// (`crates/graphite/src/lib.rs` の `NamedInsertPermit` 参照)、`clone()` は
+// 端点のキーを渡すため):
 //
 // ```rust
-// let (tanaka_boss, tanaka_boss_position) = __graphite_b.add_named(
+// #[allow(unused_variables)]
+// let (tanaka_boss, __graphite_named_tanaka_boss) = __graphite_b.add_named(
 //     "tanaka_boss",
 //     <Org::Boss as graphite::DirectedEdgeLiteral<_, _, _>>::from_graph_literal(
 //         bob.clone(),
 //         alice.clone(),
 //         promo,
 //     ),
+//     __graphite_permit,
 // );
 // ```
 //
 // `tanaka_boss` はここで `Boss` の値そのものではなく **`BossId`** に束縛され、
-// `tanaka_boss_position` はfreeze後の静的アクセサへ運ばれます。ノード行
+// `__graphite_named_tanaka_boss` は凍結後の静的アクセサへ運ばれます。ノード行
 // (`alice = Person { .. }`) も同じ形で
-// `__graphite_b.insert_named("alice", Person { .. })` に展開され、構築中の
-// `alice` は `PersonId`、完成後の `g.alice()` は `PersonRef` を返します。
+// `__graphite_b.insert_named("alice", Person { .. }, __graphite_permit)` に
+// 展開され、構築中の `alice` は `PersonId`、完成後の `g.alice()` は
+// `PersonRef` を返します。
 //
 // ## 2. 辺は名前付きフィールドの構造体として実在する
 //

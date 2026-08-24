@@ -108,3 +108,42 @@ fn into_graphで名前付きapiを捨てて公開境界へ素のgraphを渡せ�
     let graph: NamedWorld::Graph = named.into_graph();
     assert!(NamedWorld::Person::get(&graph, &PersonId("alice".into())).is_some());
 }
+
+#[test]
+#[deny(non_snake_case)]
+fn 大文字始まりの左辺名でも内部生成コードは警告を出さない() {
+    let graph = graphite::graph!(NamedWorld {
+        Alice = Person { name: "Alice".into() },
+    })
+    .expect("大文字始まりの左辺名でも構築できるはず");
+
+    assert_eq!(graph.Alice().name, "Alice");
+}
+
+#[test]
+#[should_panic(expected = "生成元と異なる Graph")]
+fn 名前付き位置を生成元と異なるgraphへbindするとpanicする() {
+    use graphite::NamedGraphElement;
+
+    // `graph!` を経由せず `create_named` を手書きで直接呼び、名前付き位置を
+    // クロージャの外へ持ち出す取り違え経路の再現。
+    let (_graph_a, alice_position) = NamedWorld::Graph::create_named(|b, permit| {
+        let (_, position) = b.insert_named(
+            "alice",
+            Person {
+                name: "Alice".into(),
+            },
+            permit,
+        );
+        position
+    })
+    .expect("グラフAを構築できるはず");
+
+    let (graph_b, _) = NamedWorld::Graph::create_named(|b, permit| {
+        b.insert_named("bob", Person { name: "Bob".into() }, permit);
+    })
+    .expect("グラフBを構築できるはず");
+
+    // 同じschemaの別グラフへ bind すると、構築印の不一致でpanicするはず。
+    alice_position.bind(&graph_b);
+}

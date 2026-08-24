@@ -9,7 +9,7 @@ Graphite 全体を貫く最上位方針である。フェーズ5後半でこの�
 Graphite は `../Bullet/docs/rust_graph_extension_sketch.md` /
 `../Bullet/docs/graph_design_sketches.md` (Vertex 側の設計検討文書) から派生した
 プロジェクトである。`graph_design_sketches.md` の「決定まとめ」(同ノード同一性 =
-ユーザーキー、可変性 = クロージャスコープ builder→凍結、多重度 = freeze で一括検査
+ユーザーキー、可変性 = クロージャスコープ builder→凍結、多重度 = 凍結で一括検査
 等) は、いずれも「グラフ固有の新発明を持ち込まず、既存の Rust の型システムと
 所有権にそのまま乗せる」という一貫した態度の産物であり、Graphite の
 `graph_schema!`/`graph!` はその態度をマクロ生成コードとして実装したものである。
@@ -109,11 +109,12 @@ Rust 的な型安全性そのものを失う。
 手書きの struct 定義・builder メソッド呼び出し列になる」マクロであり、
 生成コードは実行時に一切マクロ固有のランタイム (リフレクション用メタデータ、
 動的ディスパッチテーブル等) を必要としない。`graph!` が生成する
-`SchemaName::create_named(|b| { ... })` の呼び出し列と、呼び出しsiteローカルの
-名前付きwrapperへ脱糖される。wrapperは素のGraphと種別専用の内部位置handleだけを
-値として保持し、`Deref` と通常の固有メソッドでRefを構築する。利用者が同じ
-struct・builder呼び出し・trait implを手で書ける形であり、実行時リフレクションや
-動的ディスパッチは追加しない。
+`SchemaName::create_named(|b, permit| { ... })` の呼び出し列と、呼び出し箇所
+ローカルの名前付きラッパーへ脱糖される (用語は `docs/schema_v4.md` §3.1.1)。
+名前付きラッパーは素の `Graph` と種別専用の名前付き位置型だけを値として保持し、
+`Deref` と通常の固有メソッドで参照値を構築する。利用者が同じ struct・builder
+呼び出し・trait implを手で書ける形であり、実行時リフレクションや動的
+ディスパッチは追加しない。
 
 ## 適用時の判断フロー
 

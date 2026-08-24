@@ -1,19 +1,22 @@
 //! `graph!` のコード生成本体 (v4、`docs/schema_v4.md` §2 参照。スプライス項は
-//! v4.2、`docs/graph_splice.md` §1)。
+//! v4.2、`docs/graph_splice.md` §1)。名前付きラッパー・名前付き位置型・
+//! 呼び出し箇所・凍結の用語定義は `docs/schema_v4.md` §3.1.1 参照。
 //!
-//! `SchemaName::Graph::create_named(|__graphite_b| { ... })` と、呼び出しsite
-//! ごとの名前付きwrapper型へ脱糖する。wrapperは素のGraphと静的項ごとの
-//! 型付き内部位置handleを所有し、左辺名のメソッドからGraph-bound Refを返す。
+//! `SchemaName::Graph::create_named(|__graphite_b, __graphite_permit| { ... })`
+//! と、呼び出し箇所ごとの名前付きラッパー型へ脱糖する。名前付きラッパーは
+//! 素の `Graph` と静的項ごとの型付き名前付き位置を所有し、左辺名のメソッドから
+//! `Graph` の借用に束縛された参照値 (`NodeRef`/`EdgeRef`) を返す。
 //!
 //! ノード項・エッジの積み荷の値はいずれもユーザーの式トークンをそのまま
 //! 埋め込むだけで、値の型はマクロが一切パースしない。ノード項は
-//! `graph_schema!` が生成した総称 `insert` メソッド (`schema_codegen.rs::
+//! `graph_schema!` が生成した総称 `insert_named` メソッド (`schema_codegen.rs::
 //! gen_node_trait_and_impls` 参照) にキー文字列と値の式をそのまま渡し、
-//! `N::Id` の型推論を rustc に委ねる。
+//! `N::Id` の型推論を rustc に委ねる (許可証付き経路の詳細は
+//! `crates/graphite/src/lib.rs` の `NamedInsertPermit` 参照)。
 //!
 //! エッジ項 (`key = Kind(from -> to)` / `key = Kind(from -[式]-> to)`) は
 //! 名前付きフィールドの辺値型を、柄に対応する内部コンストラクタで構築したあと、
-//! 同じ形の総称 `add` メソッド (`schema_codegen.rs::gen_edge_trait_and_impls`
+//! 同じ形の総称 `add_named` メソッド (`schema_codegen.rs::gen_edge_trait_and_impls`
 //! 参照) へ渡す。**辺の名前も (ノードと同様) 常にキーの束縛**
 //! (`docs/schema_v4.md` §0 規則1) なので、エッジ項も `let key = ..;` を生成する。
 //!
@@ -30,25 +33,31 @@
 //! 機能する:
 //!
 //! ```text
-//! Org::Graph::create_named(|__graphite_b| {
+//! Org::Graph::create_named(|__graphite_b, __graphite_permit| {
 //!     // (1) 全ノード宣言 (記述順)
-//!     let (alice, alice_position) = __graphite_b.insert_named("alice", Person { .. });
-//!     let (eng, eng_position) = __graphite_b.insert_named("eng", Team { .. });
+//!     let (alice, alice_position) =
+//!         __graphite_b.insert_named("alice", Person { .. }, __graphite_permit);
+//!     let (eng, eng_position) =
+//!         __graphite_b.insert_named("eng", Team { .. }, __graphite_permit);
 //!     // (2) 全エッジとスプライスを記述順に (`docs/graph_splice.md` §1)
-//!     let (a_team, a_team_position) =
-//!         __graphite_b.add_named("a_team", BelongsTo(alice.clone(), eng.clone()));
+//!     let (a_team, a_team_position) = __graphite_b.add_named(
+//!         "a_team",
+//!         BelongsTo(alice.clone(), eng.clone()),
+//!         __graphite_permit,
+//!     );
 //!     __graphite_b.extend(staff);
 //!     (alice_position, eng_position, a_team_position)
 //! })
 //! ```
 //!
-//! freeze成功後、この `(Graph, positions)` をローカルwrapperへ移す。静的
-//! アクセサは位置handleからRefを直接構築し、公開IDのhash lookupを行わない。
-//! スプライスはhandleを返さないため、元の名前を暗黙再公開しない。
+//! 凍結成功後、この `(Graph, positions)` をローカルの名前付きラッパーへ移す。
+//! 静的アクセサは名前付き位置から参照値を直接構築し、公開IDのハッシュ表での
+//! 検索を行わない。スプライスは名前付き位置を返さないため、元の名前を
+//! 暗黙再公開しない。
 //!
 //! エッジはノードキー (`from`/`to`) を参照するため、`let` 束縛は使用より
 //!前に定義されている必要がある。よって展開は「全ノード → (全エッジ+全
-//! スプライスを記述順)」の2段に並べ替える (builder の検証は freeze 時なので
+//! スプライスを記述順)」の2段に並べ替える (builder の検証は凍結時なので
 //! 意味論は変わらない。スプライスの (0..*) 系の挿入順保証には第2段内の記述順
 //! がそのまま現れる、`docs/graph_splice.md` §1)。
 //!
@@ -107,7 +116,7 @@ fn collect_declared_keys(items: &[GraphItem]) -> syn::Result<(HashSet<String>, H
         if key_str == "into_graph" {
             return Err(syn::Error::new(
                 key.span(),
-                "識別子 `into_graph` は名前付きグラフを素のGraphへ戻す予約メソッド名です",
+                "識別子 `into_graph` は名前付きグラフを素の `Graph` へ戻す予約メソッド名です。別の名前を付けてください",
             ));
         }
         if let Some(&prev_span) = key_spans.get(&key_str) {
@@ -167,11 +176,15 @@ pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<Token
                 // `unused variable` を出すが、これはユーザーのグラフ設計
                 // の問題ではなくノイズなので抑制する。
                 let call = match explicit_id {
-                    Some(id) => quote! { __graphite_b.insert_named_with_id(#id, #value) },
-                    None => quote! { __graphite_b.insert_named(#key_str, #value) },
+                    Some(id) => {
+                        quote! { __graphite_b.insert_named_with_id(#id, #value, __graphite_permit) }
+                    }
+                    None => {
+                        quote! { __graphite_b.insert_named(#key_str, #value, __graphite_permit) }
+                    }
                 };
                 node_calls.push(quote! {
-                    #[allow(unused_variables)]
+                    #[allow(unused_variables, non_snake_case)]
                     let (#key_ident, #named_position) = #call;
                 });
                 named_keys.push(key_ident);
@@ -240,15 +253,19 @@ pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<Token
                 // ノード同様、どこからも参照されない辺キーは
                 // `unused variable` 警告のノイズになるため抑制する。
                 let call = match explicit_id {
-                    Some(id) => quote! { __graphite_b.add_named_with_id(#id, #ctor) },
+                    Some(id) => {
+                        quote! { __graphite_b.add_named_with_id(#id, #ctor, __graphite_permit) }
+                    }
                     // 既定IDを生成できない場合のtrait boundエラーは、macro呼び出し
                     // 全体ではなく、利用者が修正すべきエッジ種別名へ結び付ける。
                     None => {
-                        quote_spanned! { kind.span()=> __graphite_b.add_named(#key_str, #ctor) }
+                        quote_spanned! { kind.span()=>
+                            __graphite_b.add_named(#key_str, #ctor, __graphite_permit)
+                        }
                     }
                 };
                 rest_calls.push(quote! {
-                    #[allow(unused_variables)]
+                    #[allow(unused_variables, non_snake_case)]
                     let (#key_ident, #named_position) = #call;
                 });
                 named_keys.push(key_ident);
@@ -292,6 +309,7 @@ pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<Token
         quote! {}
     } else {
         quote! {
+            #[allow(non_snake_case)]
             impl<#(#wrapper_parameters),*> #wrapper_ident<#schema_name::#graph_ident #(, #wrapper_parameters)*>
             where
                 #(#wrapper_parameters: graphite::NamedGraphElement<#schema_name::#graph_ident>),*
@@ -302,6 +320,7 @@ pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<Token
     };
 
     Ok(quote! {{
+        #[allow(non_snake_case)]
         struct #wrapper_ident<__GraphiteGraph #(, #wrapper_parameters)*> {
             __graphite_graph: __GraphiteGraph,
             #(#named_positions: #wrapper_parameters,)*
@@ -335,14 +354,21 @@ pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<Token
 
         #accessor_impl
 
-        #schema_name::#graph_ident::create_named(|__graphite_b| {
+        #schema_name::#graph_ident::create_named(|__graphite_b, __graphite_permit| {
             #(#node_calls)*
             #(#rest_calls)*
             (#(#named_positions,)*)
         })
-        .map(|(__graphite_graph, (#(#named_positions,)*))| #wrapper_ident {
-            __graphite_graph,
-            #(#named_positions,)*
+        .map(|(__graphite_graph, __graphite_named_positions)| {
+            // クロージャの引数パターンには文単位の属性を付けられないため、
+            // 一度この let へ受けてから #[allow(non_snake_case)] を付ける
+            // (左辺名を再利用する位置束縛は大文字始まりでもありうる、A2)。
+            #[allow(non_snake_case)]
+            let (#(#named_positions,)*) = __graphite_named_positions;
+            #wrapper_ident {
+                __graphite_graph,
+                #(#named_positions,)*
+            }
         })
     }})
 }

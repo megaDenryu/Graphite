@@ -77,16 +77,16 @@ let g = graphite::graph!(Org {
     b_team = BelongsTo(bob -> eng),
     b_boss = Boss(bob -[promo]-> alice),
     lead @ ExistingRelationId(8) = Assigned(alice -[Role { name: "lead".into() }]-> proj),
-});
+})?;
 
-let alice_ref = g.alice(); // PersonRef<'_>: 公開IDのhash lookupなし
+let alice_ref = g.alice(); // PersonRef<'_>: 公開IDのハッシュ表での検索なし
 let lead_ref = g.lead();   // AssignedRef<'_>
 ```
 
 - 静的項目は `名前 = 値`、または明示IDを渡す `名前 @ ID式 = 値`。名前は構築中のノード/辺ID束縛であると同時に、完成後の静的アクセサ名になる。
-- `graph!` は呼び出しsiteごとの名前集合を持つローカルwrapperを返す。wrapperは `Deref<Target = Org::Graph>` / `DerefMut` と `into_graph()` を持つ。公開境界で素の `Org::Graph` を返す場合は `graph.into_graph()` を明示する。
-- 静的アクセサはbuilderへのpush時に得た種別専用の内部位置handleからNodeRef/EdgeRefを直接作る。公開ID索引を検索しない。名前と公開ID値は独立している。
-- `..式` の要素は公開IDを保持するが左辺名を持たないため、新wrapperへ静的アクセサを再公開しない。
+- `graph!` は呼び出し箇所ごとの名前集合を持つローカルの名前付きラッパーを返す (用語は §3.1.1)。名前付きラッパーは `Deref<Target = Org::Graph>` / `DerefMut` と `into_graph()` を持つ。公開境界で素の `Org::Graph` を返す場合は `graph.into_graph()` を明示する。
+- 静的アクセサはbuilderへの追加時に得た種別専用の名前付き位置型からNodeRef/EdgeRefを直接作る。公開ID索引を検索しない。名前と公開ID値は独立している。
+- `..式` の要素は公開IDを保持するが左辺名を持たないため、新しい名前付きラッパーへ静的アクセサを再公開しない。
 - 辺リテラルは `Kind(from -> to)` / `Kind(from -[積み荷式]-> to)`。
   `graph!` はこれを柄に対応する辺リテラルトレイトの構築関数へ脱糖する。
   スキーマ宣言と柄の向きが一致しなければコンパイルエラーになる。
@@ -117,13 +117,32 @@ let lead_ref = g.lead();   // AssignedRef<'_>
 以下、ノード種別ごとの `{Node}Ref<'graph>` を NodeRef、辺種別ごとの
 `{Kind}Ref<'graph>` を EdgeRef と総称する。
 
-freeze は公開IDを種別専用の位置へ変換する。完成済み辺記録と索引は位置を保持するため、`NodeRef` または `EdgeRef` を得た後の端点走査では公開IDのハッシュ検索を行わない。どちらの参照型も `&Graph` と位置だけを持つ `Copy + Clone` の値であり、ヒープ確保、自己参照、`Rc`、`RefCell`、実行時リフレクションを使わない。
+### 3.1.1 用語
+
+生成物を指す4つの用語をここで定義する。他ファイルで生成物に触れる場合は
+この節を指す (「参照: `docs/schema_v4.md` §3.1.1」)。
+
+- **名前付きラッパー**とは、`graph!` の呼び出しごとにマクロが生成する構造体
+  のことである。素の `Graph` を保持し、左辺名と同名のメソッドで参照を返し、
+  `Deref`/`DerefMut` で素の `Graph` の操作を使え、`into_graph()` で素の
+  `Graph` を取り出せる。
+- **名前付き位置型**とは、`graph!` が要素ごとに生成する、`Graph` 内部の
+  格納位置と、生成元を識別する構築印を保持する型のことである。凍結を
+  またいで運ばれ、静的アクセサが公開IDの検索なしに参照を作るために使う。
+  生成元以外の `Graph` へ渡すと、保持している構築印の不一致が実行時に
+  検出されて `panic!` する (`crates/graphite/src/lib.rs` の構築印発行関数と
+  `NamedGraphElement::bind` の生成実装を参照)。
+- **呼び出し箇所**とは、`graph!` を1回呼んだ場所のことである。
+- **凍結**とは、builderに積んだ要素を検査して確定済み `Graph` へ変換する
+  操作のことである。英語名は `freeze`。
+
+凍結は公開IDを種別専用の位置へ変換する。完成済み辺記録と索引は位置を保持するため、`NodeRef` または `EdgeRef` を得た後の端点走査では公開IDのハッシュ表での検索を行わない。どちらの参照型も `&Graph` と位置だけを持つ `Copy + Clone` の値であり、ヒープ確保、自己参照、`Rc`、`RefCell`、実行時リフレクションを使わない。
 
 公開される `NodeRef` の `Deref::Target` にノード値型が現れるため、公開schemaのノード値型には到達可能な可視性が必要である。通常は `pub struct Person` と宣言する。
 
 ノード値型が `id`/`value` という名のメソッドを持つ場合、`NodeRef` の同名の固有メソッドが優先される (メソッド解決は `Deref` より先に固有メソッドを探すため)。値側のメソッドを呼びたいときは `(*node_ref).id()` のように明示的に `Deref` させる。
 
-### 3.2 アクセス (動的検索は型名前空間、静的な名前はwrapperメソッド)
+### 3.2 アクセス (動的検索は型名前空間、静的な名前は名前付きラッパーのメソッド)
 
 ```rust
 // ノード (schema module 内のノードマーカー。
@@ -143,7 +162,7 @@ Org::Boss::iter(&g);                   // BossRef<'_>
 Org::Boss::ids(&g);  Org::Boss::len(&g);
 Org::Boss::payload_mut(&mut g, &boss_id); // Option<&mut BossEdge>
 
-// graph! の同じ呼び出しsiteで名前が分かる場合 (ID検索なし)
+// graph! の同じ呼び出し箇所で名前が分かる場合 (ID検索なし)
 g.alice();
 g.b_boss();
 ```
@@ -163,7 +182,7 @@ g.b_boss();
   扱う (同一始点からの平行辺が複数ある場合でも、`of()` はリテラル/builder
   での記述順どおりに返る)。
 
-### 3.3 検証 (freeze 時)
+### 3.3 検証 (凍結時)
 
 - 従来: 未知キー参照・キー重複 (ノード) ・each 系 (旧多重度)
 - 追加: **辺キー重複** / **unique pair 違反** (同対 2 本目)
