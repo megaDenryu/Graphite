@@ -1,7 +1,7 @@
 //! `graph!` のコード生成本体 (v4、`docs/schema_v4.md` §2 参照。スプライス項は
 //! v4.2、`docs/graph_splice.md` §1)。
 //!
-//! `SchemaName::create(|__graphite_b| { ... })` の呼び出し列へ脱糖する。
+//! `SchemaName::Graph::create(|__graphite_b| { ... })` の呼び出し列へ脱糖する。
 //!
 //! ノード項・エッジの積み荷の値はいずれもユーザーの式トークンをそのまま
 //! 埋め込むだけで、値の型はマクロが一切パースしない。ノード項は
@@ -28,7 +28,7 @@
 //! 機能する:
 //!
 //! ```text
-//! Org::create(|__graphite_b| {
+//! Org::Graph::create(|__graphite_b| {
 //!     // (1) 全ノード宣言 (記述順)
 //!     let alice = __graphite_b.insert("alice", Person { .. });
 //!     let eng = __graphite_b.insert("eng", Team { .. });
@@ -66,6 +66,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 
 use crate::instance_dsl::{GraphInput, GraphItem};
+use crate::naming::graph_type_ident;
 
 /// v4 (`docs/schema_v4.md` §0 規則1): `graph!` 内の識別子はノード・エッジを
 /// 問わず単一の平坦な名前空間 (全行が `名前 = 値` であり、名前は常にキーの
@@ -119,6 +120,7 @@ fn collect_declared_keys(items: &[GraphItem]) -> syn::Result<(HashSet<String>, H
 /// `has_parse_errors` に関わらず常にハード失敗のまま (現行維持)。
 pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<TokenStream> {
     let schema_name = &input.schema_name;
+    let graph_ident = graph_type_ident(schema_name);
 
     let (_all_keys, node_keys) = collect_declared_keys(&input.items)?;
 
@@ -184,9 +186,9 @@ pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<Token
                 // `#kind(..)` がそのまま rustc の cannot-find-type/
                 // no-such-function に落ちることで検出される。
                 let ctor = match &edge.attrs {
-                    None => quote! { #kind(#from_ident.clone(), #to_ident.clone()) },
+                    None => quote! { #schema_name::#kind(#from_ident.clone(), #to_ident.clone()) },
                     Some(attrs_expr) => quote! {
-                        #kind(#from_ident.clone(), #to_ident.clone(), #attrs_expr)
+                        #schema_name::#kind(#from_ident.clone(), #to_ident.clone(), #attrs_expr)
                     },
                 };
 
@@ -211,7 +213,7 @@ pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<Token
     }
 
     Ok(quote! {
-        #schema_name::create(|__graphite_b| {
+        #schema_name::#graph_ident::create(|__graphite_b| {
             #(#node_calls)*
             #(#rest_calls)*
         })

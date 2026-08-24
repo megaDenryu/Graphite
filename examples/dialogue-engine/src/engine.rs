@@ -8,7 +8,7 @@
 //!   1つで表現できる。
 //! - `narrate: FnMut(&str)` — 1行相当のテキストを出力する。
 
-use crate::schema::{DialogueGraph, DialogueGraphNode, Finale, Scene, SceneId};
+use crate::schema::{DialogueGraph, Finale, SceneId};
 
 /// 1 プレイの結果。
 #[derive(Debug, Clone, PartialEq)]
@@ -51,7 +51,7 @@ impl PlayOutcome {
 /// きたインデックスの行き先へ進む (範囲外を渡された場合は最後の選択肢に
 /// クランプするフェイルセーフ)。
 pub fn play(
-    schema: &DialogueGraph,
+    schema: &DialogueGraph::Graph,
     start: &SceneId,
     mut choose: impl FnMut(&[String]) -> usize,
     mut narrate: impl FnMut(&str),
@@ -71,7 +71,7 @@ pub fn play(
         }
 
         visited.push(current.clone());
-        let scene = Scene::get(schema, &current)
+        let scene = DialogueGraph::Scene::get(schema, &current)
             .unwrap_or_else(|| panic!("プレイ中に未知のシーンキーに到達しました: {current:?}"));
 
         narrate(&format!("[{}] {}", scene.speaker, scene.text));

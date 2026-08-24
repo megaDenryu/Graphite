@@ -72,17 +72,20 @@ graphite::graph_schema! {
     }
 }
 
+// 綴り短縮のための再輸出。同名edgeを持つschemaを足したらこの行を消す。
+pub use DialogueGraph::{Choice, Finale};
+
 // ============================================================
 // 導出クエリ (README.md 「使用例3」節のパターン: 保存エッジ=フィールド,
 // 導出エッジ=同一モジュール内の普通のメソッド)
 // ============================================================
 
-impl DialogueGraph {
+impl DialogueGraph::Graph {
     /// あるシーンから出ている選択肢一覧を `(行き先キー, 選択肢ラベル)` で返す。
     /// `Choice::of` は行き先の `Scene` 値 (キーではない) を返すため使えず、
     /// 生の辺 (キー付き) を走査する `Choice::iter` をフィルタして使う。
     pub fn scene_choices(&self, id: &SceneId) -> Vec<(SceneId, String)> {
-        Choice::iter(self)
+        DialogueGraph::Choice::iter(self)
             .filter(|(_key, edge)| edge.from() == id)
             .map(|(_key, edge)| (edge.to().clone(), edge.payload().label.clone()))
             .collect()
@@ -99,11 +102,15 @@ impl DialogueGraph {
     /// 重複キー・未知キーは有り得ず、`expect` で握り潰してよい。
     pub fn scene_graph(&self) -> Graph<SceneId, String, SceneId> {
         Graph::create(|b| {
-            for id in Scene::ids(self) {
+            for id in DialogueGraph::Scene::ids(self) {
                 b.node(id.clone(), id.clone());
             }
-            for (_key, edge) in Choice::iter(self) {
-                b.edge(edge.from().clone(), edge.to().clone(), edge.payload().label.clone());
+            for (_key, edge) in DialogueGraph::Choice::iter(self) {
+                b.edge(
+                    edge.from().clone(),
+                    edge.to().clone(),
+                    edge.payload().label.clone(),
+                );
             }
         })
         .expect("scene_graph の射影は DialogueGraph が既に検証済みなので必ず成功する")
@@ -111,12 +118,13 @@ impl DialogueGraph {
 
     /// このシーンに finale (エンディングへの到達) があるか。
     pub fn is_finale_scene(&self, id: &SceneId) -> bool {
-        Finale::of(self, id).is_some()
+        DialogueGraph::Finale::of(self, id).is_some()
     }
 
     /// このシーンに選択肢が 0 本、かつ finale も無いか (= デッドエンド)。
     pub fn is_dead_end(&self, id: &SceneId) -> bool {
-        Choice::of(self, id).is_empty() && Finale::of(self, id).is_none()
+        DialogueGraph::Choice::of(self, id).is_empty()
+            && DialogueGraph::Finale::of(self, id).is_none()
     }
 }
 
@@ -151,7 +159,7 @@ impl DialogueGraph {
 //   crisis_freeze→cfreeze, shuttle_bay→sbay, seal_sacrifice→ssac,
 //   truth_sent→tsent
 #[rustfmt::skip]
-pub fn build_story() -> Result<DialogueGraph, DialogueGraphViolation> {
+pub fn build_story() -> Result<DialogueGraph::Graph, DialogueGraph::Violation> {
     graphite::graph!(DialogueGraph {
         // --- 導入 ---
         start = Scene {
@@ -404,7 +412,7 @@ pub fn start_scene_id() -> SceneId {
 // - `br_unreachable` は誰からも choice/finale で参照されない (到達不能)。
 // - `br_dead` は選択肢もfinaleも持たない (デッドエンド)。
 #[rustfmt::skip]
-pub fn build_broken_story() -> Result<DialogueGraph, DialogueGraphViolation> {
+pub fn build_broken_story() -> Result<DialogueGraph::Graph, DialogueGraph::Violation> {
     graphite::graph!(DialogueGraph {
         br_start = Scene {
             speaker: "テスト".to_string(),
@@ -450,7 +458,7 @@ pub fn broken_start_scene_id() -> SceneId {
 // フィクスチャは schema.rs 内の型・スキーマにだけ依存する小さな関数なので、
 // `validate.rs` のテストからはこの関数を経由して使う (単なる整理上の判断)。
 #[rustfmt::skip]
-pub fn build_pure_loop_story() -> Result<DialogueGraph, DialogueGraphViolation> {
+pub fn build_pure_loop_story() -> Result<DialogueGraph::Graph, DialogueGraph::Violation> {
     graphite::graph!(DialogueGraph {
         t_start = Scene { speaker: "テスト".to_string(), text: "開始".to_string() },
         t_loop_a = Scene { speaker: "テスト".to_string(), text: "ループA".to_string() },

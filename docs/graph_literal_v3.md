@@ -54,12 +54,12 @@ let g = graphite::graph!(Org {
 ```rust
 pub trait OrgNode: Sized {
     type Id;
-    fn insert_into(self, b: &mut OrgBuilder, key: String) -> Self::Id;
+    fn insert_into(self, b: &mut Org::Builder, key: String) -> Self::Id;
 }
 impl OrgNode for Person { type Id = PersonId; fn insert_into(..) { /* person 格納 */ } }
 impl OrgNode for Team   { type Id = TeamId;   fn insert_into(..) { /* team 格納 */ } }
 
-impl OrgBuilder {
+impl Org::Builder {
     pub fn insert<N: OrgNode>(&mut self, key: impl Into<String>, value: N) -> N::Id { .. }
 }
 ```
@@ -67,7 +67,7 @@ impl OrgBuilder {
 - `graph!` の脱糖:
 
 ```rust
-Org::create(|__graphite_b| {
+Org::Graph::create(|__graphite_b| {
     let alice = __graphite_b.insert("alice", /* ユーザーの式そのまま */ alice1);
     // alice: PersonId は rustc が推論する
     ...

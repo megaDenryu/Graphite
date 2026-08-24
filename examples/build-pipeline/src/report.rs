@@ -3,7 +3,7 @@
 //! 計算ロジックは一切持たない。
 
 use crate::analysis::{CriticalPath, DomainIssue, Wave};
-use crate::schema::{Artifact, BuildPipeline, BuildPipelineNode, Consumes, Produces, Task};
+use crate::schema::{BuildPipeline, Consumes, Produces};
 
 /// `validate` サブコマンドの結果表示。
 pub fn format_domain_issues(issues: &[DomainIssue]) -> String {
@@ -45,7 +45,7 @@ pub fn format_plan(waves: &[Wave]) -> String {
 }
 
 /// `critical-path` サブコマンドの出力。
-pub fn format_critical_path(cp: &CriticalPath, g: &BuildPipeline) -> String {
+pub fn format_critical_path(cp: &CriticalPath, g: &BuildPipeline::Graph) -> String {
     if cp.path.is_empty() {
         return "クリティカルパス: タスクがありません".to_string();
     }
@@ -53,7 +53,9 @@ pub fn format_critical_path(cp: &CriticalPath, g: &BuildPipeline) -> String {
     let mut out = String::new();
     out.push_str("クリティカルパス (依存関係上、最も時間がかかる経路):\n");
     for (i, task_id) in cp.path.iter().enumerate() {
-        let secs = Task::get(g, task_id).map(|t| t.secs).unwrap_or(0);
+        let secs = BuildPipeline::Task::get(g, task_id)
+            .map(|t| t.secs)
+            .unwrap_or(0);
         if i > 0 {
             out.push_str("  -> ");
         } else {
@@ -63,7 +65,10 @@ pub fn format_critical_path(cp: &CriticalPath, g: &BuildPipeline) -> String {
     }
     out.push('\n');
     out.push_str(&format!("\n合計時間: {}秒\n", cp.total_secs));
-    out.push_str(&format!("全タスクの所要時間合計 (総作業量): {}秒\n", cp.total_work_secs));
+    out.push_str(&format!(
+        "全タスクの所要時間合計 (総作業量): {}秒\n",
+        cp.total_work_secs
+    ));
     out.push_str(&format!(
         "全体並列度 (総作業量 / クリティカルパス長): {:.2}倍\n",
         cp.parallelism()
@@ -84,14 +89,14 @@ fn sanitize_id(raw: &str) -> String {
 /// 「保存された成果物」を表す慣用のノード形状) で描き分ける。
 /// `consumes` は「成果物がタスクへ流れ込む」という読みやすさを優先して
 /// 矢印を Artifact -> Task 方向 (スキーマ上の `from`/`to` とは逆) に描く。
-pub fn mermaid(g: &BuildPipeline) -> String {
+pub fn mermaid(g: &BuildPipeline::Graph) -> String {
     let mut out = String::new();
     out.push_str("flowchart TD\n");
 
-    let mut task_ids: Vec<_> = Task::ids(g).collect();
+    let mut task_ids: Vec<_> = BuildPipeline::Task::ids(g).collect();
     task_ids.sort_by(|a, b| a.0.cmp(&b.0));
     for id in &task_ids {
-        let task = Task::get(g, id).expect("Task::ids(g)由来のキーは必ず存在する");
+        let task = BuildPipeline::Task::get(g, id).expect("Task::ids(g)由来のキーは必ず存在する");
         out.push_str(&format!(
             "    T_{}[\"{} ({}s)\"]\n",
             sanitize_id(&id.0),
@@ -100,11 +105,11 @@ pub fn mermaid(g: &BuildPipeline) -> String {
         ));
     }
 
-    let mut artifact_ids: Vec<_> = Artifact::ids(g).collect();
+    let mut artifact_ids: Vec<_> = BuildPipeline::Artifact::ids(g).collect();
     artifact_ids.sort_by(|a, b| a.0.cmp(&b.0));
     for id in &artifact_ids {
         let artifact =
-            Artifact::get(g, id).expect("Artifact::ids(g)由来のキーは必ず存在する");
+            BuildPipeline::Artifact::get(g, id).expect("Artifact::ids(g)由来のキーは必ず存在する");
         out.push_str(&format!(
             "    A_{}[(\"{}\")]\n",
             sanitize_id(&id.0),
@@ -137,7 +142,7 @@ mod tests {
     use crate::builder::build_graph;
     use crate::parser::parse;
 
-    fn graph_from(input: &str) -> BuildPipeline {
+    fn graph_from(input: &str) -> BuildPipeline::Graph {
         let parsed = parse(input).unwrap();
         build_graph(&parsed).unwrap()
     }

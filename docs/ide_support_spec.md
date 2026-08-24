@@ -15,7 +15,7 @@ Graphite の DSL (`graph_schema!` / `graph!`) を書くとき、VSCode 上で参
 | 使用側のアクセサ (`g.belongs_to(..)`) → 定義 | ✅ 精密 | schema 内 `edge belongs_to` の `belongs_to` に着地 |
 | 派生名 (`try_belongs_to`, `*_id`, `*_ids` 等) → 定義 | ✅ 精密 | `format_ident!` が最初に補間した Ident のスパンを継承するため |
 | 属性フィールド (`attrs.since`) → 定義 | ✅ 精密 | schema 内 `{ since: i32 }` の `since` に着地 |
-| 違反 enum (`OrgChartViolation::..`) → 定義 | ✅ | schema 名トークンに着地 |
+| 違反 enum (`OrgChart::Violation::..`) → 定義 | ✅ | schema 名トークンに着地 |
 | schema のノード型 → 参照検索 | ✅ | `graph!` リテラル内の型使用も全件検出 |
 | `graph!` の型名 (`tanaka: Employee`) → 定義 | ✅ | |
 | **`graph!` エッジ内ノードキー (`tanaka -[..]-> sales`) → 定義** | ❌ 解決不能 | キーが文字列リテラルへ脱糖され、識別子が展開後に残らない |
@@ -102,7 +102,7 @@ G6 の結論: 現状の rust-analyzer では関数様 proc-macro の入力トー
 
 ```rust
 // cargo expand の実際の出力 (抜粋)
-let g = OrgChart::create(|__graphite_b| {
+let g = OrgChart::Graph::create(|__graphite_b| {
     let tanaka = __graphite_b.insert("tanaka", Employee { name: "田中".into(), id: 1 });
     let sato = __graphite_b.insert("sato", Employee { name: "佐藤".into(), id: 2 });
     let sales = __graphite_b.insert("sales", Department { name: "営業".into() });
@@ -148,11 +148,11 @@ v4 (`docs/schema_v4.md`: 辺の第一級化・where 制約・型名前空間ア�
 | 操作 | 結果 |
 |---|---|
 | schema `-[BossEdge]->` の積み荷型 → 定義 | ✅ ユーザー struct へ精密 |
-| `Boss::of(&g,..)` / マクロ外の `Boss(from,to,payload)` 構築 / リテラルの `Boss(..)` → 定義 | ✅ いずれも schema の `edge Boss` トークンへ精密着地 (辺種別 = 生成タプル struct の解決が全文脈で機能) |
+| `OrgChart::Boss::of(&g,..)` / マクロ外の `OrgChart::Boss(from,to,payload)` 構築 / リテラルの `Boss(..)` → 定義 | ✅ いずれも schema の `edge Boss` トークンへ精密着地 (辺種別 = 生成タプル struct の解決が全文脈で機能) |
 | リテラルのノードキー (`tanaka`)・積み荷フィールド (`since`)・辺キー束縛 (`tanaka_boss`) | ✅ v3 同様に精密 (let 束縛・式素通しの機構は v4 でも維持) |
 | schema `Boss` → 参照検索 | ✅ 宣言 + 全使用 15 件 (アクセス・リテラル・素の構築・型注釈) |
 | `where each Employee` の `Employee` → 定義 | ✅ `2dce96a` で修正し実測確認済み: ユーザーの `struct Employee` 宣言へ精密着地。`EdgeInfo::each_from_token` にトークンを保持し、freeze 検証コード内にゼロコストの型検査文 (`let _: fn(&Type) = \|_\| {};`) として補間することで、このトークンが実在の型参照になった |
-| `Boss::of` の `of` 等、生成関連関数のメソッド名トークン → 定義 | ✅ `2dce96a` で修正し実測確認済み: schema の `edge Boss` トークンへ精密着地 (修正前はマクロブロックに着地)。生成 fn ident に由来する Kind/ノード型トークンのスパンを付与 (G3 ポリシー適用) |
+| `OrgChart::Boss::of` の `of` 等、生成関連関数のメソッド名トークン → 定義 | ✅ `2dce96a` で修正し実測確認済み: schema の `edge Boss` トークンへ精密着地 (修正前はマクロブロックに着地)。生成 fn ident に由来する Kind/ノード型トークンのスパンを付与 (G3 ポリシー適用) |
 
 v4 の DSL 全トークン種 (辺種別・積み荷型・where 節端点・ノードキー・辺キー・
 積み荷フィールド・生成関連関数名) が定義解決可能になり、参照検索も全使用を
@@ -211,7 +211,7 @@ b.belongs_to(EmployeeId("tanaka".to_string()), DepartmentId("sales".to_string())
 これを、ノードキーごとに 1 つの `let` 束縛を作り、以後は識別子参照で運ぶ形に変える:
 
 ```rust
-OrgChart::create(|__graphite_b| {
+OrgChart::Graph::create(|__graphite_b| {
     // (1) ノード宣言 (記述順)
     let tanaka = EmployeeId("tanaka".to_string()); // ← `tanaka` はノード宣言の出現スパン
     __graphite_b.employee(tanaka.clone(), Employee { .. });

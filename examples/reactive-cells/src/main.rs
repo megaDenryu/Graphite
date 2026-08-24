@@ -9,7 +9,7 @@ use reactive_cells::antipattern::{build_diamond_demo, build_infinite_loop_demo};
 use reactive_cells::engine::Engine;
 use reactive_cells::fixtures::{cyclic_demo_sheet, default_sheet};
 use reactive_cells::report;
-use reactive_cells::schema::{Cell, CellId, Feeds, Lhs, Rhs, SheetNode};
+use reactive_cells::schema::{CellId, Feeds, Lhs, Rhs, Sheet};
 
 fn id(s: &str) -> CellId {
     CellId(s.to_string())
@@ -46,7 +46,7 @@ fn main() {
     println!(
         "セル数 = {}, 依存エッジ数 = {} (Feeds {} + Lhs {} + Rhs {}。依存関係は実行前に\n\
          一枚で見える構造データ。Lhs/Rhsは減算セルadjustmentの被減数/減数の区別を運ぶ辺種別)",
-        Cell::ids(&sheet).count(),
+        Sheet::Cell::ids(&sheet).count(),
         Feeds::len(&sheet) + Lhs::len(&sheet) + Rhs::len(&sheet),
         Feeds::len(&sheet),
         Lhs::len(&sheet),
@@ -54,15 +54,44 @@ fn main() {
     );
     let mut engine = Engine::new(sheet).expect("循環が無いので構築に成功するはず");
     println!("トポロジカル順序 (これがそのままglitch-freeな再計算順になる):");
-    let order: Vec<String> = engine.topological_order().iter().map(|id| id.0.clone()).collect();
+    let order: Vec<String> = engine
+        .topological_order()
+        .iter()
+        .map(|id| id.0.clone())
+        .collect();
     println!("  {}", order.join(" -> "));
 
     report::print_section("値変更 -> 伝播の物語");
-    report::print_set_input("(1) 単価を設定", &id("unit_price"), 1000.0, &engine.set_input(&id("unit_price"), 1000.0));
-    report::print_set_input("(2) 数量を設定", &id("quantity"), 3.0, &engine.set_input(&id("quantity"), 3.0));
-    report::print_set_input("(3) 税率を設定", &id("tax_rate"), 0.1, &engine.set_input(&id("tax_rate"), 0.1));
-    report::print_set_input("(4) 割引率を設定", &id("discount_rate"), 0.05, &engine.set_input(&id("discount_rate"), 0.05));
-    report::print_set_input("(5) 配送料を設定", &id("shipping_fee"), 500.0, &engine.set_input(&id("shipping_fee"), 500.0));
+    report::print_set_input(
+        "(1) 単価を設定",
+        &id("unit_price"),
+        1000.0,
+        &engine.set_input(&id("unit_price"), 1000.0),
+    );
+    report::print_set_input(
+        "(2) 数量を設定",
+        &id("quantity"),
+        3.0,
+        &engine.set_input(&id("quantity"), 3.0),
+    );
+    report::print_set_input(
+        "(3) 税率を設定",
+        &id("tax_rate"),
+        0.1,
+        &engine.set_input(&id("tax_rate"), 0.1),
+    );
+    report::print_set_input(
+        "(4) 割引率を設定",
+        &id("discount_rate"),
+        0.05,
+        &engine.set_input(&id("discount_rate"), 0.05),
+    );
+    report::print_set_input(
+        "(5) 配送料を設定",
+        &id("shipping_fee"),
+        500.0,
+        &engine.set_input(&id("shipping_fee"), 500.0),
+    );
 
     println!("\n現在の値:");
     report::print_engine_snapshot(

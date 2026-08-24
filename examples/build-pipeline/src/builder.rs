@@ -9,14 +9,13 @@
 
 use crate::parser::{EdgeKind, ParsedPipeline};
 use crate::schema::{
-    Artifact, ArtifactId, BuildPipeline, BuildPipelineViolation, Consumes, ConsumesId, Produces,
-    ProducesId, Task, TaskId,
+    Artifact, ArtifactId, BuildPipeline, Consumes, ConsumesId, Produces, ProducesId, Task, TaskId,
 };
 use std::collections::BTreeSet;
 
 /// `ParsedPipeline` から `BuildPipeline` を構築する。
 ///
-/// 図式適合検査 (`BuildPipeline::create` 内部の freeze) は以下を検出する:
+/// 図式適合検査 (`BuildPipeline::Graph::create` 内部の freeze) は以下を検出する:
 /// - `task` 行の名前が重複している (`DuplicateTask`)
 /// - `produces`/`consumes` 行が指す `task` 名が未宣言
 ///   (`ProducesUnknownSource` / `ConsumesUnknownSource`。フェーズ5でエッジ
@@ -25,13 +24,15 @@ use std::collections::BTreeSet;
 ///
 /// これ以外のドメイン上の妥当性 (孤児成果物・二重生成・循環依存) は
 /// 図式適合の範囲外であり、`analysis::validate` が別途検査する。
-pub fn build_graph(parsed: &ParsedPipeline) -> Result<BuildPipeline, BuildPipelineViolation> {
+pub fn build_graph(
+    parsed: &ParsedPipeline,
+) -> Result<BuildPipeline::Graph, BuildPipeline::Violation> {
     let mut artifact_paths: BTreeSet<&str> = BTreeSet::new();
     for edge in &parsed.edges {
         artifact_paths.insert(edge.path.as_str());
     }
 
-    BuildPipeline::create(|b| {
+    BuildPipeline::Graph::create(|b| {
         for task in &parsed.tasks {
             b.task(
                 TaskId(task.name.clone()),
@@ -73,7 +74,6 @@ pub fn build_graph(parsed: &ParsedPipeline) -> Result<BuildPipeline, BuildPipeli
 mod tests {
     use super::*;
     use crate::parser::parse;
-    use crate::schema::BuildPipelineNode;
 
     #[test]
     fn 正常なパースからグラフを構築できる() {
@@ -87,8 +87,8 @@ test_core consumes target/core.rlib
         let parsed = parse(input).unwrap();
         let g = build_graph(&parsed).expect("構築に成功するはず");
 
-        assert_eq!(Task::ids(&g).count(), 2);
-        assert_eq!(Artifact::ids(&g).count(), 1);
+        assert_eq!(BuildPipeline::Task::ids(&g).count(), 2);
+        assert_eq!(BuildPipeline::Artifact::ids(&g).count(), 1);
 
         let produced = Produces::of(&g, &TaskId("build_core".to_string()));
         assert_eq!(produced.len(), 1);
@@ -105,7 +105,7 @@ typo_task produces target/core.rlib
         let result = build_graph(&parsed);
         assert!(matches!(
             result,
-            Err(BuildPipelineViolation::ProducesUnknownSource { .. })
+            Err(BuildPipeline::Violation::ProducesUnknownSource { .. })
         ));
     }
 
@@ -119,7 +119,7 @@ task build_core: cargo build -p core --release (90s)
         let result = build_graph(&parsed);
         assert!(matches!(
             result,
-            Err(BuildPipelineViolation::DuplicateTask(_))
+            Err(BuildPipeline::Violation::DuplicateTask(_))
         ));
     }
 }

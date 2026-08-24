@@ -6,7 +6,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use crate::schema::{Choice, DialogueGraph, DialogueGraphNode, Ending, EndingId, Finale, Scene, SceneId};
+use crate::schema::{Choice, DialogueGraph, EndingId, Finale, SceneId};
 
 // ============================================================
 // map: mermaid flowchart 出力
@@ -15,14 +15,14 @@ use crate::schema::{Choice, DialogueGraph, DialogueGraphNode, Ending, EndingId, 
 /// シナリオ全体を mermaid の `flowchart` 記法で出力する。
 /// Scene は矩形 (`id["..."]`)、Ending はスタジアム形状 (`id{{"..."}}`) で
 /// 区別する。選択肢ラベルは辺ラベルとして、finale 辺は破線矢印で表現する。
-pub fn to_mermaid(schema: &DialogueGraph) -> String {
+pub fn to_mermaid(schema: &DialogueGraph::Graph) -> String {
     let mut out = String::new();
     out.push_str("flowchart TD\n");
 
-    let mut scene_ids: Vec<&SceneId> = Scene::ids(schema).collect();
+    let mut scene_ids: Vec<&SceneId> = DialogueGraph::Scene::ids(schema).collect();
     scene_ids.sort();
     for id in &scene_ids {
-        let scene = Scene::get(schema, id)
+        let scene = DialogueGraph::Scene::get(schema, id)
             .expect("Scene::ids() が返すキーは必ず Scene::get() で引ける");
         out.push_str(&format!(
             "    {}[\"{}: {}\"]\n",
@@ -32,10 +32,10 @@ pub fn to_mermaid(schema: &DialogueGraph) -> String {
         ));
     }
 
-    let mut ending_ids: Vec<&EndingId> = Ending::ids(schema).collect();
+    let mut ending_ids: Vec<&EndingId> = DialogueGraph::Ending::ids(schema).collect();
     ending_ids.sort();
     for id in &ending_ids {
-        let ending = Ending::get(schema, id)
+        let ending = DialogueGraph::Ending::get(schema, id)
             .expect("Ending::ids() が返すキーは必ず Ending::get() で引ける");
         out.push_str(&format!(
             "    {}{{{{\"{}\"}}}}\n",
@@ -77,7 +77,13 @@ pub fn to_mermaid(schema: &DialogueGraph) -> String {
 /// mermaid が誤解釈しうる記号を `_` に置き換える。
 fn mermaid_id(raw: &str) -> String {
     raw.chars()
-        .map(|c| if c.is_ascii_alphanumeric() || c == '_' { c } else { '_' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect()
 }
 
@@ -132,11 +138,11 @@ impl Stats {
 }
 
 /// `start` を起点にシナリオの統計を計算する。
-pub fn compute_stats(schema: &DialogueGraph, start: &SceneId) -> Stats {
+pub fn compute_stats(schema: &DialogueGraph::Graph, start: &SceneId) -> Stats {
     let scene_graph = schema.scene_graph();
 
-    let scene_count = Scene::ids(schema).count();
-    let ending_count = Ending::ids(schema).count();
+    let scene_count = DialogueGraph::Scene::ids(schema).count();
+    let ending_count = DialogueGraph::Ending::ids(schema).count();
     let choice_count = Choice::len(schema);
 
     // 合流点: ある終点シーンへ、異なる始点シーンから2本以上の choice 辺が
@@ -155,7 +161,7 @@ pub fn compute_stats(schema: &DialogueGraph, start: &SceneId) -> Stats {
         let scene_id = edge.from();
         let ending_id = edge.to();
         if let Some(path) = scene_graph.path(start, scene_id) {
-            let ending = Ending::get(schema, ending_id)
+            let ending = DialogueGraph::Ending::get(schema, ending_id)
                 .expect("Finale::iter() が返す EndingId は必ず Ending::get() で引ける");
             shortest_routes.push((ending.title.clone(), path.len()));
         }
@@ -181,7 +187,7 @@ pub fn compute_stats(schema: &DialogueGraph, start: &SceneId) -> Stats {
 /// 同じエンディングに複数のシーンから finale されている場合は最短のものを
 /// 採用する。到達不能なら `None`。
 pub fn route_to_ending(
-    schema: &DialogueGraph,
+    schema: &DialogueGraph::Graph,
     start: &SceneId,
     ending: &EndingId,
 ) -> Option<Vec<(SceneId, Option<String>)>> {

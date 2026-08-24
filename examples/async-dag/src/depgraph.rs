@@ -8,7 +8,7 @@
 //! 実装を1回書けば済む — アプリ側が「並行実行できる集合をどう求めるか」
 //! を自分で再発明する必要が無い、というのが README の主張。
 
-use crate::schema::{DependsOn, Orchestration, OrchestrationNode, Service, ServiceId};
+use crate::schema::{DependsOn, Orchestration, Service, ServiceId};
 use graphite::{CycleError, Graph};
 
 /// ノード値・辺値のいずれも不要 (依存関係の「形」だけが要る) なので
@@ -29,8 +29,10 @@ pub type ServiceDependencyGraph = Graph<(), (), ServiceId>;
 /// `DependsOn` の終点キーは常に `Service::ids(g)` 由来 (schema の
 /// 図式適合検査が保証する) なので、`Graph::build` が `UnknownEndpoint`
 /// を返すことはない。
-pub fn build_dependency_graph(g: &Orchestration) -> ServiceDependencyGraph {
-    let nodes: Vec<(ServiceId, ())> = Service::ids(g).map(|id| (id.clone(), ())).collect();
+pub fn build_dependency_graph(g: &Orchestration::Graph) -> ServiceDependencyGraph {
+    let nodes: Vec<(ServiceId, ())> = Orchestration::Service::ids(g)
+        .map(|id| (id.clone(), ()))
+        .collect();
 
     let mut edges: Vec<(ServiceId, ServiceId, ())> = Vec::new();
     for (_id, edge) in DependsOn::iter(g) {
@@ -49,7 +51,9 @@ pub fn build_dependency_graph(g: &Orchestration) -> ServiceDependencyGraph {
 /// 「循環はデータ検証で構築直後に死ぬ、実行時にハングしない」の実装
 /// そのもの。各波の要素順序は `Orchestration` へサービスを登録した順
 /// (`Service` ノードの挿入順) で決定的。
-pub fn compute_waves(g: &Orchestration) -> Result<Vec<Vec<ServiceId>>, CycleError<ServiceId>> {
+pub fn compute_waves(
+    g: &Orchestration::Graph,
+) -> Result<Vec<Vec<ServiceId>>, CycleError<ServiceId>> {
     let dep_graph = build_dependency_graph(g);
     let levels = dep_graph.topological_levels()?;
     Ok(levels
@@ -59,18 +63,18 @@ pub fn compute_waves(g: &Orchestration) -> Result<Vec<Vec<ServiceId>>, CycleErro
 }
 
 /// 波1つ分の想定所要時間 (無限並列ワーカーを仮定した `max(startup_ms)`)。
-pub fn wave_duration_ms(g: &Orchestration, wave: &[ServiceId]) -> u64 {
+pub fn wave_duration_ms(g: &Orchestration::Graph, wave: &[ServiceId]) -> u64 {
     wave.iter()
-        .filter_map(|id| Service::get(g, id))
+        .filter_map(|id| Orchestration::Service::get(g, id))
         .map(|s: &Service| s.startup_ms)
         .max()
         .unwrap_or(0)
 }
 
 /// 全サービスの起動時間の総和 (直列実行した場合の下限見積り)。
-pub fn total_serial_ms(g: &Orchestration) -> u64 {
-    Service::ids(g)
-        .filter_map(|id| Service::get(g, id))
+pub fn total_serial_ms(g: &Orchestration::Graph) -> u64 {
+    Orchestration::Service::ids(g)
+        .filter_map(|id| Orchestration::Service::get(g, id))
         .map(|s| s.startup_ms)
         .sum()
 }

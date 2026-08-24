@@ -21,9 +21,36 @@ pub const PROJECT_COUNT: usize = 15;
 pub const MANAGER_GRADE_THRESHOLD: u8 = 3;
 
 const SURNAMES: &[&str] = &[
-    "佐藤", "鈴木", "高橋", "田中", "伊藤", "渡辺", "山本", "中村", "小林", "加藤", "吉田", "山田",
-    "佐々木", "山口", "松本", "井上", "木村", "林", "斎藤", "清水", "山崎", "森", "池田", "橋本",
-    "阿部", "石川", "前田", "藤田", "後藤", "岡田",
+    "佐藤",
+    "鈴木",
+    "高橋",
+    "田中",
+    "伊藤",
+    "渡辺",
+    "山本",
+    "中村",
+    "小林",
+    "加藤",
+    "吉田",
+    "山田",
+    "佐々木",
+    "山口",
+    "松本",
+    "井上",
+    "木村",
+    "林",
+    "斎藤",
+    "清水",
+    "山崎",
+    "森",
+    "池田",
+    "橋本",
+    "阿部",
+    "石川",
+    "前田",
+    "藤田",
+    "後藤",
+    "岡田",
 ];
 
 const GIVEN_NAMES: &[&str] = &[
@@ -66,7 +93,16 @@ const PROJECT_NAMES: [&str; PROJECT_COUNT] = [
 const TITLES_BY_GRADE: [&str; 5] = ["一般社員", "主任", "係長", "課長", "部長"];
 
 const ROLES: &[&str] = &[
-    "開発", "設計", "PM", "QA", "要件定義", "運用", "企画", "デザイン", "調整", "レビュー",
+    "開発",
+    "設計",
+    "PM",
+    "QA",
+    "要件定義",
+    "運用",
+    "企画",
+    "デザイン",
+    "調整",
+    "レビュー",
 ];
 
 /// Numerical Recipes 系の定数を使った線形合同法 (LCG)。
@@ -128,7 +164,7 @@ pub struct AnomalyPlan {
 
 /// 生成された組織データ一式。
 pub struct GeneratedOrg {
-    pub chart: OrgChart,
+    pub chart: OrgChart::Graph,
     /// `inject_anomalies` が有効なときだけ `Some`。
     pub anomaly_plan: Option<AnomalyPlan>,
 }
@@ -296,7 +332,13 @@ pub fn generate(seed: u64, inject_anomalies: bool) -> GeneratedOrg {
         boss_edges.retain(|(from, _, _)| !cycle.contains(from));
         for k in 0..cycle.len() {
             let next = cycle[(k + 1) % cycle.len()].clone();
-            boss_edges.push((cycle[k].clone(), next, BossEdge { since: 2019 + k as i32 }));
+            boss_edges.push((
+                cycle[k].clone(),
+                next,
+                BossEdge {
+                    since: 2019 + k as i32,
+                },
+            ));
         }
 
         // 3. スポンサー無しプロジェクト強制: P01 を指す sponsors 辺を全て除去
@@ -326,7 +368,7 @@ pub fn generate(seed: u64, inject_anomalies: bool) -> GeneratedOrg {
     // `docs/graph_splice.md` §2) に集約し、for ループは上記の「データを
     // 生成する」部分だけに残す。ノード用・エッジ用の呼び分けは無く、値の型
     // (`{Schema}Insertable` を満たすか) から rustc が振り分ける。
-    let chart = OrgChart::create(|b| {
+    let chart = OrgChart::Graph::create(|b| {
         b.extend(employees.into_iter().map(|(id, e)| (id.0, e)));
         b.extend(departments.into_iter().map(|(id, d)| (id.0, d)));
         b.extend(projects.into_iter().map(|(id, p)| (id.0, p)));

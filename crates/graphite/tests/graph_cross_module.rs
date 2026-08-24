@@ -58,10 +58,11 @@ mod usage {
         .expect("別モジュールの schema に対する graph! も構築に成功するはず");
 
         assert_eq!(
-            Employee::get(&g, &EmployeeId("tanaka".to_string())).unwrap().name,
+            CrossModuleOrg::Employee::get(&g, &EmployeeId("tanaka".to_string())).unwrap().name,
             "田中"
         );
-        let dept: &Department = BelongsTo::of(&g, &EmployeeId("tanaka".to_string()));
+        let dept: &Department =
+            CrossModuleOrg::BelongsTo::of(&g, &EmployeeId("tanaka".to_string()));
         assert_eq!(dept.name, "営業");
     }
 }

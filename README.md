@@ -70,8 +70,8 @@ let g = graphite::graph!(Org {
     bob_boss  = Boss(bob -[BossEdge { since: 2021 }]-> alice),
 })?;
 
-let team: &Team = BelongsTo::of(&g, &PersonId("alice".to_string()));
-let (boss, attrs) = Boss::of(&g, &PersonId("bob".to_string())).unwrap(); // (&Person, &BossEdge)
+let team: &Team = Org::BelongsTo::of(&g, &PersonId("alice".to_string()));
+let (boss, attrs) = Org::Boss::of(&g, &PersonId("bob".to_string())).unwrap(); // (&Person, &BossEdge)
 ```
 
 `graph_schema!` が何を生成するか (newtype キー・builder・辺の第一級型・
@@ -147,6 +147,10 @@ graphite::graph_schema! {
 }
 ```
 
+`graph_schema!` は Rust module を生成するため、モジュール直下に書いてください。
+参照するノード値型・ノードキー型・積み荷型も関数の外に宣言します。関数本体の
+ローカル型は、関数内に生成された module から参照できません。
+
 ノード宣言 `node 型名;` は「マクロの外で宣言済みの struct をこのノード種別
 として使う」という参照です。フィールド列を書く場所はありません (値の型は
 生成しないので)。
@@ -187,11 +191,11 @@ Graphite の基盤は**多重グラフ**です。辺は独立した要素であ�
 `Employee` と同一視できず照合が破綻します。モジュール修飾したい場合は
 `use` でこのスコープに名前を持ち込んでください。
 
-これで辺種別ごとの newtype キー (`BelongsToId`/`BossId`/`ReportsId`) と
-タプル struct (`pub struct Boss(pub EmployeeId, pub EmployeeId,
-pub BossEdge);` — 属性なしは2要素)・スキーマ struct (`OrgChart`,
-フィールドは非公開)・builder (`OrgChartBuilder`)・違反 enum
-(`OrgChartViolation`) が一式生成されます。ノード値の型 (`Employee`/
+これで `OrgChart` という Rust module が生成されます。その中に辺種別ごとの
+newtype キー (`OrgChart::BelongsToId`/`BossId`/`ReportsId`) とタプル struct
+(`OrgChart::Boss`)・グラフ本体 (`OrgChart::Graph`、フィールドは非公開)・
+builder (`OrgChart::Builder`)・違反 enum (`OrgChart::Violation`) が置かれます。
+ノード値の型 (`Employee`/
 `Department`) とエッジ属性型 (`BossEdge`) はいずれもユーザーが宣言した型を
 そのまま参照するだけで、`graph_schema!` は一切生成しません。ノード種別
 ごとの newtype キー (`EmployeeId`/`DepartmentId`) も同様です — v4.2
@@ -199,22 +203,22 @@ pub BossEdge);` — 属性なしは2要素)・スキーマ struct (`OrgChart`,
 `graph_schema!` は生成しません (詳細は後述「キーの設計」参照)。
 
 辺のタプル struct は**マクロの外でも普通に構築できます**
-(`Boss(from_id, to_id, payload)`。原則6: 消去可能な拡張のみ)。読み取りは
+(`OrgChart::Boss(from_id, to_id, payload)`。原則6: 消去可能な拡張のみ)。読み取りは
 位置 (`.0`/`.1`/`.2`) を人間に晒さず、固定語彙のメソッドを生成します:
 `fn from(&self) -> &EmployeeId` / `fn to(&self) -> &EmployeeId` /
 `fn payload(&self) -> &BossEdge` (積み荷ありのみ)。
 
-**`{Schema}Node` トレイトと総称 `insert`**: builder には型名付きの
+**ノード挿入トレイトと総称 `insert`**: builder には型名付きの
 挿入メソッド (`b.employee(id, value)` など、上記の各 `node` 宣言から1つずつ
-生成) に加えて、総称メソッド `b.insert<N: OrgChartNode>(key: impl Into<String>, value: N) -> N::Id`
+生成) に加えて、総称メソッド `b.insert<N: OrgChart::OrgChartNode>(key: impl Into<String>, value: N) -> N::Id`
 も生成されます。これは `graph!` が値の型名を一切パースしないために必要で、
-`OrgChartNode` トレイト (各ノード型に `impl OrgChartNode for Employee { type Id = EmployeeId; .. }`
+`OrgChart::OrgChartNode` トレイト (各ノード型に `impl OrgChart::OrgChartNode for Employee { type Id = EmployeeId; .. }`
 が生成される) を介して、値の型から正しい内部ストレージへの振り分けを
 rustc の型推論に任せます。実行時のリフレクション・型判別は一切無く
 (原則5: ゼロコスト志向)、`b.employee(id, value)` を明示的に呼ぶプログラム的
 構築 (examples の合成データ生成など) では従来通り型名付きメソッドを使えます。
-同じトレイトはノードの**読み取り**API (`Person::get`/`ids`/`iter`、後述) も
-提供します。エッジの書き込み側も対称に `{Schema}Edge` トレイト経由の総称
+ノードの**読み取り**API は、スキーマ module 内のノードマーカー
+(`OrgChart::Employee::get`/`ids`/`iter`、後述) が提供します。エッジの書き込み側も対称に `{Schema}::{Schema}Edge` トレイト経由の総称
 `b.add(key, value)` を持ちますが、エッジの**読み取り**API (`of`/`get`/
 `between`/`iter`/`ids`/`len`) はマクロが生成した `Kind` 型そのものへの
 固有 impl (`impl Boss { .. }`) として提供されるため、トレイトの `use` は
@@ -252,24 +256,19 @@ rustc の型推論に任せます。実行時のリフレクション・型判�
 (`crates/graphite/tests/node_id_shared_across_schemas.rs` に実証テスト
 があります)。
 
-ただし、複数 schema の `{Schema}Node` トレイトが同じスコープに同時に
-`use` されていると、`Person::get(..)` のようなメソッド呼び出しがどちらの
-トレイト実装を指すか rustc が決められず曖昧 (`E0034`) になります (これは
-通常の Rust のトレイトメソッド解決規則であり、newtype キーの生成とは
-無関係です)。schema ごとにモジュールを分けて必要なトレイトだけを `use`
-する、または完全修飾記法 `<Person as OrgChartNode>::get(..)` で明示する
-ことで解消できます。
+schema ごとの生成物は `OrgChart`/`ApprovalFlow` のように別々の Rust module
+へ置かれます。同じ `Person` 値型と同じ辺名を共有しても生成型は衝突せず、
+問い合わせ先も `OrgChart::Person::get(..)` と
+`ApprovalFlow::Person::get(..)` のように一意に指定できます。
 
 **アクセスは型名前空間の関連関数 (`g.メソッド` は廃止)**: v3 にあった
 「ラベルごとに1個のビューを返すメソッド `{label}()`」という間接層は v4 では
 無くなりました。辺の読み取りAPI (`of`/`get`/`between`/`iter`/`ids`/`len`) は
-`graph_schema!` が生成した `Kind` 型そのものへの固有 impl として直接生えます
-(`Boss::of(&g, ..)` のように、型名を主語にして呼びます)。ノードの読み取り
-API (`get`/`ids`/`iter`) は `{Schema}Node` トレイトの関連関数として提供され、
-使う前にそのトレイトを `use` でスコープに入れる必要があります
-(`use crate::schema::OrgChartNode;` のように。ユーザー struct
-(`Employee` 等) への固有 impl にはしていません — 複数 schema が同じ struct
-を `node` として共有したときにメソッドが衝突しないようにするためです)。
+`graph_schema!` が生成した辺型への固有 impl として直接生えます
+(`OrgChart::Boss::of(&g, ..)` のように呼びます)。ノードの読み取り API
+(`get`/`ids`/`iter`) はスキーマ module 内のノードマーカーに生えます
+(`OrgChart::Employee::get(&g, ..)`)。ユーザー struct (`Employee` 等) への
+固有 impl は追加しないため、複数 schema が同じ値型を共有できます。
 
 - **`Kind::of(&g, &SrcId)`** — そのエッジ種別の自然な戻り値。
   **`where` 制約が戻り型を決めます**:
@@ -296,12 +295,11 @@ API (`get`/`ids`/`iter`) は `{Schema}Node` トレイトの関連関数として
   パターンでのグラフクエリの代替として使えます。
 - **`Kind::ids(&g)`/`Kind::len(&g)`** — 全キー列挙 / 本数。
 
-ノード種別ごとのキー列挙は `{Type}::ids(&g)` (`{Schema}Node` トレイト経由)
-です。
+ノード種別ごとのキー列挙は `{Schema}::{Type}::ids(&g)` です。
 
 **`create_collecting`**: `create` は最初の1件の違反で `Err`
 になりますが、組織図の全違反を一覧表示するような検証系ユースケースでは
-複数違反をまとめて見たいことがあります。`{Schema}::create_collecting(|b| { ... }) -> Result<Self, Vec<{Schema}Violation>>`
+複数違反をまとめて見たいことがあります。`{Schema}::Graph::create_collecting(|b| { ... }) -> Result<{Schema}::Graph, Vec<{Schema}::Violation>>`
 が同じ builder クロージャを受け取り、freeze 検査を打ち切らず全違反を
 `Vec` に集めて返します。`create` はこの収集版に委譲し先頭の1件を返す
 薄いラッパーとして実装されています (検証ロジックの二重実装を避けるため)。
@@ -323,7 +321,7 @@ let g = graphite::graph!(OrgChart {
     tanaka_dept = BelongsTo(tanaka -> sales),
     sato_dept   = BelongsTo(sato -> sales),
     tanaka_boss = Boss(tanaka -[BossEdge { since: 2020 }]-> sato),
-})?; // Result<OrgChart, OrgChartViolation>
+})?; // Result<OrgChart::Graph, OrgChart::Violation>
 ```
 
 **全行が `名前 = 値`** です (`docs/schema_v4.md` §0 規則1)。ノードの名前は
@@ -351,7 +349,7 @@ let g = graphite::graph!(OrgChart {
 })?;
 ```
 
-`graph!` は `OrgChart::create(|__graphite_b| { ... })` の呼び出し列へ脱糖する
+`graph!` は `OrgChart::Graph::create(|__graphite_b| { ... })` の呼び出し列へ脱糖する
 だけで、スキーマの中身 (どのエッジが存在するか等) は一切知りません。値の型も
 一切パースせず、`graph_schema!` が生成した総称 `insert`/`add` メソッド
 (下記) へユーザーの式トークンをそのまま渡すだけです (型推論は rustc に
@@ -362,18 +360,18 @@ let g = graphite::graph!(OrgChart {
 `docs/ide_support_spec.md` 参照)。展開結果はおおよそ次の形になります:
 
 ```rust
-OrgChart::create(|__graphite_b| {
+OrgChart::Graph::create(|__graphite_b| {
     // (1) 全ノード宣言 (記述順)
     let tanaka = __graphite_b.insert("tanaka", Employee { .. });
     let sales = __graphite_b.insert("sales", Department { .. });
     // (2) 全エッジ (記述順)
-    let tanaka_dept = __graphite_b.add("tanaka_dept", BelongsTo(tanaka.clone(), sales.clone()));
-    let tanaka_boss = __graphite_b.add("tanaka_boss", Boss(tanaka.clone(), sato.clone(), BossEdge { since: 2020 }));
+    let tanaka_dept = __graphite_b.add("tanaka_dept", OrgChart::BelongsTo(tanaka.clone(), sales.clone()));
+    let tanaka_boss = __graphite_b.add("tanaka_boss", OrgChart::Boss(tanaka.clone(), sato.clone(), BossEdge { since: 2020 }));
 })
 ```
 
 `insert`/`add` は `graph_schema!` が各スキーマごとに生成する総称メソッドで、
-`{Schema}Node`/`{Schema}Edge` トレイト境界を介して値の型から正しい内部
+`{Schema}::{Schema}Node`/`{Schema}::{Schema}Edge` トレイト境界を介して値の型から正しい内部
 ストレージへ振り分けます (詳細は上記「1. `graph_schema!` でスキーマを
 宣言する」節)。`N::Id`/`E::Id` の型は rustc がこの trait 境界から単相化して
 決めるため、`let tanaka = ...` の型は `graph!` 自身は一切知りません。
@@ -433,16 +431,16 @@ cannot-find-type / no-such-function に落ちることで検出されます (「
 ### 3. アクセサ・アルゴリズムを使う
 
 ```rust
-let dept = BelongsTo::of(&g, &EmployeeId("tanaka".to_string())); // &Department (each 1)
-let (boss, attrs) = Boss::of(&g, &EmployeeId("tanaka".to_string())).unwrap(); // Option<(&Employee, &BossEdge)>
-let reports = Reports::of(&g, &EmployeeId("tanaka".to_string())); // Vec<&Employee> (制約なし)
+let dept = OrgChart::BelongsTo::of(&g, &EmployeeId("tanaka".to_string())); // &Department (each 1)
+let (boss, attrs) = OrgChart::Boss::of(&g, &EmployeeId("tanaka".to_string())).unwrap(); // Option<(&Employee, &BossEdge)>
+let reports = OrgChart::Reports::of(&g, &EmployeeId("tanaka".to_string())); // Vec<&Employee> (制約なし)
 
 // get_of: each 1 の非パニック版。未知キーは None に落ちる。
-let dept_opt = BelongsTo::get_of(&g, &EmployeeId("no-such-id".to_string())); // None
+let dept_opt = OrgChart::BelongsTo::get_of(&g, &EmployeeId("no-such-id".to_string())); // None
 
 // iter(): match パターンの代替。イテレータチェーンでクエリを書く。
 // 例: 相互に上司であるペア (A の boss が B かつ B の boss が A) を検出する。
-let all: Vec<(&EmployeeId, &EmployeeId)> = Boss::iter(&g)
+let all: Vec<(&EmployeeId, &EmployeeId)> = OrgChart::Boss::iter(&g)
     .map(|(_id, edge)| (edge.from(), edge.to()))
     .collect();
 let mutual_bosses: Vec<(&EmployeeId, &EmployeeId)> = all
@@ -451,14 +449,17 @@ let mutual_bosses: Vec<(&EmployeeId, &EmployeeId)> = all
     .filter(|(a, b)| all.contains(&(b, a)))
     .collect();
 
-// {Type}::ids(&g): ノード種別ごとの全キー列挙 ({Schema}Node トレイトの関連関数)。
-let all_employee_ids: Vec<&EmployeeId> = Employee::ids(&g).collect();
+// {Schema}::{Type}::ids(&g): ノード種別ごとの全キー列挙。
+let all_employee_ids: Vec<&EmployeeId> = OrgChart::Employee::ids(&g).collect();
 
 // Kind::get: 辺キー (newtype) そのもので1本検索する。
-let edge: Option<&BelongsTo> = BelongsTo::get(&g, &BelongsToId("tanaka_dept".to_string()));
+let edge: Option<&OrgChart::BelongsTo> = OrgChart::BelongsTo::get(
+    &g,
+    &OrgChart::BelongsToId("tanaka_dept".to_string()),
+);
 
 // create_collecting: 最初の1件で打ち切らず全違反を収集する。
-let result: Result<OrgChart, Vec<OrgChartViolation>> = OrgChart::create_collecting(|b| {
+let result: Result<OrgChart::Graph, Vec<OrgChart::Violation>> = OrgChart::Graph::create_collecting(|b| {
     // ... 複数の違反を含みうる構築 ...
 });
 ```
@@ -564,9 +565,8 @@ PartialEq`) ためです。`PartialOrd`/`Ord` は要求されません (要求�
 
 複数 schema での `PersonId` 共有は、衝突ではなく当然の帰結です: 組織図で
 得たキーを承認フローのクエリにそのまま渡せます
-(`crates/graphite/tests/node_id_shared_across_schemas.rs`)。ただし
-`{Schema}Node` トレイトのメソッド解決が曖昧になる場合があることは前述
-「複数 schema でノード型を共有する場合」を参照してください。
+(`crates/graphite/tests/node_id_shared_across_schemas.rs`)。schema module が
+問い合わせ名前空間を分離するため、どのグラフを読むかも修飾名で明示できます。
 
 ### 名前空間に関する制約 (`graph!`)
 

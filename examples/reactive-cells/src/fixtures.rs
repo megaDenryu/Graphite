@@ -4,7 +4,9 @@
 //! 税率・割引率・配送料 → 小計 → 割引額・税額 → 調整額 → 合計)。
 //! [`cyclic_demo_sheet`] は循環デモ専用の壊れたシート。
 
-use crate::schema::{Cell, Feeds, Formula, Lhs, Rhs, Sheet, SheetViolation};
+use crate::schema::{Cell, Formula, Sheet};
+#[cfg(test)]
+use crate::schema::{Feeds, Lhs, Rhs};
 
 /// 本編のミニスプレッドシート。10セル・11本の依存エッジ (`Feeds` 9本 +
 /// `Lhs`/`Rhs` 1本ずつ)。
@@ -56,7 +58,7 @@ use crate::schema::{Cell, Feeds, Formula, Lhs, Rhs, Sheet, SheetViolation};
 /// `l_<from>_<to>` / `r_<from>_<to>`。接頭辞はエッジ種別) を付けている
 /// (連番は避ける)。
 #[rustfmt::skip]
-pub fn default_sheet() -> Result<Sheet, SheetViolation> {
+pub fn default_sheet() -> Result<Sheet::Graph, Sheet::Violation> {
     graphite::graph!(Sheet {
         unit_price    = Cell { formula: Formula::Input },
         quantity      = Cell { formula: Formula::Input },
@@ -88,7 +90,7 @@ pub fn default_sheet() -> Result<Sheet, SheetViolation> {
 /// エッジによる循環購読を表す (README「循環の拒否」節)。
 ///
 /// `Feeds` は `where unique pair` のみで循環そのものを禁止する制約は
-/// 無いので `graph!`/`Sheet::create` 自体は**構造としては正常に構築
+/// 無いので `graph!`/`Sheet::Graph::create` 自体は**構造としては正常に構築
 /// できてしまう** (端点は全て宣言済みで、同一対の重複も無い)。循環の
 /// 検出は `graphite::Graph::topological_sort`
 /// (= [`crate::engine::Engine::new`] が内部で呼ぶ) まで遅延される —
@@ -98,7 +100,7 @@ pub fn default_sheet() -> Result<Sheet, SheetViolation> {
 /// このデモは3セルとも `Formula::Input` のままなので、`Lhs`/`Rhs` は
 /// 登場しない (被減数/減数の区別が要らない、循環検出だけが目的)。
 #[rustfmt::skip]
-pub fn cyclic_demo_sheet() -> Result<Sheet, SheetViolation> {
+pub fn cyclic_demo_sheet() -> Result<Sheet::Graph, Sheet::Violation> {
     graphite::graph!(Sheet {
         a = Cell { formula: Formula::Input },
         b = Cell { formula: Formula::Input },
@@ -113,12 +115,11 @@ pub fn cyclic_demo_sheet() -> Result<Sheet, SheetViolation> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::schema::SheetNode;
 
     #[test]
     fn default_sheetは10セル11エッジで構築できる() {
         let sheet = default_sheet().expect("正常なシートは構築に成功するはず");
-        assert_eq!(Cell::ids(&sheet).count(), 10);
+        assert_eq!(Sheet::Cell::ids(&sheet).count(), 10);
         assert_eq!(Feeds::len(&sheet), 9, "可換な演算(Mul/Sum)の被演算子9本");
         assert_eq!(Lhs::len(&sheet), 1, "adjustmentの被減数(tax)1本");
         assert_eq!(Rhs::len(&sheet), 1, "adjustmentの減数(discount_amount)1本");
@@ -128,8 +129,9 @@ mod tests {
     fn cyclic_demo_sheetは構造としては構築に成功する() {
         // 循環そのものはSheet::create/graph!の検証対象外 (端点存在と
         // unique pairだけを見る)。循環検出はEngine::new側の責務。
-        let sheet = cyclic_demo_sheet().expect("Feedsはunique pairのみなので循環でも構造検証は通るはず");
-        assert_eq!(Cell::ids(&sheet).count(), 3);
+        let sheet =
+            cyclic_demo_sheet().expect("Feedsはunique pairのみなので循環でも構造検証は通るはず");
+        assert_eq!(Sheet::Cell::ids(&sheet).count(), 3);
         assert_eq!(Feeds::len(&sheet), 3);
     }
 }

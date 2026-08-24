@@ -128,6 +128,11 @@ graphite::graph_schema! {
     }
 }
 
+// 綴り短縮のための再輸出。同名edgeを持つschemaを足したらこの行を消す。
+use Org::{
+    BelongsTo, BelongsToId, Boss, BossId, Friends, FriendsId, Reports, ReportsId, ReviewedBy,
+};
+
 fn main() {
     section3();
     section5();
@@ -217,12 +222,12 @@ fn main() {
 //
 // ## 3. 格納先は KeyedTable — HashMap 直書きではない
 //
-// `Org` struct 本体は次の形で生成されます
+// `Org::Graph` struct 本体は次の形で生成されます
 // (`schema_codegen.rs::gen_schema_struct`。フィールド名はノード種別名の
 // 複数形・エッジ種別名の snake_case):
 //
 // ```rust
-// pub struct Org {
+// pub struct Graph {
 //     persons: graphite::KeyedTable<PersonId, Person>,
 //     teams: graphite::KeyedTable<TeamId, Team>,
 //
@@ -269,9 +274,7 @@ fn main() {
 //
 // v4 (`docs/schema_v4.md` §3.2) では「すべて型名前空間の関連関数」です。
 // `g.メソッド()` は一切生成されません:
-// - ノード: `{Schema}Node` トレイト経由 (`Person::get(&g, &id)` 等。この
-//   トレイトを `use` でスコープに入れておく必要があります — 本ファイルは
-//   `graph_schema!` 呼び出しと同じモジュールなので暗黙にスコープ内です)。
+// - ノード: schema module 内のマーカー型 (`Org::Person::get(&g, &id)` 等)。
 // - エッジ: 各 `Kind` への固有 impl (`Boss::of`/`get`/`between`/`iter`/
 //   `ids`/`len`)。`of`/`between` の戻り型は宣言した `where` 制約が決めます
 //   (`each 1` → 直接参照、`each 0..1` → `Option`、制約なし → `Vec`、
@@ -279,7 +282,7 @@ fn main() {
 //
 // スタイル: イテレータ連鎖 (`map`/`filter`/`collect`) やクロージャによる
 // データ加工は使わず、素の `for`/`if let`/`match` だけで書いています
-// (`Org::create(|b| { .. })` の `|b| { .. }` は API が要求する引数であって
+// (`Org::Graph::create(|b| { .. })` の `|b| { .. }` は API が要求する引数であって
 // データ加工のクロージャではないので例外です)。
 
 fn section3() {
@@ -287,7 +290,7 @@ fn section3() {
 
     // --- 構築 (3通りの書き方) ---
     println!("--- 構築 ---");
-    let g: Org = インライン式でgraphリテラルを組み立てる();
+    let g: Org::Graph = インライン式でgraphリテラルを組み立てる();
     外部変数を渡してgraphリテラルを組み立てる();
     外部で作ったエッジ属性をgraphリテラルに渡す();
     builderの型名メソッドで組み立てる();
@@ -332,9 +335,9 @@ fn section3() {
 
 // やりたいこと: graph! にノード式・エッジをそのまま書いて組み立てる (最も基本の書き方)。
 // この g を以降の「ノードを読む」「エッジを辿る」「一覧する」節で使い回す。
-fn インライン式でgraphリテラルを組み立てる() -> Org {
+fn インライン式でgraphリテラルを組み立てる() -> Org::Graph {
     #[rustfmt::skip]
-    let g: Org = graphite::graph!(Org {
+    let g: Org::Graph = graphite::graph!(Org {
         alice = Person { name: "Alice".into() },
         bob   = Person { name: "Bob".into() },
         carol = Person { name: "Carol".into() },
@@ -351,23 +354,27 @@ fn インライン式でgraphリテラルを組み立てる() -> Org {
         alice_bob_friends = Friends(alice -- bob),
     })
     .expect("正常なグラフは構築に成功するはず");
-    let alice_person: &Person = Person::get(&g, &PersonId("alice".to_string())).unwrap();
+    let alice_person: &Person = Org::Person::get(&g, &PersonId("alice".to_string())).unwrap();
     println!("(構築1: インライン式) alice = {}", alice_person.name);
     g
 }
 
 // やりたいこと: グラフの外で作った値を graph! にそのまま渡す (`alice = alice_value` の形)。
 fn 外部変数を渡してgraphリテラルを組み立てる() {
-    let alice_value: Person = Person { name: "Alice".to_string() };
-    let eng_value: Team = Team { name: "Engineering".to_string() };
+    let alice_value: Person = Person {
+        name: "Alice".to_string(),
+    };
+    let eng_value: Team = Team {
+        name: "Engineering".to_string(),
+    };
     #[rustfmt::skip]
-    let g: Org = graphite::graph!(Org {
+    let g: Org::Graph = graphite::graph!(Org {
         alice = alice_value,
         eng   = eng_value,
         alice_dept = BelongsTo(alice -> eng),
     })
     .expect("外部変数を渡した graph! も構築に成功するはず");
-    let alice_person: &Person = Person::get(&g, &PersonId("alice".to_string())).unwrap();
+    let alice_person: &Person = Org::Person::get(&g, &PersonId("alice".to_string())).unwrap();
     println!("(構築2: 外部変数渡し) alice = {}", alice_person.name);
 }
 
@@ -375,7 +382,7 @@ fn 外部変数を渡してgraphリテラルを組み立てる() {
 fn 外部で作ったエッジ属性をgraphリテラルに渡す() {
     let promotion: BossEdge = BossEdge { since: 2019 };
     #[rustfmt::skip]
-    let g: Org = graphite::graph!(Org {
+    let g: Org::Graph = graphite::graph!(Org {
         alice = Person { name: "Alice".into() },
         bob   = Person { name: "Bob".into() },
         eng   = Team { name: "Engineering".into() },
@@ -385,21 +392,34 @@ fn 外部で作ったエッジ属性をgraphリテラルに渡す() {
     })
     .expect("外部エッジ属性を渡した graph! も構築に成功するはず");
     let boss_pair: (&Person, &BossEdge) = Boss::of(&g, &PersonId("bob".to_string())).unwrap();
-    println!("(構築3: 外部エッジ属性渡し) bob の上司就任年 = {}", boss_pair.1.since);
+    println!(
+        "(構築3: 外部エッジ属性渡し) bob の上司就任年 = {}",
+        boss_pair.1.since
+    );
 }
 
 // やりたいこと: graph! を使わず、builder の型名つきメソッド (`b.person(id, value)`) で組み立てる。
 fn builderの型名メソッドで組み立てる() {
-    let g: Org = Org::create(|b: &mut OrgBuilder| {
-        b.person(PersonId("dave".to_string()), Person { name: "Dave".to_string() });
-        b.team(TeamId("sales".to_string()), Team { name: "Sales".to_string() });
+    let g: Org::Graph = Org::Graph::create(|b: &mut Org::Builder| {
+        b.person(
+            PersonId("dave".to_string()),
+            Person {
+                name: "Dave".to_string(),
+            },
+        );
+        b.team(
+            TeamId("sales".to_string()),
+            Team {
+                name: "Sales".to_string(),
+            },
+        );
         b.belongs_to(
             BelongsToId("dave_dept".to_string()),
             BelongsTo(PersonId("dave".to_string()), TeamId("sales".to_string())),
         );
     })
     .expect("builder の型名メソッドでも構築に成功するはず");
-    let dave: &Person = Person::get(&g, &PersonId("dave".to_string())).unwrap();
+    let dave: &Person = Org::Person::get(&g, &PersonId("dave".to_string())).unwrap();
     println!("(構築4: builderの型名メソッド) dave = {}", dave.name);
 }
 
@@ -407,31 +427,41 @@ fn builderの型名メソッドで組み立てる() {
 // 振り分けさせる (`insert` の型境界 `N: OrgNode`、`add` の型境界 `E: OrgEdge` は
 // graph_schema! が生成したトレイトで満たされる。利用者がこのトレイトを直接呼ぶことは無い)。
 fn builderの総称insertとaddで組み立てる() {
-    let g: Org = Org::create(|b: &mut OrgBuilder| {
-        let eve_id: PersonId = b.insert("eve", Person { name: "Eve".to_string() });
-        let sales_id: TeamId = b.insert("sales", Team { name: "Sales".to_string() });
+    let g: Org::Graph = Org::Graph::create(|b: &mut Org::Builder| {
+        let eve_id: PersonId = b.insert(
+            "eve",
+            Person {
+                name: "Eve".to_string(),
+            },
+        );
+        let sales_id: TeamId = b.insert(
+            "sales",
+            Team {
+                name: "Sales".to_string(),
+            },
+        );
         let _dept_id: BelongsToId = b.add("eve_dept", BelongsTo(eve_id.clone(), sales_id.clone()));
     })
     .expect("insert/add 経由の構築も成功するはず");
-    let eve: &Person = Person::get(&g, &PersonId("eve".to_string())).unwrap();
+    let eve: &Person = Org::Person::get(&g, &PersonId("eve".to_string())).unwrap();
     println!("(構築5: builderの総称insert/add) eve = {}", eve.name);
 }
 
 // --- ノードを読む ---
 
 // やりたいこと: `{Type}::get(&g, &id)` で1件読む (無ければ None)。
-fn 人ノードを1件読む(g: &Org) {
-    let alice: Option<&Person> = Person::get(g, &PersonId("alice".to_string()));
+fn 人ノードを1件読む(g: &Org::Graph) {
+    let alice: Option<&Person> = Org::Person::get(g, &PersonId("alice".to_string()));
     if let Some(person) = alice {
         println!("(ノード) Person::get(&g, &alice) = {}", person.name);
     }
-    let unknown: Option<&Person> = Person::get(g, &PersonId("dave".to_string()));
+    let unknown: Option<&Person> = Org::Person::get(g, &PersonId("dave".to_string()));
     println!("(ノード) Person::get(&g, &dave)  = {unknown:?} (この g には居ない)");
 }
 
 // やりたいこと: `Team::get` も同じ形。ノード型が違っても命名規則は共通。
-fn チームノードを1件読む(g: &Org) {
-    let eng: Option<&Team> = Team::get(g, &TeamId("eng".to_string()));
+fn チームノードを1件読む(g: &Org::Graph) {
+    let eng: Option<&Team> = Org::Team::get(g, &TeamId("eng".to_string()));
     if let Some(team) = eng {
         println!("(ノード) Team::get(&g, &eng) = {}", team.name);
     }
@@ -439,23 +469,29 @@ fn チームノードを1件読む(g: &Org) {
 
 // やりたいこと: `PersonId` はただの newtype なので手で組み立てられる。graph! の
 // キー (`alice = ..`) はこの `PersonId("alice".to_string())` と同一視される。
-fn personidの作り方とgraphのキーの対応を確認する(g: &Org) {
+fn personidの作り方とgraphのキーの対応を確認する(g: &Org::Graph) {
     let hand_built_id: PersonId = PersonId("alice".to_string());
-    let alice: &Person = Person::get(g, &hand_built_id)
+    let alice: &Person = Org::Person::get(g, &hand_built_id)
         .expect("graph!のキーaliceがPersonId(\"alice\")と一致するはず");
-    println!("(型) PersonId(\"alice\".to_string()) で graph! の alice = {} が引ける", alice.name);
+    println!(
+        "(型) PersonId(\"alice\".to_string()) で graph! の alice = {} が引ける",
+        alice.name
+    );
 }
 
 // --- エッジを辿る (Kind::of/get/between) ---
 
 // やりたいこと: `each Person: 1` のエッジは `of` が参照そのものを返す
 // (未知キーはパニックする契約。非パニック版は `get_of`)。
-fn each_1のofは直接参照を返す(g: &Org) {
+fn each_1のofは直接参照を返す(g: &Org::Graph) {
     let team: &Team = BelongsTo::of(g, &PersonId("alice".to_string()));
     println!("(each 1) BelongsTo::of(&g, &alice) = {}", team.name);
 
     let safe: Option<&Team> = BelongsTo::get_of(g, &PersonId("alice".to_string()));
-    println!("(each 1) BelongsTo::get_of(&g, &alice) = {:?}", safe.map(|t| &t.name));
+    println!(
+        "(each 1) BelongsTo::get_of(&g, &alice) = {:?}",
+        safe.map(|t| &t.name)
+    );
     let unknown: Option<&Team> = BelongsTo::get_of(g, &PersonId("dave".to_string()));
     println!("(each 1) BelongsTo::get_of(&g, &dave) = {unknown:?} (未知キーはNone)");
 }
@@ -463,10 +499,13 @@ fn each_1のofは直接参照を返す(g: &Org) {
 // やりたいこと: `each Person: 0..1` のエッジは `of` が `Option` を返す。
 // 積み荷ありなので `Option<(&Node, &Attrs)>` になり、積み荷へは "ふつうの
 // フィールドアクセス" で辿れる (`attrs.since`)。
-fn each_0か1のofはoptionを返す(g: &Org) {
+fn each_0か1のofはoptionを返す(g: &Org::Graph) {
     let boss: Option<(&Person, &BossEdge)> = Boss::of(g, &PersonId("bob".to_string()));
     if let Some((boss_person, attrs)) = boss {
-        println!("(each 0..1) Boss::of(&g, &bob) = {} (就任年: {})", boss_person.name, attrs.since);
+        println!(
+            "(each 0..1) Boss::of(&g, &bob) = {} (就任年: {})",
+            boss_person.name, attrs.since
+        );
     }
     let no_boss: Option<(&Person, &BossEdge)> = Boss::of(g, &PersonId("alice".to_string()));
     println!("(each 0..1) Boss::of(&g, &alice) = {no_boss:?} (aliceには上司がいない)");
@@ -474,24 +513,30 @@ fn each_0か1のofはoptionを返す(g: &Org) {
 
 // やりたいこと: `unique pair` のエッジは `between` が `Option` を返す
 // (同じ対に2本目を張れないので「あるかないか」で十分)。
-fn unique_pairのbetweenはoptionを返す(g: &Org) {
+fn unique_pairのbetweenはoptionを返す(g: &Org::Graph) {
     let r: Option<&Reports> = Reports::between(
         g,
         &PersonId("alice".to_string()),
         &PersonId("bob".to_string()),
     );
-    println!("(unique pair) Reports::between(&g, &alice, &bob) = {}", r.is_some());
+    println!(
+        "(unique pair) Reports::between(&g, &alice, &bob) = {}",
+        r.is_some()
+    );
     let none = Reports::between(
         g,
         &PersonId("bob".to_string()),
         &PersonId("alice".to_string()),
     );
-    println!("(unique pair) Reports::between(&g, &bob, &alice) = {} (逆向きは無い)", none.is_some());
+    println!(
+        "(unique pair) Reports::between(&g, &bob, &alice) = {} (逆向きは無い)",
+        none.is_some()
+    );
 }
 
 // やりたいこと: 制約なしのエッジは `of` が `Vec` を返す (平行辺を許すため)。
 // 積み荷ありなので `Vec<(&Node, &Attrs)>`。
-fn 制約なしのofはvecを返す(g: &Org) {
+fn 制約なしのofはvecを返す(g: &Org::Graph) {
     let reviewers: Vec<(&Person, &ReviewEdge)> = ReviewedBy::of(g, &PersonId("bob".to_string()));
     for (reviewer, attrs) in &reviewers {
         println!(
@@ -505,7 +550,7 @@ fn 制約なしのofはvecを返す(g: &Org) {
 // `endpoints() -> (&PersonId, &PersonId)` を持つ (`docs/edge_endpoints_v4_1.md`
 // §2)。位置0/1は `Friends(alice -- bob)` と書いた際の記述順そのままだが、
 // 意味論としては順序なし対であることに注意 (次の関数で確認する)。
-fn 無向辺のendpointsアクセサで両端を読む(g: &Org) {
+fn 無向辺のendpointsアクセサで両端を読む(g: &Org::Graph) {
     let friends_id = FriendsId("alice_bob_friends".to_string());
     let edge: &Friends = Friends::get(g, &friends_id).unwrap();
     let (p0, p1) = edge.endpoints();
@@ -515,13 +560,16 @@ fn 無向辺のendpointsアクセサで両端を読む(g: &Org) {
 // やりたいこと: `of`/`between` はどちらの位置に置かれても対称に辿れる。
 // `unique pair` の同値判定も順序を無視する (`alice -- bob` と `bob -- alice`
 // は同じ対)。
-fn 無向辺のofとbetweenは対称に辿れる(g: &Org) {
+fn 無向辺のofとbetweenは対称に辿れる(g: &Org::Graph) {
     let alice = PersonId("alice".to_string());
     let bob = PersonId("bob".to_string());
 
     let friends_of_bob: Vec<&Person> = Friends::of(g, &bob);
     for friend in &friends_of_bob {
-        println!("(無向) Friends::of(&g, &bob) に {} が含まれる (aliceが位置0でも辿れる)", friend.name);
+        println!(
+            "(無向) Friends::of(&g, &bob) に {} が含まれる (aliceが位置0でも辿れる)",
+            friend.name
+        );
     }
 
     let forward: Option<&Friends> = Friends::between(g, &alice, &bob);
@@ -536,51 +584,70 @@ fn 無向辺のofとbetweenは対称に辿れる(g: &Org) {
 // --- 一覧する (iter/ids/len) ---
 
 // やりたいこと: `{Type}::ids(&g)` でノード種別ごとの全キーを列挙する。
-fn person_idsで全ノードキーを列挙する(g: &Org) {
-    for id in Person::ids(g) {
+fn person_idsで全ノードキーを列挙する(g: &Org::Graph) {
+    for id in Org::Person::ids(g) {
         println!("(一覧) Person::ids: {id:?}");
     }
 }
 
-fn team_idsで全ノードキーを列挙する(g: &Org) {
-    for id in Team::ids(g) {
+fn team_idsで全ノードキーを列挙する(g: &Org::Graph) {
+    for id in Org::Team::ids(g) {
         println!("(一覧) Team::ids: {id:?}");
     }
 }
 
 // やりたいこと: `Kind::iter(&g)` は `(&{Kind}Id, &Kind)` の組。積み荷なしエッジの例。
-fn belongs_toのiterで制約ありエッジを列挙する(g: &Org) {
+fn belongs_toのiterで制約ありエッジを列挙する(g: &Org::Graph) {
     for (id, edge) in BelongsTo::iter(g) {
-        println!("(iter) BelongsTo {id:?}: {:?} -> {:?}", edge.from(), edge.to());
+        println!(
+            "(iter) BelongsTo {id:?}: {:?} -> {:?}",
+            edge.from(),
+            edge.to()
+        );
     }
 }
 
 // やりたいこと: 積み荷ありエッジの `iter()` も同じ形。`edge.payload()` で積み荷を読む。
-fn bossのiterで積み荷ありエッジを列挙する(g: &Org) {
+fn bossのiterで積み荷ありエッジを列挙する(g: &Org::Graph) {
     for (id, edge) in Boss::iter(g) {
         println!(
             "(iter) Boss {id:?}: {:?} -> {:?} (since={})",
-            edge.from(), edge.to(), edge.payload().since
+            edge.from(),
+            edge.to(),
+            edge.payload().since
         );
     }
 }
 
 // やりたいこと: `Kind::len(&g)` で表の辺の本数を確認する。
-fn lenで表の辺の本数を確認する(g: &Org) {
+fn lenで表の辺の本数を確認する(g: &Org::Graph) {
     println!("(len) BelongsTo::len(&g) = {}", BelongsTo::len(g));
-    println!("(len) ReviewedBy::len(&g) = {} (制約なしは平行辺込みの総本数)", ReviewedBy::len(g));
+    println!(
+        "(len) ReviewedBy::len(&g) = {} (制約なしは平行辺込みの総本数)",
+        ReviewedBy::len(g)
+    );
 }
 
 // --- 検証エラーを受ける ---
 
 // やりたいこと: 同じキーを2回宣言すると `Duplicate{Node}` 違反になることを確認する。
 fn 重複ノードキーの違反を受け取る() {
-    let result: Result<Org, OrgViolation> = Org::create(|b: &mut OrgBuilder| {
-        b.person(PersonId("alice".to_string()), Person { name: "Alice".to_string() });
-        b.person(PersonId("alice".to_string()), Person { name: "Alice2".to_string() });
+    let result: Result<Org::Graph, Org::Violation> = Org::Graph::create(|b: &mut Org::Builder| {
+        b.person(
+            PersonId("alice".to_string()),
+            Person {
+                name: "Alice".to_string(),
+            },
+        );
+        b.person(
+            PersonId("alice".to_string()),
+            Person {
+                name: "Alice2".to_string(),
+            },
+        );
     });
     match result {
-        Err(OrgViolation::DuplicatePerson(id)) => println!("(違反) 重複ノードキー: {id:?}"),
+        Err(Org::Violation::DuplicatePerson(id)) => println!("(違反) 重複ノードキー: {id:?}"),
         _ => panic!("重複ノードキー違反が検出されるはず"),
     }
 }
@@ -588,10 +655,25 @@ fn 重複ノードキーの違反を受け取る() {
 // やりたいこと: v4で新規追加された「辺キーの重複」も検出できることを確認する
 // (辺も第一級のキー付き要素になったため)。
 fn 辺キー重複の違反を受け取る() {
-    let result: Result<Org, OrgViolation> = Org::create(|b: &mut OrgBuilder| {
-        b.person(PersonId("alice".to_string()), Person { name: "Alice".to_string() });
-        b.person(PersonId("bob".to_string()), Person { name: "Bob".to_string() });
-        b.team(TeamId("eng".to_string()), Team { name: "Engineering".to_string() });
+    let result: Result<Org::Graph, Org::Violation> = Org::Graph::create(|b: &mut Org::Builder| {
+        b.person(
+            PersonId("alice".to_string()),
+            Person {
+                name: "Alice".to_string(),
+            },
+        );
+        b.person(
+            PersonId("bob".to_string()),
+            Person {
+                name: "Bob".to_string(),
+            },
+        );
+        b.team(
+            TeamId("eng".to_string()),
+            Team {
+                name: "Engineering".to_string(),
+            },
+        );
         b.belongs_to(
             BelongsToId("dup".to_string()),
             BelongsTo(PersonId("alice".to_string()), TeamId("eng".to_string())),
@@ -602,22 +684,30 @@ fn 辺キー重複の違反を受け取る() {
         );
     });
     match result {
-        Err(OrgViolation::BelongsToDuplicateKey(id)) => println!("(違反) 辺キー重複: {id:?}"),
+        Err(Org::Violation::BelongsToDuplicateKey(id)) => println!("(違反) 辺キー重複: {id:?}"),
         _ => panic!("辺キー重複違反が検出されるはず"),
     }
 }
 
 // やりたいこと: 未宣言の始点キーからエッジを張ると `{Kind}UnknownSource` 違反になる。
 fn 未知の始点キーの違反を受け取る() {
-    let result: Result<Org, OrgViolation> = Org::create(|b: &mut OrgBuilder| {
-        b.team(TeamId("eng".to_string()), Team { name: "Engineering".to_string() });
+    let result: Result<Org::Graph, Org::Violation> = Org::Graph::create(|b: &mut Org::Builder| {
+        b.team(
+            TeamId("eng".to_string()),
+            Team {
+                name: "Engineering".to_string(),
+            },
+        );
         b.belongs_to(
             BelongsToId("bt1".to_string()),
-            BelongsTo(PersonId("存在しない社員".to_string()), TeamId("eng".to_string())),
+            BelongsTo(
+                PersonId("存在しない社員".to_string()),
+                TeamId("eng".to_string()),
+            ),
         );
     });
     match result {
-        Err(OrgViolation::BelongsToUnknownSource { edge, source }) => {
+        Err(Org::Violation::BelongsToUnknownSource { edge, source }) => {
             println!("(違反) 未知の始点キー: 辺={edge:?} 始点={source:?}");
         }
         _ => panic!("未知の始点キー違反が検出されるはず"),
@@ -626,15 +716,23 @@ fn 未知の始点キーの違反を受け取る() {
 
 // やりたいこと: 未宣言の終点キーへエッジを張ると `{Kind}UnknownTarget` 違反になる。
 fn 未知の終点キーの違反を受け取る() {
-    let result: Result<Org, OrgViolation> = Org::create(|b: &mut OrgBuilder| {
-        b.person(PersonId("alice".to_string()), Person { name: "Alice".to_string() });
+    let result: Result<Org::Graph, Org::Violation> = Org::Graph::create(|b: &mut Org::Builder| {
+        b.person(
+            PersonId("alice".to_string()),
+            Person {
+                name: "Alice".to_string(),
+            },
+        );
         b.belongs_to(
             BelongsToId("bt1".to_string()),
-            BelongsTo(PersonId("alice".to_string()), TeamId("存在しないチーム".to_string())),
+            BelongsTo(
+                PersonId("alice".to_string()),
+                TeamId("存在しないチーム".to_string()),
+            ),
         );
     });
     match result {
-        Err(OrgViolation::BelongsToUnknownTarget { edge, target }) => {
+        Err(Org::Violation::BelongsToUnknownTarget { edge, target }) => {
             println!("(違反) 未知の終点キー: 辺={edge:?} 終点={target:?}");
         }
         _ => panic!("未知の終点キー違反が検出されるはず"),
@@ -643,12 +741,17 @@ fn 未知の終点キーの違反を受け取る() {
 
 // やりたいこと: `each Person: 1` を満たさない (0本の) エッジは `{Kind}EachViolation` になる。
 fn each違反を受け取る() {
-    let result: Result<Org, OrgViolation> = Org::create(|b: &mut OrgBuilder| {
-        b.person(PersonId("alice".to_string()), Person { name: "Alice".to_string() });
+    let result: Result<Org::Graph, Org::Violation> = Org::Graph::create(|b: &mut Org::Builder| {
+        b.person(
+            PersonId("alice".to_string()),
+            Person {
+                name: "Alice".to_string(),
+            },
+        );
         // aliceをどのチームにも所属させない (BelongsTo は each Person: 1)
     });
     match result {
-        Err(OrgViolation::BelongsToEachViolation { source, count }) => {
+        Err(Org::Violation::BelongsToEachViolation { source, count }) => {
             println!("(違反) each違反: {source:?} は {count} 本 (期待は1本)");
         }
         _ => panic!("each違反が検出されるはず"),
@@ -657,10 +760,25 @@ fn each違反を受け取る() {
 
 // やりたいこと: `unique pair` の対に2本目を張ると `{Kind}UniquePairViolation` になる。
 fn unique_pair違反を受け取る() {
-    let result: Result<Org, OrgViolation> = Org::create(|b: &mut OrgBuilder| {
-        b.person(PersonId("alice".to_string()), Person { name: "Alice".to_string() });
-        b.person(PersonId("bob".to_string()), Person { name: "Bob".to_string() });
-        b.team(TeamId("eng".to_string()), Team { name: "Engineering".to_string() });
+    let result: Result<Org::Graph, Org::Violation> = Org::Graph::create(|b: &mut Org::Builder| {
+        b.person(
+            PersonId("alice".to_string()),
+            Person {
+                name: "Alice".to_string(),
+            },
+        );
+        b.person(
+            PersonId("bob".to_string()),
+            Person {
+                name: "Bob".to_string(),
+            },
+        );
+        b.team(
+            TeamId("eng".to_string()),
+            Team {
+                name: "Engineering".to_string(),
+            },
+        );
         // each Person: 1 (BelongsTo) が先に違反しないよう、両者ともチームに所属させておく。
         b.belongs_to(
             BelongsToId("bt_alice".to_string()),
@@ -680,7 +798,7 @@ fn unique_pair違反を受け取る() {
         );
     });
     match result {
-        Err(OrgViolation::ReportsUniquePairViolation { source, target }) => {
+        Err(Org::Violation::ReportsUniquePairViolation { source, target }) => {
             println!("(違反) unique pair違反: {source:?} -> {target:?} に2本目");
         }
         _ => panic!("unique pair違反が検出されるはず"),
@@ -689,12 +807,22 @@ fn unique_pair違反を受け取る() {
 
 // やりたいこと: `create` は最初の1件の違反で `Err` になる (複数あっても1件目だけ)。
 fn createは最初の1件で違反を止める() {
-    let result: Result<Org, OrgViolation> = Org::create(|b: &mut OrgBuilder| {
-        b.person(PersonId("alice".to_string()), Person { name: "Alice".to_string() });
-        b.person(PersonId("bob".to_string()), Person { name: "Bob".to_string() });
+    let result: Result<Org::Graph, Org::Violation> = Org::Graph::create(|b: &mut Org::Builder| {
+        b.person(
+            PersonId("alice".to_string()),
+            Person {
+                name: "Alice".to_string(),
+            },
+        );
+        b.person(
+            PersonId("bob".to_string()),
+            Person {
+                name: "Bob".to_string(),
+            },
+        );
         // alice, bobともどのチームにも所属させない (違反が2件あるはず)
     });
-    let violation: OrgViolation = match result {
+    let violation: Org::Violation = match result {
         Err(violation) => violation,
         Ok(_) => panic!("違反が検出されるはず"),
     };
@@ -703,12 +831,23 @@ fn createは最初の1件で違反を止める() {
 
 // やりたいこと: `create_collecting` は打ち切らず全違反を `Vec` に集める。
 fn create_collectingで全違反を集める() {
-    let result: Result<Org, Vec<OrgViolation>> = Org::create_collecting(|b: &mut OrgBuilder| {
-        b.person(PersonId("alice".to_string()), Person { name: "Alice".to_string() });
-        b.person(PersonId("bob".to_string()), Person { name: "Bob".to_string() });
-        // alice, bobともどのチームにも所属させない (2件のeach違反が集まるはず)
-    });
-    let violations: Vec<OrgViolation> = match result {
+    let result: Result<Org::Graph, Vec<Org::Violation>> =
+        Org::Graph::create_collecting(|b: &mut Org::Builder| {
+            b.person(
+                PersonId("alice".to_string()),
+                Person {
+                    name: "Alice".to_string(),
+                },
+            );
+            b.person(
+                PersonId("bob".to_string()),
+                Person {
+                    name: "Bob".to_string(),
+                },
+            );
+            // alice, bobともどのチームにも所属させない (2件のeach違反が集まるはず)
+        });
+    let violations: Vec<Org::Violation> = match result {
         Err(violations) => violations,
         Ok(_) => panic!("2件の違反が集まるはず"),
     };
@@ -895,7 +1034,7 @@ fn section5() {
 mod tests {
     use super::*;
 
-    fn build() -> Org {
+    fn build() -> Org::Graph {
         #[rustfmt::skip]
         let g = graphite::graph!(Org {
             alice = Person { name: "Alice".into() },
@@ -925,8 +1064,8 @@ mod tests {
     #[test]
     fn each_0か1のofはoptionのタプルを返し積み荷フィールドへアクセスできる() {
         let g = build();
-        let (boss, attrs) = Boss::of(&g, &PersonId("bob".to_string()))
-            .expect("bobの上司はaliceのはず");
+        let (boss, attrs) =
+            Boss::of(&g, &PersonId("bob".to_string())).expect("bobの上司はaliceのはず");
         assert_eq!(boss.name, "Alice");
         assert_eq!(attrs.since, 2021);
         assert!(Boss::of(&g, &PersonId("alice".to_string())).is_none());
@@ -963,15 +1102,30 @@ mod tests {
     #[test]
     fn person_getで1件読める() {
         let g = build();
-        assert_eq!(Person::get(&g, &PersonId("alice".to_string())).unwrap().name, "Alice");
-        assert!(Person::get(&g, &PersonId("dave".to_string())).is_none());
+        assert_eq!(
+            Org::Person::get(&g, &PersonId("alice".to_string()))
+                .unwrap()
+                .name,
+            "Alice"
+        );
+        assert!(Org::Person::get(&g, &PersonId("dave".to_string())).is_none());
     }
 
     #[test]
     fn reports_betweenはunique_pairなのでoptionを返す() {
         let g = build();
-        assert!(Reports::between(&g, &PersonId("alice".to_string()), &PersonId("bob".to_string())).is_some());
-        assert!(Reports::between(&g, &PersonId("bob".to_string()), &PersonId("alice".to_string())).is_none());
+        assert!(Reports::between(
+            &g,
+            &PersonId("alice".to_string()),
+            &PersonId("bob".to_string())
+        )
+        .is_some());
+        assert!(Reports::between(
+            &g,
+            &PersonId("bob".to_string()),
+            &PersonId("alice".to_string())
+        )
+        .is_none());
     }
 
     #[test]
@@ -979,8 +1133,12 @@ mod tests {
         let g = build();
         let reviewers = ReviewedBy::of(&g, &PersonId("bob".to_string()));
         assert_eq!(reviewers.len(), 2);
-        assert!(reviewers.iter().any(|(p, a)| p.name == "Alice" && a.year == 2023));
-        assert!(reviewers.iter().any(|(p, a)| p.name == "Carol" && a.year == 2024));
+        assert!(reviewers
+            .iter()
+            .any(|(p, a)| p.name == "Alice" && a.year == 2023));
+        assert!(reviewers
+            .iter()
+            .any(|(p, a)| p.name == "Carol" && a.year == 2024));
     }
 
     #[test]
@@ -992,56 +1150,136 @@ mod tests {
 
     #[test]
     fn 重複ノードキーはduplicate違反になる() {
-        let result = Org::create(|b| {
-            b.person(PersonId("alice".to_string()), Person { name: "Alice".to_string() });
-            b.person(PersonId("alice".to_string()), Person { name: "Alice2".to_string() });
+        let result = Org::Graph::create(|b| {
+            b.person(
+                PersonId("alice".to_string()),
+                Person {
+                    name: "Alice".to_string(),
+                },
+            );
+            b.person(
+                PersonId("alice".to_string()),
+                Person {
+                    name: "Alice2".to_string(),
+                },
+            );
         });
-        assert!(matches!(result, Err(OrgViolation::DuplicatePerson(_))));
+        assert!(matches!(result, Err(Org::Violation::DuplicatePerson(_))));
     }
 
     #[test]
     fn 辺キー重複はduplicatekey違反になる() {
-        let result = Org::create(|b| {
-            b.person(PersonId("alice".to_string()), Person { name: "Alice".to_string() });
-            b.team(TeamId("eng".to_string()), Team { name: "Engineering".to_string() });
-            b.belongs_to(BelongsToId("dup".to_string()), BelongsTo(PersonId("alice".to_string()), TeamId("eng".to_string())));
-            b.belongs_to(BelongsToId("dup".to_string()), BelongsTo(PersonId("alice".to_string()), TeamId("eng".to_string())));
+        let result = Org::Graph::create(|b| {
+            b.person(
+                PersonId("alice".to_string()),
+                Person {
+                    name: "Alice".to_string(),
+                },
+            );
+            b.team(
+                TeamId("eng".to_string()),
+                Team {
+                    name: "Engineering".to_string(),
+                },
+            );
+            b.belongs_to(
+                BelongsToId("dup".to_string()),
+                BelongsTo(PersonId("alice".to_string()), TeamId("eng".to_string())),
+            );
+            b.belongs_to(
+                BelongsToId("dup".to_string()),
+                BelongsTo(PersonId("alice".to_string()), TeamId("eng".to_string())),
+            );
         });
-        assert!(matches!(result, Err(OrgViolation::BelongsToDuplicateKey(_))));
+        assert!(matches!(
+            result,
+            Err(Org::Violation::BelongsToDuplicateKey(_))
+        ));
     }
 
     #[test]
     fn 未知の始点キーはunknownsource違反になる() {
-        let result = Org::create(|b| {
-            b.team(TeamId("eng".to_string()), Team { name: "Engineering".to_string() });
+        let result = Org::Graph::create(|b| {
+            b.team(
+                TeamId("eng".to_string()),
+                Team {
+                    name: "Engineering".to_string(),
+                },
+            );
             b.belongs_to(
                 BelongsToId("bt1".to_string()),
-                BelongsTo(PersonId("存在しない社員".to_string()), TeamId("eng".to_string())),
+                BelongsTo(
+                    PersonId("存在しない社員".to_string()),
+                    TeamId("eng".to_string()),
+                ),
             );
         });
-        assert!(matches!(result, Err(OrgViolation::BelongsToUnknownSource { .. })));
+        assert!(matches!(
+            result,
+            Err(Org::Violation::BelongsToUnknownSource { .. })
+        ));
     }
 
     #[test]
     fn unique_pair違反が検出される() {
-        let result = Org::create(|b| {
-            b.person(PersonId("alice".to_string()), Person { name: "Alice".to_string() });
-            b.person(PersonId("bob".to_string()), Person { name: "Bob".to_string() });
-            b.team(TeamId("eng".to_string()), Team { name: "Engineering".to_string() });
+        let result = Org::Graph::create(|b| {
+            b.person(
+                PersonId("alice".to_string()),
+                Person {
+                    name: "Alice".to_string(),
+                },
+            );
+            b.person(
+                PersonId("bob".to_string()),
+                Person {
+                    name: "Bob".to_string(),
+                },
+            );
+            b.team(
+                TeamId("eng".to_string()),
+                Team {
+                    name: "Engineering".to_string(),
+                },
+            );
             // each Person: 1 (BelongsTo) が先に違反しないよう、両者ともチームに所属させておく。
-            b.belongs_to(BelongsToId("bt_alice".to_string()), BelongsTo(PersonId("alice".to_string()), TeamId("eng".to_string())));
-            b.belongs_to(BelongsToId("bt_bob".to_string()), BelongsTo(PersonId("bob".to_string()), TeamId("eng".to_string())));
-            b.reports(ReportsId("r1".to_string()), Reports(PersonId("alice".to_string()), PersonId("bob".to_string())));
-            b.reports(ReportsId("r2".to_string()), Reports(PersonId("alice".to_string()), PersonId("bob".to_string())));
+            b.belongs_to(
+                BelongsToId("bt_alice".to_string()),
+                BelongsTo(PersonId("alice".to_string()), TeamId("eng".to_string())),
+            );
+            b.belongs_to(
+                BelongsToId("bt_bob".to_string()),
+                BelongsTo(PersonId("bob".to_string()), TeamId("eng".to_string())),
+            );
+            b.reports(
+                ReportsId("r1".to_string()),
+                Reports(PersonId("alice".to_string()), PersonId("bob".to_string())),
+            );
+            b.reports(
+                ReportsId("r2".to_string()),
+                Reports(PersonId("alice".to_string()), PersonId("bob".to_string())),
+            );
         });
-        assert!(matches!(result, Err(OrgViolation::ReportsUniquePairViolation { .. })));
+        assert!(matches!(
+            result,
+            Err(Org::Violation::ReportsUniquePairViolation { .. })
+        ));
     }
 
     #[test]
     fn create_collectingは複数の違反を集める() {
-        let result = Org::create_collecting(|b| {
-            b.person(PersonId("alice".to_string()), Person { name: "Alice".to_string() });
-            b.person(PersonId("bob".to_string()), Person { name: "Bob".to_string() });
+        let result = Org::Graph::create_collecting(|b| {
+            b.person(
+                PersonId("alice".to_string()),
+                Person {
+                    name: "Alice".to_string(),
+                },
+            );
+            b.person(
+                PersonId("bob".to_string()),
+                Person {
+                    name: "Bob".to_string(),
+                },
+            );
         });
         let violations = match result {
             Err(violations) => violations,

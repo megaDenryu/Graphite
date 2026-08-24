@@ -31,6 +31,8 @@ graphite::graph_schema! {
     }
 }
 
+use Social::{Friends, FriendsId, Wire, WireId};
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -39,14 +41,35 @@ mod tests {
         PersonId(id.to_string())
     }
 
-    fn build_chart() -> Social {
-        Social::create(|b| {
-            b.person(person("alice"), Person { name: "Alice".to_string() });
-            b.person(person("bob"), Person { name: "Bob".to_string() });
-            b.person(person("carol"), Person { name: "Carol".to_string() });
+    fn build_chart() -> Social::Graph {
+        Social::Graph::create(|b| {
+            b.person(
+                person("alice"),
+                Person {
+                    name: "Alice".to_string(),
+                },
+            );
+            b.person(
+                person("bob"),
+                Person {
+                    name: "Bob".to_string(),
+                },
+            );
+            b.person(
+                person("carol"),
+                Person {
+                    name: "Carol".to_string(),
+                },
+            );
 
-            b.friends(FriendsId("f1".to_string()), Friends(person("alice"), person("bob")));
-            b.friends(FriendsId("f2".to_string()), Friends(person("carol"), person("alice")));
+            b.friends(
+                FriendsId("f1".to_string()),
+                Friends(person("alice"), person("bob")),
+            );
+            b.friends(
+                FriendsId("f2".to_string()),
+                Friends(person("carol"), person("alice")),
+            );
         })
         .expect("正常な友人関係は構築に成功するはず")
     }
@@ -65,10 +88,15 @@ mod tests {
 
         // alice は f1 の位置0、f2 の位置1 に置かれているが、どちらからでも
         // 相手を辿れる。
-        let mut friends_of_alice: Vec<String> =
-            Friends::of(&g, &person("alice")).into_iter().map(|p| p.name.clone()).collect();
+        let mut friends_of_alice: Vec<String> = Friends::of(&g, &person("alice"))
+            .into_iter()
+            .map(|p| p.name.clone())
+            .collect();
         friends_of_alice.sort();
-        assert_eq!(friends_of_alice, vec!["Bob".to_string(), "Carol".to_string()]);
+        assert_eq!(
+            friends_of_alice,
+            vec!["Bob".to_string(), "Carol".to_string()]
+        );
 
         let friends_of_bob: Vec<&Person> = Friends::of(&g, &person("bob"));
         assert_eq!(friends_of_bob.len(), 1);
@@ -89,26 +117,58 @@ mod tests {
     fn unique_pairは順序を無視した対で判定される() {
         // `alice -- bob` と `bob -- alice` は同じ対として扱われ、2本目は
         // unique pair 違反になる。
-        let result = Social::create(|b| {
-            b.person(person("alice"), Person { name: "Alice".to_string() });
-            b.person(person("bob"), Person { name: "Bob".to_string() });
-            b.friends(FriendsId("f1".to_string()), Friends(person("alice"), person("bob")));
-            b.friends(FriendsId("f2".to_string()), Friends(person("bob"), person("alice")));
+        let result = Social::Graph::create(|b| {
+            b.person(
+                person("alice"),
+                Person {
+                    name: "Alice".to_string(),
+                },
+            );
+            b.person(
+                person("bob"),
+                Person {
+                    name: "Bob".to_string(),
+                },
+            );
+            b.friends(
+                FriendsId("f1".to_string()),
+                Friends(person("alice"), person("bob")),
+            );
+            b.friends(
+                FriendsId("f2".to_string()),
+                Friends(person("bob"), person("alice")),
+            );
         });
 
         assert!(matches!(
             result,
-            Err(SocialViolation::FriendsUniquePairViolation { .. })
+            Err(Social::Violation::FriendsUniquePairViolation { .. })
         ));
     }
 
     #[test]
     fn 自己ループは許可され次数は1本と数える() {
-        let g = Social::create(|b| {
-            b.person(person("alice"), Person { name: "Alice".to_string() });
-            b.person(person("bob"), Person { name: "Bob".to_string() });
-            b.friends(FriendsId("self".to_string()), Friends(person("alice"), person("alice")));
-            b.friends(FriendsId("f1".to_string()), Friends(person("alice"), person("bob")));
+        let g = Social::Graph::create(|b| {
+            b.person(
+                person("alice"),
+                Person {
+                    name: "Alice".to_string(),
+                },
+            );
+            b.person(
+                person("bob"),
+                Person {
+                    name: "Bob".to_string(),
+                },
+            );
+            b.friends(
+                FriendsId("self".to_string()),
+                Friends(person("alice"), person("alice")),
+            );
+            b.friends(
+                FriendsId("f1".to_string()),
+                Friends(person("alice"), person("bob")),
+            );
         })
         .expect("自己ループを含む友人関係も構築に成功するはず");
 
@@ -121,10 +181,23 @@ mod tests {
 
     #[test]
     fn 積み荷ありの無向辺はpayloadとendpointsを両方持つ() {
-        let g = Social::create(|b| {
-            b.person(person("alice"), Person { name: "Alice".to_string() });
-            b.person(person("bob"), Person { name: "Bob".to_string() });
-            b.wire(WireId("w1".to_string()), Wire(person("alice"), person("bob"), Cable { ohm: 5 }));
+        let g = Social::Graph::create(|b| {
+            b.person(
+                person("alice"),
+                Person {
+                    name: "Alice".to_string(),
+                },
+            );
+            b.person(
+                person("bob"),
+                Person {
+                    name: "Bob".to_string(),
+                },
+            );
+            b.wire(
+                WireId("w1".to_string()),
+                Wire(person("alice"), person("bob"), Cable { ohm: 5 }),
+            );
         })
         .expect("無向のwireも構築に成功するはず");
 
@@ -142,38 +215,83 @@ mod tests {
 
     #[test]
     fn ofとiterは挿入順を保持する() {
-        let g = Social::create(|b| {
-            b.person(person("alice"), Person { name: "Alice".to_string() });
-            b.person(person("bob"), Person { name: "Bob".to_string() });
-            b.person(person("carol"), Person { name: "Carol".to_string() });
-            b.person(person("dave"), Person { name: "Dave".to_string() });
+        let g = Social::Graph::create(|b| {
+            b.person(
+                person("alice"),
+                Person {
+                    name: "Alice".to_string(),
+                },
+            );
+            b.person(
+                person("bob"),
+                Person {
+                    name: "Bob".to_string(),
+                },
+            );
+            b.person(
+                person("carol"),
+                Person {
+                    name: "Carol".to_string(),
+                },
+            );
+            b.person(
+                person("dave"),
+                Person {
+                    name: "Dave".to_string(),
+                },
+            );
 
             // alice を軸に、bob -> carol -> dave の順で辺を張る。
-            b.friends(FriendsId("f1".to_string()), Friends(person("alice"), person("bob")));
-            b.friends(FriendsId("f2".to_string()), Friends(person("carol"), person("alice")));
-            b.friends(FriendsId("f3".to_string()), Friends(person("alice"), person("dave")));
+            b.friends(
+                FriendsId("f1".to_string()),
+                Friends(person("alice"), person("bob")),
+            );
+            b.friends(
+                FriendsId("f2".to_string()),
+                Friends(person("carol"), person("alice")),
+            );
+            b.friends(
+                FriendsId("f3".to_string()),
+                Friends(person("alice"), person("dave")),
+            );
         })
         .expect("構築に成功するはず");
 
-        let names: Vec<String> =
-            Friends::of(&g, &person("alice")).into_iter().map(|p| p.name.clone()).collect();
-        assert_eq!(names, vec!["Bob".to_string(), "Carol".to_string(), "Dave".to_string()]);
+        let names: Vec<String> = Friends::of(&g, &person("alice"))
+            .into_iter()
+            .map(|p| p.name.clone())
+            .collect();
+        assert_eq!(
+            names,
+            vec!["Bob".to_string(), "Carol".to_string(), "Dave".to_string()]
+        );
 
         let ids: Vec<String> = Friends::ids(&g).map(|id| id.0.clone()).collect();
-        assert_eq!(ids, vec!["f1".to_string(), "f2".to_string(), "f3".to_string()]);
+        assert_eq!(
+            ids,
+            vec!["f1".to_string(), "f2".to_string(), "f3".to_string()]
+        );
     }
 
     #[test]
     fn 未知の端点を参照するとエラーになる() {
-        let result = Social::create(|b| {
-            b.person(person("alice"), Person { name: "Alice".to_string() });
-            b.friends(FriendsId("f1".to_string()), Friends(person("alice"), person("存在しない")));
+        let result = Social::Graph::create(|b| {
+            b.person(
+                person("alice"),
+                Person {
+                    name: "Alice".to_string(),
+                },
+            );
+            b.friends(
+                FriendsId("f1".to_string()),
+                Friends(person("alice"), person("存在しない")),
+            );
         });
 
         match result {
             Err(violation) => assert_eq!(
                 violation,
-                SocialViolation::FriendsUnknownEndpoint {
+                Social::Violation::FriendsUnknownEndpoint {
                     edge: FriendsId("f1".to_string()),
                     endpoint: person("存在しない"),
                 }

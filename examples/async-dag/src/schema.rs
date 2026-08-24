@@ -43,6 +43,9 @@ graphite::graph_schema! {
     }
 }
 
+// 綴り短縮のための再輸出。同名edgeを持つschemaを足したらこの行を消す。
+pub use Orchestration::{DependsOn, DependsOnId};
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -60,7 +63,7 @@ mod tests {
         })
         .expect("正常な依存グラフは構築に成功するはず");
 
-        assert_eq!(Service::ids(&g).count(), 3);
+        assert_eq!(Orchestration::Service::ids(&g).count(), 3);
         let deps: Vec<&Service> = DependsOn::of(&g, &ServiceId("api".to_string()));
         assert_eq!(deps.len(), 1);
         assert_eq!(deps[0].name, "db");

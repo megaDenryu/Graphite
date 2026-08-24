@@ -57,11 +57,11 @@ mod tests {
         .expect("エッジの無い graph! も構築に成功するはず");
 
         assert_eq!(
-            Widget::get(&g, &WidgetId("a".to_string())).unwrap().name,
+            WidgetGraph::Widget::get(&g, &WidgetId("a".to_string())).unwrap().name,
             "A"
         );
         assert_eq!(
-            Widget::get(&g, &WidgetId("b".to_string())).unwrap().name,
+            WidgetGraph::Widget::get(&g, &WidgetId("b".to_string())).unwrap().name,
             "B"
         );
     }

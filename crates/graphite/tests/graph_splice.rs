@@ -28,6 +28,8 @@ graphite::graph_schema! {
     }
 }
 
+use SpliceDemo::{Knows, KnowsId};
+
 #[test]
 #[rustfmt::skip]
 fn スプライスでノードのみを追加できる() {
@@ -43,18 +45,18 @@ fn スプライスでノードのみを追加できる() {
     .expect("ノードのみのスプライスは構築に成功するはず");
 
     assert_eq!(
-        Person::get(&g, &PersonId("鈴木".to_string())).unwrap().name,
+        SpliceDemo::Person::get(&g, &PersonId("鈴木".to_string())).unwrap().name,
         "鈴木"
     );
     assert_eq!(
-        Person::get(&g, &PersonId("田中".to_string())).unwrap().name,
+        SpliceDemo::Person::get(&g, &PersonId("田中".to_string())).unwrap().name,
         "田中"
     );
     assert_eq!(
-        Person::get(&g, &PersonId("佐藤".to_string())).unwrap().name,
+        SpliceDemo::Person::get(&g, &PersonId("佐藤".to_string())).unwrap().name,
         "佐藤"
     );
-    assert_eq!(Person::ids(&g).count(), 3);
+    assert_eq!(SpliceDemo::Person::ids(&g).count(), 3);
 }
 
 #[test]
@@ -96,7 +98,7 @@ fn 静的項とスプライスを混在できる() {
     })
     .expect("静的項とスプライスの混在は構築に成功するはず");
 
-    assert_eq!(Person::ids(&g).count(), 2);
+    assert_eq!(SpliceDemo::Person::ids(&g).count(), 2);
     assert_eq!(Knows::len(&g), 2);
     assert!(Knows::get(&g, &KnowsId("k_extra".to_string())).is_some());
 }
@@ -114,7 +116,7 @@ fn 空コレクションのスプライスは何も追加しない() {
     })
     .expect("空コレクションのスプライスも成功するはず");
 
-    assert_eq!(Person::ids(&g).count(), 1);
+    assert_eq!(SpliceDemo::Person::ids(&g).count(), 1);
     assert_eq!(Knows::len(&g), 0);
 }
 

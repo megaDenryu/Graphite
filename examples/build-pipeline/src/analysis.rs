@@ -9,7 +9,7 @@
 //! 射影を使って別レイヤーとして実装する
 //! (README「導出エッジ」節が想定する使い分けそのもの)。
 
-use crate::schema::{ArtifactId, BuildPipeline, BuildPipelineNode, Consumes, Produces, Task, TaskId};
+use crate::schema::{ArtifactId, BuildPipeline, Consumes, Produces, Task, TaskId};
 use graphite::{CycleError, Graph};
 use std::collections::{HashMap, HashSet};
 use std::fmt;
@@ -28,13 +28,15 @@ pub type TaskDependencyGraph = Graph<(), (), TaskId>;
 /// (図式グラフのクエリ API) であり、ここで初めて「タスク間の順序」という
 /// 導出情報を組み立てる。エッジの終点キーは常に `Task::ids(g)` 由来なので
 /// `Graph::build` が `UnknownEndpoint` を返すことはない (`expect` で妥当)。
-pub fn task_dependency_graph(g: &BuildPipeline) -> TaskDependencyGraph {
+pub fn task_dependency_graph(g: &BuildPipeline::Graph) -> TaskDependencyGraph {
     let mut producers_of: HashMap<&ArtifactId, Vec<&TaskId>> = HashMap::new();
     for (_id, edge) in Produces::iter(g) {
         producers_of.entry(edge.to()).or_default().push(edge.from());
     }
 
-    let nodes: Vec<(TaskId, ())> = Task::ids(g).map(|id| (id.clone(), ())).collect();
+    let nodes: Vec<(TaskId, ())> = BuildPipeline::Task::ids(g)
+        .map(|id| (id.clone(), ()))
+        .collect();
 
     // `flat_map` にすると内側のイテレータが `producers_of` への借用を
     // `FnMut` クロージャの呼び出しをまたいで持ち越そうとしてしまい
@@ -116,9 +118,9 @@ impl fmt::Display for DomainIssue {
     }
 }
 
-/// ドメイン検証を実行する。図式適合 (`BuildPipeline::create` 時点) は既に
+/// ドメイン検証を実行する。図式適合 (`BuildPipeline::Graph::create` 時点) は既に
 /// 通っている前提で、意味的な妥当性だけを検査する。
-pub fn validate(g: &BuildPipeline) -> Vec<DomainIssue> {
+pub fn validate(g: &BuildPipeline::Graph) -> Vec<DomainIssue> {
     let mut issues = Vec::new();
 
     let mut producers_of: HashMap<&ArtifactId, Vec<&TaskId>> = HashMap::new();
@@ -138,7 +140,8 @@ pub fn validate(g: &BuildPipeline) -> Vec<DomainIssue> {
         .collect();
     orphan_artifacts.sort_by(|a, b| a.0.cmp(&b.0));
     for artifact in orphan_artifacts {
-        let mut consumers: Vec<TaskId> = consumers_of[artifact].iter().map(|&t| t.clone()).collect();
+        let mut consumers: Vec<TaskId> =
+            consumers_of[artifact].iter().map(|&t| t.clone()).collect();
         consumers.sort_by(|a, b| a.0.cmp(&b.0));
         issues.push(DomainIssue::OrphanArtifact {
             artifact: artifact.clone(),
@@ -154,7 +157,8 @@ pub fn validate(g: &BuildPipeline) -> Vec<DomainIssue> {
         .collect();
     conflicting.sort_by(|a, b| a.0.cmp(&b.0));
     for artifact in conflicting {
-        let mut producers: Vec<TaskId> = producers_of[artifact].iter().map(|&t| t.clone()).collect();
+        let mut producers: Vec<TaskId> =
+            producers_of[artifact].iter().map(|&t| t.clone()).collect();
         producers.sort_by(|a, b| a.0.cmp(&b.0));
         issues.push(DomainIssue::ConflictingProducers {
             artifact: artifact.clone(),
@@ -182,14 +186,15 @@ pub struct Wave {
 /// トポロジカル順序から、依存が解決済みのタスクをまとめて 1 波とする実行計画
 /// を計算する (Kahn のアルゴリズムを波単位でまとめて実行するレベル分割版)。
 /// 波の所要時間 = 波内タスクの `max(secs)` (無限並列ワーカーを仮定)。
-pub fn plan(g: &BuildPipeline) -> Result<Vec<Wave>, CycleError<TaskId>> {
+pub fn plan(g: &BuildPipeline::Graph) -> Result<Vec<Wave>, CycleError<TaskId>> {
     let dep_graph = task_dependency_graph(g);
     // 循環があれば代表ノード付きで早期に報告する。
     dep_graph.topological_sort()?;
 
-    let mut remaining: HashMap<TaskId, usize> =
-        Task::ids(g).map(|id| (id.clone(), 0usize)).collect();
-    for id in Task::ids(g) {
+    let mut remaining: HashMap<TaskId, usize> = BuildPipeline::Task::ids(g)
+        .map(|id| (id.clone(), 0usize))
+        .collect();
+    for id in BuildPipeline::Task::ids(g) {
         for succ in dep_graph.out_neighbors(id) {
             *remaining.get_mut(succ).expect("succはTask::ids(g)由来") += 1;
         }
@@ -211,7 +216,7 @@ pub fn plan(g: &BuildPipeline) -> Result<Vec<Wave>, CycleError<TaskId>> {
 
         let duration = frontier
             .iter()
-            .map(|id| Task::get(g, id).map(|t| t.secs).unwrap_or(0))
+            .map(|id| BuildPipeline::Task::get(g, id).map(|t| t.secs).unwrap_or(0))
             .max()
             .unwrap_or(0);
 
@@ -267,11 +272,15 @@ impl CriticalPath {
 /// できるが、`total_work_secs`/`parallelism` などこのアプリ固有の付随
 /// データを持つ [`CriticalPath`] を組み立てる都合上、ここでは専用の DP
 /// を保持している。
-pub fn critical_path(g: &BuildPipeline) -> Result<CriticalPath, CycleError<TaskId>> {
+pub fn critical_path(g: &BuildPipeline::Graph) -> Result<CriticalPath, CycleError<TaskId>> {
     let dep_graph = task_dependency_graph(g);
     let order = dep_graph.topological_sort()?;
 
-    let secs_of = |id: &TaskId| -> u32 { Task::get(g, id).map(|t: &Task| t.secs).unwrap_or(0) };
+    let secs_of = |id: &TaskId| -> u32 {
+        BuildPipeline::Task::get(g, id)
+            .map(|t: &Task| t.secs)
+            .unwrap_or(0)
+    };
 
     if order.is_empty() {
         return Ok(CriticalPath {
@@ -314,7 +323,7 @@ pub fn critical_path(g: &BuildPipeline) -> Result<CriticalPath, CycleError<TaskI
     }
     path.reverse();
 
-    let total_work_secs: u32 = Task::ids(g).map(secs_of).sum();
+    let total_work_secs: u32 = BuildPipeline::Task::ids(g).map(secs_of).sum();
 
     Ok(CriticalPath {
         path,
@@ -329,7 +338,7 @@ mod tests {
     use crate::builder::build_graph;
     use crate::parser::parse;
 
-    fn graph_from(input: &str) -> BuildPipeline {
+    fn graph_from(input: &str) -> BuildPipeline::Graph {
         let parsed = parse(input).unwrap();
         build_graph(&parsed).unwrap()
     }
@@ -421,10 +430,12 @@ link consumes target/b
         assert_eq!(waves[0].tasks, vec![TaskId("fetch".to_string())]);
         assert_eq!(waves[0].duration_secs, 10);
 
-        let mut wave2_names: Vec<String> =
-            waves[1].tasks.iter().map(|t| t.0.clone()).collect();
+        let mut wave2_names: Vec<String> = waves[1].tasks.iter().map(|t| t.0.clone()).collect();
         wave2_names.sort();
-        assert_eq!(wave2_names, vec!["build_a".to_string(), "build_b".to_string()]);
+        assert_eq!(
+            wave2_names,
+            vec!["build_a".to_string(), "build_b".to_string()]
+        );
         assert_eq!(waves[1].duration_secs, 30); // max(20, 30)
 
         assert_eq!(waves[2].tasks, vec![TaskId("link".to_string())]);

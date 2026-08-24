@@ -3,7 +3,7 @@
 //! Graphite の「不変 + 再構築」パターンのショーケース。`OrgChart` は構築後
 //! 不変で、部署を1つ「削除」する編集操作は存在しない。代わりに、
 //! 全ノード・全エッジをいったんスカラーデータへ展開し、対象部署を除いた
-//! 集合から `OrgChart::create` で丸ごと再構築する。
+//! 集合から `OrgChart::Graph::create` で丸ごと再構築する。
 //!
 //! ここで意図的に「素朴な (naive) 」実装にしている点が1つある: 部署を
 //! 削除する際、その部署が発していた `sponsors` 辺 (Department -> Project)
@@ -11,8 +11,8 @@
 //! カスケード削除を忘れる、というのは実務でもよくあるミスである。
 //! 対象部署がどのプロジェクトもスポンサーしていなければ何も起こらず
 //! `Ok` になるが、スポンサーしていた場合は `sponsors` 辺が存在しない部署
-//! キーを参照したまま `OrgChart::create` に渡り、`freeze` 検証が
-//! `OrgChartViolation::SponsorsUnknownSource` (フェーズ5でエッジ単位の
+//! キーを参照したまま `OrgChart::Graph::create` に渡り、`freeze` 検証が
+//! `OrgChart::Violation::SponsorsUnknownSource` (フェーズ5でエッジ単位の
 //! 型付きバリアントに変わった。以前は `UnknownDepartment` という
 //! ノード単位の汎用バリアントだった) を返してエラーになる。
 //! 「可変 API が存在しないので、参照が壊れたら気づかず放置される」のでは
@@ -20,9 +20,8 @@
 //! という Graphite の設計意図を実地で確認できる。
 
 use crate::schema::{
-    Assigned, AssignedEdge, AssignedId, BelongsTo, BelongsToId, Boss, BossEdge, BossId,
-    Department, DepartmentId, Employee, EmployeeId, OrgChart, OrgChartNode, OrgChartViolation,
-    Project, ProjectId, Sponsors, SponsorsId,
+    Assigned, AssignedEdge, AssignedId, BelongsTo, BelongsToId, Boss, BossEdge, BossId, Department,
+    DepartmentId, Employee, EmployeeId, OrgChart, Project, ProjectId, Sponsors, SponsorsId,
 };
 
 /// `reorg` コマンドの結果。
@@ -42,18 +41,20 @@ pub struct ReorgReport {
 
 pub enum ReorgOutcome {
     /// 再構築に成功した新しい組織図。
-    Success(Box<OrgChart>),
+    Success(Box<OrgChart::Graph>),
     /// `freeze` 検証が検出した違反。
-    Violated(OrgChartViolation),
+    Violated(OrgChart::Violation),
 }
 
 /// 指定した部署を廃止するシミュレーションを実行する。
 /// 部署キーが存在しなければ `None`。
-pub fn simulate_reorg(org: &OrgChart, target: &DepartmentId) -> Option<ReorgReport> {
-    let removed_department_name = Department::get(org, target)?.name.clone();
+pub fn simulate_reorg(org: &OrgChart::Graph, target: &DepartmentId) -> Option<ReorgReport> {
+    let removed_department_name = OrgChart::Department::get(org, target)?.name.clone();
 
-    let mut remaining_depts: Vec<DepartmentId> =
-        Department::ids(org).filter(|d| *d != target).cloned().collect();
+    let mut remaining_depts: Vec<DepartmentId> = OrgChart::Department::ids(org)
+        .filter(|d| *d != target)
+        .cloned()
+        .collect();
     remaining_depts.sort();
     assert!(
         !remaining_depts.is_empty(),
@@ -82,24 +83,46 @@ pub fn simulate_reorg(org: &OrgChart, target: &DepartmentId) -> Option<ReorgRepo
     }
 
     // ノード集合の再構築 (対象部署だけ除く)。
-    let employees: Vec<(EmployeeId, Employee)> = Employee::ids(org)
-        .map(|id| (id.clone(), Employee::get(org, id).unwrap().clone()))
+    let employees: Vec<(EmployeeId, Employee)> = OrgChart::Employee::ids(org)
+        .map(|id| {
+            (
+                id.clone(),
+                OrgChart::Employee::get(org, id).unwrap().clone(),
+            )
+        })
         .collect();
     let departments: Vec<(DepartmentId, Department)> = remaining_depts
         .iter()
-        .map(|id| (id.clone(), Department::get(org, id).unwrap().clone()))
+        .map(|id| {
+            (
+                id.clone(),
+                OrgChart::Department::get(org, id).unwrap().clone(),
+            )
+        })
         .collect();
-    let projects: Vec<(ProjectId, Project)> = Project::ids(org)
-        .map(|id| (id.clone(), Project::get(org, id).unwrap().clone()))
+    let projects: Vec<(ProjectId, Project)> = OrgChart::Project::ids(org)
+        .map(|id| (id.clone(), OrgChart::Project::get(org, id).unwrap().clone()))
         .collect();
 
     // boss / assigned は Employee が両端 (or 片端) なので部署削除の影響を
     // 受けない。素通しで良い。
     let boss_edges: Vec<(EmployeeId, EmployeeId, BossEdge)> = Boss::iter(org)
-        .map(|(_id, edge)| (edge.from().clone(), edge.to().clone(), edge.payload().clone()))
+        .map(|(_id, edge)| {
+            (
+                edge.from().clone(),
+                edge.to().clone(),
+                edge.payload().clone(),
+            )
+        })
         .collect();
     let assigned_edges: Vec<(EmployeeId, ProjectId, AssignedEdge)> = Assigned::iter(org)
-        .map(|(_id, edge)| (edge.from().clone(), edge.to().clone(), edge.payload().clone()))
+        .map(|(_id, edge)| {
+            (
+                edge.from().clone(),
+                edge.to().clone(),
+                edge.payload().clone(),
+            )
+        })
         .collect();
 
     // 意図的に「素朴」なまま: sponsors 辺は対象部署の分もフィルタせず
@@ -108,7 +131,7 @@ pub fn simulate_reorg(org: &OrgChart, target: &DepartmentId) -> Option<ReorgRepo
         .map(|(_id, edge)| (edge.from().clone(), edge.to().clone()))
         .collect();
 
-    let result = OrgChart::create(|b| {
+    let result = OrgChart::Graph::create(|b| {
         for (id, e) in employees {
             b.employee(id, e);
         }

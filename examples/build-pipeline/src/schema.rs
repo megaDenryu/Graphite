@@ -51,6 +51,9 @@ graphite::graph_schema! {
     }
 }
 
+// 綴り短縮のための再輸出。同名edgeを持つschemaを足したらこの行を消す。
+pub use BuildPipeline::{Consumes, ConsumesId, Produces, ProducesId};
+
 #[cfg(test)]
 mod fixed_pipeline_showcase {
     //! `graph!` リテラルのショーケース。動的パース経由の本編とは別に、
@@ -76,8 +79,8 @@ mod fixed_pipeline_showcase {
         })
         .expect("正常な固定パイプラインは構築に成功するはず");
 
-        assert_eq!(Task::ids(&g).count(), 3);
-        assert_eq!(Artifact::ids(&g).count(), 2);
+        assert_eq!(BuildPipeline::Task::ids(&g).count(), 3);
+        assert_eq!(BuildPipeline::Artifact::ids(&g).count(), 2);
 
         let produced: Vec<&Artifact> = Produces::of(&g, &TaskId("build".to_string()));
         assert_eq!(produced.len(), 1);

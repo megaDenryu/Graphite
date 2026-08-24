@@ -12,7 +12,7 @@
 
 use std::collections::HashSet;
 
-use crate::schema::{DialogueGraph, DialogueGraphNode, Ending, EndingId, Finale, Scene, SceneId};
+use crate::schema::{DialogueGraph, EndingId, Finale, SceneId};
 
 /// 検証結果一式。
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -41,7 +41,7 @@ impl ValidationReport {
 }
 
 /// `schema` を `start` シーンを起点に検証する。
-pub fn validate(schema: &DialogueGraph, start: &SceneId) -> ValidationReport {
+pub fn validate(schema: &DialogueGraph::Graph, start: &SceneId) -> ValidationReport {
     let scene_graph = schema.scene_graph();
 
     // 1. 到達不能シーン: 全シーン - reachable_from(start)
@@ -50,14 +50,14 @@ pub fn validate(schema: &DialogueGraph, start: &SceneId) -> ValidationReport {
         .into_iter()
         .cloned()
         .collect();
-    let mut unreachable_scenes: Vec<SceneId> = Scene::ids(schema)
+    let mut unreachable_scenes: Vec<SceneId> = DialogueGraph::Scene::ids(schema)
         .filter(|id| !reachable.contains(*id))
         .cloned()
         .collect();
     unreachable_scenes.sort();
 
     // 2. デッドエンド
-    let mut dead_end_scenes: Vec<SceneId> = Scene::ids(schema)
+    let mut dead_end_scenes: Vec<SceneId> = DialogueGraph::Scene::ids(schema)
         .filter(|id| schema.is_dead_end(id))
         .cloned()
         .collect();
@@ -72,7 +72,7 @@ pub fn validate(schema: &DialogueGraph, start: &SceneId) -> ValidationReport {
     //      について計算する (自分自身が finale シーンなら当然到達できる —
     //      reachable_from は反射的なので finale_scene_ids に自身が含まれて
     //      いれば自動的に true になる)。
-    let can_reach_ending: HashSet<SceneId> = Scene::ids(schema)
+    let can_reach_ending: HashSet<SceneId> = DialogueGraph::Scene::ids(schema)
         .filter(|id| {
             scene_graph
                 .reachable_from(id)
@@ -88,7 +88,7 @@ pub fn validate(schema: &DialogueGraph, start: &SceneId) -> ValidationReport {
         .filter(|(_key, edge)| reachable.contains(edge.from()))
         .map(|(_key, edge)| edge.to().clone())
         .collect();
-    let mut unreachable_endings: Vec<EndingId> = Ending::ids(schema)
+    let mut unreachable_endings: Vec<EndingId> = DialogueGraph::Ending::ids(schema)
         .filter(|id| !reachable_endings.contains(*id))
         .cloned()
         .collect();
@@ -180,6 +180,8 @@ mod tests {
             ]
         );
         // t_start 自体は循環に含まれない (循環に入るだけの片道シーン)。
-        assert!(!report.trapped_scenes.contains(&SceneId("t_start".to_string())));
+        assert!(!report
+            .trapped_scenes
+            .contains(&SceneId("t_start".to_string())));
     }
 }

@@ -8,12 +8,12 @@
 //!   報告されること
 //! - 手計算できる小さな既知データでの波数・クリティカルパス長の一致
 
-use build_pipeline::{analysis, builder, parser};
 use build_pipeline::analysis::DomainIssue;
 use build_pipeline::schema::BuildPipeline;
+use build_pipeline::{analysis, builder, parser};
 use std::collections::BTreeSet;
 
-fn build(input: &str) -> BuildPipeline {
+fn build(input: &str) -> BuildPipeline::Graph {
     let parsed = parser::parse(input).expect("パースに成功するはず");
     builder::build_graph(&parsed).expect("構築に成功するはず")
 }
@@ -86,10 +86,15 @@ b produces target/from_b
 
     let issues = analysis::validate(&g);
     assert!(
-        issues.iter().any(|i| matches!(i, DomainIssue::CyclicDependency { .. })),
+        issues
+            .iter()
+            .any(|i| matches!(i, DomainIssue::CyclicDependency { .. })),
         "循環依存が検出されるはず: {issues:?}"
     );
-    assert!(analysis::plan(&g).is_err(), "循環があるのでplanは失敗するはず");
+    assert!(
+        analysis::plan(&g).is_err(),
+        "循環があるのでplanは失敗するはず"
+    );
     assert!(
         analysis::critical_path(&g).is_err(),
         "循環があるのでcritical_pathは失敗するはず"

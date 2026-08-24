@@ -19,7 +19,7 @@
 use async_dag::depgraph::{self, build_dependency_graph};
 use async_dag::engine::{self, ExecutionReport};
 use async_dag::fixtures::{cyclic_demo, sample_orchestration};
-use async_dag::schema::{DependsOn, Orchestration, OrchestrationNode, Service, ServiceId};
+use async_dag::schema::{DependsOn, Orchestration, Service, ServiceId};
 
 fn main() {
     循環依存デモ();
@@ -51,9 +51,7 @@ fn 循環依存デモ() {
     match depgraph::compute_waves(&broken) {
         Ok(_) => unreachable!("循環があるのでOkにはならないはず"),
         Err(cycle_error) => {
-            println!(
-                "波の計算は CycleError で拒否された (実行を試みる前に判明): {cycle_error}"
-            );
+            println!("波の計算は CycleError で拒否された (実行を試みる前に判明): {cycle_error}");
         }
     }
 }
@@ -64,12 +62,12 @@ fn 循環依存デモ() {
 
 /// `config -> (logger, db, cache, queue) -> (migration, metrics) ->
 /// (api, worker) -> healthcheck` という10サービスの依存グラフを組み立てる。
-fn 本編のサービスグラフを構築する() -> Orchestration {
+fn 本編のサービスグラフを構築する() -> Orchestration::Graph {
     let g = sample_orchestration();
 
     println!(
         "=== 2. 本編サービスグラフを構築 (サービス数={}, DependsOn本数={}) ===",
-        Service::ids(&g).count(),
+        Orchestration::Service::ids(&g).count(),
         DependsOn::len(&g)
     );
     g
@@ -79,13 +77,13 @@ fn 本編のサービスグラフを構築する() -> Orchestration {
 // 3. 波の計算 — 実行計画は書くものではなく導出される
 // ============================================================
 
-fn 波を計算して表示する(g: &Orchestration) -> Vec<Vec<ServiceId>> {
+fn 波を計算して表示する(g: &Orchestration::Graph) -> Vec<Vec<ServiceId>> {
     println!("\n=== 3. topological_levels() で波を計算 ===");
     let waves = depgraph::compute_waves(g).expect("本編グラフに循環はないはず");
     for (i, wave) in waves.iter().enumerate() {
         let names: Vec<&str> = wave
             .iter()
-            .filter_map(|id| Service::get(g, id))
+            .filter_map(|id| Orchestration::Service::get(g, id))
             .map(|s: &Service| s.name.as_str())
             .collect();
         let duration = depgraph::wave_duration_ms(g, wave);
@@ -103,14 +101,17 @@ fn 波を計算して表示する(g: &Orchestration) -> Vec<Vec<ServiceId>> {
 // 4. 波の並列実行 — std::thread::scope で実際に並行に走らせる
 // ============================================================
 
-fn 波を並列実行してログを表示する(g: &Orchestration, waves: &[Vec<ServiceId>]) -> ExecutionReport {
+fn 波を並列実行してログを表示する(
+    g: &Orchestration::Graph,
+    waves: &[Vec<ServiceId>],
+) -> ExecutionReport {
     println!("\n=== 4. std::thread::scope で波を実際に並列実行 ===");
     let report = engine::run_waves(g, waves);
 
     let mut sorted_records = report.records.clone();
     sorted_records.sort_by_key(|r| r.start);
     for record in &sorted_records {
-        let name = Service::get(g, &record.service)
+        let name = Orchestration::Service::get(g, &record.service)
             .map(|s| s.name.as_str())
             .unwrap_or("?");
         println!(
@@ -128,7 +129,7 @@ fn 波を並列実行してログを表示する(g: &Orchestration, waves: &[Vec
 // 5. 直列実行との比較
 // ============================================================
 
-fn 直列実行と比較する(g: &Orchestration, report: &ExecutionReport) {
+fn 直列実行と比較する(g: &Orchestration::Graph, report: &ExecutionReport) {
     println!("\n=== 5. 直列実行 (敵1のベースライン) との比較 ===");
     let serial_order: Vec<ServiceId> = report
         .waves
@@ -138,7 +139,10 @@ fn 直列実行と比較する(g: &Orchestration, report: &ExecutionReport) {
     let serial_total = engine::run_serial(g, &serial_order);
     let ideal_serial_ms = depgraph::total_serial_ms(g);
 
-    println!("直列実行 (実測) = {}ms (起動時間の総和 = {ideal_serial_ms}ms)", serial_total.as_millis());
+    println!(
+        "直列実行 (実測) = {}ms (起動時間の総和 = {ideal_serial_ms}ms)",
+        serial_total.as_millis()
+    );
     println!("並列実行 (実測) = {}ms", report.total.as_millis());
     let speedup = serial_total.as_secs_f64() / report.total.as_secs_f64().max(0.000_001);
     println!("実測の高速化率 = {speedup:.2}倍");

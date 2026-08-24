@@ -41,6 +41,8 @@ graphite::graph_schema! {
     }
 }
 
+use Dialogue::{Choice, ChoiceId};
+
 /// 記述順どおりの `line{i}` テキスト列を作る補助関数。
 fn expected_texts(n: usize) -> Vec<String> {
     (0..n).map(|i| format!("line{i}")).collect()
@@ -64,10 +66,20 @@ mod tests {
     fn choiceのofとiterは挿入順を保持する_builder経由() {
         const N: usize = 7;
 
-        let g = Dialogue::create(|b| {
-            b.speaker(speaker_id(), Speaker { name: "S".to_string() });
+        let g = Dialogue::Graph::create(|b| {
+            b.speaker(
+                speaker_id(),
+                Speaker {
+                    name: "S".to_string(),
+                },
+            );
             for i in 0..N {
-                b.line(line_id(i), Line { text: format!("line{i}") });
+                b.line(
+                    line_id(i),
+                    Line {
+                        text: format!("line{i}"),
+                    },
+                );
             }
             for i in 0..N {
                 b.choice(ChoiceId(format!("c{i}")), Choice(speaker_id(), line_id(i)));

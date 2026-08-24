@@ -7,7 +7,10 @@
 
 use std::fmt;
 
-use crate::schema::{Cancel, CancelEdge, Deliver, OrderFsm, OrderState, OrderStateId, Pay, Refund, RefundEdge, Ship, Submit};
+use crate::schema::{
+    Cancel, CancelEdge, Deliver, OrderFsm, OrderState, OrderStateId, Pay, Refund, RefundEdge, Ship,
+    Submit,
+};
 
 /// FSM が受理するイベント一覧。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -73,7 +76,7 @@ impl std::error::Error for TransitionError {}
 /// (schema と `build` にしか無い) — enum+match 散在アンチパターンとの
 /// 決定的な違い。
 pub fn step(
-    fsm: &OrderFsm,
+    fsm: &OrderFsm::Graph,
     current: &OrderStateId,
     event: Event,
 ) -> Result<OrderStateId, TransitionError> {
@@ -106,7 +109,7 @@ pub fn step(
 /// `cancel` イベントのガード条件・監査情報 (`CancelEdge`) も見たい場合は
 /// `Cancel::of` を直接使う (`step` はキーだけ返すため属性は運ばない)。
 pub fn cancel_details<'a>(
-    fsm: &'a OrderFsm,
+    fsm: &'a OrderFsm::Graph,
     current: &OrderStateId,
 ) -> Option<(&'a OrderState, &'a CancelEdge)> {
     Cancel::of(fsm, current)
@@ -114,7 +117,7 @@ pub fn cancel_details<'a>(
 
 /// `refund` イベントの監査ログ用ラベル (`RefundEdge`) を見たい場合。
 pub fn refund_details<'a>(
-    fsm: &'a OrderFsm,
+    fsm: &'a OrderFsm::Graph,
     current: &OrderStateId,
 ) -> Option<(&'a OrderState, &'a RefundEdge)> {
     Refund::of(fsm, current)
@@ -153,9 +156,9 @@ pub fn terminal_states() -> Vec<OrderStateId> {
 ///   発送後 (shipped/delivered) には `Cancel` は無く、代わりに `Refund` を使う
 ///   (現実の EC システムでよくある区別: 未発送は取消、発送後は返金)。
 /// - `Refund` は支払い済み以降 (paid/shipped/delivered) からのみ可能。
-pub fn build() -> OrderFsm {
+pub fn build() -> OrderFsm::Graph {
     #[rustfmt::skip]
-    let g: OrderFsm = graphite::graph!(OrderFsm {
+    let g: OrderFsm::Graph = graphite::graph!(OrderFsm {
         draft           = OrderState { label: "draft".into() },
         pending_payment = OrderState { label: "pending_payment".into() },
         paid            = OrderState { label: "paid".into() },
@@ -189,9 +192,9 @@ pub fn build() -> OrderFsm {
 /// どこからも呼ばれないデッドコードと同種のバグ)。`held_for_review` 自身は
 /// `cancelled` への `Cancel` 辺を持つので行き止まりではない — 「到達不能」
 /// と「行き止まり」が別の問題であることも同時に示す。
-pub fn build_with_unreachable_state() -> OrderFsm {
+pub fn build_with_unreachable_state() -> OrderFsm::Graph {
     #[rustfmt::skip]
-    let g: OrderFsm = graphite::graph!(OrderFsm {
+    let g: OrderFsm::Graph = graphite::graph!(OrderFsm {
         draft           = OrderState { label: "draft".into() },
         pending_payment = OrderState { label: "pending_payment".into() },
         paid            = OrderState { label: "paid".into() },
@@ -232,9 +235,9 @@ pub fn build_with_unreachable_state() -> OrderFsm {
 /// 「発送したら中で永遠に止まる注文」というバグが、到達不能とは独立に
 /// 構造だけから検出できることを示す (到達不能側の状態は一切生じないよう
 /// `held_for_review` のような追加ノードは置いていない)。
-pub fn build_with_dead_end_bug() -> OrderFsm {
+pub fn build_with_dead_end_bug() -> OrderFsm::Graph {
     #[rustfmt::skip]
-    let g: OrderFsm = graphite::graph!(OrderFsm {
+    let g: OrderFsm::Graph = graphite::graph!(OrderFsm {
         draft           = OrderState { label: "draft".into() },
         pending_payment = OrderState { label: "pending_payment".into() },
         paid            = OrderState { label: "paid".into() },

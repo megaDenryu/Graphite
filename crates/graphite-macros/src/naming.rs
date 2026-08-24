@@ -5,6 +5,19 @@
 //! 機械的に導出するため)。この対応がずれると `graph!` が生成する呼び出しが
 //! `graph_schema!` の生成物と噛み合わずコンパイルエラーになる。
 
+use proc_macro2::Ident;
+use quote::format_ident;
+
+/// スキーマ module 内のグラフ本体型名を生成する。
+pub fn graph_type_ident(source: &Ident) -> Ident {
+    Ident::new("Graph", source.span())
+}
+
+/// freeze 中に使うエッジ表の一時変数名を生成する。
+pub fn edge_storage_ident(accessor: &Ident) -> Ident {
+    format_ident!("__graphite_{}", accessor, span = accessor.span())
+}
+
 /// `PascalCase` / `camelCase` の識別子を `snake_case` に変換する。
 ///
 /// 例: `Employee` -> `employee`, `OrgChart` -> `org_chart`。
@@ -51,5 +64,17 @@ mod tests {
     fn 複数形フィールド名を導出できる() {
         assert_eq!(plural_field_name("Employee"), "employees");
         assert_eq!(plural_field_name("Department"), "departments");
+    }
+
+    #[test]
+    fn 固定グラフ型名を導出できる() {
+        let source = Ident::new("Org", proc_macro2::Span::call_site());
+        assert_eq!(graph_type_ident(&source).to_string(), "Graph");
+    }
+
+    #[test]
+    fn エッジ表の一時変数名を導出できる() {
+        let accessor = Ident::new("belongs_to", proc_macro2::Span::call_site());
+        assert_eq!(edge_storage_ident(&accessor).to_string(), "__graphite_belongs_to");
     }
 }

@@ -71,3 +71,6 @@ graphite::graph_schema! {
         edge Refund  = OrderState -[RefundEdge]-> OrderState where each OrderState: 0..1;
     }
 }
+
+// 綴り短縮のための再輸出。同名edgeを持つschemaを足したらこの行を消す。
+pub use OrderFsm::{Cancel, Deliver, Pay, Refund, Ship, Submit};

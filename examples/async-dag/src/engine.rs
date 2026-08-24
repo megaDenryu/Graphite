@@ -12,7 +12,7 @@
 //! 波を始めない」という依存関係の遵守そのものであり、`Graph` 側で計算
 //! した波の境界をそのまま同期点として使っているだけである点がポイント。
 
-use crate::schema::{Orchestration, OrchestrationNode, Service, ServiceId};
+use crate::schema::{Orchestration, ServiceId};
 use std::sync::Mutex;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -58,14 +58,14 @@ fn simulate_startup(startup_ms: u64) {
 /// 戻る (=波内の全スレッドが join し終える) まで次の波へは進まない。この
 /// 「波の完了を待ってから次の波へ」という同期こそが、依存関係
 /// (「先行サービスが起動完了していること」) を実際に守っている箇所。
-pub fn run_waves(g: &Orchestration, waves: &[Vec<ServiceId>]) -> ExecutionReport {
+pub fn run_waves(g: &Orchestration::Graph, waves: &[Vec<ServiceId>]) -> ExecutionReport {
     let overall_start = Instant::now();
     let records: Mutex<Vec<ExecutionRecord>> = Mutex::new(Vec::new());
 
     for (wave_index, wave) in waves.iter().enumerate() {
         thread::scope(|scope| {
             for id in wave {
-                let service = Service::get(g, id)
+                let service = Orchestration::Service::get(g, id)
                     .unwrap_or_else(|| panic!("波に含まれるキー{id:?}はService::ids(g)由来のはず"));
                 let records = &records;
                 scope.spawn(move || {
@@ -94,10 +94,10 @@ pub fn run_waves(g: &Orchestration, waves: &[Vec<ServiceId>]) -> ExecutionReport
 /// 「敵1」のベースライン: 依存関係の並行性を一切活かさず、渡された順に
 /// 直列に起動する (素朴な `await` の連鎖に相当)。所要時間は起動時間の
 /// 総和に一致する。並列実行版 (`run_waves`) との比較対象として使う。
-pub fn run_serial(g: &Orchestration, order: &[ServiceId]) -> Duration {
+pub fn run_serial(g: &Orchestration::Graph, order: &[ServiceId]) -> Duration {
     let start = Instant::now();
     for id in order {
-        if let Some(service) = Service::get(g, id) {
+        if let Some(service) = Orchestration::Service::get(g, id) {
             simulate_startup(service.startup_ms);
         }
     }
@@ -108,7 +108,7 @@ pub fn run_serial(g: &Orchestration, order: &[ServiceId]) -> Duration {
 mod tests {
     use super::*;
     use crate::depgraph::compute_waves;
-    use crate::schema::{DependsOn, OrchestrationNode, Service};
+    use crate::schema::{DependsOn, Orchestration, Service};
 
     #[test]
     #[rustfmt::skip]
@@ -166,7 +166,7 @@ mod tests {
         let waves = compute_waves(&g).unwrap();
         let report = run_waves(&g, &waves);
 
-        let order: Vec<ServiceId> = Service::ids(&g).cloned().collect();
+        let order: Vec<ServiceId> = Orchestration::Service::ids(&g).cloned().collect();
         let serial = run_serial(&g, &order);
 
         // 直列: 20+40+40+10=110ms。並列: 20 (config) + 40 (db,cacheの最大) +

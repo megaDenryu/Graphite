@@ -59,35 +59,29 @@ graphite::graph_schema! {
     }
 }
 
+use OrgChart::{BelongsTo, BelongsToId, Boss, BossId, Leads, LeadsId, Reports, ReportsId};
+
 /// 導出エッジの例: `graph_schema!` が生成した `OrgChart` へ、保存されない
 /// 計算結果を返す普通のメソッドを追記できることを示す
 /// (`docs/graph_design_sketches.md` 決定「保存エッジ=フィールド、
-/// 導出エッジ=getter」)。私有フィールド (`belongs_to`/`belongs_to_from_index`)
-/// へ同一モジュールツリー内からアクセスできる、という通常の Rust 可視性規則
-/// をそのまま使っている。
-impl OrgChart {
+/// 導出エッジ=getter」)。公開クエリ API だけで導出クエリを書ける。
+/// schema module 内の私有ストレージと索引へ親 module からはアクセスできない。
+impl OrgChart::Graph {
     pub fn colleagues(&self, id: &EmployeeId) -> Vec<&Employee> {
-        let Some(ids) = self.belongs_to_from_index.get(id) else {
+        let department_id = BelongsTo::iter(self)
+            .find_map(|(_, edge)| (edge.from() == id).then(|| edge.to()));
+        let Some(department_id) = department_id else {
             return Vec::new();
         };
-        let dept_id = self
-            .belongs_to
-            .get(&ids[0])
-            .expect("from_indexに載っている辺はstorageに必ず存在する")
-            .to();
 
-        self.employees
-            .ids()
+        OrgChart::Employee::ids(self)
             .filter(|other| *other != id)
             .filter(|other| {
-                self.belongs_to_from_index
-                    .get(*other)
-                    .and_then(|v| v.first())
-                    .and_then(|bid| self.belongs_to.get(bid))
-                    .map(|b| b.to() == dept_id)
-                    .unwrap_or(false)
+                BelongsTo::iter(self).any(|(_, edge)| {
+                    edge.from() == *other && edge.to() == department_id
+                })
             })
-            .map(|other| self.employees.get(other).unwrap())
+            .filter_map(|other| OrgChart::Employee::get(self, other))
             .collect()
     }
 }
@@ -104,8 +98,8 @@ mod tests {
         DepartmentId(id.to_string())
     }
 
-    fn build_healthy_chart() -> OrgChart {
-        OrgChart::create(|b| {
+    fn build_healthy_chart() -> OrgChart::Graph {
+        OrgChart::Graph::create(|b| {
             b.employee(
                 emp("田中"),
                 Employee {
@@ -151,8 +145,14 @@ mod tests {
     #[test]
     fn 正常構築できる() {
         let g = build_healthy_chart();
-        assert_eq!(Employee::get(&g, &emp("田中")).unwrap().name, "田中");
-        assert_eq!(Department::get(&g, &dept("営業部")).unwrap().name, "営業");
+        assert_eq!(
+            OrgChart::Employee::get(&g, &emp("田中")).unwrap().name,
+            "田中"
+        );
+        assert_eq!(
+            OrgChart::Department::get(&g, &dept("営業部")).unwrap().name,
+            "営業"
+        );
     }
 
     #[test]
@@ -204,7 +204,7 @@ mod tests {
 
     #[test]
     fn belongs_toが0本の社員はeach違反になる() {
-        let result = OrgChart::create(|b| {
+        let result = OrgChart::Graph::create(|b| {
             b.employee(
                 emp("鈴木"),
                 Employee {
@@ -224,7 +224,7 @@ mod tests {
         match result {
             Err(violation) => assert_eq!(
                 violation,
-                OrgChartViolation::BelongsToEachViolation {
+                OrgChart::Violation::BelongsToEachViolation {
                     source: emp("鈴木"),
                     count: 0,
                 }
@@ -235,29 +235,73 @@ mod tests {
 
     #[test]
     fn bossが2本ある社員はeach違反になる() {
-        let result = OrgChart::create(|b| {
-            b.employee(emp("田中"), Employee { name: "田中".to_string(), id: 1 });
-            b.employee(emp("佐藤"), Employee { name: "佐藤".to_string(), id: 2 });
-            b.employee(emp("鈴木"), Employee { name: "鈴木".to_string(), id: 3 });
-            b.department(dept("営業部"), Department { name: "営業".to_string() });
-            b.belongs_to(BelongsToId("bt1".to_string()), BelongsTo(emp("田中"), dept("営業部")));
-            b.belongs_to(BelongsToId("bt2".to_string()), BelongsTo(emp("佐藤"), dept("営業部")));
-            b.belongs_to(BelongsToId("bt3".to_string()), BelongsTo(emp("鈴木"), dept("営業部")));
+        let result = OrgChart::Graph::create(|b| {
+            b.employee(
+                emp("田中"),
+                Employee {
+                    name: "田中".to_string(),
+                    id: 1,
+                },
+            );
+            b.employee(
+                emp("佐藤"),
+                Employee {
+                    name: "佐藤".to_string(),
+                    id: 2,
+                },
+            );
+            b.employee(
+                emp("鈴木"),
+                Employee {
+                    name: "鈴木".to_string(),
+                    id: 3,
+                },
+            );
+            b.department(
+                dept("営業部"),
+                Department {
+                    name: "営業".to_string(),
+                },
+            );
+            b.belongs_to(
+                BelongsToId("bt1".to_string()),
+                BelongsTo(emp("田中"), dept("営業部")),
+            );
+            b.belongs_to(
+                BelongsToId("bt2".to_string()),
+                BelongsTo(emp("佐藤"), dept("営業部")),
+            );
+            b.belongs_to(
+                BelongsToId("bt3".to_string()),
+                BelongsTo(emp("鈴木"), dept("営業部")),
+            );
             // 田中に上司を2人つける (each 0..1 違反)
-            b.boss(BossId("b1".to_string()), Boss(emp("田中"), emp("佐藤"), BossEdge { since: 2018 }));
-            b.boss(BossId("b2".to_string()), Boss(emp("田中"), emp("鈴木"), BossEdge { since: 2019 }));
+            b.boss(
+                BossId("b1".to_string()),
+                Boss(emp("田中"), emp("佐藤"), BossEdge { since: 2018 }),
+            );
+            b.boss(
+                BossId("b2".to_string()),
+                Boss(emp("田中"), emp("鈴木"), BossEdge { since: 2019 }),
+            );
         });
 
         assert!(matches!(
             result,
-            Err(OrgChartViolation::BossEachViolation { .. })
+            Err(OrgChart::Violation::BossEachViolation { .. })
         ));
     }
 
     #[test]
     fn 未知の部署への所属はエラーになる() {
-        let result = OrgChart::create(|b| {
-            b.employee(emp("田中"), Employee { name: "田中".to_string(), id: 1 });
+        let result = OrgChart::Graph::create(|b| {
+            b.employee(
+                emp("田中"),
+                Employee {
+                    name: "田中".to_string(),
+                    id: 1,
+                },
+            );
             b.belongs_to(
                 BelongsToId("bt1".to_string()),
                 BelongsTo(emp("田中"), dept("存在しない部署")),
@@ -267,7 +311,7 @@ mod tests {
         match result {
             Err(violation) => assert_eq!(
                 violation,
-                OrgChartViolation::BelongsToUnknownTarget {
+                OrgChart::Violation::BelongsToUnknownTarget {
                     edge: BelongsToId("bt1".to_string()),
                     target: dept("存在しない部署"),
                 }
@@ -278,17 +322,40 @@ mod tests {
 
     #[test]
     fn 辺キーが重複していると違反になる() {
-        let result = OrgChart::create(|b| {
-            b.employee(emp("田中"), Employee { name: "田中".to_string(), id: 1 });
-            b.employee(emp("佐藤"), Employee { name: "佐藤".to_string(), id: 2 });
-            b.department(dept("営業部"), Department { name: "営業".to_string() });
-            b.belongs_to(BelongsToId("dup".to_string()), BelongsTo(emp("田中"), dept("営業部")));
-            b.belongs_to(BelongsToId("dup".to_string()), BelongsTo(emp("佐藤"), dept("営業部")));
+        let result = OrgChart::Graph::create(|b| {
+            b.employee(
+                emp("田中"),
+                Employee {
+                    name: "田中".to_string(),
+                    id: 1,
+                },
+            );
+            b.employee(
+                emp("佐藤"),
+                Employee {
+                    name: "佐藤".to_string(),
+                    id: 2,
+                },
+            );
+            b.department(
+                dept("営業部"),
+                Department {
+                    name: "営業".to_string(),
+                },
+            );
+            b.belongs_to(
+                BelongsToId("dup".to_string()),
+                BelongsTo(emp("田中"), dept("営業部")),
+            );
+            b.belongs_to(
+                BelongsToId("dup".to_string()),
+                BelongsTo(emp("佐藤"), dept("営業部")),
+            );
         });
 
         assert!(matches!(
             result,
-            Err(OrgChartViolation::BelongsToDuplicateKey(id)) if id == BelongsToId("dup".to_string())
+            Err(OrgChart::Violation::BelongsToDuplicateKey(id)) if id == BelongsToId("dup".to_string())
         ));
     }
 
@@ -302,19 +369,48 @@ mod tests {
 
     #[test]
     fn 同じ対に2本目のreportsを張るとunique_pair違反になる() {
-        let result = OrgChart::create(|b| {
-            b.employee(emp("田中"), Employee { name: "田中".to_string(), id: 1 });
-            b.employee(emp("佐藤"), Employee { name: "佐藤".to_string(), id: 2 });
-            b.department(dept("営業部"), Department { name: "営業".to_string() });
-            b.belongs_to(BelongsToId("bt1".to_string()), BelongsTo(emp("田中"), dept("営業部")));
-            b.belongs_to(BelongsToId("bt2".to_string()), BelongsTo(emp("佐藤"), dept("営業部")));
-            b.reports(ReportsId("r1".to_string()), Reports(emp("田中"), emp("佐藤")));
-            b.reports(ReportsId("r2".to_string()), Reports(emp("田中"), emp("佐藤")));
+        let result = OrgChart::Graph::create(|b| {
+            b.employee(
+                emp("田中"),
+                Employee {
+                    name: "田中".to_string(),
+                    id: 1,
+                },
+            );
+            b.employee(
+                emp("佐藤"),
+                Employee {
+                    name: "佐藤".to_string(),
+                    id: 2,
+                },
+            );
+            b.department(
+                dept("営業部"),
+                Department {
+                    name: "営業".to_string(),
+                },
+            );
+            b.belongs_to(
+                BelongsToId("bt1".to_string()),
+                BelongsTo(emp("田中"), dept("営業部")),
+            );
+            b.belongs_to(
+                BelongsToId("bt2".to_string()),
+                BelongsTo(emp("佐藤"), dept("営業部")),
+            );
+            b.reports(
+                ReportsId("r1".to_string()),
+                Reports(emp("田中"), emp("佐藤")),
+            );
+            b.reports(
+                ReportsId("r2".to_string()),
+                Reports(emp("田中"), emp("佐藤")),
+            );
         });
 
         assert!(matches!(
             result,
-            Err(OrgChartViolation::ReportsUniquePairViolation { .. })
+            Err(OrgChart::Violation::ReportsUniquePairViolation { .. })
         ));
     }
 
@@ -329,17 +425,52 @@ mod tests {
 
     #[test]
     fn create_collectingは複数の違反を全件収集する() {
-        let result = OrgChart::create_collecting(|b| {
-            b.employee(emp("鈴木"), Employee { name: "鈴木".to_string(), id: 3 });
-            b.employee(emp("田中"), Employee { name: "田中".to_string(), id: 1 });
-            b.employee(emp("佐藤"), Employee { name: "佐藤".to_string(), id: 2 });
-            b.department(dept("営業部"), Department { name: "営業".to_string() });
+        let result = OrgChart::Graph::create_collecting(|b| {
+            b.employee(
+                emp("鈴木"),
+                Employee {
+                    name: "鈴木".to_string(),
+                    id: 3,
+                },
+            );
+            b.employee(
+                emp("田中"),
+                Employee {
+                    name: "田中".to_string(),
+                    id: 1,
+                },
+            );
+            b.employee(
+                emp("佐藤"),
+                Employee {
+                    name: "佐藤".to_string(),
+                    id: 2,
+                },
+            );
+            b.department(
+                dept("営業部"),
+                Department {
+                    name: "営業".to_string(),
+                },
+            );
             // 鈴木をどの部署にも所属させない (belongs_to each違反その1)。
-            b.belongs_to(BelongsToId("bt1".to_string()), BelongsTo(emp("田中"), dept("営業部")));
-            b.belongs_to(BelongsToId("bt2".to_string()), BelongsTo(emp("佐藤"), dept("営業部")));
+            b.belongs_to(
+                BelongsToId("bt1".to_string()),
+                BelongsTo(emp("田中"), dept("営業部")),
+            );
+            b.belongs_to(
+                BelongsToId("bt2".to_string()),
+                BelongsTo(emp("佐藤"), dept("営業部")),
+            );
             // 田中に上司を2人つける (boss each違反その2、belongs_toとは独立)。
-            b.boss(BossId("b1".to_string()), Boss(emp("田中"), emp("佐藤"), BossEdge { since: 2018 }));
-            b.boss(BossId("b2".to_string()), Boss(emp("田中"), emp("鈴木"), BossEdge { since: 2019 }));
+            b.boss(
+                BossId("b1".to_string()),
+                Boss(emp("田中"), emp("佐藤"), BossEdge { since: 2018 }),
+            );
+            b.boss(
+                BossId("b2".to_string()),
+                Boss(emp("田中"), emp("鈴木"), BossEdge { since: 2019 }),
+            );
         });
 
         let violations = match result {
@@ -349,18 +480,32 @@ mod tests {
         assert_eq!(violations.len(), 2);
         assert!(violations
             .iter()
-            .any(|v| matches!(v, OrgChartViolation::BelongsToEachViolation { .. })));
+            .any(|v| matches!(v, OrgChart::Violation::BelongsToEachViolation { .. })));
         assert!(violations
             .iter()
-            .any(|v| matches!(v, OrgChartViolation::BossEachViolation { .. })));
+            .any(|v| matches!(v, OrgChart::Violation::BossEachViolation { .. })));
     }
 
     #[test]
     fn create_collectingは違反がなければokを返す() {
-        let result = OrgChart::create_collecting(|b| {
-            b.employee(emp("田中"), Employee { name: "田中".to_string(), id: 1 });
-            b.department(dept("営業部"), Department { name: "営業".to_string() });
-            b.belongs_to(BelongsToId("bt1".to_string()), BelongsTo(emp("田中"), dept("営業部")));
+        let result = OrgChart::Graph::create_collecting(|b| {
+            b.employee(
+                emp("田中"),
+                Employee {
+                    name: "田中".to_string(),
+                    id: 1,
+                },
+            );
+            b.department(
+                dept("営業部"),
+                Department {
+                    name: "営業".to_string(),
+                },
+            );
+            b.belongs_to(
+                BelongsToId("bt1".to_string()),
+                BelongsTo(emp("田中"), dept("営業部")),
+            );
         });
         assert!(result.is_ok());
     }
@@ -368,7 +513,7 @@ mod tests {
     #[test]
     fn employee_idsで全キーを列挙できる() {
         let g = build_healthy_chart();
-        let mut ids: Vec<String> = Employee::ids(&g).map(|id| id.0.clone()).collect();
+        let mut ids: Vec<String> = OrgChart::Employee::ids(&g).map(|id| id.0.clone()).collect();
         ids.sort();
         assert_eq!(ids, vec!["佐藤".to_string(), "田中".to_string()]);
     }
@@ -383,15 +528,52 @@ mod tests {
 
     #[test]
     fn colleagues_は同じ部署の他の社員を返す() {
-        let g = OrgChart::create(|b| {
-            b.employee(emp("田中"), Employee { name: "田中".to_string(), id: 1 });
-            b.employee(emp("佐藤"), Employee { name: "佐藤".to_string(), id: 2 });
-            b.employee(emp("鈴木"), Employee { name: "鈴木".to_string(), id: 3 });
-            b.department(dept("営業部"), Department { name: "営業".to_string() });
-            b.department(dept("開発部"), Department { name: "開発".to_string() });
-            b.belongs_to(BelongsToId("bt1".to_string()), BelongsTo(emp("田中"), dept("営業部")));
-            b.belongs_to(BelongsToId("bt2".to_string()), BelongsTo(emp("佐藤"), dept("営業部")));
-            b.belongs_to(BelongsToId("bt3".to_string()), BelongsTo(emp("鈴木"), dept("開発部")));
+        let g = OrgChart::Graph::create(|b| {
+            b.employee(
+                emp("田中"),
+                Employee {
+                    name: "田中".to_string(),
+                    id: 1,
+                },
+            );
+            b.employee(
+                emp("佐藤"),
+                Employee {
+                    name: "佐藤".to_string(),
+                    id: 2,
+                },
+            );
+            b.employee(
+                emp("鈴木"),
+                Employee {
+                    name: "鈴木".to_string(),
+                    id: 3,
+                },
+            );
+            b.department(
+                dept("営業部"),
+                Department {
+                    name: "営業".to_string(),
+                },
+            );
+            b.department(
+                dept("開発部"),
+                Department {
+                    name: "開発".to_string(),
+                },
+            );
+            b.belongs_to(
+                BelongsToId("bt1".to_string()),
+                BelongsTo(emp("田中"), dept("営業部")),
+            );
+            b.belongs_to(
+                BelongsToId("bt2".to_string()),
+                BelongsTo(emp("佐藤"), dept("営業部")),
+            );
+            b.belongs_to(
+                BelongsToId("bt3".to_string()),
+                BelongsTo(emp("鈴木"), dept("開発部")),
+            );
         })
         .unwrap();
 
@@ -432,13 +614,39 @@ mod tests {
         // 終点側 (役割名 `department`) の each 制約 = 入次数制約
         // (`docs/edge_endpoints_v4_1.md` §1 の新規解禁項目)。健全な構築では
         // 各部署に代表が0人または1人。
-        let g = OrgChart::create(|b| {
-            b.employee(emp("田中"), Employee { name: "田中".to_string(), id: 1 });
-            b.employee(emp("佐藤"), Employee { name: "佐藤".to_string(), id: 2 });
-            b.department(dept("営業部"), Department { name: "営業".to_string() });
-            b.belongs_to(BelongsToId("bt1".to_string()), BelongsTo(emp("田中"), dept("営業部")));
-            b.belongs_to(BelongsToId("bt2".to_string()), BelongsTo(emp("佐藤"), dept("営業部")));
-            b.leads(LeadsId("l1".to_string()), Leads(emp("田中"), dept("営業部")));
+        let g = OrgChart::Graph::create(|b| {
+            b.employee(
+                emp("田中"),
+                Employee {
+                    name: "田中".to_string(),
+                    id: 1,
+                },
+            );
+            b.employee(
+                emp("佐藤"),
+                Employee {
+                    name: "佐藤".to_string(),
+                    id: 2,
+                },
+            );
+            b.department(
+                dept("営業部"),
+                Department {
+                    name: "営業".to_string(),
+                },
+            );
+            b.belongs_to(
+                BelongsToId("bt1".to_string()),
+                BelongsTo(emp("田中"), dept("営業部")),
+            );
+            b.belongs_to(
+                BelongsToId("bt2".to_string()),
+                BelongsTo(emp("佐藤"), dept("営業部")),
+            );
+            b.leads(
+                LeadsId("l1".to_string()),
+                Leads(emp("田中"), dept("営業部")),
+            );
         })
         .expect("代表が1人の部署は健全なはず");
 
@@ -462,18 +670,38 @@ mod tests {
         // 構築し、内容が一致することを確認する。ノード用・エッジ用の
         // 呼び分けが要らない (値の型から rustc が振り分ける) ことも実証する。
         let g1 = build_healthy_chart();
-        let g2 = OrgChart::create(|b| {
+        let g2 = OrgChart::Graph::create(|b| {
             b.extend(vec![
-                ("田中".to_string(), Employee { name: "田中".to_string(), id: 1 }),
-                ("佐藤".to_string(), Employee { name: "佐藤".to_string(), id: 2 }),
+                (
+                    "田中".to_string(),
+                    Employee {
+                        name: "田中".to_string(),
+                        id: 1,
+                    },
+                ),
+                (
+                    "佐藤".to_string(),
+                    Employee {
+                        name: "佐藤".to_string(),
+                        id: 2,
+                    },
+                ),
             ]);
             b.extend(vec![(
                 "営業部".to_string(),
-                Department { name: "営業".to_string() },
+                Department {
+                    name: "営業".to_string(),
+                },
             )]);
             b.extend(vec![
-                ("bt-tanaka".to_string(), BelongsTo(emp("田中"), dept("営業部"))),
-                ("bt-sato".to_string(), BelongsTo(emp("佐藤"), dept("営業部"))),
+                (
+                    "bt-tanaka".to_string(),
+                    BelongsTo(emp("田中"), dept("営業部")),
+                ),
+                (
+                    "bt-sato".to_string(),
+                    BelongsTo(emp("佐藤"), dept("営業部")),
+                ),
             ]);
             b.extend(vec![(
                 "boss-sato".to_string(),
@@ -483,8 +711,8 @@ mod tests {
         })
         .expect("extendで構築した組織図も要素単位と同様に成功するはず");
 
-        let employees_of = |g: &OrgChart| -> Vec<(String, Employee)> {
-            let mut v: Vec<(String, Employee)> = Employee::iter(g)
+        let employees_of = |g: &OrgChart::Graph| -> Vec<(String, Employee)> {
+            let mut v: Vec<(String, Employee)> = OrgChart::Employee::iter(g)
                 .map(|(id, e)| (id.0.clone(), e.clone()))
                 .collect();
             v.sort_by(|a, b| a.0.cmp(&b.0));
@@ -492,8 +720,8 @@ mod tests {
         };
         assert_eq!(employees_of(&g1), employees_of(&g2));
 
-        let departments_of = |g: &OrgChart| -> Vec<(String, Department)> {
-            let mut v: Vec<(String, Department)> = Department::iter(g)
+        let departments_of = |g: &OrgChart::Graph| -> Vec<(String, Department)> {
+            let mut v: Vec<(String, Department)> = OrgChart::Department::iter(g)
                 .map(|(id, d)| (id.0.clone(), d.clone()))
                 .collect();
             v.sort_by(|a, b| a.0.cmp(&b.0));
@@ -503,36 +731,65 @@ mod tests {
 
         // 辺は KeyedTable が挿入順を保持する仕様 (`docs/schema_v4.md` §3.2) な
         // ので、順序も含めてそのまま比較できる。
-        let belongs_to_of =
-            |g: &OrgChart| -> Vec<(BelongsToId, BelongsTo)> { BelongsTo::iter(g).map(|(id, e)| (id.clone(), e.clone())).collect() };
+        let belongs_to_of = |g: &OrgChart::Graph| -> Vec<(BelongsToId, BelongsTo)> {
+            BelongsTo::iter(g)
+                .map(|(id, e)| (id.clone(), e.clone()))
+                .collect()
+        };
         assert_eq!(belongs_to_of(&g1), belongs_to_of(&g2));
 
-        let boss_of =
-            |g: &OrgChart| -> Vec<(BossId, Boss)> { Boss::iter(g).map(|(id, e)| (id.clone(), e.clone())).collect() };
+        let boss_of = |g: &OrgChart::Graph| -> Vec<(BossId, Boss)> {
+            Boss::iter(g)
+                .map(|(id, e)| (id.clone(), e.clone()))
+                .collect()
+        };
         assert_eq!(boss_of(&g1), boss_of(&g2));
 
-        let reports_of =
-            |g: &OrgChart| -> Vec<(ReportsId, Reports)> { Reports::iter(g).map(|(id, e)| (id.clone(), e.clone())).collect() };
+        let reports_of = |g: &OrgChart::Graph| -> Vec<(ReportsId, Reports)> {
+            Reports::iter(g)
+                .map(|(id, e)| (id.clone(), e.clone()))
+                .collect()
+        };
         assert_eq!(reports_of(&g1), reports_of(&g2));
     }
 
     #[test]
     fn extendの戻り値は入力順のidになる() {
-        let g = OrgChart::create(|b| {
+        let g = OrgChart::Graph::create(|b| {
             let node_ids = b.extend(vec![
-                ("田中".to_string(), Employee { name: "田中".to_string(), id: 1 }),
-                ("佐藤".to_string(), Employee { name: "佐藤".to_string(), id: 2 }),
+                (
+                    "田中".to_string(),
+                    Employee {
+                        name: "田中".to_string(),
+                        id: 1,
+                    },
+                ),
+                (
+                    "佐藤".to_string(),
+                    Employee {
+                        name: "佐藤".to_string(),
+                        id: 2,
+                    },
+                ),
             ]);
             assert_eq!(node_ids, vec![emp("田中"), emp("佐藤")]);
 
             b.extend(vec![(
                 "営業部".to_string(),
-                Department { name: "営業".to_string() },
+                Department {
+                    name: "営業".to_string(),
+                },
             )]);
 
             let edge_ids = b.extend(vec![
-                ("bt-tanaka".to_string(), BelongsTo(emp("田中"), dept("営業部"))),
-                ("bt-sato".to_string(), BelongsTo(emp("佐藤"), dept("営業部"))),
+                (
+                    "bt-tanaka".to_string(),
+                    BelongsTo(emp("田中"), dept("営業部")),
+                ),
+                (
+                    "bt-sato".to_string(),
+                    BelongsTo(emp("佐藤"), dept("営業部")),
+                ),
             ]);
             assert_eq!(
                 edge_ids,
@@ -544,12 +801,15 @@ mod tests {
         })
         .expect("正常な組織図は構築に成功するはず");
 
-        assert_eq!(Employee::get(&g, &emp("田中")).unwrap().name, "田中");
+        assert_eq!(
+            OrgChart::Employee::get(&g, &emp("田中")).unwrap().name,
+            "田中"
+        );
     }
 
     #[test]
     fn extendは空イテレータでも問題なく動く() {
-        let result = OrgChart::create(|b| {
+        let result = OrgChart::Graph::create(|b| {
             let node_ids: Vec<EmployeeId> = b.extend(Vec::<(String, Employee)>::new());
             assert!(node_ids.is_empty());
             let edge_ids: Vec<BelongsToId> = b.extend(Vec::<(String, BelongsTo)>::new());
@@ -562,21 +822,50 @@ mod tests {
 
     #[test]
     fn 同じ部署に2人のleaderをつけると入次数違反になる() {
-        let result = OrgChart::create(|b| {
-            b.employee(emp("田中"), Employee { name: "田中".to_string(), id: 1 });
-            b.employee(emp("佐藤"), Employee { name: "佐藤".to_string(), id: 2 });
-            b.department(dept("営業部"), Department { name: "営業".to_string() });
-            b.belongs_to(BelongsToId("bt1".to_string()), BelongsTo(emp("田中"), dept("営業部")));
-            b.belongs_to(BelongsToId("bt2".to_string()), BelongsTo(emp("佐藤"), dept("営業部")));
+        let result = OrgChart::Graph::create(|b| {
+            b.employee(
+                emp("田中"),
+                Employee {
+                    name: "田中".to_string(),
+                    id: 1,
+                },
+            );
+            b.employee(
+                emp("佐藤"),
+                Employee {
+                    name: "佐藤".to_string(),
+                    id: 2,
+                },
+            );
+            b.department(
+                dept("営業部"),
+                Department {
+                    name: "営業".to_string(),
+                },
+            );
+            b.belongs_to(
+                BelongsToId("bt1".to_string()),
+                BelongsTo(emp("田中"), dept("営業部")),
+            );
+            b.belongs_to(
+                BelongsToId("bt2".to_string()),
+                BelongsTo(emp("佐藤"), dept("営業部")),
+            );
             // 営業部に代表を2人つける (each department: 0..1 違反、入次数)。
-            b.leads(LeadsId("l1".to_string()), Leads(emp("田中"), dept("営業部")));
-            b.leads(LeadsId("l2".to_string()), Leads(emp("佐藤"), dept("営業部")));
+            b.leads(
+                LeadsId("l1".to_string()),
+                Leads(emp("田中"), dept("営業部")),
+            );
+            b.leads(
+                LeadsId("l2".to_string()),
+                Leads(emp("佐藤"), dept("営業部")),
+            );
         });
 
         match result {
             Err(violation) => assert_eq!(
                 violation,
-                OrgChartViolation::LeadsEachViolation {
+                OrgChart::Violation::LeadsEachViolation {
                     target: dept("営業部"),
                     count: 2,
                 }
@@ -607,11 +896,11 @@ mod graph_literal_tests {
         .expect("正常な graph! リテラルは構築に成功するはず");
 
         assert_eq!(
-            Employee::get(&g, &EmployeeId("tanaka".to_string())).unwrap().name,
+            OrgChart::Employee::get(&g, &EmployeeId("tanaka".to_string())).unwrap().name,
             "田中"
         );
         assert_eq!(
-            Department::get(&g, &DepartmentId("sales".to_string())).unwrap().name,
+            OrgChart::Department::get(&g, &DepartmentId("sales".to_string())).unwrap().name,
             "営業"
         );
 
@@ -636,7 +925,7 @@ mod graph_literal_tests {
 
         assert!(matches!(
             result,
-            Err(OrgChartViolation::BelongsToEachViolation { .. })
+            Err(OrgChart::Violation::BelongsToEachViolation { .. })
         ));
     }
 
@@ -658,7 +947,7 @@ mod graph_literal_tests {
         .expect("ノードキー b を使った graph! も構築に成功するはず");
 
         assert_eq!(
-            Employee::get(&g, &EmployeeId("b".to_string())).unwrap().name,
+            OrgChart::Employee::get(&g, &EmployeeId("b".to_string())).unwrap().name,
             "B社員"
         );
         let d: &Department = BelongsTo::of(&g, &EmployeeId("b".to_string()));
@@ -711,7 +1000,7 @@ mod graph_literal_tests {
         .expect("外で構築した値を渡した graph! も構築に成功するはず");
 
         assert_eq!(
-            Employee::get(&g, &EmployeeId("tanaka".to_string())).unwrap().name,
+            OrgChart::Employee::get(&g, &EmployeeId("tanaka".to_string())).unwrap().name,
             "田中"
         );
         let (boss_emp, attrs) = Boss::of(&g, &EmployeeId("sato".to_string()))
@@ -725,7 +1014,7 @@ mod graph_literal_tests {
     fn タプルstructを直接構築してaddできる() {
         // `docs/schema_v4.md` §3.1: タプル struct はマクロ外でも普通に
         // 構築できる。graph! の脱糖結果と同じ形を手で書けることを示す。
-        let g = OrgChart::create(|b| {
+        let g = OrgChart::Graph::create(|b| {
             let tanaka = b.insert("tanaka", Employee { name: "田中".into(), id: 1 });
             let sales = b.insert("sales", Department { name: "営業".into() });
             b.add("bt1", BelongsTo(tanaka.clone(), sales.clone()));

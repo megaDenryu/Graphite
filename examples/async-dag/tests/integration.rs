@@ -12,9 +12,7 @@
 use async_dag::depgraph::{self, build_dependency_graph};
 use async_dag::engine::run_serial;
 use async_dag::fixtures::{cyclic_demo, sample_orchestration};
-use async_dag::schema::{
-    DependsOn, Orchestration, OrchestrationNode, OrchestrationViolation, Service, ServiceId,
-};
+use async_dag::schema::{DependsOn, Orchestration, Service, ServiceId};
 use std::collections::HashSet;
 
 fn id(name: &str) -> ServiceId {
@@ -59,7 +57,10 @@ fn 波3はmigrationとmetrics_波4はapiとworkerである() {
     let waves = depgraph::compute_waves(&g).unwrap();
     assert_eq!(
         names(&waves[2]),
-        ["migration", "metrics"].iter().map(|s| s.to_string()).collect()
+        ["migration", "metrics"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect()
     );
     assert_eq!(
         names(&waves[3]),
@@ -72,12 +73,15 @@ fn 全サービスがちょうど1つの波に現れる() {
     let g = sample_orchestration();
     let waves = depgraph::compute_waves(&g).unwrap();
     let total_scheduled: usize = waves.iter().map(|w| w.len()).sum();
-    assert_eq!(total_scheduled, Service::ids(&g).count());
+    assert_eq!(total_scheduled, Orchestration::Service::ids(&g).count());
 
     let mut seen: HashSet<String> = HashSet::new();
     for wave in &waves {
         for svc in wave {
-            assert!(seen.insert(svc.0.clone()), "{svc:?} が複数の波に重複して現れた");
+            assert!(
+                seen.insert(svc.0.clone()),
+                "{svc:?} が複数の波に重複して現れた"
+            );
         }
     }
 }
@@ -107,7 +111,10 @@ fn 実行ログは依存先が依存元より先に完了していることを�
     let waves = depgraph::compute_waves(&g).unwrap();
     let report = async_dag::engine::run_waves(&g, &waves);
 
-    assert_eq!(report.records.len(), Service::ids(&g).count());
+    assert_eq!(
+        report.records.len(),
+        Orchestration::Service::ids(&g).count()
+    );
 
     for (_id, edge) in DependsOn::iter(&g) {
         let dependent = edge.from();
@@ -129,7 +136,7 @@ fn 並列実行は直列実行より実測で速い() {
     let waves = depgraph::compute_waves(&g).unwrap();
     let report = async_dag::engine::run_waves(&g, &waves);
 
-    let serial_order: Vec<ServiceId> = Service::ids(&g).cloned().collect();
+    let serial_order: Vec<ServiceId> = Orchestration::Service::ids(&g).cloned().collect();
     let serial_total = run_serial(&g, &serial_order);
 
     assert!(
@@ -142,9 +149,15 @@ fn 並列実行は直列実行より実測で速い() {
 
 #[test]
 fn 未知の依存先を参照するとunknowntarget違反になる() {
-    let result: Result<Orchestration, OrchestrationViolation> =
-        Orchestration::create(|b| {
-            b.service(id("api"), Service { name: "api".into(), startup_ms: 10 });
+    let result: Result<Orchestration::Graph, Orchestration::Violation> =
+        Orchestration::Graph::create(|b| {
+            b.service(
+                id("api"),
+                Service {
+                    name: "api".into(),
+                    startup_ms: 10,
+                },
+            );
             b.depends_on(
                 async_dag::schema::DependsOnId("api_missing".to_string()),
                 DependsOn(id("api"), id("存在しないサービス")),
@@ -152,6 +165,6 @@ fn 未知の依存先を参照するとunknowntarget違反になる() {
         });
     assert!(matches!(
         result,
-        Err(OrchestrationViolation::DependsOnUnknownTarget { .. })
+        Err(Orchestration::Violation::DependsOnUnknownTarget { .. })
     ));
 }

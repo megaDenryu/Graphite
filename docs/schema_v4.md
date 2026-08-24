@@ -41,6 +41,10 @@ graphite::graph_schema! {
 }
 ```
 
+`graph_schema!` は Rust module を生成するため、モジュール直下に書く。
+参照する型も関数の外に宣言する。関数本体のローカル型は、関数内に生成された
+module から参照できない。
+
 - `edge Kind = From -> To;` / `edge Kind = From -[PayloadType]-> To;`
   — **Kind は新しい nominal 型として生成される** (透過的別名ではない。
   同じ形の Boss と Mentor は別型。docs にこの旨明記)。
@@ -86,9 +90,14 @@ let g = graphite::graph!(Org {
 
 ### 3.1 生成される型
 
-- 辺種別ごと: `pub struct Boss(pub PersonId, pub PersonId, pub BossEdge);`
+`schema Org` は `#[allow(non_snake_case)] pub mod Org` を生成する。以下の
+生成物は `Org::Graph`、`Org::Builder`、`Org::Violation`、`Org::Person`、
+`Org::Boss` のように、この module 内へ配置される。グラフ本体のストレージと
+索引フィールドは module 外へ公開しない。
+
+- 辺種別ごと: `pub struct Boss(pub super::PersonId, pub super::PersonId, pub super::BossEdge);`
   (積み荷なしは 2 要素)。**タプル struct として実在し、マクロ外でも
-  `Boss(from_id, to_id, payload)` で普通に構築できる** (原則6)。
+  `Org::Boss(from_id, to_id, payload)` で普通に構築できる** (原則6)。
   読み取りは位置 (.0/.1) を人間に晒さず、固定語彙のメソッドを生成:
   `fn from(&self) -> &PersonId` / `fn to(&self) -> &PersonId` /
   `fn payload(&self) -> &BossEdge` (積み荷ありのみ)。
@@ -101,20 +110,20 @@ let g = graphite::graph!(Org {
 ### 3.2 アクセス (すべて型名前空間の関連関数。g.メソッドは廃止)
 
 ```rust
-// ノード (graph_schema! 生成の {Schema}Node トレイト経由。
+// ノード (schema module 内のノードマーカー。
 // ユーザー struct への固有 impl は行わない — 複数 schema 共有時の衝突回避)
-let p: Option<&Person> = Person::get(&g, &alice_id);
-Person::ids(&g);  Person::iter(&g);   // (&PersonId, &Person)
+let p: Option<&Person> = Org::Person::get(&g, &alice_id);
+Org::Person::ids(&g);  Org::Person::iter(&g);   // (&PersonId, &Person)
 
 // 辺 — 種別型 (マクロ生成) への固有 impl
-Boss::of(&g, &bob);                    // 走査: where の制約が戻り型を決める
+Org::Boss::of(&g, &bob);               // 走査: where の制約が戻り型を決める
                                         //   each:1 → (&Person, &BossEdge)
                                         //   each:0..1 → Option<..>
                                         //   制約なし → Vec<..>
-Boss::get(&g, &boss_id);               // キーで辺 1 本: Option<&Boss>
-Boss::between(&g, &bob, &alice);       // 対で検索: unique pair → Option、他 → Vec
-Boss::iter(&g);                        // (&BossId, &Boss)
-Boss::ids(&g);  Boss::len(&g);
+Org::Boss::get(&g, &boss_id);          // キーで辺 1 本: Option<&Boss>
+Org::Boss::between(&g, &bob, &alice);  // 対で検索: unique pair → Option、他 → Vec
+Org::Boss::iter(&g);                   // (&BossId, &Boss)
+Org::Boss::ids(&g);  Org::Boss::len(&g);
 ```
 
 - 旧ビュー API (`g.boss().of(..)`、EdgeOne 等 6 型) は**全廃**。

@@ -75,7 +75,7 @@ fn main() -> ExitCode {
     }
 }
 
-fn cmd_validate(g: &BuildPipeline) -> ExitCode {
+fn cmd_validate(g: &BuildPipeline::Graph) -> ExitCode {
     let issues = analysis::validate(g);
     let has_issues = !issues.is_empty();
     println!("{}", report::format_domain_issues(&issues));
@@ -86,7 +86,7 @@ fn cmd_validate(g: &BuildPipeline) -> ExitCode {
     }
 }
 
-fn cmd_plan(g: &BuildPipeline) -> ExitCode {
+fn cmd_plan(g: &BuildPipeline::Graph) -> ExitCode {
     match analysis::plan(g) {
         Ok(waves) => {
             println!("{}", report::format_plan(&waves));
@@ -99,7 +99,7 @@ fn cmd_plan(g: &BuildPipeline) -> ExitCode {
     }
 }
 
-fn cmd_critical_path(g: &BuildPipeline) -> ExitCode {
+fn cmd_critical_path(g: &BuildPipeline::Graph) -> ExitCode {
     match analysis::critical_path(g) {
         Ok(cp) => {
             println!("{}", report::format_critical_path(&cp, g));
@@ -112,7 +112,7 @@ fn cmd_critical_path(g: &BuildPipeline) -> ExitCode {
     }
 }
 
-fn cmd_mermaid(g: &BuildPipeline) -> ExitCode {
+fn cmd_mermaid(g: &BuildPipeline::Graph) -> ExitCode {
     println!("{}", report::mermaid(g));
     ExitCode::SUCCESS
 }

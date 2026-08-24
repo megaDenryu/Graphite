@@ -10,8 +10,7 @@ use graphite::{CycleError, Graph};
 
 use crate::dataset::MANAGER_GRADE_THRESHOLD;
 use crate::schema::{
-    Assigned, BelongsTo, Boss, Department, DepartmentId, Employee, EmployeeId, OrgChart,
-    OrgChartNode, Project, ProjectId, Sponsors,
+    Assigned, BelongsTo, Boss, DepartmentId, EmployeeId, OrgChart, ProjectId, Sponsors,
 };
 
 // ============================================================
@@ -62,17 +61,17 @@ pub struct SummaryReport {
     pub project_assignments: Vec<ProjectAssignmentCount>,
 }
 
-pub fn summarize(org: &OrgChart) -> SummaryReport {
-    let total_employees = Employee::ids(org).count();
+pub fn summarize(org: &OrgChart::Graph) -> SummaryReport {
+    let total_employees = OrgChart::Employee::ids(org).count();
 
     // 部署別人数: 部署を終点とする BelongsTo エッジの本数。`docs/reverse_query.md`
     // の `sources_of` (of の対称、終点で引いて始点側を返す) を使うと、
     // 全エッジを走査して HashMap に集計する前段が不要になる (freeze 時に
     // 構築済みの終点索引を `id` ごとに引くだけで済む)。
-    let mut dept_counts: Vec<DeptCount> = Department::ids(org)
+    let mut dept_counts: Vec<DeptCount> = OrgChart::Department::ids(org)
         .map(|id| DeptCount {
             department: id.clone(),
-            name: Department::get(org, id)
+            name: OrgChart::Department::get(org, id)
                 .expect("Department::idsから得たキーは必ず存在する")
                 .name
                 .clone(),
@@ -83,8 +82,8 @@ pub fn summarize(org: &OrgChart) -> SummaryReport {
 
     // grade 分布
     let mut grade_counter: HashMap<u8, usize> = HashMap::new();
-    for id in Employee::ids(org) {
-        let grade = Employee::get(org, id)
+    for id in OrgChart::Employee::ids(org) {
+        let grade = OrgChart::Employee::get(org, id)
             .expect("Employee::idsから得たキーは必ず存在する")
             .grade;
         *grade_counter.entry(grade).or_insert(0) += 1;
@@ -98,8 +97,8 @@ pub fn summarize(org: &OrgChart) -> SummaryReport {
     // span of control: 社員 (boss) を終点とする Boss エッジの本数 =
     // 直属部下数。`Boss::sources_of` (`docs/reverse_query.md`) で直接引く
     // (`direct_reports` を全エッジから事前に集計する HashMap は不要になる)。
-    let managers: Vec<EmployeeId> = Employee::ids(org)
-        .filter(|id| Employee::get(org, id).unwrap().grade >= MANAGER_GRADE_THRESHOLD)
+    let managers: Vec<EmployeeId> = OrgChart::Employee::ids(org)
+        .filter(|id| OrgChart::Employee::get(org, id).unwrap().grade >= MANAGER_GRADE_THRESHOLD)
         .cloned()
         .collect();
 
@@ -110,7 +109,7 @@ pub fn summarize(org: &OrgChart) -> SummaryReport {
     for id in &managers {
         let count = Boss::sources_of(org, id).len();
         sum += count;
-        let emp = Employee::get(org, id).unwrap();
+        let emp = OrgChart::Employee::get(org, id).unwrap();
         if count > max {
             max = count;
             max_manager = Some((id.clone(), emp.name.clone()));
@@ -127,10 +126,10 @@ pub fn summarize(org: &OrgChart) -> SummaryReport {
     };
 
     // プロジェクト別アサイン人数。同じ理由で `Assigned::sources_of` を使う。
-    let mut project_assignments: Vec<ProjectAssignmentCount> = Project::ids(org)
+    let mut project_assignments: Vec<ProjectAssignmentCount> = OrgChart::Project::ids(org)
         .map(|id| ProjectAssignmentCount {
             project: id.clone(),
-            name: Project::get(org, id).unwrap().name.clone(),
+            name: OrgChart::Project::get(org, id).unwrap().name.clone(),
             count: Assigned::sources_of(org, id).len(),
         })
         .collect();
@@ -183,11 +182,16 @@ pub struct ChainResult {
 /// 訪問済み集合を持ちながら辿ることで循環を検出する。循環に突入したら
 /// そこで打ち切り、`cycle_back_to` にループの戻り先キーを記録する
 /// (`anomalies` コマンドの循環検出とは独立した、チェーン単体での安全対策)。
-pub fn management_chain(org: &OrgChart, start: &EmployeeId) -> Option<ChainResult> {
-    let start_employee = Employee::get(org, start)?;
+pub fn management_chain(org: &OrgChart::Graph, start: &EmployeeId) -> Option<ChainResult> {
+    let start_employee = OrgChart::Employee::get(org, start)?;
 
     let boss_of: HashMap<EmployeeId, (EmployeeId, i32)> = Boss::iter(org)
-        .map(|(_id, edge)| (edge.from().clone(), (edge.to().clone(), edge.payload().since)))
+        .map(|(_id, edge)| {
+            (
+                edge.from().clone(),
+                (edge.to().clone(), edge.payload().since),
+            )
+        })
         .collect();
 
     let mut entries = vec![ChainEntry {
@@ -212,7 +216,7 @@ pub fn management_chain(org: &OrgChart, start: &EmployeeId) -> Option<ChainResul
                     cycle_back_to = Some(boss_id.clone());
                     break;
                 }
-                let boss_employee = Employee::get(org, boss_id)
+                let boss_employee = OrgChart::Employee::get(org, boss_id)
                     .expect("Boss::iterの終点は必ずemployeeに存在するはず");
                 entries.push(ChainEntry {
                     depth,
@@ -260,7 +264,7 @@ pub struct AnomalyReport {
     pub sponsorless_projects: Vec<ProjectId>,
 }
 
-pub fn detect_anomalies(org: &OrgChart) -> AnomalyReport {
+pub fn detect_anomalies(org: &OrgChart::Graph) -> AnomalyReport {
     AnomalyReport {
         mutual_boss_pairs: detect_mutual_boss_pairs(org),
         boss_cycles: detect_boss_cycles(org),
@@ -280,9 +284,10 @@ pub fn detect_anomalies(org: &OrgChart) -> AnomalyReport {
 /// なので、ここでは元の `Boss::iter` によるキー収集を使い続ける方が自然
 /// (`docs/reverse_query.md` の最小方針、`examples/reactive-cells` の
 /// `Engine::feeds_into` と同種の事情)。
-fn detect_mutual_boss_pairs(org: &OrgChart) -> Vec<(EmployeeId, EmployeeId)> {
-    let all: Vec<(&EmployeeId, &EmployeeId)> =
-        Boss::iter(org).map(|(_id, edge)| (edge.from(), edge.to())).collect();
+fn detect_mutual_boss_pairs(org: &OrgChart::Graph) -> Vec<(EmployeeId, EmployeeId)> {
+    let all: Vec<(&EmployeeId, &EmployeeId)> = Boss::iter(org)
+        .map(|(_id, edge)| (edge.from(), edge.to()))
+        .collect();
 
     let mut result: Vec<(EmployeeId, EmployeeId)> = Vec::new();
     for (a, b) in &all {
@@ -304,9 +309,9 @@ fn detect_mutual_boss_pairs(org: &OrgChart) -> Vec<(EmployeeId, EmployeeId)> {
 /// 1つの循環を見つけたら `filter_nodes_with_key` でそのメンバーを取り除いた
 /// 部分グラフに対して再度検出し、複数の循環があっても全て拾えるようにして
 /// いる。
-fn detect_boss_cycles(org: &OrgChart) -> Vec<Vec<EmployeeId>> {
+fn detect_boss_cycles(org: &OrgChart::Graph) -> Vec<Vec<EmployeeId>> {
     let mut graph: Graph<(), (), EmployeeId> = Graph::from_edges(
-        Employee::ids(org).cloned(),
+        OrgChart::Employee::ids(org).cloned(),
         Boss::iter(org).map(|(_id, edge)| (edge.from().clone(), edge.to().clone())),
     )
     .expect("Employee::idsは重複せず、Boss::iterの端点は全てEmployee::idsに含まれるはず");
@@ -331,7 +336,7 @@ fn detect_boss_cycles(org: &OrgChart) -> Vec<Vec<EmployeeId>> {
 }
 
 /// 部署跨ぎの上司関係 (上司と部下が異なる部署)。
-fn detect_cross_department_bosses(org: &OrgChart) -> Vec<CrossDepartmentBoss> {
+fn detect_cross_department_bosses(org: &OrgChart::Graph) -> Vec<CrossDepartmentBoss> {
     let dept_of: HashMap<&EmployeeId, &DepartmentId> = BelongsTo::iter(org)
         .map(|(_id, edge)| (edge.from(), edge.to()))
         .collect();
@@ -347,10 +352,10 @@ fn detect_cross_department_bosses(org: &OrgChart) -> Vec<CrossDepartmentBoss> {
             }
             Some(CrossDepartmentBoss {
                 employee: emp_id.clone(),
-                employee_name: Employee::get(org, emp_id).unwrap().name.clone(),
+                employee_name: OrgChart::Employee::get(org, emp_id).unwrap().name.clone(),
                 employee_dept: emp_dept.clone(),
                 boss: boss_id.clone(),
-                boss_name: Employee::get(org, boss_id).unwrap().name.clone(),
+                boss_name: OrgChart::Employee::get(org, boss_id).unwrap().name.clone(),
                 boss_dept: boss_dept.clone(),
             })
         })
@@ -365,8 +370,8 @@ fn detect_cross_department_bosses(org: &OrgChart) -> Vec<CrossDepartmentBoss> {
 /// 「全エッジから staffed 集合を事前に作る」必要はなく、`Assigned::sources_of`
 /// (`docs/reverse_query.md`) をプロジェクトごとに直接引いて空かどうかを見れば
 /// 十分 (freeze 時に構築済みの終点索引を引くだけ)。
-fn detect_unstaffed_projects(org: &OrgChart) -> Vec<ProjectId> {
-    let mut result: Vec<ProjectId> = Project::ids(org)
+fn detect_unstaffed_projects(org: &OrgChart::Graph) -> Vec<ProjectId> {
+    let mut result: Vec<ProjectId> = OrgChart::Project::ids(org)
         .filter(|p| Assigned::sources_of(org, p).is_empty())
         .cloned()
         .collect();
@@ -376,8 +381,8 @@ fn detect_unstaffed_projects(org: &OrgChart) -> Vec<ProjectId> {
 
 /// どの部署からもスポンサーされていないプロジェクト。同じ理由で
 /// `Sponsors::sources_of` を使う。
-fn detect_sponsorless_projects(org: &OrgChart) -> Vec<ProjectId> {
-    let mut result: Vec<ProjectId> = Project::ids(org)
+fn detect_sponsorless_projects(org: &OrgChart::Graph) -> Vec<ProjectId> {
+    let mut result: Vec<ProjectId> = OrgChart::Project::ids(org)
         .filter(|p| Sponsors::sources_of(org, p).is_empty())
         .cloned()
         .collect();

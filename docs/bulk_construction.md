@@ -15,7 +15,7 @@ graph! リテラルは静的な図示には完璧だが、実行時データ (�
 ループと変換は普通の Rust (map 等) に寄せ、グラフ構築は 1〜2 呼び出しに集約する。
 
 ```rust
-let g = Org::create(|b| {
+let g = Org::Graph::create(|b| {
     b.extend_nodes(people.into_iter().map(|p| (p.code.clone(), p)));
     b.extend_edges(pairs.into_iter().enumerate()
         .map(|(i, (a, c))| (format!("dep{i}"), DependsOn(a, c))));
@@ -25,7 +25,7 @@ let g = Org::create(|b| {
 仕様:
 
 - `extend_nodes(impl IntoIterator<Item = (K, N)>)` — K: Into<String>、N は既存の
-  {Schema}Node trait 境界 (insert と同じ)。戻り値 `Vec<N::Id>` (挿入順)
+  schema module 内のノード挿入 trait 境界 (insert と同じ)。戻り値 `Vec<N::Id>` (挿入順)
 - `extend_edges(impl IntoIterator<Item = (K, E)>)` — E は既存の辺追加と同じ trait
   経路。戻り値 `Vec<E::Id>` (挿入順)
 - 意味論は要素単位 API の反復と完全に同一 (重複キー・検証は freeze 時に従来どおり)。

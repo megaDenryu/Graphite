@@ -1,0 +1,29 @@
+error[E0425]: cannot find type `LocalNodeId` in module `super`
+ --> tests/ui/schema_inside_function.rs:9:18
+  |
+9 |             node LocalNode;
+  |                  ^^^^^^^^^ not found in `super`
+
+error[E0425]: cannot find type `LocalNode` in module `super`
+ --> tests/ui/schema_inside_function.rs:9:18
+  |
+9 |             node LocalNode;
+  |                  ^^^^^^^^^ not found in `super`
+
+error[E0425]: cannot find function, tuple struct or tuple variant `LocalNodeId` in module `super`
+ --> tests/ui/schema_inside_function.rs:9:18
+  |
+9 |             node LocalNode;
+  |                  ^^^^^^^^^ not found in `super`
+
+error[E0282]: type annotations needed
+  --> tests/ui/schema_inside_function.rs:7:5
+   |
+ 7 | /     graphite::graph_schema! {
+ 8 | |         schema LocalSchema {
+ 9 | |             node LocalNode;
+10 | |         }
+11 | |     }
+   | |_____^ cannot infer type
+   |
+   = note: this error originates in the macro `graphite::graph_schema` (in Nightly builds, run with -Z macro-backtrace for more info)

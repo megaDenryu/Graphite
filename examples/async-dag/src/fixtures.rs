@@ -1,7 +1,7 @@
 //! `main.rs` と `tests/integration.rs` の両方から使う固定のサンプルグラフ。
 //! 同じデータを2箇所に手書きして食い違わせないよう、ここに1箇所だけ置く。
 
-use crate::schema::{DependsOn, Orchestration, Service};
+use crate::schema::{Orchestration, Service};
 
 /// 本編の10サービス依存グラフ:
 /// `config -> (logger, db, cache, queue) -> (migration, metrics) ->
@@ -10,7 +10,7 @@ use crate::schema::{DependsOn, Orchestration, Service};
 /// 起動時間 (ms) は「敵1のベースライン (直列実行)」との対比が分かりやすい
 /// ように、依存の合流点 (`migration`・`api`/`worker`) を重めに設定してある。
 #[rustfmt::skip]
-pub fn sample_orchestration() -> Orchestration {
+pub fn sample_orchestration() -> Orchestration::Graph {
     graphite::graph!(Orchestration {
         config      = Service { name: "config".into(),      startup_ms: 15 },
         logger      = Service { name: "logger".into(),      startup_ms: 8  },
@@ -48,7 +48,7 @@ pub fn sample_orchestration() -> Orchestration {
 /// 成功する。循環の検出は `depgraph::compute_waves`
 /// (=汎用`graphite::Graph`への射影+`topological_levels`) が担う。
 #[rustfmt::skip]
-pub fn cyclic_demo() -> Orchestration {
+pub fn cyclic_demo() -> Orchestration::Graph {
     graphite::graph!(Orchestration {
         a = Service { name: "service-a".into(), startup_ms: 10 },
         b = Service { name: "service-b".into(), startup_ms: 10 },

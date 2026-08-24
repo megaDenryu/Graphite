@@ -8,16 +8,10 @@
 //! (`docs/node_id_v4_2.md` 「複数 schema での `PersonId` 共有は... 当然の
 //! 帰結になる」)。
 //!
-//! 2つの schema をそれぞれ専用モジュールに隔離しているのは、
-//! `{Schema}Node` トレイトの衝突回避のため (README「同一モジュール内で
-//! 複数 schema がノード型を共有する場合の制約」節と同じ理由: 両方の
-//! `{Schema}Node` トレイトが同一スコープにあると `Person::get(..)` が
-//! `OrgChartNode::get` と `ApprovalFlowNode::get` のどちらかに解決できず
-//! 曖昧になる、通常の Rust のトレイトメソッド解決規則)。`PersonId` という
-//! **値**そのものはモジュールを跨いで自由に受け渡せる — 曖昧になるのは
-//! 「どちらの schema のグラフに対して引くか」を表すメソッド解決だけであり、
-//! それはどのグラフを引数に渡すかで人間にもコンパイラにも自明なので、
-//! 完全修飾記法 (`<Person as ApprovalFlowNode>::get`) で簡単に解消できる。
+//! 各 schema は生成物を `OrgChart`/`ApprovalFlow` module に分離するため、
+//! 同じ `Person` 値型を共有しても問い合わせ名は衝突しない。`PersonId` という
+//! 値は module を跨いで自由に受け渡せ、問い合わせ先は
+//! `OrgChart::Person::get` と `ApprovalFlow::Person::get` で明示できる。
 
 /// `Person` を宣言した者として、`PersonId` もここで1個だけ宣言する
 /// (「型を宣言した者が Id も宣言する」規則)。両方の schema から共有される。
@@ -51,14 +45,34 @@ mod org_chart {
         }
     }
 
-    pub fn build() -> OrgChart {
-        OrgChart::create(|b| {
-            b.person(PersonId("tanaka".to_string()), Person { name: "田中".to_string() });
-            b.person(PersonId("sato".to_string()), Person { name: "佐藤".to_string() });
-            b.department(DepartmentId("sales".to_string()), Department { name: "営業".to_string() });
+    use OrgChart::{BelongsTo, BelongsToId};
+
+    pub fn build() -> OrgChart::Graph {
+        OrgChart::Graph::create(|b| {
+            b.person(
+                PersonId("tanaka".to_string()),
+                Person {
+                    name: "田中".to_string(),
+                },
+            );
+            b.person(
+                PersonId("sato".to_string()),
+                Person {
+                    name: "佐藤".to_string(),
+                },
+            );
+            b.department(
+                DepartmentId("sales".to_string()),
+                Department {
+                    name: "営業".to_string(),
+                },
+            );
             b.belongs_to(
                 BelongsToId("bt1".to_string()),
-                BelongsTo(PersonId("tanaka".to_string()), DepartmentId("sales".to_string())),
+                BelongsTo(
+                    PersonId("tanaka".to_string()),
+                    DepartmentId("sales".to_string()),
+                ),
             );
         })
         .expect("組織図の構築に成功するはず")
@@ -79,10 +93,22 @@ mod approval_flow {
         }
     }
 
-    pub fn build() -> ApprovalFlow {
-        ApprovalFlow::create(|b| {
-            b.person(PersonId("tanaka".to_string()), Person { name: "田中".to_string() });
-            b.person(PersonId("sato".to_string()), Person { name: "佐藤".to_string() });
+    use ApprovalFlow::{Approves, ApprovesId};
+
+    pub fn build() -> ApprovalFlow::Graph {
+        ApprovalFlow::Graph::create(|b| {
+            b.person(
+                PersonId("tanaka".to_string()),
+                Person {
+                    name: "田中".to_string(),
+                },
+            );
+            b.person(
+                PersonId("sato".to_string()),
+                Person {
+                    name: "佐藤".to_string(),
+                },
+            );
             b.approves(
                 ApprovesId("ap1".to_string()),
                 Approves(PersonId("sato".to_string()), PersonId("tanaka".to_string())),
@@ -92,35 +118,37 @@ mod approval_flow {
     }
 }
 
-use org_chart::OrgChartNode;
-use approval_flow::ApprovalFlowNode;
-
 #[test]
 fn 組織図で得たキーを承認フローのクエリにそのまま渡せる() {
     let org = org_chart::build();
     let flow = approval_flow::build();
 
     // 組織図側で「田中さんのキー」を取得する。
-    let tanaka_id_in_org: &PersonId = <Person as OrgChartNode>::ids(&org)
-        .find(|id| <Person as OrgChartNode>::get(&org, id).unwrap().name == "田中")
+    let tanaka_id_in_org: &PersonId = org_chart::OrgChart::Person::ids(&org)
+        .find(|id| org_chart::OrgChart::Person::get(&org, id).unwrap().name == "田中")
         .expect("組織図に田中さんがいるはず");
 
     // そのキーを、型変換もラップも一切せずに承認フロー側のクエリへ渡せる
     // (`PersonId` は `OrgChart`/`ApprovalFlow` のどちらにも属さず、`Person`
     // 型そのものに1個だけ属するため)。
-    let tanaka_in_flow = <Person as ApprovalFlowNode>::get(&flow, tanaka_id_in_org)
+    let tanaka_in_flow = approval_flow::ApprovalFlow::Person::get(&flow, tanaka_id_in_org)
         .expect("組織図で得たキーがそのまま承認フローでも引けるはず");
     assert_eq!(tanaka_in_flow.name, "田中");
 
     // 逆方向 (承認フロー → 組織図) も同様に成立する。
-    let sato_id_in_flow: &PersonId = <Person as ApprovalFlowNode>::ids(&flow)
-        .find(|id| <Person as ApprovalFlowNode>::get(&flow, id).unwrap().name == "佐藤")
+    let sato_id_in_flow: &PersonId = approval_flow::ApprovalFlow::Person::ids(&flow)
+        .find(|id| {
+            approval_flow::ApprovalFlow::Person::get(&flow, id)
+                .unwrap()
+                .name
+                == "佐藤"
+        })
         .expect("承認フローに佐藤さんがいるはず");
-    let sato_in_org = <Person as OrgChartNode>::get(&org, sato_id_in_flow)
+    let sato_in_org = org_chart::OrgChart::Person::get(&org, sato_id_in_flow)
         .expect("承認フローで得たキーがそのまま組織図でも引けるはず");
     assert_eq!(sato_in_org.name, "佐藤");
 
     // 承認フロー自体の意味論も一応確認しておく: 佐藤 -> 田中 の承認関係。
-    let approves_target = approval_flow::Approves::of(&flow, sato_id_in_flow);
+    let approves_target = approval_flow::ApprovalFlow::Approves::of(&flow, sato_id_in_flow);
     assert_eq!(approves_target.first().unwrap().name, "田中");
 }

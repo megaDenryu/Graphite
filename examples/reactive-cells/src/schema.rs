@@ -33,8 +33,8 @@
 //! `graph_schema!` はこの `Cell`/`Formula` 型を生成せず参照するだけ
 //! (`docs/schema_v4.md` 参照)。v4.2 (`docs/node_id_v4_2.md`) からはノード
 //! キー型 `CellId` もユーザー宣言 (上記) への参照になった。マクロが生成
-//! するのはグラフ機械 (`FeedsId`/`LhsId`/`RhsId` newtype・`Sheet` 構造体・
-//! `SheetBuilder`・`SheetViolation`・`Feeds`/`Lhs`/`Rhs` 固有 impl) だけ。
+//! するのは `Sheet` module 内のグラフ機械 (`Graph`・`Builder`・`Violation`・
+//! `FeedsId`/`LhsId`/`RhsId` newtype・`Feeds`/`Lhs`/`Rhs` 固有 impl) だけ。
 
 /// 1つのセルが「どう値を求めるか」— **どの演算を適用するか**だけを表す。
 ///
@@ -84,3 +84,6 @@ graphite::graph_schema! {
         edge Rhs   = Cell -> Cell where unique pair;
     }
 }
+
+// 綴り短縮のための再輸出。同名edgeを持つschemaを足したらこの行を消す。
+pub use Sheet::{Feeds, Lhs, Rhs};

@@ -4,7 +4,7 @@
 //! エッジ (`Kind`) からなる。`where` 制約の意味付け:
 //!
 //! - `BelongsTo where each Employee: 1`     : 全社員は必ずちょうど1つの部署に
-//!   所属する。`OrgChart::create` はこれを一括検査するので、所属部署のない
+//!   所属する。`OrgChart::Graph::create` はこれを一括検査するので、所属部署のない
 //!   社員や複数部署に所属する社員のデータは構築時点で `Err` になる。
 //! - `Boss where each Employee: 0..1`       : 上司は高々1人 (トップ層は0人)。
 //! - `Assigned` (制約なし)                   : プロジェクトへの割当は0件以上
@@ -21,7 +21,7 @@
 //!
 //! `graph_schema!` は同一ファイル内に `graph!` を書く場合のみ親切な
 //! コンパイルエラーのハンドシェイクが効く制約があるが、本アプリはデータを
-//! すべて `dataset.rs` の合成生成器 (`OrgChart::create` の builder 呼び出し)
+//! すべて `dataset.rs` の合成生成器 (`OrgChart::Graph::create` の builder 呼び出し)
 //! から組み立てるため `graph!` リテラルは使わない。
 
 /// ノードキー。`graph_schema!` はこれも生成せず参照するだけ
@@ -90,3 +90,8 @@ graphite::graph_schema! {
         edge Sponsors  = Department -> Project                where each Department: 0..1;
     }
 }
+
+// 綴り短縮のための再輸出。同名edgeを持つschemaを足したらこの行を消す。
+pub use OrgChart::{
+    Assigned, AssignedId, BelongsTo, BelongsToId, Boss, BossId, Sponsors, SponsorsId,
+};

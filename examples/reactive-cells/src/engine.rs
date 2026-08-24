@@ -41,7 +41,9 @@ use std::collections::{HashMap, HashSet};
 
 use graphite::{CycleError, Graph};
 
-use crate::schema::{Cell, CellId, Feeds, Formula, Lhs, Rhs, Sheet, SheetNode};
+#[cfg(test)]
+use crate::schema::Cell;
+use crate::schema::{CellId, Feeds, Formula, Lhs, Rhs, Sheet};
 
 /// [`Engine::set_input`] が1回の更新で行った再計算1件分の記録。
 ///
@@ -55,7 +57,7 @@ pub struct RecomputeStep {
 
 /// 依存グラフ (不変) + 現在値ストア (可変) を束ねた再計算エンジン。
 pub struct Engine {
-    graph: Sheet,
+    graph: Sheet::Graph,
     /// `Feeds`/`Lhs`/`Rhs` エッジを1つに射影した汎用グラフ。
     /// `reachable_from`/`topological_sort` はここに1回だけ委譲する
     /// (`graphite::Graph` が既に持つ水準1アルゴリズムを再実装しない)。
@@ -86,20 +88,24 @@ impl Engine {
     /// # Panics
     /// `graph` 内のセルの `Formula` が要求するエッジ本数と実際のエッジ
     /// 本数が一致しない場合 (例: `Formula::Sub` のセルに `Lhs`/`Rhs` の
-    /// どちらかが無い/2本以上ある)。これは `graph!`/`Sheet::create` の
+    /// どちらかが無い/2本以上ある)。これは `graph!`/`Sheet::Graph::create` の
     /// 検証対象外 (端点存在と `unique pair` だけを見る、`src/fixtures.rs`
     /// 参照) なので、`Formula` とエッジの整合性はドメイン側 (ここ) の
     /// 責務として構築時に検査する (呼び出し規約違反はパニック、
     /// `docs/design_principles.md` 原則2)。
-    pub fn new(graph: Sheet) -> Result<Self, CycleError<CellId>> {
+    pub fn new(graph: Sheet::Graph) -> Result<Self, CycleError<CellId>> {
         Self::validate_formula_wiring(&graph);
 
         let dependency_graph: Graph<(), (), CellId> = Graph::from_edges(
-            Cell::ids(&graph).cloned(),
+            Sheet::Cell::ids(&graph).cloned(),
             Feeds::iter(&graph)
                 .map(|(_id, edge)| (edge.from().clone(), edge.to().clone()))
-                .chain(Lhs::iter(&graph).map(|(_id, edge)| (edge.from().clone(), edge.to().clone())))
-                .chain(Rhs::iter(&graph).map(|(_id, edge)| (edge.from().clone(), edge.to().clone()))),
+                .chain(
+                    Lhs::iter(&graph).map(|(_id, edge)| (edge.from().clone(), edge.to().clone())),
+                )
+                .chain(
+                    Rhs::iter(&graph).map(|(_id, edge)| (edge.from().clone(), edge.to().clone())),
+                ),
         )
         .expect(
             "Cell::ids()とFeeds/Lhs/Rhs::iter()の端点整合はSheet::create/create_collectingの検証で\
@@ -112,7 +118,9 @@ impl Engine {
             .cloned()
             .collect();
 
-        let values: HashMap<CellId, f64> = Cell::ids(&graph).map(|id| (id.clone(), 0.0)).collect();
+        let values: HashMap<CellId, f64> = Sheet::Cell::ids(&graph)
+            .map(|id| (id.clone(), 0.0))
+            .collect();
 
         Ok(Self {
             graph,
@@ -134,8 +142,8 @@ impl Engine {
     /// 全走査して `.filter(.. edge.to() == cell_id ..)` する代わりに
     /// `{Kind}::sources_of(graph, cell_id).len()` (`docs/reverse_query.md`)
     /// を使う。freeze 時に構築済みの終点索引を引くだけの O(1) 償却になる。
-    fn validate_formula_wiring(graph: &Sheet) {
-        for (cell_id, cell) in Cell::iter(graph) {
+    fn validate_formula_wiring(graph: &Sheet::Graph) {
+        for (cell_id, cell) in Sheet::Cell::iter(graph) {
             match cell.formula {
                 Formula::Input => {}
                 Formula::Mul | Formula::Sum => {
@@ -164,7 +172,7 @@ impl Engine {
 
     /// 依存グラフそのもの (schema/graph! が生成した不変な `Sheet`) への
     /// 参照。`main.rs` がセル一覧や式を読むために使う。
-    pub fn graph(&self) -> &Sheet {
+    pub fn graph(&self) -> &Sheet::Graph {
         &self.graph
     }
 
@@ -199,7 +207,7 @@ impl Engine {
     ///   直接代入は契約違反 — 式を経由せず値を書き換えると依存グラフと
     ///   値ストアが不整合になるため)。
     pub fn set_input(&mut self, id: &CellId, value: f64) -> Vec<RecomputeStep> {
-        let cell = Cell::get(&self.graph, id)
+        let cell = Sheet::Cell::get(&self.graph, id)
             .unwrap_or_else(|| panic!("set_input: 未知のセルキーです: {id:?}"));
         assert!(
             matches!(cell.formula, Formula::Input),
@@ -223,7 +231,7 @@ impl Engine {
             if cell_id == id || !affected.contains(cell_id) {
                 continue;
             }
-            let formula = Cell::get(&self.graph, cell_id)
+            let formula = Sheet::Cell::get(&self.graph, cell_id)
                 .expect("topo_orderに含まれるキーはCell::get()に必ず存在する")
                 .formula;
             let new_value = self.eval_formula(cell_id, formula);
@@ -372,7 +380,10 @@ mod tests {
         // subtotal/discount_amount/他の入力は無関係なので再計算されない。
         let steps = engine.set_input(&id("tax_rate"), 0.2);
         let ids: HashSet<CellId> = steps.iter().map(|s| s.id.clone()).collect();
-        assert_eq!(ids, HashSet::from([id("tax"), id("adjustment"), id("grand_total")]));
+        assert_eq!(
+            ids,
+            HashSet::from([id("tax"), id("adjustment"), id("grand_total")])
+        );
         assert_eq!(steps.len(), 3, "各セルはちょうど1回だけ再計算されるはず");
 
         // 新しい税額: subtotal(3000) * 0.2 = 600、adjustment = 600 - 150 = 450、
@@ -397,7 +408,11 @@ mod tests {
 
         // 重複が無い (=それぞれちょうど1回) ことを確認する。
         let unique: HashSet<CellId> = ids.iter().cloned().collect();
-        assert_eq!(ids.len(), unique.len(), "各セルの再計算は重複してはならない");
+        assert_eq!(
+            ids.len(),
+            unique.len(),
+            "各セルの再計算は重複してはならない"
+        );
         assert_eq!(
             unique,
             HashSet::from([

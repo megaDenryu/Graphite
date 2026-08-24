@@ -44,9 +44,11 @@ graphite::graph_schema! {
     }
 }
 
+use Measurement::{Measured, MeasuredId};
+
 #[test]
 fn f64をエッジ属性とノードフィールドに持つスキーマがコンパイル_構築できる() {
-    let g = Measurement::create(|b| {
+    let g = Measurement::Graph::create(|b| {
         b.sensor(
             SensorId("s1".to_string()),
             Sensor {
@@ -65,7 +67,7 @@ fn f64をエッジ属性とノードフィールドに持つスキーマがコ�
     })
     .expect("f64 フィールドを含むスキーマも正常に構築できるはず");
 
-    let readings = Measured::of(&g, &SensorId("s1".to_string()));
+    let readings = Measurement::Measured::of(&g, &SensorId("s1".to_string()));
     assert_eq!(readings.len(), 1);
     assert_eq!(readings[0].0.value, 23.5);
     assert_eq!(readings[0].1.confidence, 0.95);

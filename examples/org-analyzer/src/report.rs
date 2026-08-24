@@ -3,7 +3,7 @@
 
 use crate::analysis::{AnomalyReport, ChainResult, SummaryReport};
 use crate::reorg::{ReorgOutcome, ReorgReport};
-use crate::schema::{Department, Employee, EmployeeId, OrgChart, OrgChartNode, Project};
+use crate::schema::{EmployeeId, OrgChart};
 
 pub fn print_summary(report: &SummaryReport) {
     println!("=== 組織サマリ ===");
@@ -20,10 +20,16 @@ pub fn print_summary(report: &SummaryReport) {
     }
 
     println!("\n--- span of control (直属部下数) ---");
-    println!("  管理職(grade3以上)平均: {:.2}人", report.span_of_control.average);
+    println!(
+        "  管理職(grade3以上)平均: {:.2}人",
+        report.span_of_control.average
+    );
     match &report.span_of_control.max_manager {
         Some((id, name)) => {
-            println!("  最大: {}人 ({} / {})", report.span_of_control.max, name, id.0)
+            println!(
+                "  最大: {}人 ({} / {})",
+                report.span_of_control.max, name, id.0
+            )
         }
         None => println!("  最大: -"),
     }
@@ -42,7 +48,10 @@ pub fn print_summary(report: &SummaryReport) {
     println!("\n--- プロジェクト別アサイン人数 ---");
     for p in &report.project_assignments {
         let marker = if p.count == 0 { "  [無人]" } else { "" };
-        println!("  {:<16} ({}) : {:>3}人{}", p.name, p.project.0, p.count, marker);
+        println!(
+            "  {:<16} ({}) : {:>3}人{}",
+            p.name, p.project.0, p.count, marker
+        );
     }
 }
 
@@ -71,7 +80,7 @@ pub fn print_chain(result: &ChainResult) {
     }
 }
 
-pub fn print_anomalies(org: &OrgChart, report: &AnomalyReport) {
+pub fn print_anomalies(org: &OrgChart::Graph, report: &AnomalyReport) {
     println!("=== 構造異常レポート ===\n");
 
     println!("--- 相互上司ペア ---");
@@ -79,8 +88,12 @@ pub fn print_anomalies(org: &OrgChart, report: &AnomalyReport) {
         println!("  なし");
     } else {
         for (a, b) in &report.mutual_boss_pairs {
-            let name_a = Employee::get(org, a).map(|e| e.name.as_str()).unwrap_or("?");
-            let name_b = Employee::get(org, b).map(|e| e.name.as_str()).unwrap_or("?");
+            let name_a = OrgChart::Employee::get(org, a)
+                .map(|e| e.name.as_str())
+                .unwrap_or("?");
+            let name_b = OrgChart::Employee::get(org, b)
+                .map(|e| e.name.as_str())
+                .unwrap_or("?");
             println!("  {} ({}) <-> {} ({})", name_a, a.0, name_b, b.0);
         }
     }
@@ -93,7 +106,9 @@ pub fn print_anomalies(org: &OrgChart, report: &AnomalyReport) {
             let names: Vec<String> = cycle
                 .iter()
                 .map(|id| {
-                    let name = Employee::get(org, id).map(|e| e.name.as_str()).unwrap_or("?");
+                    let name = OrgChart::Employee::get(org, id)
+                        .map(|e| e.name.as_str())
+                        .unwrap_or("?");
                     format!("{}({})", name, id.0)
                 })
                 .collect();
@@ -125,18 +140,20 @@ pub fn print_anomalies(org: &OrgChart, report: &AnomalyReport) {
     print_project_list(org, &report.sponsorless_projects);
 }
 
-fn print_project_list(org: &OrgChart, ids: &[crate::schema::ProjectId]) {
+fn print_project_list(org: &OrgChart::Graph, ids: &[crate::schema::ProjectId]) {
     if ids.is_empty() {
         println!("  なし");
         return;
     }
     for id in ids {
-        let name = Project::get(org, id).map(|p| p.name.as_str()).unwrap_or("?");
+        let name = OrgChart::Project::get(org, id)
+            .map(|p| p.name.as_str())
+            .unwrap_or("?");
         println!("  {} ({})", name, id.0);
     }
 }
 
-pub fn print_reorg(org: &OrgChart, report: &ReorgReport) {
+pub fn print_reorg(org: &OrgChart::Graph, report: &ReorgReport) {
     println!("=== 組織改編シミュレーション ===");
     println!(
         "廃止対象部署: {} ({})",
@@ -146,9 +163,16 @@ pub fn print_reorg(org: &OrgChart, report: &ReorgReport) {
 
     println!("--- 再配置先 (社員キー順、ラウンドロビン) ---");
     for (emp_id, new_dept) in report.reassigned.iter().take(10) {
-        let name = Employee::get(org, emp_id).map(|e| e.name.as_str()).unwrap_or("?");
-        let dept_name = Department::get(org, new_dept).map(|d| d.name.as_str()).unwrap_or("?");
-        println!("  {} ({}) -> {} ({})", name, emp_id.0, dept_name, new_dept.0);
+        let name = OrgChart::Employee::get(org, emp_id)
+            .map(|e| e.name.as_str())
+            .unwrap_or("?");
+        let dept_name = OrgChart::Department::get(org, new_dept)
+            .map(|d| d.name.as_str())
+            .unwrap_or("?");
+        println!(
+            "  {} ({}) -> {} ({})",
+            name, emp_id.0, dept_name, new_dept.0
+        );
     }
     if report.reassigned.len() > 10 {
         println!("  ... 他 {}人", report.reassigned.len() - 10);
@@ -160,9 +184,9 @@ pub fn print_reorg(org: &OrgChart, report: &ReorgReport) {
             println!("[OK] 再構築に成功しました (freeze検証をパス)");
             println!(
                 "  新組織: 社員{}人 / 部署{}人 / プロジェクト{}件",
-                Employee::ids(new_org).count(),
-                Department::ids(new_org).count(),
-                Project::ids(new_org).count()
+                OrgChart::Employee::ids(new_org).count(),
+                OrgChart::Department::ids(new_org).count(),
+                OrgChart::Project::ids(new_org).count()
             );
         }
         ReorgOutcome::Violated(violation) => {

@@ -1,4 +1,4 @@
-error[E0425]: cannot find type `PersonId` in this scope
+error[E0425]: cannot find type `PersonId` in module `super`
   --> tests/ui/node_id_not_declared.rs:16:14
    |
 10 | pub struct Person {
@@ -7,25 +7,11 @@ error[E0425]: cannot find type `PersonId` in this scope
 16 |         node Person;
    |              ^^^^^^
 
-error[E0425]: cannot find type `PersonId` in this scope
-  --> tests/ui/node_id_not_declared.rs:16:14
-   |
-10 | pub struct Person {
-   | ----------------- similarly named struct `Person` defined here
-...
-16 |         node Person;
-   |              ^^^^^^
-   |
-help: you might be missing a type parameter
-   |
-15 |     schema Missing<PersonId> {
-   |                   ++++++++++
-
-error[E0425]: cannot find function, tuple struct or tuple variant `PersonId` in this scope
+error[E0425]: cannot find function, tuple struct or tuple variant `PersonId` in module `super`
   --> tests/ui/node_id_not_declared.rs:16:14
    |
 16 |         node Person;
-   |              ^^^^^^ not found in this scope
+   |              ^^^^^^ not found in `super`
 
 error[E0282]: type annotations needed
   --> tests/ui/node_id_not_declared.rs:14:1

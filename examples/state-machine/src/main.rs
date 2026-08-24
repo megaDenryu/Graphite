@@ -57,14 +57,14 @@ fn print_usage() {
 
 fn run_scenario() {
     println!("=== シナリオ: 注文ライフサイクル ===\n");
-    let g: OrderFsm = fsm::build();
+    let g: OrderFsm::Graph = fsm::build();
 
     println!("--- 正常系: draft から delivered まで一直線に進める ---");
     let mut current = fsm::initial_state();
     println!("現在の状態: {current:?}");
     for event in [Event::Submit, Event::Pay, Event::Ship, Event::Deliver] {
-        current = fsm::step(&g, &current, event)
-            .expect("正常系のシナリオなので毎回定義済みの遷移のはず");
+        current =
+            fsm::step(&g, &current, event).expect("正常系のシナリオなので毎回定義済みの遷移のはず");
         println!("  --[{event}]--> {current:?}");
     }
     println!("最終状態: {current:?} (正常フローの終点。あとは refund (返品) だけが唯一の出口)");
@@ -106,7 +106,10 @@ fn run_scenario() {
         Err(e) => println!("  shipped から cancel は期待どおり Err: {e}"),
     }
     if let Some((_, attrs)) = fsm::refund_details(&g, &shipped_flow) {
-        println!("  shipped から refund は可能。監査ラベル={:?}", attrs.audit_label);
+        println!(
+            "  shipped から refund は可能。監査ラベル={:?}",
+            attrs.audit_label
+        );
     }
     let refunded = fsm::step(&g, &shipped_flow, Event::Refund).unwrap();
     println!("  --[refund]--> {refunded:?}");
@@ -144,7 +147,9 @@ fn run_validate_broken() {
         "held_for_review はcancelへの辺を持つので行き止まりではないはず"
     );
 
-    println!("\n--- デモ2: shipped の出口 (deliver/refund) を両方書き忘れた変種 (行き止まり検出) ---");
+    println!(
+        "\n--- デモ2: shipped の出口 (deliver/refund) を両方書き忘れた変種 (行き止まり検出) ---"
+    );
     let broken_dead_end = fsm::build_with_dead_end_bug();
     let report = validate::validate(
         &broken_dead_end,
@@ -174,5 +179,12 @@ fn print_report(label: &str, report: &ValidationReport) {
     } else {
         println!("  行き止まり状態: {:?}", report.dead_ends);
     }
-    println!("  総合判定: {}", if report.is_ok() { "健全" } else { "問題あり" });
+    println!(
+        "  総合判定: {}",
+        if report.is_ok() {
+            "健全"
+        } else {
+            "問題あり"
+        }
+    );
 }

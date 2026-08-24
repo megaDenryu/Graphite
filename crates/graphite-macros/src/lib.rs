@@ -44,9 +44,9 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::parse::Parser;
 
-/// ノード種別・エッジ種別 (where 制約付き) から図式グラフのスキーマ一式
-/// (ノード struct・newtype キー・エッジ種別ごとのタプル struct・エッジ
-/// newtype キー・スキーマ struct・builder・違反 enum) を生成する。
+/// ノード種別・エッジ種別 (where 制約付き) から、スキーマ名の Rust module
+/// と、その中の `Graph`・`Builder`・`Violation`・ノードマーカー・エッジ型を
+/// 生成する。
 ///
 /// ```text
 /// pub struct Employee { pub name: String, pub id: u32 }
@@ -67,9 +67,8 @@ use syn::parse::Parser;
 ///
 /// `Employee`/`Department`/`BossEdge` はいずれもこのマクロの外でユーザーが
 /// 宣言した普通の struct への参照であり、このマクロは値の型そのものを一切
-/// 生成しない (`docs/schema_v4.md` 参照)。生成するのはグラフ機械
-/// (newtype キー・エッジタプル struct・ストレージ・builder・アクセサ・
-/// 違反 enum) だけ。
+/// 生成しない (`docs/schema_v4.md` 参照)。生成物はすべて `OrgChart::Graph`
+/// や `OrgChart::Boss` のように、スキーマ module の名前空間に置かれる。
 #[proc_macro]
 pub fn graph_schema(input: TokenStream) -> TokenStream {
     // G4a: ヘッダ (`schema Name {`) 自体が壊れている場合はここで Err になり、
@@ -142,7 +141,7 @@ pub fn graph_schema(input: TokenStream) -> TokenStream {
 }
 
 /// `graph_schema!` で宣言したスキーマのインスタンスをリテラルに近い記法で
-/// 組み立てる。`SchemaName::create(|b| { ... })` へ脱糖する。
+/// 組み立てる。`SchemaName::Graph::create(|b| { ... })` へ脱糖する。
 ///
 /// ```text
 /// let g = graphite::graph!(OrgChart {
@@ -165,7 +164,10 @@ pub fn graph(input: TokenStream) -> TokenStream {
     };
     let has_parse_errors = !parse_errors.is_empty();
 
-    let error_tokens: TokenStream2 = parse_errors.iter().map(syn::Error::to_compile_error).collect();
+    let error_tokens: TokenStream2 = parse_errors
+        .iter()
+        .map(syn::Error::to_compile_error)
+        .collect();
 
     match instance_codegen::generate(&graph, has_parse_errors) {
         Ok(tokens) => {
@@ -235,7 +237,10 @@ pub fn flow(input: TokenStream) -> TokenStream {
         Err(header_err) => return header_err.to_compile_error().into(),
     };
 
-    let error_tokens: TokenStream2 = parse_errors.iter().map(syn::Error::to_compile_error).collect();
+    let error_tokens: TokenStream2 = parse_errors
+        .iter()
+        .map(syn::Error::to_compile_error)
+        .collect();
 
     match flow_codegen::generate(&flow) {
         Ok(tokens) => {

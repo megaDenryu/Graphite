@@ -1,0 +1,26 @@
+error[E0308]: mismatched types
+  --> tests/ui/schema_edge_id_is_namespaced.rs:21:30
+   |
+21 |     let _: Org::RelationId = Social::RelationId("relation".to_string());
+   |            ---------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Org::RelationId`, found `Social::RelationId`
+   |            |
+   |            expected due to this
+   |
+   = note: `Social::RelationId` and `Org::RelationId` have similar names, but are actually distinct types
+note: `Social::RelationId` is defined in module `crate::Social` of the current crate
+  --> tests/ui/schema_edge_id_is_namespaced.rs:13:1
+   |
+13 | / graphite::graph_schema! {
+14 | |     schema Social {
+15 | |         node Person;
+16 | |         edge Relation = Person -> Person;
+   | |_____________________^
+note: `Org::RelationId` is defined in module `crate::Org` of the current crate
+  --> tests/ui/schema_edge_id_is_namespaced.rs:6:1
+   |
+ 6 | / graphite::graph_schema! {
+ 7 | |     schema Org {
+ 8 | |         node Person;
+ 9 | |         edge Relation = Person -> Person;
+   | |_____________________^
+   = note: this error originates in the macro `graphite::graph_schema` (in Nightly builds, run with -Z macro-backtrace for more info)

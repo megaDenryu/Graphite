@@ -11,7 +11,7 @@
 //! - `stats` — シーン数・分岐数などの統計表示
 
 use dialogue_engine::{engine, report, schema, validate};
-use schema::{DialogueGraph, DialogueGraphNode, Ending, EndingId, Scene, SceneId};
+use schema::{DialogueGraph, EndingId, SceneId};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -47,7 +47,7 @@ fn print_usage() {
     println!("  stats                 シーン数・分岐数などの統計を表示する");
 }
 
-fn cmd_play(story: &DialogueGraph, start: &SceneId, rest: &[String]) {
+fn cmd_play(story: &DialogueGraph::Graph, start: &SceneId, rest: &[String]) {
     let scripted: Option<Vec<usize>> = rest
         .iter()
         .position(|a| a == "--script")
@@ -105,7 +105,7 @@ fn read_choice_from_stdin(labels: &[String]) -> usize {
     }
 }
 
-fn cmd_validate(story: &DialogueGraph, start: &SceneId) {
+fn cmd_validate(story: &DialogueGraph::Graph, start: &SceneId) {
     let report = validate::validate(story, start);
     if report.is_clean() {
         println!("検証結果: 問題なし (全シーン到達可能・デッドエンド無し・全エンディング到達可能)");
@@ -139,14 +139,14 @@ fn cmd_validate(story: &DialogueGraph, start: &SceneId) {
     }
 }
 
-fn cmd_route(story: &DialogueGraph, start: &SceneId, rest: &[String]) {
+fn cmd_route(story: &DialogueGraph::Graph, start: &SceneId, rest: &[String]) {
     let Some(ending_key) = rest.first() else {
         eprintln!("使い方: dialogue-engine route <ending名>");
         eprintln!("利用可能なエンディング: {}", available_endings(story));
         std::process::exit(1);
     };
     let ending_id = EndingId(ending_key.clone());
-    if Ending::get(story, &ending_id).is_none() {
+    if DialogueGraph::Ending::get(story, &ending_id).is_none() {
         eprintln!("未知のエンディングです: {ending_key}");
         eprintln!("利用可能なエンディング: {}", available_endings(story));
         std::process::exit(1);
@@ -155,7 +155,7 @@ fn cmd_route(story: &DialogueGraph, start: &SceneId, rest: &[String]) {
     match report::route_to_ending(story, start, &ending_id) {
         Some(steps) => {
             for (i, (scene_id, label)) in steps.iter().enumerate() {
-                let scene = Scene::get(story, scene_id)
+                let scene = DialogueGraph::Scene::get(story, scene_id)
                     .expect("route が返すキーは必ず Scene::get() で引ける");
                 match label {
                     Some(l) => {
@@ -171,13 +171,15 @@ fn cmd_route(story: &DialogueGraph, start: &SceneId, rest: &[String]) {
     }
 }
 
-fn available_endings(story: &DialogueGraph) -> String {
-    let mut ids: Vec<String> = Ending::ids(story).map(|id| id.0.clone()).collect();
+fn available_endings(story: &DialogueGraph::Graph) -> String {
+    let mut ids: Vec<String> = DialogueGraph::Ending::ids(story)
+        .map(|id| id.0.clone())
+        .collect();
     ids.sort();
     ids.join(", ")
 }
 
-fn cmd_stats(story: &DialogueGraph, start: &SceneId) {
+fn cmd_stats(story: &DialogueGraph::Graph, start: &SceneId) {
     let stats = report::compute_stats(story, start);
     println!("シーン数: {}", stats.scene_count);
     println!("エンディング数: {}", stats.ending_count);

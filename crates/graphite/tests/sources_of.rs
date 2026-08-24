@@ -54,6 +54,11 @@ graphite::graph_schema! {
     }
 }
 
+use RevQuery::{
+    AtMostOne, AtMostOneId, ExactlyOne, ExactlyOneId, Unconstrained, UnconstrainedId,
+    UnconstrainedNoPayload, UnconstrainedNoPayloadId,
+};
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -66,13 +71,38 @@ mod tests {
         NodeBId(id.to_string())
     }
 
-    fn build() -> RevQuery {
-        RevQuery::create(|g| {
-            g.node_a(na("a1"), NodeA { name: "a1".to_string() });
-            g.node_a(na("a2"), NodeA { name: "a2".to_string() });
-            g.node_a(na("a3"), NodeA { name: "a3".to_string() });
-            g.node_b(nb("b1"), NodeB { name: "b1".to_string() });
-            g.node_b(nb("b2"), NodeB { name: "b2".to_string() });
+    fn build() -> RevQuery::Graph {
+        RevQuery::Graph::create(|g| {
+            g.node_a(
+                na("a1"),
+                NodeA {
+                    name: "a1".to_string(),
+                },
+            );
+            g.node_a(
+                na("a2"),
+                NodeA {
+                    name: "a2".to_string(),
+                },
+            );
+            g.node_a(
+                na("a3"),
+                NodeA {
+                    name: "a3".to_string(),
+                },
+            );
+            g.node_b(
+                nb("b1"),
+                NodeB {
+                    name: "b1".to_string(),
+                },
+            );
+            g.node_b(
+                nb("b2"),
+                NodeB {
+                    name: "b2".to_string(),
+                },
+            );
 
             // Unconstrained: b1 に a2, a1 の順で入る (挿入順テスト用に敢えて
             // ノード宣言順とは逆順にする)。

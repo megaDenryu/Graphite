@@ -16,7 +16,7 @@ use std::collections::HashSet;
 
 use graphite::Graph;
 
-use crate::schema::{Cancel, Deliver, OrderFsm, OrderFsmNode, OrderState, OrderStateId, Pay, Refund, Ship, Submit};
+use crate::schema::{Cancel, Deliver, OrderFsm, OrderStateId, Pay, Refund, Ship, Submit};
 
 /// 検査結果。両方が空なら「設計として健全」ということ ([`ValidationReport::is_ok`])。
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -39,8 +39,8 @@ impl ValidationReport {
 /// `{Kind}::iter` は辺タプル struct を返す (属性つきの `Cancel`/`Refund` も
 /// 含め、`from()`/`to()` でキーだけ取り出せる) が、ここでは到達可否の構造
 /// しか見ないので属性は捨てる。
-fn project(fsm: &OrderFsm) -> Graph<(), (), OrderStateId> {
-    let nodes: Vec<OrderStateId> = OrderState::ids(fsm).cloned().collect();
+fn project(fsm: &OrderFsm::Graph) -> Graph<(), (), OrderStateId> {
+    let nodes: Vec<OrderStateId> = OrderFsm::OrderState::ids(fsm).cloned().collect();
 
     let mut edges: Vec<(OrderStateId, OrderStateId)> = Vec::new();
     edges.extend(Submit::iter(fsm).map(|(_, e)| (e.from().clone(), e.to().clone())));
@@ -56,7 +56,11 @@ fn project(fsm: &OrderFsm) -> Graph<(), (), OrderStateId> {
 
 /// `initial` を初期状態、`terminal` を終端状態集合として、到達不能状態と
 /// 行き止まり状態を検出する。
-pub fn validate(fsm: &OrderFsm, initial: &OrderStateId, terminal: &[OrderStateId]) -> ValidationReport {
+pub fn validate(
+    fsm: &OrderFsm::Graph,
+    initial: &OrderStateId,
+    terminal: &[OrderStateId],
+) -> ValidationReport {
     let graph = project(fsm);
     let terminal_set: HashSet<&OrderStateId> = terminal.iter().collect();
 
