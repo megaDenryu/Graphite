@@ -1,0 +1,5 @@
+error: ID式の後に`=`が必要です
+  --> tests/ui/explicit_id_missing_equal_recovers_next_item.rs:14:28
+   |
+14 |         bob @ ExternalId(2),
+   |                            ^

@@ -26,17 +26,21 @@ pub struct Person { pub name: String }
 pub struct Team { pub name: String }
 pub struct BossEdge { pub since: i32 }
 pub struct Role { pub name: String }
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub struct ExistingPersonId(pub u64);
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub struct ExistingRelationId(pub u64);
 
 graphite::graph_schema! {
     schema Org {
-        node Person;
+        node Person(id: ExistingPersonId);
         node Team;
         node Project;
 
         edge BelongsTo = Person -> Team              where each Person: 1;
         edge Boss      = Person -[BossEdge]-> Person where each Person: 0..1;
         edge DependsOn = Service -> Service          where unique pair;
-        edge Assigned  = Person -[Role]-> Project;   // 制約なし (平行辺も自由)
+        edge Assigned(id: ExistingRelationId) = Person -[Role]-> Project; // 制約なし
     }
 }
 ```
@@ -60,9 +64,7 @@ module から参照できない。
     each 0..1 の下では同対 2 本は自動的に不可能なので `unique pair` の
     併記は冗長として警告なしで許容 or 拒否 — 実装時に単純な方を選び
     docs に明記)
-- `node 型名;` / `node 型名(複数形);` は当面現状維持 (ノード側の扱いは
-  Fudaba #1 の後継論点として v4 実装後に再訪。ストレージ名は内部専用に
-  なるため複数形指定の意義も薄れる可能性が高い)。
+- `node 型名;` は schema module 内に `{型名}Id(pub String)` を生成する。`node 型名(id: 型パス);` は既存ID型を使う。エッジも同様に `edge Kind(id: 型パス) = ...;` で既存ID型を選べる。
 
 ## 2. graph! リテラル
 
@@ -70,18 +72,18 @@ module から参照できない。
 let promo = BossEdge { since: 2023 };
 
 let g = graphite::graph!(Org {
-    alice = Person { name: "Alice".into() },
-    bob   = Person { name: "Bob".into() },
+    alice @ ExistingPersonId(1) = Person { name: "Alice".into() },
+    bob @ ExistingPersonId(42) = Person { name: "Bob".into() },
     eng   = Team { name: "Engineering".into() },
 
     a_team = BelongsTo(alice -> eng),
     b_team = BelongsTo(bob -> eng),
-    b_boss = Boss(bob -[promo]-> alice),          // 積み荷は任意の式
-    lead   = Assigned(alice -[Role { name: "lead".into() }]-> proj),
+    b_boss = Boss(bob -[promo]-> alice),
+    lead @ ExistingRelationId(8) = Assigned(alice -[Role { name: "lead".into() }]-> proj),
 });
 ```
 
-- **全行が `名前 = 値`**。ノードの名前はノードキー、辺の名前は辺キーの束縛。
+- 静的項目は `名前 = 値`、または明示IDを渡す `名前 @ ID式 = 値`。名前はノードキーまたは辺キーの束縛になる。
 - 辺のコンストラクタはタプル struct の顔 `Kind(from -> to)` /
   `Kind(from -[積み荷式]-> to)`。from/to はリテラル内で束縛済みのキー識別子。
 - 旧形 (`-[label]->` 中置形・無名辺) は完全廃止。検出・移行診断なし (既定方針)。
@@ -101,8 +103,7 @@ let g = graphite::graph!(Org {
   読み取りは位置 (.0/.1) を人間に晒さず、固定語彙のメソッドを生成:
   `fn from(&self) -> &PersonId` / `fn to(&self) -> &PersonId` /
   `fn payload(&self) -> &BossEdge` (積み荷ありのみ)。
-- 辺キー newtype: `pub struct BossId(pub String);` (ノードの {Node}Id と同じ
-  規約。型名原文ママ + Id なので rename もカスケードする)
+- ID型を省略したノード・辺: `pub struct PersonId(pub String);` / `pub struct BossId(pub String);`。どちらも schema module 内に生成される。`(id: 型パス)` を指定した宣言は生成型を持たない。
 - 違反 enum: 従来の each 系違反 (旧多重度違反) + `unique pair` 違反 +
   辺キー重複違反。バリアント名は Kind 原文ママの合成 (`BossEachViolation` 等、
   命名は実装時に原則3で調整) — ケース変換が消えるため rename 問題なし

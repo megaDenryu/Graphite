@@ -1,6 +1,3 @@
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct PersonId(String);
-
 struct Person;
 
 graphite::graph_schema! {
@@ -18,5 +15,6 @@ graphite::graph_schema! {
 }
 
 fn main() {
+    let _: Org::PersonId = Social::PersonId("person".to_string());
     let _: Org::RelationId = Social::RelationId("relation".to_string());
 }

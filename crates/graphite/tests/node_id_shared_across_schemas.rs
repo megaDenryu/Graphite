@@ -1,20 +1,15 @@
-//! v4.2 (`docs/node_id_v4_2.md`) の意味論そのものを実証する統合テスト。
+//! 明示ID型を複数schemaで共有できることを実証する統合テスト。
 //!
-//! 「キーは個体の名前であり、`PersonId` は特定のグラフにではなく `Person`
-//! という型に1個だけ属する」という決定により、組織図 (`OrgChart`) と
-//! 承認フロー (`ApprovalFlow`) という**別々の schema** が同じ `Person`/
-//! `PersonId` を共有できる。このテストは、一方のグラフで得たキーをもう
-//! 一方のグラフのクエリにそのまま渡せることを確認する
-//! (`docs/node_id_v4_2.md` 「複数 schema での `PersonId` 共有は... 当然の
-//! 帰結になる」)。
+//! 組織図 (`OrgChart`) と承認フロー (`ApprovalFlow`) がどちらも
+//! `node Person(id: PersonId);` を宣言し、一方のグラフで得たキーをもう
+//! 一方のグラフの問い合わせへ渡せることを確認する。
 //!
 //! 各 schema は生成物を `OrgChart`/`ApprovalFlow` module に分離するため、
 //! 同じ `Person` 値型を共有しても問い合わせ名は衝突しない。`PersonId` という
 //! 値は module を跨いで自由に受け渡せ、問い合わせ先は
 //! `OrgChart::Person::get` と `ApprovalFlow::Person::get` で明示できる。
 
-/// `Person` を宣言した者として、`PersonId` もここで1個だけ宣言する
-/// (「型を宣言した者が Id も宣言する」規則)。両方の schema から共有される。
+/// 2つのschemaから明示的に参照する共有ID型。
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PersonId(pub String);
 
@@ -38,8 +33,8 @@ mod org_chart {
     #[rustfmt::skip]
     graphite::graph_schema! {
         schema OrgChart {
-            node Person;
-            node Department;
+            node Person(id: PersonId);
+            node Department(id: DepartmentId);
 
             edge BelongsTo = Person -> Department where each Person: 0..1;
         }
@@ -87,7 +82,7 @@ mod approval_flow {
     #[rustfmt::skip]
     graphite::graph_schema! {
         schema ApprovalFlow {
-            node Person;
+            node Person(id: PersonId);
 
             edge Approves = Person -> Person;
         }
@@ -128,9 +123,8 @@ fn 組織図で得たキーを承認フローのクエリにそのまま渡せ�
         .find(|id| org_chart::OrgChart::Person::get(&org, id).unwrap().name == "田中")
         .expect("組織図に田中さんがいるはず");
 
-    // そのキーを、型変換もラップも一切せずに承認フロー側のクエリへ渡せる
-    // (`PersonId` は `OrgChart`/`ApprovalFlow` のどちらにも属さず、`Person`
-    // 型そのものに1個だけ属するため)。
+    // 両schemaが同じ既存型を明示指定しているため、そのキーを型変換も
+    // ラップもせずに承認フロー側のクエリへ渡せる。
     let tanaka_in_flow = approval_flow::ApprovalFlow::Person::get(&flow, tanaka_id_in_org)
         .expect("組織図で得たキーがそのまま承認フローでも引けるはず");
     assert_eq!(tanaka_in_flow.name, "田中");

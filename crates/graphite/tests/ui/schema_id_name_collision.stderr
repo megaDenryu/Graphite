@@ -1,0 +1,11 @@
+error: schema module内の生成名 `PersonId` が衝突します (自動生成ID型 `PersonId` と ノードマーカー `PersonId`)。既存ID型を使う場合は `(id: 型)` を明示してください
+ --> tests/ui/schema_id_name_collision.rs:6:14
+  |
+6 |         node Person;
+  |              ^^^^^^
+
+error: 衝突する生成名はこちら
+ --> tests/ui/schema_id_name_collision.rs:7:14
+  |
+7 |         node PersonId;
+  |              ^^^^^^^^

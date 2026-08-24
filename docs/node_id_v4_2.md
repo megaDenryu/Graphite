@@ -1,62 +1,89 @@
-# キーの意味論 v4.2 — ノード Id のユーザー宣言化 (Fudaba #15)
+# ID型の既定生成と明示指定
 
-2026-07-18 のユーザー決定。
+この文書は、`graph_schema!` がノード・エッジのID型を選ぶ規則と、`graph!` がID値を受け取る規則を定める生存型文書である。
 
-## 決定した意味論
+## schema宣言
 
-**キーは個体の名前である。** グラフとは「名前を持つ個体たちについての主張の集合」
-であり、複数のグラフ (組織図と承認フロー) が同じ個体宇宙について語ることは正当。
-したがって `PersonId` は特定のグラフにではなく **`Person` という型に 1 個だけ属する**。
-
-導かれる規則: **「型を宣言した者が、その Id も宣言する」**
-
-- `Person` はユーザーがマクロの外で宣言する → `PersonId` も**ユーザーが宣言**する。
-  `Person` の隣の 1 行は「この型は名前で識別される個体である」という意味のある宣言
-- `Boss` (辺種別) は schema が作る → `BossId` は従来どおり**マクロが生成**する
-  (辺の同一性は schema 局所で、共有のしようがない)
-
-複数 schema での `PersonId` 共有は、衝突 (旧 #3 の問題) ではなく当然の帰結になる:
-組織図で得たキーを承認フローのクエリにそのまま渡せる。
-
-## 構文とユーザーの書くもの
-
-schema 構文は**不変**。ユーザーはノード型の隣に Id を宣言するだけ:
+ID型を省略すると、`graph_schema!` は schema module 内に型付き文字列IDを生成する。
 
 ```rust
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct PersonId(pub String);
-pub struct Person { pub name: String }
+graphite::graph_schema! {
+    schema Org {
+        node Person;
+        edge Knows = Person -> Person;
+    }
+}
+
+// 生成される公開型
+// Org::PersonId(pub String)
+// Org::KnowsId(pub String)
+```
+
+生成ID型は `Debug, Clone, PartialEq, Eq, Hash` を導出する。同じノード型を複数のschemaが参照しても、`Org::PersonId` と `Approval::PersonId` は別型である。
+
+生成ID型は `PartialOrd` / `Ord` を導出しない。IDの順序がアプリケーションで必要な場合は、利用者側で実装する。`examples/dialogue-engine` と `examples/state-machine` が実例である。
+
+既存型を使う場合は、宣言に `(id: 型パス)` を付ける。
+
+```rust
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub struct EmployeeNumber(pub u64);
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub struct RelationNumber(pub u64);
 
 graphite::graph_schema! {
     schema Org {
-        node Person;        // ← PersonId は生成されず、上の宣言を参照する
-        ...
+        node Person(id: EmployeeNumber);
+        edge Knows(id: RelationNumber) = Person -> Person;
     }
 }
 ```
 
-- **命名規約**: schema は `{ノード型名}Id` という名前で参照する (Person → PersonId)。
-  未宣言なら rustc の「cannot find type `PersonId`」がノード宣言のスパンで出る
-  (参照トークンのスパン = node 宣言の型トークン)。rename は "Person" が
-  "PersonId" に原文ママ含まれるため RA のカスケードが機能する (実測済みの規則)
-- **形の規約**: `String` 1 要素のタプル struct。生成コードは `PersonId(文字列)` で
-  構築するため、形が違えば rustc エラー (構築箇所のスパンで顕在化)
-- **必要 derive**: `Debug, Clone, PartialEq, Eq, Hash` (HashMap キー + 違反 enum の
-  表示に必要な最小。README に明記)
-- 辺キー ({Kind}Id) は従来どおりマクロ生成 (derive も従来どおり)
+明示IDを選んだ宣言では、対応する `Org::PersonId` や `Org::KnowsId` を生成しない。既存型に必要な能力は `Clone + Eq + Hash` であり、`Debug`・`Display`・文字列変換は要求しない。同じID型を複数のschemaへ明示すれば、schema間でIDを共有できる。
 
-## 実装ノート
+自動生成名どうしが型名前空間で衝突する場合、マクロは衝突箇所を診断する。既存ID型を使う意図がある場合は、同名の型を暗黙に拾わせず `(id: 型パス)` を書く。
 
-- schema_codegen: ノード Id の struct 生成を削除し、型名参照 (`format_ident!("{}Id", ..)`
-  相当 — 参照であって生成でないことをコメントに) に変更。スパンは node 宣言の
-  型トークン (G3)
-- {Schema}Node trait の `insert_into` 等、Id を構築している生成コードは
-  `PersonId(key)` 構築のまま (参照先がユーザー型に変わるだけ)
-- 破壊的変更: 全テスト・examples 7 本の schema 近傍にノード Id 宣言を追加する
-  移行が必要。既定方針どおり旧状態の検出・診断なし
-- README「キーの設計」節を v4.2 の意味論 (キー = 個体の名前・宣言規則) で更新。
-  modeling_guide にも「Id 宣言 = ノードになれることの宣言」を 1 文追加。
-  複数 schema の衝突に関する旧記述 (モジュール分割の回避策) は**共有が正当**に
-  なったため書き換え
-- IDE 実測 (実装後): `PersonId` 使用側 → ユーザー宣言への定義ジャンプ、
-  schema の `node Person;` からの参照解決
+## graph!リテラル
+
+既定IDは、従来どおり束縛名から作る。
+
+```rust
+let graph = graphite::graph!(Org {
+    alice = Person,
+    bob = Person,
+    relation = Knows(alice -> bob),
+})?;
+```
+
+この例では `alice` が `Org::PersonId("alice".into())` に、`relation` が `Org::KnowsId("relation".into())` になる。
+
+ID値を明示するときは `名前 @ ID式 = 値` と書く。`@` の右側は普通のRust式である。
+
+```rust
+let graph = graphite::graph!(Org {
+    alice @ EmployeeNumber(10) = Person,
+    bob @ EmployeeNumber(20) = Person,
+    relation @ RelationNumber(30) = Knows(alice -> bob),
+})?;
+```
+
+明示ID型を使う宣言は文字列からIDを作れないため、`@` を省略するとトレイト境界のコンパイルエラーになる。既定IDにも `alice @ Org::PersonId("external-name".into()) = Person` のように明示値を渡せる。
+
+## builderと一括構築
+
+`Builder::insert`・`add`・`extend` は文字列から既定IDを作る。明示IDでは `insert_with_id`・`add_with_id` を使う。
+
+```rust
+Org::Graph::create(|builder| {
+    let alice = builder.insert_with_id(EmployeeNumber(10), Person);
+    let bob = builder.insert_with_id(EmployeeNumber(20), Person);
+    builder.add_with_id(RelationNumber(30), Org::Knows(alice, bob));
+})?;
+```
+
+現在の `extend` と `graph!` の `..式` は既定IDだけを受け付ける。スプライスへ明示IDを渡す構文と名前の意味論はIssue #6/#2で確定する。
+
+## 格納方式
+
+IDは密な配列添字ではない。GraphiteはIDを `Hash + Eq` のキーとして扱い、挿入順を別の配列に保持する。このため、文字列IDと利用者定義IDは同じ格納経路を使う。

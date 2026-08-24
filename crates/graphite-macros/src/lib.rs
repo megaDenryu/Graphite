@@ -56,7 +56,7 @@ use syn::parse::Parser;
 /// graphite::graph_schema! {
 ///     schema OrgChart {
 ///         node Employee;
-///         node Department;
+///         node Department(id: ExistingDepartmentId);
 ///
 ///         edge BelongsTo = Employee -> Department              where each Employee: 1;
 ///         edge Boss      = Employee -[BossEdge]-> Employee     where each Employee: 0..1;
@@ -67,7 +67,9 @@ use syn::parse::Parser;
 ///
 /// `Employee`/`Department`/`BossEdge` はいずれもこのマクロの外でユーザーが
 /// 宣言した普通の struct への参照であり、このマクロは値の型そのものを一切
-/// 生成しない (`docs/schema_v4.md` 参照)。生成物はすべて `OrgChart::Graph`
+/// 生成しない。ID型を省略したノードとエッジには schema module 内の型付き
+/// 文字列IDを生成し、`(id: 型パス)` がある宣言では既存型を使う。
+/// 生成物はすべて `OrgChart::Graph`
 /// や `OrgChart::Boss` のように、スキーマ module の名前空間に置かれる。
 #[proc_macro]
 pub fn graph_schema(input: TokenStream) -> TokenStream {
@@ -96,16 +98,33 @@ pub fn graph_schema(input: TokenStream) -> TokenStream {
     // 関わらず常に検査し、見つかった場合はコード生成を行わない
     // (従来から「validate 失敗時はコード生成なし」という挙動だった)。
     let mut validate_errors: Vec<syn::Error> = Vec::new();
-    if let Err(e) = schema_validate::validate_unique_node_names(&schema.nodes) {
-        validate_errors.push(e);
-    }
+    let node_names_are_unique = match schema_validate::validate_unique_node_names(&schema.nodes) {
+        Ok(()) => true,
+        Err(e) => {
+            validate_errors.push(e);
+            false
+        }
+    };
     if !has_parse_errors {
         if let Err(e) = schema_validate::validate_edge_endpoints(&schema.nodes, &edges) {
             validate_errors.push(e);
         }
     }
-    if let Err(e) = schema_validate::validate_unique_edge_kinds(&edges) {
-        validate_errors.push(e);
+    let edge_names_are_unique = match schema_validate::validate_unique_edge_kinds(&edges) {
+        Ok(()) => true,
+        Err(e) => {
+            validate_errors.push(e);
+            false
+        }
+    };
+    if node_names_are_unique && edge_names_are_unique {
+        if let Err(e) = schema_validate::validate_generated_type_names(
+            &schema.schema_name,
+            &schema.nodes,
+            &edges,
+        ) {
+            validate_errors.push(e);
+        }
     }
     if let Err(e) = schema_validate::validate_undirected_same_type(&edges) {
         validate_errors.push(e);

@@ -36,15 +36,8 @@ v1〜v4.2 の全過程 (何を検討し、何を採用/棄却したか) を通�
 ```rust
 // ノード型・エッジ属性型は普通の Rust struct として宣言する。
 // graph_schema! はこれらの型を生成せず、参照するだけ。
-//
-// ノードキー ({ノード型名}Id) も同様にユーザーが型の隣で宣言する
-// (「型を宣言した者が Id も宣言する」規則、詳細は後述「キーの設計」参照)。
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct PersonId(pub String);
 pub struct Person { pub name: String }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TeamId(pub String);
 pub struct Team { pub name: String }
 
 pub struct BossEdge { pub since: i32 }
@@ -70,8 +63,8 @@ let g = graphite::graph!(Org {
     bob_boss  = Boss(bob -[BossEdge { since: 2021 }]-> alice),
 })?;
 
-let team: &Team = Org::BelongsTo::of(&g, &PersonId("alice".to_string()));
-let (boss, attrs) = Org::Boss::of(&g, &PersonId("bob".to_string())).unwrap(); // (&Person, &BossEdge)
+let team: &Team = Org::BelongsTo::of(&g, &Org::PersonId("alice".to_string()));
+let (boss, attrs) = Org::Boss::of(&g, &Org::PersonId("bob".to_string())).unwrap(); // (&Person, &BossEdge)
 ```
 
 `graph_schema!` が何を生成するか (newtype キー・builder・辺の第一級型・
@@ -105,12 +98,6 @@ y` は `let y = (f)(x);` に即時脱糖するだけの糖衣で、`x -[f]-> y -
 ### 1. `graph_schema!` でスキーマを宣言する
 
 ```rust
-/// ノードキー。`graph_schema!` はこれも生成せず、`{ノード型名}Id` という
-/// 命名規約で参照するだけ (「型を宣言した者が Id も宣言する」規則、
-/// 詳細は後述「キーの設計」参照)。
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct EmployeeId(pub String);
-
 /// ノード型。`graph_schema!` の外で普通の struct として宣言する。
 /// `graph_schema!` はこの型を生成せず、参照するだけ。
 #[derive(Debug, Clone, PartialEq)]
@@ -118,10 +105,6 @@ pub struct Employee {
     pub name: String,
     pub id: u32,
 }
-
-/// ノードキー。
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct DepartmentId(pub String);
 
 /// ノード型。
 #[derive(Debug, Clone, PartialEq)]
@@ -148,7 +131,7 @@ graphite::graph_schema! {
 ```
 
 `graph_schema!` は Rust module を生成するため、モジュール直下に書いてください。
-参照するノード値型・ノードキー型・積み荷型も関数の外に宣言します。関数本体の
+参照するノード値型・明示ID型・積み荷型も関数の外に宣言します。関数本体の
 ローカル型は、関数内に生成された module から参照できません。
 
 ノード宣言 `node 型名;` は「マクロの外で宣言済みの struct をこのノード種別
@@ -191,16 +174,13 @@ Graphite の基盤は**多重グラフ**です。辺は独立した要素であ�
 `Employee` と同一視できず照合が破綻します。モジュール修飾したい場合は
 `use` でこのスコープに名前を持ち込んでください。
 
-これで `OrgChart` という Rust module が生成されます。その中に辺種別ごとの
-newtype キー (`OrgChart::BelongsToId`/`BossId`/`ReportsId`) とタプル struct
+これで `OrgChart` という Rust module が生成されます。その中にノード・辺種別ごとの
+newtype キー (`OrgChart::EmployeeId`/`DepartmentId`/`BelongsToId`/`BossId`/`ReportsId`) とタプル struct
 (`OrgChart::Boss`)・グラフ本体 (`OrgChart::Graph`、フィールドは非公開)・
 builder (`OrgChart::Builder`)・違反 enum (`OrgChart::Violation`) が置かれます。
 ノード値の型 (`Employee`/
 `Department`) とエッジ属性型 (`BossEdge`) はいずれもユーザーが宣言した型を
-そのまま参照するだけで、`graph_schema!` は一切生成しません。ノード種別
-ごとの newtype キー (`EmployeeId`/`DepartmentId`) も同様です — v4.2
-(`docs/node_id_v4_2.md`) からはこれもユーザーが宣言した型への参照であり、
-`graph_schema!` は生成しません (詳細は後述「キーの設計」参照)。
+そのまま参照するだけで、`graph_schema!` は一切生成しません。ID型は宣言ごとに選べます。`node Employee;` と `edge Boss = ...;` は schema module 内に型付き文字列IDを生成し、`node Employee(id: EmployeeNumber);` と `edge Boss(id: RelationNumber) = ...;` は既存型を使います。
 
 辺のタプル struct は**マクロの外でも普通に構築できます**
 (`OrgChart::Boss(from_id, to_id, payload)`。原則6: 消去可能な拡張のみ)。読み取りは
@@ -212,7 +192,7 @@ builder (`OrgChart::Builder`)・違反 enum (`OrgChart::Violation`) が置かれ
 挿入メソッド (`b.employee(id, value)` など、上記の各 `node` 宣言から1つずつ
 生成) に加えて、総称メソッド `b.insert<N: OrgChart::OrgChartNode>(key: impl Into<String>, value: N) -> N::Id`
 も生成されます。これは `graph!` が値の型名を一切パースしないために必要で、
-`OrgChart::OrgChartNode` トレイト (各ノード型に `impl OrgChart::OrgChartNode for Employee { type Id = EmployeeId; .. }`
+`OrgChart::OrgChartNode` トレイト (各ノード型に `impl OrgChart::OrgChartNode for Employee { .. }`
 が生成される) を介して、値の型から正しい内部ストレージへの振り分けを
 rustc の型推論に任せます。実行時のリフレクション・型判別は一切無く
 (原則5: ゼロコスト志向)、`b.employee(id, value)` を明示的に呼ぶプログラム的
@@ -239,22 +219,11 @@ rustc の型推論に任せます。実行時のリフレクション・型判�
 **ノード値の型・エッジ属性型に対する trait 要求**: `graph_schema!`/`graph!`
 の生成コードはこれらの値を builder → freeze → アクセサへ move/参照で受け
 渡すだけなので、`Clone`/`Debug`/`PartialEq` などの trait を一切要求しません
-(newtype キー型は内部で `HashMap`/`KeyedTable` のキーに使う・違反 enum に
-埋め込む・エッジのタプル struct のフィールドにするため、キー型自身には
-`Debug + Clone + PartialEq + Eq + Hash` を要求します。これはキー型の話で
-ノード値の型とは別物です。ノードキー型の詳細は後述「キーの設計」参照)。
+(自動生成IDには `Debug + Clone + PartialEq + Eq + Hash` を導出します。明示ID型に必要なのは `Clone + Eq + Hash` だけで、`Debug`・`Display`・文字列変換は要求しません。これはID型の話でノード値の型とは別物です。詳細は後述「キーの設計」参照)。
 テストでの比較・表示のために `#[derive(Debug, Clone, PartialEq)]` を
 付けるかどうかは利用者の自由です (上記の例は付けている例)。
 
-**複数 schema でノード型を共有する場合**: v4.2 (`docs/node_id_v4_2.md`)
-からノードキー型 (`{Node}Id`) はどの schema も生成しなくなり、ユーザーが
-`Node` 型の隣で1個だけ宣言したものへの参照になりました。したがって同じ
-`Person` を複数の schema が `node` として参照しても、`PersonId` の生成が
-衝突することはありません — むしろ「キーは個体の名前であり、特定の schema
-にではなく `Person` という型そのものに属する」という意味論の帰結として、
-一方の schema で得たキーをそのまま他方の schema のクエリに渡せます
-(`crates/graphite/tests/node_id_shared_across_schemas.rs` に実証テスト
-があります)。
+**複数 schema でノード型を共有する場合**: 既定IDは schema module の中に生成されるため、同じ `Person` を参照しても `Org::PersonId` と `Approval::PersonId` は別型です。同じIDを共有したい場合は、両方で `node Person(id: PersonId);` と明示します (`crates/graphite/tests/node_id_shared_across_schemas.rs`)。
 
 schema ごとの生成物は `OrgChart`/`ApprovalFlow` のように別々の Rust module
 へ置かれます。同じ `Person` 値型と同じ辺名を共有しても生成型は衝突せず、
@@ -324,7 +293,7 @@ let g = graphite::graph!(OrgChart {
 })?; // Result<OrgChart::Graph, OrgChart::Violation>
 ```
 
-**全行が `名前 = 値`** です (`docs/schema_v4.md` §0 規則1)。ノードの名前は
+静的項目は `名前 = 値`、またはID値を渡す `名前 @ ID式 = 値` です (`docs/schema_v4.md` §0 規則1)。ノードの名前は
 ノードキー、辺の名前は辺キーの束縛であり、**ノードキー・辺キーは1つの
 `graph!` 呼び出しの中で単一の平坦な名前空間を共有します** (同じ識別子を
 2回使うとコンパイルエラー。詳細は後述「名前空間に関する制約」節)。辺の
@@ -431,19 +400,19 @@ cannot-find-type / no-such-function に落ちることで検出されます (「
 ### 3. アクセサ・アルゴリズムを使う
 
 ```rust
-let dept = OrgChart::BelongsTo::of(&g, &EmployeeId("tanaka".to_string())); // &Department (each 1)
-let (boss, attrs) = OrgChart::Boss::of(&g, &EmployeeId("tanaka".to_string())).unwrap(); // Option<(&Employee, &BossEdge)>
-let reports = OrgChart::Reports::of(&g, &EmployeeId("tanaka".to_string())); // Vec<&Employee> (制約なし)
+let dept = OrgChart::BelongsTo::of(&g, &OrgChart::EmployeeId("tanaka".to_string())); // &Department (each 1)
+let (boss, attrs) = OrgChart::Boss::of(&g, &OrgChart::EmployeeId("tanaka".to_string())).unwrap(); // Option<(&Employee, &BossEdge)>
+let reports = OrgChart::Reports::of(&g, &OrgChart::EmployeeId("tanaka".to_string())); // Vec<&Employee> (制約なし)
 
 // get_of: each 1 の非パニック版。未知キーは None に落ちる。
-let dept_opt = OrgChart::BelongsTo::get_of(&g, &EmployeeId("no-such-id".to_string())); // None
+let dept_opt = OrgChart::BelongsTo::get_of(&g, &OrgChart::EmployeeId("no-such-id".to_string())); // None
 
 // iter(): match パターンの代替。イテレータチェーンでクエリを書く。
 // 例: 相互に上司であるペア (A の boss が B かつ B の boss が A) を検出する。
-let all: Vec<(&EmployeeId, &EmployeeId)> = OrgChart::Boss::iter(&g)
+let all: Vec<(&OrgChart::EmployeeId, &OrgChart::EmployeeId)> = OrgChart::Boss::iter(&g)
     .map(|(_id, edge)| (edge.from(), edge.to()))
     .collect();
-let mutual_bosses: Vec<(&EmployeeId, &EmployeeId)> = all
+let mutual_bosses: Vec<(&OrgChart::EmployeeId, &OrgChart::EmployeeId)> = all
     .iter()
     .copied()
     .filter(|(a, b)| all.contains(&(b, a)))
@@ -523,50 +492,15 @@ let result: Result<OrgChart::Graph, Vec<OrgChart::Violation>> = OrgChart::Graph:
 
 ### キーの設計 (ノード・エッジの同一性)
 
-グラフ上のノード・エッジの同一性 (キー) は常に**名前 (`String`)** です
-(`graph!` のノード項/辺項に書く識別子や、`insert`/`add`/`extend` に渡すキー
-引数がそのまま `{Node}Id`/`{Kind}Id` の内部値になる)。
-社員番号のような**ドメイン固有の ID は生成されません** — 必要な場合は上記
-`Employee` の `id: u32` のように、ノード値自身のフィールドとして持たせて
-ください。`graph!` が識別子をそのままキーとして脱糖できる (「名前をそのまま
-書けば識別子になる」) のは、この「キー = 名前」という前提の上に立っています
-(数値キー等のネイティブサポートは実需要が出てから再検討します)。
+グラフ上のノード・エッジの同一性は、宣言ごとに既定IDまたは明示IDで表します。
 
-**キーは個体の名前であり、ノード型に属する (v4.2、`docs/node_id_v4_2.md`)**:
-グラフとは「名前を持つ個体たちについての主張の集合」であり、複数のグラフ
-(例: 組織図と承認フロー) が同じ個体宇宙について語ることは正当です。
-したがって `PersonId` は特定の schema にではなく、**`Person` という型に
-1個だけ属します**。ここから「型を宣言した者が、その Id も宣言する」という
-規則が導かれます:
+- `node Person;` は `PersonId(pub String)` を、`edge Knows = ...;` は `KnowsId(pub String)` を、それぞれ schema module 内へ生成します。生成型は `Debug, Clone, PartialEq, Eq, Hash` を導出します。同じ名前でも schema が違えば別型です。
+- `node Person(id: EmployeeNumber);` と `edge Knows(id: RelationNumber) = ...;` は既存型を使い、`PersonId` や `KnowsId` を生成しません。明示ID型には `Clone + Eq + Hash` だけが必要です。
+- `graph!` の既定ID項は `alice = Person { ... }` と書き、束縛名 `alice` を内部文字列にします。明示ID項は `alice @ EmployeeNumber(42) = Person { ... }` と書きます。`@` の右側は普通のRust式です。明示ID宣言を `@` なしで使うとコンパイルエラーになります。
+- 既定IDにも `alice @ Org::PersonId("external-name".into()) = ...` と書けば、束縛名とは別の値を渡せます。
+- `insert`・`add`・`extend`・`..式` は文字列から既定IDを作る経路です。明示IDには `insert_with_id`・`add_with_id`、または `graph!` の `@` を使います。スプライスへ明示IDを渡す構文はIssue #6/#2で確定します。
 
-- `Person` はユーザーが `graph_schema!` の外で宣言します → **`PersonId` も
-  ユーザーが宣言します**。命名規約は `{ノード型名}Id`
-  (`derive(Debug, Clone, PartialEq, Eq, Hash)` を付けた `String` 1要素の
-  タプル struct、`pub struct PersonId(pub String);`)。`graph_schema!` は
-  この型を**生成せず**、命名規約でノード宣言 (`node Person;`) の隣を参照
-  するだけです。宣言し忘れると rustc の「cannot find type `PersonId`」が
-  `node Person;` の位置で報告されます
-  (`crates/graphite/tests/ui/node_id_not_declared.rs` 参照)。
-- `Boss` のような**辺種別**は `graph_schema!` (schema) が宣言する概念なので、
-  `BossId` は従来どおり**マクロが生成**します。辺の同一性は schema 局所で
-  あり、共有のしようがないためです。
-
-必須の derive が `Debug, Clone, PartialEq, Eq, Hash` の4種 (Hash は
-newtype 単体としては3種、Eq を含めて5個) なのは、生成コードがノードキー型を
-`KeyedTable`/`HashMap` のキーとして使う (`Hash + Eq`)・違反 enum に埋め込む
-(`Debug`)・エッジのタプル struct のフィールドにする (`Debug + Clone +
-PartialEq`) ためです。`PartialOrd`/`Ord` は要求されません (要求すると
-「同じ (始点, 終点) の対」を正準化する無向辺の `unique pair` 検査が順序
-比較に依存してしまうため、`graphite` 内部の実装はあえて順序比較を使わず
-両順序を引く実装にしています)。アプリ側の都合でキーをソート表示したい
-場合は、この最小要求に加えて `PartialOrd`/`Ord` を追加で derive して構いません
-(`examples/org-analyzer`/`examples/dialogue-engine`/`examples/state-machine`
-がこのパターンの実例です)。
-
-複数 schema での `PersonId` 共有は、衝突ではなく当然の帰結です: 組織図で
-得たキーを承認フローのクエリにそのまま渡せます
-(`crates/graphite/tests/node_id_shared_across_schemas.rs`)。schema module が
-問い合わせ名前空間を分離するため、どのグラフを読むかも修飾名で明示できます。
+IDは密な添字ではありません。`KeyedTable` はIDをハッシュキーとして扱い、挿入順は別に保持します。詳細は `docs/node_id_v4_2.md` を参照してください。
 
 ### 名前空間に関する制約 (`graph!`)
 
@@ -711,8 +645,8 @@ cargo test
    は `boss(employee, boss, attrs)`・`reports(manager, report)` のように
    端点を直接引数に取っていましたが、v4 では辺そのものが第一級のキー付き
    要素になったため、builder のエッジメソッドは常に「辺キー + 辺値
-   (タプル struct)」のペアを取ります (`b.boss(BossId("b1".into()),
-   Boss(employee_id, boss_id, attrs))` のように)。
+   (タプル struct)」のペアを取ります (`b.boss(OrgChart::BossId("b1".into()),
+   OrgChart::Boss(employee_id, boss_id, attrs))` のように)。
 4. **内部ストレージの複数形フィールド名は素朴な英語複数形 (`+ "s"`) 固定**。
    不規則複数形 (`Category` → `Categorys` になってしまう等) には自動対応
    していません。この名前は非公開フィールドで利用者から見えないため機能上の
@@ -729,14 +663,7 @@ cargo test
    trait 要求も無い (上記
    「ノード値の型・エッジ属性型に対する trait 要求」参照) ため、derive する
    かどうかも含めて完全に利用者の自由です。
-7. **ノードキー型 (`{Node}Id`) もユーザー宣言 (v4.2、`docs/node_id_v4_2.md`)**。
-   手書き版はもともと `EmployeeId`/`DepartmentId` をテンプレート内に直接
-   宣言していましたが (`orgchart_handwritten.rs`)、v3 まではこれを
-   `graph_schema!` が `node` 宣言ごとに生成していました。v4.2 では手書き版と
-   同じ形に戻り、`graph_schema!` は生成をやめてユーザー宣言 (`Node` 型の
-   隣、`{ノード型名}Id` という命名規約) への参照に変わりました。「キーは
-   個体の名前であり型に属する」という意味論上、特定の schema がノードキーを
-   所有する理由が無くなったためです (詳細は「キーの設計」節)。
+7. **ノード・エッジのID型は宣言ごとに既定生成または明示指定を選ぶ**。省略時は schema module 内へ `{Node}Id` / `{Kind}Id` を生成します。既存型を使う宣言は `(id: 型パス)` を付け、`graph!` では `名前 @ ID式 = 値` と書きます (詳細は「キーの設計」節)。
 
 ## 未決事項 / フェーズ4があるとしたら
 

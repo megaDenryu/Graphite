@@ -63,7 +63,7 @@
 use std::collections::{HashMap, HashSet};
 
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{quote, quote_spanned};
 
 use crate::instance_dsl::{GraphInput, GraphItem};
 use crate::naming::graph_type_ident;
@@ -139,15 +139,20 @@ pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<Token
                 // Ident をそのまま使う (文字列から作り直さない)。
                 let key_ident = node.key.clone();
                 let key_str = node.key.to_string();
+                let explicit_id = &node.id;
                 let value = &node.value;
                 // 孤立ノード (どのエッジにも参照されないノード) は正当な
                 // グラフであり、この let 束縛はマクロの実装詳細 (G1) に
                 // 過ぎない。エッジで使われない場合 rustc は
                 // `unused variable` を出すが、これはユーザーのグラフ設計
                 // の問題ではなくノイズなので抑制する。
+                let call = match explicit_id {
+                    Some(id) => quote! { __graphite_b.insert_with_id(#id, #value) },
+                    None => quote! { __graphite_b.insert(#key_str, #value) },
+                };
                 node_calls.push(quote! {
                     #[allow(unused_variables)]
-                    let #key_ident = __graphite_b.insert(#key_str, #value);
+                    let #key_ident = #call;
                 });
             }
             GraphItem::Edge(edge) => {
@@ -177,6 +182,7 @@ pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<Token
                 // トークンをそのまま使う。
                 let key_ident = edge.key.clone();
                 let key_str = edge.key.to_string();
+                let explicit_id = &edge.id;
                 let kind = &edge.kind;
                 let from_ident = edge.from.clone();
                 let to_ident = edge.to.clone();
@@ -195,9 +201,15 @@ pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<Token
                 // 辺の名前もキーの束縛 (`docs/schema_v4.md` §0 規則1)。
                 // ノード同様、どこからも参照されない辺キーは
                 // `unused variable` 警告のノイズになるため抑制する。
+                let call = match explicit_id {
+                    Some(id) => quote! { __graphite_b.add_with_id(#id, #ctor) },
+                    // 既定IDを生成できない場合のtrait boundエラーは、macro呼び出し
+                    // 全体ではなく、利用者が修正すべきエッジ種別名へ結び付ける。
+                    None => quote_spanned! { kind.span()=> __graphite_b.add(#key_str, #ctor) },
+                };
                 rest_calls.push(quote! {
                     #[allow(unused_variables)]
-                    let #key_ident = __graphite_b.add(#key_str, #ctor);
+                    let #key_ident = #call;
                 });
             }
             GraphItem::Spread(spread) => {

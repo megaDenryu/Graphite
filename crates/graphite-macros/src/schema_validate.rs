@@ -30,6 +30,7 @@ use std::collections::{HashMap, HashSet};
 use quote::ToTokens;
 use syn::Ident;
 
+use crate::naming::generated_id_ident;
 use crate::schema_dsl::{EdgeDecl, NodeDecl};
 
 pub fn validate_unique_node_names(nodes: &[NodeDecl]) -> syn::Result<()> {
@@ -64,6 +65,103 @@ pub fn validate_unique_edge_kinds(edges: &[EdgeDecl]) -> syn::Result<()> {
         seen.insert(name, edge.kind.span());
     }
     Ok(())
+}
+
+/// schema module の型名前空間へ生成する名前が互いに衝突しないことを検査する。
+/// 既定IDと同名の既存IDを使う意図がある場合は `(id: K)` の明示指定を
+/// 必須にし、Graphite が暗黙に既存型を拾う余地を残さない。
+pub fn validate_generated_type_names(
+    schema_name: &Ident,
+    nodes: &[NodeDecl],
+    edges: &[EdgeDecl],
+) -> syn::Result<()> {
+    let mut names: HashMap<String, (proc_macro2::Span, String)> = HashMap::new();
+
+    let fixed = ["Graph", "Builder", "Violation"];
+    for name in fixed {
+        names.insert(name.to_string(), (schema_name.span(), format!("生成型 `{name}`")));
+    }
+    for suffix in ["Node", "Edge", "Insertable", "DefaultId"] {
+        let name = format!("{schema_name}{suffix}");
+        names.insert(name.clone(), (schema_name.span(), format!("生成trait `{name}`")));
+    }
+
+    let mut register = |name: String, span: proc_macro2::Span, description: String| {
+        if let Some((previous_span, previous_description)) = names.get(&name) {
+            let mut error = syn::Error::new(
+                span,
+                format!(
+                    "schema module内の生成名 `{name}` が衝突します ({description} と {previous_description})。既存ID型を使う場合は `(id: 型)` を明示してください"
+                ),
+            );
+            error.combine(syn::Error::new(*previous_span, "衝突する生成名はこちら"));
+            return Err(error);
+        }
+        names.insert(name, (span, description));
+        Ok(())
+    };
+
+    for node in nodes {
+        register(
+            node.name.to_string(),
+            node.name.span(),
+            format!("ノードマーカー `{}`", node.name),
+        )?;
+    }
+    for edge in edges {
+        register(
+            edge.kind.to_string(),
+            edge.kind.span(),
+            format!("エッジ型 `{}`", edge.kind),
+        )?;
+    }
+    for node in nodes.iter().filter(|node| node.id_ty.is_none()) {
+        let name = generated_id_ident(&node.name).to_string();
+        register(
+            name.clone(),
+            node.name.span(),
+            format!("自動生成ID型 `{name}`"),
+        )?;
+    }
+    for edge in edges.iter().filter(|edge| edge.id_ty.is_none()) {
+        let name = generated_id_ident(&edge.kind).to_string();
+        register(
+            name.clone(),
+            edge.kind.span(),
+            format!("自動生成ID型 `{name}`"),
+        )?;
+    }
+    for path in nodes
+        .iter()
+        .filter_map(|node| node.id_ty.as_ref())
+        .chain(edges.iter().filter_map(|edge| edge.id_ty.as_ref()))
+    {
+        validate_explicit_id_name(path, &names)?;
+    }
+
+    Ok(())
+}
+
+fn validate_explicit_id_name(
+    path: &syn::Path,
+    generated_names: &HashMap<String, (proc_macro2::Span, String)>,
+) -> syn::Result<()> {
+    if path.leading_colon.is_some() || path.segments.len() != 1 {
+        return Ok(());
+    }
+    let name = path.segments[0].ident.to_string();
+    let Some((generated_span, generated_description)) = generated_names.get(&name) else {
+        return Ok(());
+    };
+
+    let mut error = syn::Error::new_spanned(
+        path,
+        format!(
+            "明示ID型 `{name}` はschema moduleの{generated_description}と衝突します。親moduleの既存型を使う場合は `super::{name}` のように修飾してください"
+        ),
+    );
+    error.combine(syn::Error::new(*generated_span, "衝突する生成名はこちら"));
+    Err(error)
 }
 
 pub fn validate_edge_endpoints(nodes: &[NodeDecl], edges: &[EdgeDecl]) -> syn::Result<()> {

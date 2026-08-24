@@ -24,15 +24,6 @@
 //! 禁止しているため、`unique pair` の併記は冗長になる
 //! (`docs/schema_v4.md` §1 「実装を単純にするため特別扱いしない」方針)。
 
-/// ノードキー。v4.2 からは `graph_schema!` はこれも生成せず、
-/// `{ノード型名}Id` という命名規約で参照するだけ (`docs/node_id_v4_2.md`)。
-/// `PartialOrd`/`Ord` は必須ではないが (必須なのは `Debug, Clone,
-/// PartialEq, Eq, Hash` だけ)、`validate.rs` が到達不能/行き止まり状態を
-/// 決定的な順で報告するためにキーをソートする箇所がこのアプリ側の都合で
-/// 要求している。
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct OrderStateId(pub String);
-
 /// 状態ノード。注文ライフサイクル中の1状態を表す
 /// (draft/pending_payment/paid/shipped/delivered/cancelled/refunded)。
 ///
@@ -73,4 +64,11 @@ graphite::graph_schema! {
 }
 
 // 綴り短縮のための再輸出。同名edgeを持つschemaを足したらこの行を消す。
-pub use OrderFsm::{Cancel, Deliver, Pay, Refund, Ship, Submit};
+pub use OrderFsm::{Cancel, Deliver, OrderStateId, Pay, Refund, Ship, Submit};
+
+impl PartialOrd for OrderStateId {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> { Some(self.cmp(other)) }
+}
+impl Ord for OrderStateId {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering { self.0.cmp(&other.0) }
+}

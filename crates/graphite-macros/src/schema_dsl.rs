@@ -11,7 +11,7 @@
 //! graphite::graph_schema! {
 //!     schema Org {
 //!         node Person;
-//!         node Team;
+//!         node Team(id: ExistingTeamId);
 //!
 //!         edge BelongsTo = Person -> Team              where each Person: 1;
 //!         edge Boss      = Person -[BossEdge]-> Person where each Person: 0..1;
@@ -23,6 +23,9 @@
 //!
 //! ノード型・エッジ属性型はいずれも `graph_schema!` の外でユーザーが普通の
 //! struct として宣言したものを参照するだけで、このマクロは生成しない。
+//! `node Type;` と `edge Kind = ...;` は schema module 内にそれぞれ
+//! `TypeId(String)` と `KindId(String)` を生成する。既存ID型を使う場合は
+//! `node Type(id: 型パス);` / `edge Kind(id: 型パス) = ...;` と明示する。
 //! ノード型名は端点照合に使うため単純 `Ident` のみ (モジュール修飾したい
 //! 場合は `use` で名前をこのスコープに持ち込む)。エッジ属性型は照合には
 //! 使わず参照するだけなので `syn::Path` (モジュール修飾可) を許す。
@@ -63,6 +66,7 @@ mod kw {
     syn::custom_keyword!(schema);
     syn::custom_keyword!(node);
     syn::custom_keyword!(edge);
+    syn::custom_keyword!(id);
     syn::custom_keyword!(each);
     syn::custom_keyword!(unique);
     syn::custom_keyword!(pair);
@@ -99,14 +103,44 @@ fn drain_rest(content: ParseStream) {
 /// (`crate::naming::plural_field_name`) で生成する。
 pub struct NodeDecl {
     pub name: Ident,
+    /// 既存の公開 ID 型。`None` の場合は schema module 内に `{name}Id`
+    /// newtype を生成する。
+    pub id_ty: Option<Path>,
 }
 
 impl Parse for NodeDecl {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         input.parse::<kw::node>()?;
         let name: Ident = input.parse()?;
+        let id_ty = parse_optional_id_type(input)?;
         input.parse::<Token![;]>()?;
-        Ok(NodeDecl { name })
+        Ok(NodeDecl { name, id_ty })
+    }
+}
+
+/// Node/Edge 共通の明示 ID 型指定 `(id: 型パス)` を読む。
+fn parse_optional_id_type(input: ParseStream) -> syn::Result<Option<Path>> {
+    if !input.peek(syn::token::Paren) {
+        return Ok(None);
+    }
+
+    let content;
+    parenthesized!(content in input);
+    let parsed = (|| {
+        content.parse::<kw::id>()?;
+        content.parse::<Token![:]>()?;
+        let id_ty: Path = content.parse()?;
+        if !content.is_empty() {
+            return Err(content.error("ID 型は `(id: 型パス)` の形式で指定してください"));
+        }
+        Ok(id_ty)
+    })();
+    match parsed {
+        Ok(id_ty) => Ok(Some(id_ty)),
+        Err(error) => {
+            drain_rest(&content);
+            Err(error)
+        }
     }
 }
 
@@ -220,6 +254,9 @@ pub struct EdgeDecl {
     /// §1)。型名なので慣習上 PascalCase だが、パース段階ではケースを検査
     /// しない (単なる `Ident`)。
     pub kind: Ident,
+    /// 既存の公開 ID 型。`None` の場合は schema module 内に `{kind}Id`
+    /// newtype を生成する。
+    pub id_ty: Option<Path>,
     pub from: Ident,
     pub to: Ident,
     /// 始点の役割名 (`(subordinate: Employee)` の `subordinate`)。役割名を
@@ -320,6 +357,7 @@ impl Parse for EdgeDecl {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         input.parse::<kw::edge>()?;
         let kind: Ident = input.parse()?;
+        let id_ty = parse_optional_id_type(input)?;
         input.parse::<Token![=]>()?;
         let from_ep = parse_endpoint(input)?;
         let (attrs_ty, directed) = parse_edge_arrow(input)?;
@@ -356,6 +394,7 @@ impl Parse for EdgeDecl {
         input.parse::<Token![;]>()?;
         Ok(EdgeDecl {
             kind,
+            id_ty,
             from: from_ep.ty,
             to: to_ep.ty,
             from_role: from_ep.role,

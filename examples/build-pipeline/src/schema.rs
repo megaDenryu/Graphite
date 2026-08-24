@@ -40,19 +40,23 @@ pub struct Artifact {
     pub path: String,
 }
 
+/// 外部のID領域をschemaへ明示する例。DebugやDisplayは実装しない。
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub struct ProducesId(pub String);
+
 #[rustfmt::skip]
 graphite::graph_schema! {
     schema BuildPipeline {
-        node Task;
-        node Artifact;
+        node Task(id: TaskId);
+        node Artifact(id: ArtifactId);
 
-        edge Produces = Task -> Artifact where unique pair;
+        edge Produces(id: ProducesId) = Task -> Artifact where unique pair;
         edge Consumes = Task -> Artifact where unique pair;
     }
 }
 
 // 綴り短縮のための再輸出。同名edgeを持つschemaを足したらこの行を消す。
-pub use BuildPipeline::{Consumes, ConsumesId, Produces, ProducesId};
+pub use BuildPipeline::{Consumes, ConsumesId, Produces};
 
 #[cfg(test)]
 mod fixed_pipeline_showcase {
@@ -65,16 +69,16 @@ mod fixed_pipeline_showcase {
     #[rustfmt::skip]
     fn graphリテラルで小さな固定パイプラインを組み立てられる() {
         let g = graphite::graph!(BuildPipeline {
-            fetch = Task { name: "fetch".into(), cmd: "cargo fetch".into(), secs: 10 },
-            build = Task { name: "build".into(), cmd: "cargo build".into(), secs: 60 },
-            test  = Task { name: "test".into(), cmd: "cargo test".into(), secs: 30 },
+            fetch @ TaskId("fetch".into()) = Task { name: "fetch".into(), cmd: "cargo fetch".into(), secs: 10 },
+            build @ TaskId("build".into()) = Task { name: "build".into(), cmd: "cargo build".into(), secs: 60 },
+            test  @ TaskId("test".into()) = Task { name: "test".into(), cmd: "cargo test".into(), secs: 30 },
 
-            index = Artifact { path: "vendor/registry-index".into() },
-            rlib  = Artifact { path: "target/core.rlib".into() },
+            index @ ArtifactId("index".into()) = Artifact { path: "vendor/registry-index".into() },
+            rlib  @ ArtifactId("rlib".into()) = Artifact { path: "target/core.rlib".into() },
 
-            fetch_index = Produces(fetch -> index),
+            fetch_index @ ProducesId("fetch_index".into()) = Produces(fetch -> index),
             build_index = Consumes(build -> index),
-            build_rlib  = Produces(build -> rlib),
+            build_rlib @ ProducesId("build_rlib".into()) = Produces(build -> rlib),
             test_rlib   = Consumes(test -> rlib),
         })
         .expect("正常な固定パイプラインは構築に成功するはず");

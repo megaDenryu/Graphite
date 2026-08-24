@@ -1,6 +1,6 @@
 //! `graph_schema!` のコード生成本体 (v4、`docs/schema_v4.md` §3 参照。
-//! v4.1 の役割名・無向辺は `docs/edge_endpoints_v4_1.md`、v4.2 のノード Id
-//! ユーザー宣言化は `docs/node_id_v4_2.md` 参照)。
+//! v4.1 の役割名・無向辺は `docs/edge_endpoints_v4_1.md`、ID 型の既定生成と
+//! 明示指定は `docs/node_id_v4_2.md` 参照)。
 //!
 //! ## 生成物の全体像 (1エッジ種別分)
 //!
@@ -10,13 +10,13 @@
 //! ```text
 //! pub mod Org {
 //! pub struct BossId(pub String);
-//! pub struct Boss(pub super::PersonId, pub super::PersonId, pub super::BossEdge);
+//! pub struct Boss(pub PersonId, pub PersonId, pub super::BossEdge);
 //! impl Boss {
 //!     pub fn from(&self) -> &PersonId { &self.0 }
 //!     pub fn to(&self) -> &PersonId { &self.1 }
 //!     pub fn payload(&self) -> &BossEdge { &self.2 }
 //!
-//!     pub fn of(g: &Graph, from: &super::PersonId) -> Option<(&super::Person, &super::BossEdge)> { .. }
+//!     pub fn of(g: &Graph, from: &PersonId) -> Option<(&super::Person, &super::BossEdge)> { .. }
 //!     pub fn get(g: &Graph, id: &BossId) -> Option<&Boss> { .. }
 //! }
 //! pub struct Person; // ノード読み取り用マーカー
@@ -38,11 +38,8 @@
 //! ノード値型はユーザーが module 外に宣言し、複数 schema 間で共有できる。
 //! ユーザー型への固有 impl は追加せず、`Org::Person::get` のようにスキーマ
 //! module 内のノードマーカーへ読み取り API を生成する。
-//! v4.2 ではノードの newtype キー型 (`PersonId`) も同様にユーザーが
-//! `graph_schema!` の外に宣言する (`{ノード型名}Id` という命名規約で参照する
-//! だけで、このマクロはもう生成しない。`docs/node_id_v4_2.md`)。「型を
-//! 宣言した者が Id も宣言する」規則により、複数 schema が同じ `PersonId` を
-//! 共有できる。
+//! ID 型を省略した `node Person;` は schema module 内に `PersonId(String)` を
+//! 生成する。既存型を使う場合は `node Person(id: ExistingId);` と明示する。
 //!
 //! where 制約 → 戻り型の対応表 (`docs/schema_v4.md` §3.2、有向・始点側のみ):
 //! - `each X: 1`    -> `of` は直接参照 (未知キーはパニック、非パニック版 `get_of`)
@@ -73,31 +70,55 @@
 //! もの (`docs/reverse_query.md` 実装ノート)。
 
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote};
+use quote::{format_ident, quote, ToTokens};
 use syn::{Ident, Path};
 
-use crate::naming::{edge_storage_ident, graph_type_ident, plural_field_name, to_snake_case};
+use crate::naming::{
+    edge_storage_ident, generated_id_ident, graph_type_ident, plural_field_name, to_snake_case,
+};
 use crate::schema_dsl::{EachSpec, EdgeDecl, NodeDecl, SchemaInput};
 use crate::schema_validate::{self, EachSide};
 
-/// ノード宣言 1 つ分の、生成コードで使う識別子一式。
-///
-/// ノード値の型 (`Person` 等) はユーザーが `graph_schema!` の外で宣言した
-/// 普通の struct への参照であり、このマクロは生成しない。v4.2
-/// (`docs/node_id_v4_2.md`) からは newtype キー型 (`PersonId`) も同様に
-/// ユーザー宣言への参照になった (「型を宣言した者が Id も宣言する」規則)。
-/// マクロが生成するのはグラフ機械 (ストレージ・builder・アクセサ・違反 enum、
-/// および辺の newtype キー型) だけ。
+/// 宣言を省略した既定生成ID、または明示された既存ID型を表す。
+/// 生成コード内でどちらも同じ型位置へ展開できるよう、パスの調整もここへ集約する。
+struct PublicIdType {
+    generated_ident: Ident,
+    explicit_path: Option<Path>,
+}
+
+impl PublicIdType {
+    fn is_generated(&self) -> bool {
+        self.explicit_path.is_none()
+    }
+}
+
+impl ToTokens for PublicIdType {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let Some(path) = &self.explicit_path else {
+            self.generated_ident.to_tokens(tokens);
+            return;
+        };
+
+        let first = path.segments.first().map(|segment| segment.ident.to_string());
+        if path.leading_colon.is_some() || first.as_deref() == Some("crate") {
+            path.to_tokens(tokens);
+        } else if first.as_deref() == Some("self") {
+            let mut relative = path.clone();
+            relative.segments = path.segments.iter().skip(1).cloned().collect();
+            quote!(super::#relative).to_tokens(tokens);
+        } else {
+            // `use super::*` が呼び出し側の型名を取り込み、外部crate名と
+            // プリミティブ型は生成moduleでも同じパスで解決できる。
+            path.to_tokens(tokens);
+        }
+    }
+}
+
 struct NodeInfo {
     /// ノード値の型名 (`Person`)。ユーザー宣言型への参照。
     type_ident: Ident,
-    /// newtype キー型名 (`PersonId`)。ユーザーが `graph_schema!` の外で
-    /// 宣言した型への**参照**であり、このマクロはもう生成しない
-    /// (`docs/node_id_v4_2.md`)。命名規約は `{ノード型名}Id`。スパンは
-    /// ノード宣言の型トークン (`decl.name`) を継承する ── 未宣言なら rustc
-    /// の「cannot find type `PersonId`」がノード宣言の位置で出るようにする
-    /// ため (`docs/node_id_v4_2.md` 「構文とユーザーの書くもの」)。
-    id_ident: Ident,
+    /// スキーマ内限定で既定生成するID、または `(id: 型パス)` で指定された既存型。
+    id_ty: PublicIdType,
     /// 内部ストレージの複数形フィールド名 (`persons`)。
     field_ident: Ident,
     /// builder のノード追加メソッド名 = 単数形 snake_case (`person`)。
@@ -116,7 +137,10 @@ impl NodeInfo {
         let field_ident = Ident::new(&plural_field_name(&type_name), span);
         NodeInfo {
             type_ident: decl.name.clone(),
-            id_ident: format_ident!("{}Id", decl.name, span = span),
+            id_ty: PublicIdType {
+                generated_ident: generated_id_ident(&decl.name),
+                explicit_path: decl.id_ty.clone(),
+            },
             field_ident,
             accessor_ident: Ident::new(&to_snake_case(&type_name), span),
         }
@@ -137,7 +161,7 @@ impl NodeInfo {
 struct EdgeInfo<'a> {
     kind: &'a Ident,
     /// エッジ種別の newtype キー型名 (`BossId`)。
-    id_ident: Ident,
+    id_ty: PublicIdType,
     /// 内部ストレージのフィールド名 = builder 追加メソッド名 = 単数形
     /// snake_case (`boss`)。`Kind` は既に PascalCase (型名) なので
     /// ノードと同じ `to_snake_case` 変換で導出できる。
@@ -215,6 +239,7 @@ pub fn generate(schema: &SchemaInput) -> TokenStream {
     // 共通 supertrait (`gen_insertable_trait` のドキュメントコメント参照、
     // `docs/graph_splice.md` §2)。
     let insertable_trait_ident = format_ident!("{}Insertable", schema_name);
+    let default_id_trait_ident = format_ident!("{}DefaultId", schema_name);
 
     let node_infos: Vec<NodeInfo> = schema.nodes.iter().map(NodeInfo::new).collect();
 
@@ -224,7 +249,7 @@ pub fn generate(schema: &SchemaInput) -> TokenStream {
         .map(|edge| build_edge_info(edge, &node_infos))
         .collect();
 
-    let edge_id_defs = gen_edge_id_types(&edge_infos);
+    let default_id_defs = gen_default_id_types(&node_infos, &edge_infos);
     let edge_tuple_struct_defs = gen_edge_tuple_structs(&edge_infos);
     let violation_def = gen_violation_enum(&violation_ident, &node_infos, &edge_infos);
     let schema_struct_def = gen_schema_struct(&graph_ident, &node_infos, &edge_infos);
@@ -235,15 +260,20 @@ pub fn generate(schema: &SchemaInput) -> TokenStream {
         &violation_ident,
         &node_trait_ident,
         &edge_trait_ident,
-        &insertable_trait_ident,
+        &default_id_trait_ident,
         &graph_ident,
         &node_infos,
         &edge_infos,
     );
-    let insertable_trait_def = gen_insertable_trait(&insertable_trait_ident, &builder_ident);
+    let insertable_trait_def = gen_insertable_traits(
+        &insertable_trait_ident,
+        &default_id_trait_ident,
+        &builder_ident,
+    );
     let node_trait_and_impls = gen_node_trait_and_impls(
         &node_trait_ident,
         &insertable_trait_ident,
+        &default_id_trait_ident,
         &builder_ident,
         &graph_ident,
         &node_infos,
@@ -251,6 +281,7 @@ pub fn generate(schema: &SchemaInput) -> TokenStream {
     let edge_trait_and_impls = gen_edge_trait_and_impls(
         &edge_trait_ident,
         &insertable_trait_ident,
+        &default_id_trait_ident,
         &builder_ident,
         &edge_infos,
     );
@@ -263,7 +294,7 @@ pub fn generate(schema: &SchemaInput) -> TokenStream {
         pub mod #schema_name {
             use super::*;
 
-            #(#edge_id_defs)*
+            #(#default_id_defs)*
             #(#edge_tuple_struct_defs)*
             #violation_def
             #schema_struct_def
@@ -305,7 +336,10 @@ fn build_edge_info<'a>(decl: &'a EdgeDecl, node_infos: &'a [NodeInfo]) -> EdgeIn
     });
     EdgeInfo {
         kind,
-        id_ident: format_ident!("{}Id", kind, span = span),
+        id_ty: PublicIdType {
+            generated_ident: generated_id_ident(kind),
+            explicit_path: decl.id_ty.clone(),
+        },
         accessor_ident,
         index_field_ident,
         to_index_field_ident,
@@ -337,9 +371,9 @@ fn build_edge_info<'a>(decl: &'a EdgeDecl, node_infos: &'a [NodeInfo]) -> EdgeIn
 /// rustc の型推論 (単相化) に委ねたいので、`extend<K, T>` の `T` に対する
 /// **単一の**トレイト境界が要る。しかし `insert`/`add` はそれぞれ「ノード専用」
 /// 「エッジ専用」の型境界を保つ必要がある (`docs/graph_splice.md` §2「これも
-/// 統一できるか? しない」)。この2つの要求を両立させるため、`insert_into`/
-/// `Id` を本トレイトに集約し、`{Schema}Node`/`{Schema}Edge` をこの supertrait
-/// として再定義する。
+/// 統一できるか? しない」)。この2つの要求を両立させるため、型付き挿入と
+/// `Id` を本トレイトに集約し、文字列から既定IDを作る能力だけを別トレイトに
+/// 分ける。
 ///
 /// ## 検討した代替案: 2本の blanket impl
 ///
@@ -357,16 +391,22 @@ fn build_edge_info<'a>(decl: &'a EdgeDecl, node_infos: &'a [NodeInfo]) -> EdgeIn
 /// **E0119 (conflicting implementations)** になる。したがって、型ごとに
 /// `{Schema}Insertable` を直接 impl する (= supertrait 関係にして、ノード型
 /// への impl ブロックを1つ増やす) 方式を採用する。
-fn gen_insertable_trait(insertable_trait_ident: &Ident, builder_ident: &Ident) -> TokenStream {
+fn gen_insertable_traits(
+    insertable_trait_ident: &Ident,
+    default_id_trait_ident: &Ident,
+    builder_ident: &Ident,
+) -> TokenStream {
     quote! {
-        /// ノード・エッジ共通の挿入トレイト。統一 `extend` (下記
-        /// `{Builder}::extend`) の型境界として使う。利用者がこのトレイトの
-        /// メソッドを直接呼ぶことは想定しない。
+        /// 型付き ID を受け取るノード・エッジ共通の挿入トレイト。
         pub trait #insertable_trait_ident: Sized {
             type Id;
-            /// `self` を `b` の対応する内部ストレージへ格納し、発行された
-            /// キーを返す。
-            fn insert_into(self, b: &mut #builder_ident, key: String) -> Self::Id;
+            fn insert_with_id(self, b: &mut #builder_ident, id: Self::Id) -> Self::Id;
+        }
+
+        /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
+        /// 実装する。明示ID型には実装せず、文字列変換を要求しない。
+        pub trait #default_id_trait_ident: #insertable_trait_ident {
+            fn insert_with_binding(self, b: &mut #builder_ident, binding: String) -> Self::Id;
         }
     }
 }
@@ -391,34 +431,31 @@ fn gen_insertable_trait(insertable_trait_ident: &Ident, builder_ident: &Ident) -
 /// 追加すると schema 間で同名メソッドが衝突するため、読み取り API は
 /// `Org::Person::get(&g, &id)` のように生成したノードマーカーへ置く。
 ///
-/// ## v4 での拡張: `{Schema}Insertable` supertrait (`extend` 統一)
+/// ## `{Schema}Insertable` と `{Schema}DefaultId`
 ///
-/// `insert_into`/`Id` は `{Schema}Insertable` (`gen_insertable_trait` 参照) に
-/// 移動し、このトレイトはその supertrait として `get`/`ids`/`iter` だけを
-/// 追加する。`insert` の型境界は変わらず `N: #node_trait_ident` のまま
-/// (ノード専用の型境界を保つ)。ノード型1つにつき impl ブロックが2つ
-/// (`{Schema}Insertable` + `{Schema}Node`) になるが、`insert`/`add` の型の
-/// 厳密さ (ノード専用/エッジ専用) を保ったまま `extend` の共通境界を得る
-/// トレードオフとして採用する。
+/// 型付き挿入と関連型 `Id` は `{Schema}Insertable` に置く。文字列の束縛名から
+/// IDを作る操作は自動生成IDだけが実装する `{Schema}DefaultId` に置く。
+/// `{Schema}Node` はノード専用の型境界を保つマーカートレイトである。
 ///
 /// ## 命名判断 (`docs/design_principles.md` 原則3: std 命名規約準拠)
 ///
 /// - **内部 trait 名は `{Schema}Node` とした**。生成 module に移した後も
 ///   `node Node;` や `edge Edge = ..;` と生成基盤名が衝突する可能性を増やさず、
 ///   コンパイラ診断から所属 schema を判別できる名前を維持する。
-/// - **メソッド名は `insert_into`/`get`/`ids`/`iter`**。`get`/`ids`/`iter` は
+/// - **メソッド名は `insert_with_id`/`get`/`ids`/`iter`**。`get`/`ids`/`iter` は
 ///   `docs/schema_v4.md` §3.2 のイメージ通り (std の `HashMap::get`/
 ///   `HashMap::keys`/`HashMap::iter` に倣った命名)。
 fn gen_node_trait_and_impls(
     node_trait_ident: &Ident,
     insertable_trait_ident: &Ident,
+    default_id_trait_ident: &Ident,
     builder_ident: &Ident,
     graph_ident: &Ident,
     nodes: &[NodeInfo],
 ) -> TokenStream {
     let node_impls = nodes.iter().map(|n| {
         let ty = &n.type_ident;
-        let id_ty = &n.id_ident;
+        let id_ty = &n.id_ty;
         let accessor = &n.accessor_ident;
         let field = &n.field_ident;
         // IDE 支援 (`docs/ide_support_spec.md` §1.9, G3 ポリシー): このノード
@@ -428,36 +465,49 @@ fn gen_node_trait_and_impls(
         // 単一の由来トークンを持たない schema 全体のインフラなので call_site
         // のままでよい (指示どおり、impl 側だけに適用する)。
         let span = ty.span();
-        let insert_into_ident = Ident::new("insert_into", span);
+        let insert_with_id_ident = Ident::new("insert_with_id", span);
         let get_ident = Ident::new("get", span);
         let ids_ident = Ident::new("ids", span);
         let iter_ident = Ident::new("iter", span);
+        let default_id_impl = if n.id_ty.is_generated() {
+            let generated_id = &n.id_ty.generated_ident;
+            quote! {
+                impl #default_id_trait_ident for super::#ty {
+                    fn insert_with_binding(self, b: &mut #builder_ident, binding: String) -> Self::Id {
+                        #insertable_trait_ident::insert_with_id(self, b, #generated_id(binding))
+                    }
+                }
+            }
+        } else {
+            quote! {}
+        };
         quote! {
             impl #insertable_trait_ident for super::#ty {
-                type Id = super::#id_ty;
+                type Id = #id_ty;
 
-                fn #insert_into_ident(self, b: &mut #builder_ident, key: String) -> Self::Id {
-                    let id = super::#id_ty(key);
-                    b.#accessor(id.clone(), self);
-                    id
+                fn #insert_with_id_ident(self, b: &mut #builder_ident, id: Self::Id) -> Self::Id {
+                    let returned_id = id.clone();
+                    b.#accessor(id, self);
+                    returned_id
                 }
             }
 
+            #default_id_impl
             impl #node_trait_ident for super::#ty {}
 
             /// このスキーマにおける `#ty` ノード種別の問い合わせ名前空間。
             pub struct #ty;
 
             impl #ty {
-                pub fn #get_ident<'g>(g: &'g #graph_ident, id: &super::#id_ty) -> Option<&'g super::#ty> {
+                pub fn #get_ident<'g>(g: &'g #graph_ident, id: &#id_ty) -> Option<&'g super::#ty> {
                     g.#field.get(id)
                 }
 
-                pub fn #ids_ident<'g>(g: &'g #graph_ident) -> impl Iterator<Item = &'g super::#id_ty> {
+                pub fn #ids_ident<'g>(g: &'g #graph_ident) -> impl Iterator<Item = &'g #id_ty> {
                     g.#field.ids()
                 }
 
-                pub fn #iter_ident<'g>(g: &'g #graph_ident) -> impl Iterator<Item = (&'g super::#id_ty, &'g super::#ty)> {
+                pub fn #iter_ident<'g>(g: &'g #graph_ident) -> impl Iterator<Item = (&'g #id_ty, &'g super::#ty)> {
                     g.#field.iter()
                 }
             }
@@ -481,35 +531,47 @@ fn gen_node_trait_and_impls(
 /// `ids`/`len`) は各エッジ種別型 (`Kind`) への固有 impl で提供するため、
 /// このトレイトには含めない (`gen_edge_query_impl` 参照)。
 ///
-/// `insert_into`/`Id` は `{Schema}Insertable` (`gen_insertable_trait` 参照) に
-/// 集約したため、このトレイト自体は supertrait 境界のみのマーカーになる
-/// (`extend` 統一、`docs/graph_splice.md` §2)。`add` の型境界は変わらず
-/// `E: #edge_trait_ident` のまま (エッジ専用の型境界を保つ)。
+/// 型付き挿入と関連型 `Id` は `{Schema}Insertable` に集約する。このトレイトは
+/// エッジ専用の型境界を保つマーカーになる。
 fn gen_edge_trait_and_impls(
     edge_trait_ident: &Ident,
     insertable_trait_ident: &Ident,
+    default_id_trait_ident: &Ident,
     builder_ident: &Ident,
     edges: &[EdgeInfo<'_>],
 ) -> TokenStream {
     let edge_impls = edges.iter().map(|e| {
         let kind = e.kind;
-        let id_ty = &e.id_ident;
+        let id_ty = &e.id_ty;
         let accessor = &e.accessor_ident;
         // 必須ではないが (このメソッドはユーザーが直接呼ぶ想定ではない)、
         // 他の生成メソッドとの一貫性のため `edge.kind` のスパンを付ける
         // (`docs/ide_support_spec.md` §1.9 の指示: 余裕があれば付けてよい)。
-        let insert_into_ident = Ident::new("insert_into", kind.span());
+        let insert_with_id_ident = Ident::new("insert_with_id", kind.span());
+        let default_id_impl = if e.id_ty.is_generated() {
+            let generated_id = &e.id_ty.generated_ident;
+            quote! {
+                impl #default_id_trait_ident for #kind {
+                    fn insert_with_binding(self, b: &mut #builder_ident, binding: String) -> Self::Id {
+                        #insertable_trait_ident::insert_with_id(self, b, #generated_id(binding))
+                    }
+                }
+            }
+        } else {
+            quote! {}
+        };
         quote! {
             impl #insertable_trait_ident for #kind {
                 type Id = #id_ty;
 
-                fn #insert_into_ident(self, b: &mut #builder_ident, key: String) -> Self::Id {
-                    let id = #id_ty(key);
-                    b.#accessor(id.clone(), self);
-                    id
+                fn #insert_with_id_ident(self, b: &mut #builder_ident, id: Self::Id) -> Self::Id {
+                    let returned_id = id.clone();
+                    b.#accessor(id, self);
+                    returned_id
                 }
             }
 
+            #default_id_impl
             impl #edge_trait_ident for #kind {}
         }
     });
@@ -524,16 +586,18 @@ fn gen_edge_trait_and_impls(
     }
 }
 
-/// エッジ種別ごとの newtype キー型 (`BossId(pub String)`)。ノードキーと
-/// 同じ規約 (`docs/schema_v4.md` §3.1)。
-fn gen_edge_id_types(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
-    edges
+/// 明示ID型がないノード・エッジのスキーマ内限定の型付き文字列IDを生成する。
+fn gen_default_id_types(nodes: &[NodeInfo], edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
+    nodes
         .iter()
-        .map(|e| {
-            let id_ty = &e.id_ident;
+        .map(|node| &node.id_ty)
+        .chain(edges.iter().map(|edge| &edge.id_ty))
+        .filter(|id_ty| id_ty.is_generated())
+        .map(|id_ty| {
+            let ident = &id_ty.generated_ident;
             quote! {
-                #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-                pub struct #id_ty(pub String);
+                #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+                pub struct #ident(pub String);
             }
         })
         .collect()
@@ -558,16 +622,16 @@ fn gen_edge_tuple_structs(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
         .iter()
         .map(|e| {
             let kind = e.kind;
-            let p0_id = &e.from_node.id_ident;
-            let p1_id = &e.to_node.id_ident;
+            let p0_id = &e.from_node.id_ty;
+            let p1_id = &e.to_node.id_ty;
 
             let (struct_def, payload_method) = match &e.attrs_ty {
                 None => (
-                    quote! { pub struct #kind(pub super::#p0_id, pub super::#p1_id); },
+                    quote! { pub struct #kind(pub #p0_id, pub #p1_id); },
                     quote! {},
                 ),
                 Some(attrs) => (
-                    quote! { pub struct #kind(pub super::#p0_id, pub super::#p1_id, pub #attrs); },
+                    quote! { pub struct #kind(pub #p0_id, pub #p1_id, pub #attrs); },
                     quote! {
                         /// この辺の積み荷 (属性値) を返す。
                         pub fn payload(&self) -> &#attrs {
@@ -581,7 +645,7 @@ fn gen_edge_tuple_structs(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
                 quote! {
                     /// この辺の両端点を返す (無向辺には from/to という向きの
                     /// 語彙が無いため `endpoints` を使う)。
-                    pub fn endpoints(&self) -> (&super::#p0_id, &super::#p1_id) {
+                    pub fn endpoints(&self) -> (&#p0_id, &#p1_id) {
                         (&self.0, &self.1)
                     }
                 }
@@ -593,36 +657,64 @@ fn gen_edge_tuple_structs(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
                         quote! {
                             /// この辺の始点キーを返す (役割名: 宣言側の役割名
                             /// アクセサ、`.from()` は生成しない)。
-                            pub fn #m0(&self) -> &super::#p0_id {
+                            pub fn #m0(&self) -> &#p0_id {
                                 &self.0
                             }
                             /// この辺の終点キーを返す (役割名アクセサ)。
-                            pub fn #m1(&self) -> &super::#p1_id {
+                            pub fn #m1(&self) -> &#p1_id {
                                 &self.1
                             }
                         }
                     }
                     _ => quote! {
                         /// この辺の始点キーを返す。
-                        pub fn from(&self) -> &super::#p0_id {
+                        pub fn from(&self) -> &#p0_id {
                             &self.0
                         }
                         /// この辺の終点キーを返す。
-                        pub fn to(&self) -> &super::#p1_id {
+                        pub fn to(&self) -> &#p1_id {
                             &self.1
                         }
                     },
                 }
             };
 
+            // 利用者定義IDと積み荷へDebugを要求しない契約を守るため、端点を
+            // 表示できるのは両端が自動生成IDで積み荷がない場合に限る。
+            let debug_impl = if e.attrs_ty.is_none()
+                && e.from_node.id_ty.is_generated()
+                && e.to_node.id_ty.is_generated()
+            {
+                quote! {
+                    impl std::fmt::Debug for #kind {
+                        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                            f.debug_tuple(stringify!(#kind))
+                                .field(&self.0)
+                                .field(&self.1)
+                                .finish()
+                        }
+                    }
+                }
+            } else {
+                quote! {
+                    impl std::fmt::Debug for #kind {
+                        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                            f.write_str(stringify!(#kind))
+                        }
+                    }
+                }
+            };
+
             quote! {
-                #[derive(Debug, Clone, PartialEq)]
+                #[derive(Clone, PartialEq)]
                 #struct_def
 
                 impl #kind {
                     #position_accessors
                     #payload_method
                 }
+
+                #debug_impl
             }
         })
         .collect()
@@ -650,14 +742,20 @@ fn gen_violation_enum(
 ) -> TokenStream {
     let dup_variants = nodes.iter().map(|n| {
         let v = n.dup_variant();
-        let id = &n.id_ident;
-        quote! { #v(super::#id) }
+        let id = &n.id_ty;
+        quote! { #v(#id) }
     });
     let dup_display_arms = nodes.iter().map(|n| {
         let v = n.dup_variant();
         let type_name_str = n.type_ident.to_string();
-        quote! {
-            #violation_ident::#v(id) => write!(f, "{}のキーが重複しています: {:?}", #type_name_str, id)
+        if n.id_ty.is_generated() {
+            quote! {
+                #violation_ident::#v(id) => write!(f, "{}のキーが重複しています: {:?}", #type_name_str, id)
+            }
+        } else {
+            quote! {
+                #violation_ident::#v(_) => write!(f, "{}のキーが重複しています", #type_name_str)
+            }
         }
     });
 
@@ -666,50 +764,78 @@ fn gen_violation_enum(
 
     for edge in edges {
         let kind_str = edge.kind.to_string();
-        let edge_id = &edge.id_ident;
+        let edge_id = &edge.id_ty;
 
         let dup_key = edge.duplicate_key_variant();
         edge_variants.push(quote! {
             /// このエッジ種別のキーが重複している。
             #dup_key(#edge_id)
         });
-        edge_display_arms.push(quote! {
-            #violation_ident::#dup_key(id) => write!(
-                f, "{}のキーが重複しています: {:?}", #kind_str, id
-            )
+        edge_display_arms.push(if edge.id_ty.is_generated() {
+            quote! {
+                #violation_ident::#dup_key(id) => write!(f, "{}のキーが重複しています: {:?}", #kind_str, id)
+            }
+        } else {
+            quote! {
+                #violation_ident::#dup_key(_) => write!(f, "{}のキーが重複しています", #kind_str)
+            }
         });
 
         if edge.directed {
-            let from_id = &edge.from_node.id_ident;
-            let to_id = &edge.to_node.id_ident;
+            let from_id = &edge.from_node.id_ty;
+            let to_id = &edge.to_node.id_ty;
             let from_type_str = edge.from_node.type_ident.to_string();
             let to_type_str = edge.to_node.type_ident.to_string();
 
             let unk_src = edge.unknown_source_variant();
             edge_variants.push(quote! {
                 /// このエッジが未知の始点キーを参照している。
-                #unk_src { edge: #edge_id, source: super::#from_id }
+                #unk_src { edge: #edge_id, source: #from_id }
             });
-            edge_display_arms.push(quote! {
-                #violation_ident::#unk_src { edge, source } => write!(
-                    f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の始点, {}): {:?}",
-                    #kind_str, edge, #from_type_str, source
-                )
-            });
+            edge_display_arms.push(
+                if edge.id_ty.is_generated() && edge.from_node.id_ty.is_generated() {
+                    quote! {
+                        #violation_ident::#unk_src { edge, source } => write!(
+                            f,
+                            "未知のキーが参照されています (辺 `{}` {:?} の始点, {}): {:?}",
+                            #kind_str, edge, #from_type_str, source
+                        )
+                    }
+                } else {
+                    quote! {
+                        #violation_ident::#unk_src { .. } => write!(
+                            f,
+                            "未知のキーが参照されています (辺 `{}` の始点, {})",
+                            #kind_str, #from_type_str
+                        )
+                    }
+                },
+            );
 
             let unk_dst = edge.unknown_target_variant();
             edge_variants.push(quote! {
                 /// このエッジが未知の終点キーを参照している。
-                #unk_dst { edge: #edge_id, target: super::#to_id }
+                #unk_dst { edge: #edge_id, target: #to_id }
             });
-            edge_display_arms.push(quote! {
-                #violation_ident::#unk_dst { edge, target } => write!(
-                    f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の終点, {}): {:?}",
-                    #kind_str, edge, #to_type_str, target
-                )
-            });
+            edge_display_arms.push(
+                if edge.id_ty.is_generated() && edge.to_node.id_ty.is_generated() {
+                    quote! {
+                        #violation_ident::#unk_dst { edge, target } => write!(
+                            f,
+                            "未知のキーが参照されています (辺 `{}` {:?} の終点, {}): {:?}",
+                            #kind_str, edge, #to_type_str, target
+                        )
+                    }
+                } else {
+                    quote! {
+                        #violation_ident::#unk_dst { .. } => write!(
+                            f,
+                            "未知のキーが参照されています (辺 `{}` の終点, {})",
+                            #kind_str, #to_type_str
+                        )
+                    }
+                },
+            );
 
             if let (Some(spec), Some(side)) = (edge.each, edge.each_side) {
                 let expected_str = match spec {
@@ -721,27 +847,47 @@ fn gen_violation_enum(
                     EachSide::Source => {
                         edge_variants.push(quote! {
                             /// このエッジ種別の `each` 制約違反 (出次数)。
-                            #v { source: super::#from_id, count: usize }
+                            #v { source: #from_id, count: usize }
                         });
-                        edge_display_arms.push(quote! {
-                            #violation_ident::#v { source, count } => write!(
-                                f,
-                                "each制約違反: エッジ `{}` は {} {:?} について出次数 {} を期待しますが実際は {} 本です",
-                                #kind_str, #from_type_str, source, #expected_str, count
-                            )
+                        edge_display_arms.push(if edge.from_node.id_ty.is_generated() {
+                            quote! {
+                                #violation_ident::#v { source, count } => write!(
+                                    f,
+                                    "each制約違反: エッジ `{}` は {} {:?} について出次数 {} を期待しますが実際は {} 本です",
+                                    #kind_str, #from_type_str, source, #expected_str, count
+                                )
+                            }
+                        } else {
+                            quote! {
+                                #violation_ident::#v { count, .. } => write!(
+                                    f,
+                                    "each制約違反: エッジ `{}` は {} の出次数 {} を期待しますが実際は {} 本です",
+                                    #kind_str, #from_type_str, #expected_str, count
+                                )
+                            }
                         });
                     }
                     EachSide::Target => {
                         edge_variants.push(quote! {
                             /// このエッジ種別の `each` 制約違反 (入次数)。
-                            #v { target: super::#to_id, count: usize }
+                            #v { target: #to_id, count: usize }
                         });
-                        edge_display_arms.push(quote! {
-                            #violation_ident::#v { target, count } => write!(
-                                f,
-                                "each制約違反: エッジ `{}` は {} {:?} について入次数 {} を期待しますが実際は {} 本です",
-                                #kind_str, #to_type_str, target, #expected_str, count
-                            )
+                        edge_display_arms.push(if edge.to_node.id_ty.is_generated() {
+                            quote! {
+                                #violation_ident::#v { target, count } => write!(
+                                    f,
+                                    "each制約違反: エッジ `{}` は {} {:?} について入次数 {} を期待しますが実際は {} 本です",
+                                    #kind_str, #to_type_str, target, #expected_str, count
+                                )
+                            }
+                        } else {
+                            quote! {
+                                #violation_ident::#v { count, .. } => write!(
+                                    f,
+                                    "each制約違反: エッジ `{}` は {} の入次数 {} を期待しますが実際は {} 本です",
+                                    #kind_str, #to_type_str, #expected_str, count
+                                )
+                            }
                         });
                     }
                     EachSide::Degree => unreachable!("有向辺のeachはDegreeにはならない"),
@@ -753,34 +899,58 @@ fn gen_violation_enum(
                 edge_variants.push(quote! {
                     /// このエッジ種別の `unique pair` 違反 (同じ始点・終点の対に
                     /// 2本目の辺が張られた)。
-                    #v { source: super::#from_id, target: super::#to_id }
+                    #v { source: #from_id, target: #to_id }
                 });
-                edge_display_arms.push(quote! {
-                    #violation_ident::#v { source, target } => write!(
-                        f,
-                        "unique pair違反: エッジ `{}` は {:?} -> {:?} の対に既に辺が存在します",
-                        #kind_str, source, target
-                    )
-                });
+                edge_display_arms.push(
+                    if edge.from_node.id_ty.is_generated() && edge.to_node.id_ty.is_generated() {
+                        quote! {
+                            #violation_ident::#v { source, target } => write!(
+                                f,
+                                "unique pair違反: エッジ `{}` は {:?} -> {:?} の対に既に辺が存在します",
+                                #kind_str, source, target
+                            )
+                        }
+                    } else {
+                        quote! {
+                            #violation_ident::#v { .. } => write!(
+                                f,
+                                "unique pair違反: エッジ `{}` の同じ始点・終点の対に既に辺が存在します",
+                                #kind_str
+                            )
+                        }
+                    },
+                );
             }
         } else {
             // 無向辺: 両端は同じノード型 (validate 済み) なので from_node で代表する。
-            let node_id = &edge.from_node.id_ident;
+            let node_id = &edge.from_node.id_ty;
             let node_type_str = edge.from_node.type_ident.to_string();
 
             let unk = edge.unknown_endpoint_variant();
             edge_variants.push(quote! {
                 /// このエッジが未知の端点キーを参照している (無向のため位置の
                 /// 区別は無い)。
-                #unk { edge: #edge_id, endpoint: super::#node_id }
+                #unk { edge: #edge_id, endpoint: #node_id }
             });
-            edge_display_arms.push(quote! {
-                #violation_ident::#unk { edge, endpoint } => write!(
-                    f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の端点, {}): {:?}",
-                    #kind_str, edge, #node_type_str, endpoint
-                )
-            });
+            edge_display_arms.push(
+                if edge.id_ty.is_generated() && edge.from_node.id_ty.is_generated() {
+                    quote! {
+                        #violation_ident::#unk { edge, endpoint } => write!(
+                            f,
+                            "未知のキーが参照されています (辺 `{}` {:?} の端点, {}): {:?}",
+                            #kind_str, edge, #node_type_str, endpoint
+                        )
+                    }
+                } else {
+                    quote! {
+                        #violation_ident::#unk { .. } => write!(
+                            f,
+                            "未知のキーが参照されています (辺 `{}` の端点, {})",
+                            #kind_str, #node_type_str
+                        )
+                    }
+                },
+            );
 
             if let (Some(spec), Some(EachSide::Degree)) = (edge.each, edge.each_side) {
                 let expected_str = match spec {
@@ -790,14 +960,24 @@ fn gen_violation_enum(
                 let v = edge.each_violation_variant();
                 edge_variants.push(quote! {
                     /// このエッジ種別の `each` 制約違反 (次数、無向)。
-                    #v { node: super::#node_id, count: usize }
+                    #v { node: #node_id, count: usize }
                 });
-                edge_display_arms.push(quote! {
-                    #violation_ident::#v { node, count } => write!(
-                        f,
-                        "each制約違反: エッジ `{}` は {} {:?} について次数 {} を期待しますが実際は {} 本です",
-                        #kind_str, #node_type_str, node, #expected_str, count
-                    )
+                edge_display_arms.push(if edge.from_node.id_ty.is_generated() {
+                    quote! {
+                        #violation_ident::#v { node, count } => write!(
+                            f,
+                            "each制約違反: エッジ `{}` は {} {:?} について次数 {} を期待しますが実際は {} 本です",
+                            #kind_str, #node_type_str, node, #expected_str, count
+                        )
+                    }
+                } else {
+                    quote! {
+                        #violation_ident::#v { count, .. } => write!(
+                            f,
+                            "each制約違反: エッジ `{}` は {} の次数 {} を期待しますが実際は {} 本です",
+                            #kind_str, #node_type_str, #expected_str, count
+                        )
+                    }
                 });
             }
 
@@ -806,21 +986,31 @@ fn gen_violation_enum(
                 edge_variants.push(quote! {
                     /// このエッジ種別の `unique pair` 違反 (無向のため
                     /// 順序を無視した対で判定)。
-                    #v { a: super::#node_id, b: super::#node_id }
+                    #v { a: #node_id, b: #node_id }
                 });
-                edge_display_arms.push(quote! {
-                    #violation_ident::#v { a, b } => write!(
-                        f,
-                        "unique pair違反: エッジ `{}` は {{{:?}, {:?}}} の対に既に辺が存在します",
-                        #kind_str, a, b
-                    )
+                edge_display_arms.push(if edge.from_node.id_ty.is_generated() {
+                    quote! {
+                        #violation_ident::#v { a, b } => write!(
+                            f,
+                            "unique pair違反: エッジ `{}` は {{{:?}, {:?}}} の対に既に辺が存在します",
+                            #kind_str, a, b
+                        )
+                    }
+                } else {
+                    quote! {
+                        #violation_ident::#v { .. } => write!(
+                            f,
+                            "unique pair違反: エッジ `{}` の同じ端点対に既に辺が存在します",
+                            #kind_str
+                        )
+                    }
                 });
             }
         }
     }
 
     quote! {
-        #[derive(Debug, Clone, PartialEq, Eq)]
+        #[derive(Clone, PartialEq, Eq)]
         pub enum #violation_ident {
             #(#dup_variants,)*
             #(#edge_variants,)*
@@ -835,6 +1025,12 @@ fn gen_violation_enum(
             }
         }
 
+        impl std::fmt::Debug for #violation_ident {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                std::fmt::Display::fmt(self, f)
+            }
+        }
+
         impl std::error::Error for #violation_ident {}
     }
 }
@@ -846,30 +1042,30 @@ fn gen_schema_struct(
 ) -> TokenStream {
     let node_fields = nodes.iter().map(|n| {
         let field = &n.field_ident;
-        let id = &n.id_ident;
+        let id = &n.id_ty;
         let ty = &n.type_ident;
-        quote! { #field: graphite::KeyedTable<super::#id, super::#ty> }
+        quote! { #field: graphite::KeyedTable<#id, super::#ty> }
     });
     let edge_fields = edges.iter().map(|e| {
         let accessor = &e.accessor_ident;
         let index_field = &e.index_field_ident;
-        let id_ty = &e.id_ident;
+        let id_ty = &e.id_ty;
         let kind = e.kind;
         // 索引のキー型は位置0の型 (有向なら始点、無向なら両端同型なので
         // どちらでも同じ)。
-        let key_id = &e.from_node.id_ident;
+        let key_id = &e.from_node.id_ty;
         // 有向辺のみ終点索引を永続化する (`docs/reverse_query.md`)。
         // `{Kind}::sources_of` の索引であり、v4.1 で入次数 each 検証のためだけに
         // 一時構築していた索引をこれに統合した (無向辺は `index_field` が
         // 既に対称に両端を積むので不要)。
         let to_index_decl = if e.directed {
             let to_index_field = &e.to_index_field_ident;
-            let to_key_id = &e.to_node.id_ident;
+            let to_key_id = &e.to_node.id_ty;
             quote! {
                 ,
                 /// 位置1キー (終点) -> そこへ入るエッジキーの一覧 (freeze 時に
                 /// 構築。`{Kind}::sources_of` の索引、`docs/reverse_query.md`)。
-                #to_index_field: std::collections::HashMap<super::#to_key_id, Vec<#id_ty>>
+                #to_index_field: std::collections::HashMap<#to_key_id, Vec<#id_ty>>
             }
         } else {
             quote! {}
@@ -878,7 +1074,7 @@ fn gen_schema_struct(
             #accessor: graphite::KeyedTable<#id_ty, #kind>,
             /// 位置0キー -> このキーから (有向: 出る / 無向: 接続する) エッジ
             /// キーの一覧 (freeze 時に構築)。
-            #index_field: std::collections::HashMap<super::#key_id, Vec<#id_ty>>
+            #index_field: std::collections::HashMap<#key_id, Vec<#id_ty>>
             #to_index_decl
         }
     });
@@ -938,13 +1134,13 @@ fn gen_builder_struct(
 ) -> TokenStream {
     let node_fields = nodes.iter().map(|n| {
         let field = &n.field_ident;
-        let id = &n.id_ident;
+        let id = &n.id_ty;
         let ty = &n.type_ident;
-        quote! { #field: Vec<(super::#id, super::#ty)> }
+        quote! { #field: Vec<(#id, super::#ty)> }
     });
     let edge_fields = edges.iter().map(|e| {
         let accessor = &e.accessor_ident;
-        let id_ty = &e.id_ident;
+        let id_ty = &e.id_ty;
         let kind = e.kind;
         quote! { #accessor: Vec<(#id_ty, #kind)> }
     });
@@ -963,7 +1159,7 @@ fn gen_builder_impl(
     violation_ident: &Ident,
     node_trait_ident: &Ident,
     edge_trait_ident: &Ident,
-    insertable_trait_ident: &Ident,
+    default_id_trait_ident: &Ident,
     schema_name: &Ident,
     nodes: &[NodeInfo],
     edges: &[EdgeInfo<'_>],
@@ -980,10 +1176,10 @@ fn gen_builder_impl(
     let node_methods = nodes.iter().map(|n| {
         let accessor = &n.accessor_ident;
         let field = &n.field_ident;
-        let id_ty = &n.id_ident;
+        let id_ty = &n.id_ty;
         let ty = &n.type_ident;
         quote! {
-            pub fn #accessor(&mut self, id: super::#id_ty, value: super::#ty) -> &mut Self {
+            pub fn #accessor(&mut self, id: #id_ty, value: super::#ty) -> &mut Self {
                 self.#field.push((id, value));
                 self
             }
@@ -992,7 +1188,7 @@ fn gen_builder_impl(
 
     let edge_methods = edges.iter().map(|e| {
         let accessor = &e.accessor_ident;
-        let id_ty = &e.id_ident;
+        let id_ty = &e.id_ty;
         let kind = e.kind;
         quote! {
             pub fn #accessor(&mut self, id: #id_ty, value: #kind) -> &mut Self {
@@ -1023,15 +1219,35 @@ fn gen_builder_impl(
             /// ストレージへの振り分けを rustc の型推論任せにする。
             /// 命名判断・trait の形は `gen_node_trait_and_impls` の
             /// ドキュメントコメント参照。
-            pub fn insert<N: #node_trait_ident>(&mut self, key: impl Into<String>, value: N) -> N::Id {
-                value.insert_into(self, key.into())
+            pub fn insert<N>(&mut self, key: impl Into<String>, value: N) -> N::Id
+            where
+                N: #node_trait_ident + #default_id_trait_ident,
+            {
+                value.insert_with_binding(self, key.into())
+            }
+
+            /// `@ ID式` を書いたノード項の脱糖先。明示ID型と既定ID型の
+            /// どちらにも使える。
+            /// 参照: #6の名前付き静的アクセサを実装するときは脱糖先を再検討する。
+            pub fn insert_with_id<N: #node_trait_ident>(&mut self, id: N::Id, value: N) -> N::Id {
+                value.insert_with_id(self, id)
             }
 
             /// `insert` のエッジ版。`graph!` の辺行 `key = Kind(from -> to)`
             /// はタプル struct `Kind(from_id, to_id, ..)` を構築したあと、
             /// この総称メソッドへ脱糖する (`docs/schema_v4.md` §2/§3.2)。
-            pub fn add<E: #edge_trait_ident>(&mut self, key: impl Into<String>, value: E) -> E::Id {
-                value.insert_into(self, key.into())
+            pub fn add<E>(&mut self, key: impl Into<String>, value: E) -> E::Id
+            where
+                E: #edge_trait_ident + #default_id_trait_ident,
+            {
+                value.insert_with_binding(self, key.into())
+            }
+
+            /// `@ ID式` を書いたエッジ項の脱糖先。明示ID型と既定ID型の
+            /// どちらにも使える。
+            /// 参照: #6の名前付き静的アクセサを実装するときは脱糖先を再検討する。
+            pub fn add_with_id<E: #edge_trait_ident>(&mut self, id: E::Id, value: E) -> E::Id {
+                value.insert_with_id(self, id)
             }
 
             /// `insert`/`add` のイテレータ版 (`docs/bulk_construction.md`、
@@ -1040,8 +1256,8 @@ fn gen_builder_impl(
             /// 完全に一致する意味論 (挿入順保持・検証は freeze 時) をまとめて
             /// 提供する。ノード用・エッジ用の呼び分けが要らない単一の総称
             /// メソッドに統一している (v4 破壊的変更、旧 `extend_nodes`/
-            /// `extend_edges` は廃止): 値の型が `T: #insertable_trait_ident`
-            /// を満たせばノードでもエッジでもよい (どちらになるかは rustc の
+            /// `extend_edges` は廃止): 値の型が既定IDを生成できれば
+            /// ノードでもエッジでもよい (どちらになるかは rustc の
             /// 型推論任せ)。`graph!` のスプライス項 (`..式`) もこのメソッドへ
             /// 脱糖する。`insert`/`add` と同じ理由 (トレイトが schema ごとに
             /// 名前が異なる) で、graphite ランタイム側の共通機構ではなく
@@ -1049,9 +1265,10 @@ fn gen_builder_impl(
             pub fn extend<K, T>(&mut self, items: impl IntoIterator<Item = (K, T)>) -> Vec<T::Id>
             where
                 K: Into<String>,
-                T: #insertable_trait_ident,
+                T: #default_id_trait_ident,
             {
-                items.into_iter().map(|(k, v)| v.insert_into(self, k.into())).collect()
+                // スプライスの完全な名前・ID意味論は #6/#2 で確定する。
+                items.into_iter().map(|(k, v)| v.insert_with_binding(self, k.into())).collect()
             }
 
             #freeze_body
@@ -1250,14 +1467,8 @@ fn gen_undirected_edge_freeze_block(violation_ident: &Ident, edge: &EdgeInfo<'_>
     let dup_key = edge.duplicate_key_variant();
     let unk = edge.unknown_endpoint_variant();
 
-    // 無向辺の `unique pair` は (p0, p1) と (p1, p0) を同一視する必要がある。
-    // v3 まではここで `p0 <= p1` によって正準化していたが、これはノード
-    // キー型に `PartialOrd` を要求してしまう。v4.2 (`docs/node_id_v4_2.md`)
-    // でノードキー型がユーザー宣言になり、必須 derive を
-    // `Debug, Clone, PartialEq, Eq, Hash` の最小限に定めたため、正準化に
-    // 順序比較を使う実装は選べなくなった。代わりに両方の順序で
-    // `__seen_pairs` を引く (`Eq + Hash` だけで足りる) ことで同じ意味論を
-    // 実現する。
+    // 無向辺の `unique pair` は (p0, p1) と (p1, p0) を同一視する。ID型へ
+    // 順序比較を要求しないため、両方の順序で `__seen_pairs` を検索する。
     let (seen_pairs_decl, unique_pair_check) = if edge.unique_pair {
         let v = edge.unique_pair_violation_variant();
         (
@@ -1441,12 +1652,12 @@ fn gen_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream 
 /// `of` は常に始点側キーで検索するため)。
 fn gen_directed_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream {
     let kind = edge.kind;
-    let id_ty = &edge.id_ident;
+    let id_ty = &edge.id_ty;
     let accessor = &edge.accessor_ident;
     let from_index = &edge.index_field_ident;
     let to_index = &edge.to_index_field_ident;
-    let from_id = &edge.from_node.id_ident;
-    let to_id = &edge.to_node.id_ident;
+    let from_id = &edge.from_node.id_ty;
+    let to_id = &edge.to_node.id_ty;
     let from_field = &edge.from_node.field_ident;
     let from_ty = &edge.from_node.type_ident;
     let to_field = &edge.to_node.field_ident;
@@ -1517,17 +1728,14 @@ fn gen_directed_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> Tok
                 /// 欠如ではなく呼び出し規約の違反であり
                 /// (`docs/design_principles.md` 原則2)、非パニック版
                 /// [`Self::get_of`] も併せて提供する。
-                pub fn #of_ident<'g>(g: &'g #schema_name, from: &super::#from_id) -> #of_item_ty {
+                pub fn #of_ident<'g>(g: &'g #schema_name, from: &#from_id) -> #of_item_ty {
                     Self::#get_of_ident(g, from).unwrap_or_else(|| {
-                        panic!(
-                            "{}::of: 未知のキーです (このグラフが発行したキーではありません): {:?}",
-                            stringify!(#kind), from
-                        )
+                        panic!("{}::of: 未知のキーです (このグラフが発行したキーではありません)", stringify!(#kind))
                     })
                 }
 
                 /// [`Self::of`] の非パニック版。未知キーは `None` を返す。
-                pub fn #get_of_ident<'g>(g: &'g #schema_name, from: &super::#from_id) -> Option<#of_item_ty> {
+                pub fn #get_of_ident<'g>(g: &'g #schema_name, from: &#from_id) -> Option<#of_item_ty> {
                     let ids = g.#from_index.get(from)?;
                     Some(#resolved)
                 }
@@ -1539,7 +1747,7 @@ fn gen_directed_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> Tok
                 /// この辺種別の自然な戻り値 (`each 0..1` → `Option`)。
                 /// 無い/未知キーはどちらも `None` に落ちる (「無い」ことが
                 /// 正常なドメイン状態なのでパニックしない)。
-                pub fn #of_ident<'g>(g: &'g #schema_name, from: &super::#from_id) -> Option<#of_item_ty> {
+                pub fn #of_ident<'g>(g: &'g #schema_name, from: &#from_id) -> Option<#of_item_ty> {
                     let ids = g.#from_index.get(from)?;
                     Some(#resolved)
                 }
@@ -1551,7 +1759,7 @@ fn gen_directed_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> Tok
                 /// この辺種別の自然な戻り値 (出次数に制約なし → `Vec`)。
                 /// 無い/未知キーはどちらも空 `Vec` に落ちる。格納順 (構築時の
                 /// 追加順) を保持する。
-                pub fn #of_ident<'g>(g: &'g #schema_name, from: &super::#from_id) -> Vec<#of_item_ty> {
+                pub fn #of_ident<'g>(g: &'g #schema_name, from: &#from_id) -> Vec<#of_item_ty> {
                     match g.#from_index.get(from) {
                         Some(ids) => ids.iter().map(|id| #resolved).collect(),
                         None => Vec::new(),
@@ -1608,17 +1816,14 @@ fn gen_directed_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> Tok
                 /// ではない) キーの場合パニックする
                 /// (`docs/design_principles.md` 原則2)。非パニック版
                 /// [`Self::get_sources_of`] も併せて提供する。
-                pub fn #sources_of_ident<'g>(g: &'g #schema_name, to: &super::#to_id) -> #sources_of_item_ty {
+                pub fn #sources_of_ident<'g>(g: &'g #schema_name, to: &#to_id) -> #sources_of_item_ty {
                     Self::#get_sources_of_ident(g, to).unwrap_or_else(|| {
-                        panic!(
-                            "{}::sources_of: 未知のキーです (このグラフが発行したキーではありません): {:?}",
-                            stringify!(#kind), to
-                        )
+                        panic!("{}::sources_of: 未知のキーです (このグラフが発行したキーではありません)", stringify!(#kind))
                     })
                 }
 
                 /// [`Self::sources_of`] の非パニック版。未知キーは `None` を返す。
-                pub fn #get_sources_of_ident<'g>(g: &'g #schema_name, to: &super::#to_id) -> Option<#sources_of_item_ty> {
+                pub fn #get_sources_of_ident<'g>(g: &'g #schema_name, to: &#to_id) -> Option<#sources_of_item_ty> {
                     let ids = g.#to_index.get(to)?;
                     Some(#resolved)
                 }
@@ -1630,7 +1835,7 @@ fn gen_directed_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> Tok
                 /// `of` の対称 (`docs/reverse_query.md`): 終点で引き、始点側
                 /// (相手ノード値+積み荷) を返す。`each 0..1` (入次数) →
                 /// `Option`。無い/未知キーはどちらも `None` に落ちる。
-                pub fn #sources_of_ident<'g>(g: &'g #schema_name, to: &super::#to_id) -> Option<#sources_of_item_ty> {
+                pub fn #sources_of_ident<'g>(g: &'g #schema_name, to: &#to_id) -> Option<#sources_of_item_ty> {
                     let ids = g.#to_index.get(to)?;
                     Some(#resolved)
                 }
@@ -1643,7 +1848,7 @@ fn gen_directed_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> Tok
                 /// (相手ノード値+積み荷) を返す。入次数に制約なし → `Vec`。
                 /// 無い/未知キーはどちらも空 `Vec` に落ちる。格納順 (構築時の
                 /// 追加順) を保持する。
-                pub fn #sources_of_ident<'g>(g: &'g #schema_name, to: &super::#to_id) -> Vec<#sources_of_item_ty> {
+                pub fn #sources_of_ident<'g>(g: &'g #schema_name, to: &#to_id) -> Vec<#sources_of_item_ty> {
                     match g.#to_index.get(to) {
                         Some(ids) => ids.iter().map(|id| #resolved).collect(),
                         None => Vec::new(),
@@ -1656,7 +1861,7 @@ fn gen_directed_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> Tok
     let between = if edge.unique_pair {
         quote! {
             /// 対 (始点, 終点) で辺を検索する (`unique pair` → 高々1本)。
-            pub fn #between_ident<'g>(g: &'g #schema_name, from: &super::#from_id, to: &super::#to_id) -> Option<&'g #kind> {
+            pub fn #between_ident<'g>(g: &'g #schema_name, from: &#from_id, to: &#to_id) -> Option<&'g #kind> {
                 g.#from_index
                     .get(from)?
                     .iter()
@@ -1668,7 +1873,7 @@ fn gen_directed_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> Tok
         quote! {
             /// 対 (始点, 終点) で辺を検索する (制約なしなら平行辺を許すため
             /// `Vec`)。格納順 (構築時の追加順) を保持する。
-            pub fn #between_ident<'g>(g: &'g #schema_name, from: &super::#from_id, to: &super::#to_id) -> Vec<&'g #kind> {
+            pub fn #between_ident<'g>(g: &'g #schema_name, from: &#from_id, to: &#to_id) -> Vec<&'g #kind> {
                 match g.#from_index.get(from) {
                     Some(ids) => ids
                         .iter()
@@ -1721,10 +1926,10 @@ fn gen_directed_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> Tok
 /// 規則で有向の表と同じ。`between(&g, &a, &b)` は対称 (順序を無視) に検索する。
 fn gen_undirected_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream {
     let kind = edge.kind;
-    let id_ty = &edge.id_ident;
+    let id_ty = &edge.id_ty;
     let accessor = &edge.accessor_ident;
     let index = &edge.index_field_ident;
-    let node_id = &edge.from_node.id_ident;
+    let node_id = &edge.from_node.id_ty;
     let node_field = &edge.from_node.field_ident;
     let node_ty = &edge.from_node.type_ident;
 
@@ -1774,17 +1979,14 @@ fn gen_undirected_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> T
                     /// ものではない) キーの場合パニックする
                     /// (`docs/design_principles.md` 原則2)。非パニック版
                     /// [`Self::get_of`] も併せて提供する。
-                    pub fn #of_ident<'g>(g: &'g #schema_name, x: &super::#node_id) -> #of_item_ty {
+                    pub fn #of_ident<'g>(g: &'g #schema_name, x: &#node_id) -> #of_item_ty {
                         Self::#get_of_ident(g, x).unwrap_or_else(|| {
-                            panic!(
-                                "{}::of: 未知のキーです (このグラフが発行したキーではありません): {:?}",
-                                stringify!(#kind), x
-                            )
+                            panic!("{}::of: 未知のキーです (このグラフが発行したキーではありません)", stringify!(#kind))
                         })
                     }
 
                     /// [`Self::of`] の非パニック版。未知キーは `None` を返す。
-                    pub fn #get_of_ident<'g>(g: &'g #schema_name, x: &super::#node_id) -> Option<#of_item_ty> {
+                    pub fn #get_of_ident<'g>(g: &'g #schema_name, x: &#node_id) -> Option<#of_item_ty> {
                         let ids = g.#index.get(x)?;
                         Some(#resolved)
                     }
@@ -1794,7 +1996,7 @@ fn gen_undirected_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> T
                 let resolved = resolve_one(quote! { &ids[0] });
                 quote! {
                     /// この辺種別の自然な戻り値 (`each 0..1` → `Option`)。
-                    pub fn #of_ident<'g>(g: &'g #schema_name, x: &super::#node_id) -> Option<#of_item_ty> {
+                    pub fn #of_ident<'g>(g: &'g #schema_name, x: &#node_id) -> Option<#of_item_ty> {
                         let ids = g.#index.get(x)?;
                         Some(#resolved)
                     }
@@ -1807,7 +2009,7 @@ fn gen_undirected_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> T
             /// この辺種別の自然な戻り値 (次数に制約なし → `Vec`)。無い/未知
             /// キーはどちらも空 `Vec` に落ちる。格納順 (構築時の追加順) を
             /// 保持する。
-            pub fn #of_ident<'g>(g: &'g #schema_name, x: &super::#node_id) -> Vec<#of_item_ty> {
+            pub fn #of_ident<'g>(g: &'g #schema_name, x: &#node_id) -> Vec<#of_item_ty> {
                 match g.#index.get(x) {
                     Some(ids) => ids.iter().map(|id| #resolved).collect(),
                     None => Vec::new(),
@@ -1819,7 +2021,7 @@ fn gen_undirected_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> T
     let between = if edge.unique_pair {
         quote! {
             /// 対 (a, b) で辺を検索する (`unique pair` → 高々1本、順序は無視)。
-            pub fn #between_ident<'g>(g: &'g #schema_name, a: &super::#node_id, b: &super::#node_id) -> Option<&'g #kind> {
+            pub fn #between_ident<'g>(g: &'g #schema_name, a: &#node_id, b: &#node_id) -> Option<&'g #kind> {
                 g.#index
                     .get(a)?
                     .iter()
@@ -1834,7 +2036,7 @@ fn gen_undirected_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> T
         quote! {
             /// 対 (a, b) で辺を検索する (制約なしなら平行辺を許すため `Vec`、
             /// 順序は無視)。格納順 (構築時の追加順) を保持する。
-            pub fn #between_ident<'g>(g: &'g #schema_name, a: &super::#node_id, b: &super::#node_id) -> Vec<&'g #kind> {
+            pub fn #between_ident<'g>(g: &'g #schema_name, a: &#node_id, b: &#node_id) -> Vec<&'g #kind> {
                 match g.#index.get(a) {
                     Some(ids) => ids
                         .iter()

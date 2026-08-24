@@ -1,26 +1,28 @@
-error[E0425]: cannot find type `PersonId` in module `super`
-  --> tests/ui/node_id_not_declared.rs:16:14
+error[E0425]: cannot find type `MissingPersonId` in this scope
+  --> tests/ui/node_id_not_declared.rs:10:25
    |
-10 | pub struct Person {
-   | ----------------- similarly named struct `Person` defined here
-...
-16 |         node Person;
-   |              ^^^^^^
+10 |         node Person(id: MissingPersonId);
+   |                         ^^^^^^^^^^^^^^^ not found in this scope
 
-error[E0425]: cannot find function, tuple struct or tuple variant `PersonId` in module `super`
-  --> tests/ui/node_id_not_declared.rs:16:14
+error[E0425]: cannot find type `MissingPersonId` in this scope
+  --> tests/ui/node_id_not_declared.rs:10:25
    |
-16 |         node Person;
-   |              ^^^^^^ not found in `super`
+10 |         node Person(id: MissingPersonId);
+   |                         ^^^^^^^^^^^^^^^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+ 9 |     schema Missing<MissingPersonId> {
+   |                   +++++++++++++++++
 
 error[E0282]: type annotations needed
-  --> tests/ui/node_id_not_declared.rs:14:1
+  --> tests/ui/node_id_not_declared.rs:8:1
    |
-14 | / graphite::graph_schema! {
-15 | |     schema Missing {
-16 | |         node Person;
-17 | |     }
-18 | | }
+ 8 | / graphite::graph_schema! {
+ 9 | |     schema Missing {
+10 | |         node Person(id: MissingPersonId);
+11 | |     }
+12 | | }
    | |_^ cannot infer type
    |
    = note: this error originates in the macro `graphite::graph_schema` (in Nightly builds, run with -Z macro-backtrace for more info)

@@ -10,14 +10,8 @@
 //   エラーは出ない
 // - sales (Department) は正常に生成され続ける
 //
-// このテストは `crates/graphite-macros/src/instance_dsl.rs` のドキュメント
-// コメント「`syn::Expr` を回復パーサに混ぜる際のリスク」で説明した「幽霊
-// unexpected token」問題の実測に使ったケースでもある。対処前 (値を
-// `input.parse::<Expr>()` に直接渡す素朴な実装) では、この期待どおりの
-// `expected `,`` ではなく無関係な `unexpected token, expected `}`` に化けて
-// いた (実測ログはコミット履歴・`instance_dsl.rs` のコメント参照)。この
-// `.stderr` が `expected `,`` のままであること自体が、対処が効いている
-// ことの回帰テストになっている。
+// このテストは、壊れた式の診断が `expected `,`` のまま保たれ、回復後の
+// 宣言と無関係な `unexpected token` を追加しないことも保証する。
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EmployeeId(pub String);

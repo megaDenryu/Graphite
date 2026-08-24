@@ -13,6 +13,11 @@ pub fn graph_type_ident(source: &Ident) -> Ident {
     Ident::new("Graph", source.span())
 }
 
+/// ノード型名・エッジ種別名から既定生成IDの型名を導出する。
+pub fn generated_id_ident(source: &Ident) -> Ident {
+    format_ident!("{}Id", source, span = source.span())
+}
+
 /// freeze 中に使うエッジ表の一時変数名を生成する。
 pub fn edge_storage_ident(accessor: &Ident) -> Ident {
     format_ident!("__graphite_{}", accessor, span = accessor.span())
@@ -70,6 +75,12 @@ mod tests {
     fn 固定グラフ型名を導出できる() {
         let source = Ident::new("Org", proc_macro2::Span::call_site());
         assert_eq!(graph_type_ident(&source).to_string(), "Graph");
+    }
+
+    #[test]
+    fn 既定生成id型名を導出できる() {
+        let source = Ident::new("Employee", proc_macro2::Span::call_site());
+        assert_eq!(generated_id_ident(&source).to_string(), "EmployeeId");
     }
 
     #[test]

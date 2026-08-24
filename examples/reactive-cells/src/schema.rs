@@ -30,11 +30,9 @@
 //! (`docs/modeling_guide.md` §1) はグラフだけが持ち、二重管理は完全に
 //! 解消されている。
 //!
-//! `graph_schema!` はこの `Cell`/`Formula` 型を生成せず参照するだけ
-//! (`docs/schema_v4.md` 参照)。v4.2 (`docs/node_id_v4_2.md`) からはノード
-//! キー型 `CellId` もユーザー宣言 (上記) への参照になった。マクロが生成
-//! するのは `Sheet` module 内のグラフ機械 (`Graph`・`Builder`・`Violation`・
-//! `FeedsId`/`LhsId`/`RhsId` newtype・`Feeds`/`Lhs`/`Rhs` 固有 impl) だけ。
+//! `graph_schema!` はこの `Cell`/`Formula` 型を生成せず参照するだけである。
+//! ID型を省略したため、`Sheet` module 内には `CellId`・`FeedsId`・`LhsId`・
+//! `RhsId` が生成される (`docs/node_id_v4_2.md`)。
 
 /// 1つのセルが「どう値を求めるか」— **どの演算を適用するか**だけを表す。
 ///
@@ -60,11 +58,6 @@ pub enum Formula {
     Sum,
 }
 
-/// ノードキー。v4.2 からは `graph_schema!` はこれも生成せず、
-/// `{ノード型名}Id` という命名規約で参照するだけ (`docs/node_id_v4_2.md`)。
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct CellId(pub String);
-
 /// スプレッドシートのセル。値そのものは持たない — 値は
 /// [`crate::engine::Engine`] が別途 `HashMap<CellId, f64>` として持つ
 /// (`docs/graph_design_sketches.md` 決定2: グラフは構築後不変。可変な
@@ -86,4 +79,4 @@ graphite::graph_schema! {
 }
 
 // 綴り短縮のための再輸出。同名edgeを持つschemaを足したらこの行を消す。
-pub use Sheet::{Feeds, Lhs, Rhs};
+pub use Sheet::{CellId, Feeds, Lhs, Rhs};

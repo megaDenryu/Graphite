@@ -1,8 +1,5 @@
 //! schemaごとのRustモジュールが、生成型と問い合わせ名前空間を分離することを確認する。
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct PersonId(pub String);
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct Person {
     pub name: String,
@@ -41,14 +38,11 @@ fn 同じノード値型と辺名を複数schemaで使っても生成型が衝�
     })
     .expect("Socialの構築に成功するはず");
 
-    assert_eq!(Org::Person::get(&org, &PersonId("manager".into())).unwrap().name, "Manager");
-    assert_eq!(Social::Person::get(&social, &PersonId("alice".into())).unwrap().name, "Alice");
+    assert_eq!(Org::Person::get(&org, &Org::PersonId("manager".into())).unwrap().name, "Manager");
+    assert_eq!(Social::Person::get(&social, &Social::PersonId("alice".into())).unwrap().name, "Alice");
     assert_eq!(Org::Relation::len(&org), 1);
     assert_eq!(Social::Relation::len(&social), 1);
 }
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct 人物Id(pub String);
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct 人物 {
@@ -73,6 +67,6 @@ fn 日本語のschema名とノード名と辺名と束縛名を通常の識別�
     })
     .expect("日本語識別子を使ったグラフの構築に成功するはず");
 
-    assert_eq!(世界::人物::get(&graph, &人物Id("太郎".into())).unwrap().名前, "太郎");
+    assert_eq!(世界::人物::get(&graph, &世界::人物Id("太郎".into())).unwrap().名前, "太郎");
     assert_eq!(世界::関係::len(&graph), 1);
 }

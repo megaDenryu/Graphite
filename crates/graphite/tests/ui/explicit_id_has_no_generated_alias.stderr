@@ -1,0 +1,29 @@
+error[E0425]: cannot find type `PersonId` in module `Explicit`
+  --> tests/ui/explicit_id_has_no_generated_alias.rs:17:22
+   |
+ 9 | graphite::graph_schema! {
+   | ----------------------- similarly named struct `Person` defined here
+...
+17 |     let _: Explicit::PersonId;
+   |                      ^^^^^^^^
+   |
+help: a struct with a similar name exists
+   |
+17 -     let _: Explicit::PersonId;
+17 +     let _: Explicit::Person;
+   |
+
+error[E0425]: cannot find type `KnowsId` in module `Explicit`
+  --> tests/ui/explicit_id_has_no_generated_alias.rs:18:22
+   |
+ 9 | graphite::graph_schema! {
+   | ----------------------- similarly named struct `Knows` defined here
+...
+18 |     let _: Explicit::KnowsId;
+   |                      ^^^^^^^
+   |
+help: a struct with a similar name exists
+   |
+18 -     let _: Explicit::KnowsId;
+18 +     let _: Explicit::Knows;
+   |

@@ -32,8 +32,8 @@ mod schema {
     #[rustfmt::skip]
     graphite::graph_schema! {
         schema CrossModuleOrg {
-            node Employee;
-            node Department;
+            node Employee(id: EmployeeId);
+            node Department(id: DepartmentId);
 
             edge BelongsTo = Employee -> Department where each Employee: 1;
             edge Boss      = Employee -[BossEdge]-> Employee where each Employee: 0..1;
@@ -49,8 +49,8 @@ mod usage {
     #[rustfmt::skip]
     fn 別モジュールのschemaに対してgraphリテラルが構築できる() {
         let g = graphite::graph!(CrossModuleOrg {
-            tanaka = Employee { name: "田中".into() },
-            sales = Department { name: "営業".into() },
+            tanaka @ EmployeeId("tanaka".into()) = Employee { name: "田中".into() },
+            sales @ DepartmentId("sales".into()) = Department { name: "営業".into() },
 
             tanaka_dept = BelongsTo(tanaka -> sales),
             tanaka_boss = Boss(tanaka -[BossEdge { since: 2020 }]-> tanaka),

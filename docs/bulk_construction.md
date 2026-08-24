@@ -1,41 +1,23 @@
-# 一括構築 API — 実行時データからの宣言的構築 (Fudaba #9)
+# 一括構築API
 
-2026-07-18 オーケストレータ決定 (ユーザーから全面委任)。#9 の選択肢 (b) を採用。
+この文書は、実行時データからグラフを構築する `Builder::extend` の現行契約を定める生存型文書である。
 
-## 問題
-
-graph! リテラルは静的な図示には完璧だが、実行時データ (合成生成器・CSV 等) からの
-構築は builder + for ループしかなく、グラフの形が制御フローに埋まる
-(org-analyzer/dataset.rs、async-dag/fixtures.rs)。「三大敵」で倒したはずの敵が
-構築コードに残る自己矛盾。
-
-## 決定: builder に一括挿入を追加 (選択肢 b)
-
-既存の要素単位 API (`insert` / 辺の追加) の**イテレータ版**を足すだけ。
-ループと変換は普通の Rust (map 等) に寄せ、グラフ構築は 1〜2 呼び出しに集約する。
+`extend` はノードとエッジに共通する一括挿入APIである。値の型がどの内部表へ入るかはRustの型推論が決める。
 
 ```rust
-let g = Org::Graph::create(|b| {
-    b.extend_nodes(people.into_iter().map(|p| (p.code.clone(), p)));
-    b.extend_edges(pairs.into_iter().enumerate()
-        .map(|(i, (a, c))| (format!("dep{i}"), DependsOn(a, c))));
+let graph = Org::Graph::create(|builder| {
+    builder.extend(people.into_iter().map(|person| (person.code.clone(), person)));
+    builder.extend(
+        pairs
+            .into_iter()
+            .enumerate()
+            .map(|(index, (from, to))| (format!("dependency-{index}"), Org::DependsOn(from, to))),
+    );
 });
 ```
 
-仕様:
+入力は `IntoIterator<Item = (K, T)>` であり、`K: Into<String>` を満たす必要がある。戻り値は挿入順の `Vec<T::Id>` である。重複IDと端点の検証は、要素単位の `insert` / `add` と同じくfreeze時に行う。
 
-- `extend_nodes(impl IntoIterator<Item = (K, N)>)` — K: Into<String>、N は既存の
-  schema module 内のノード挿入 trait 境界 (insert と同じ)。戻り値 `Vec<N::Id>` (挿入順)
-- `extend_edges(impl IntoIterator<Item = (K, E)>)` — E は既存の辺追加と同じ trait
-  経路。戻り値 `Vec<E::Id>` (挿入順)
-- 意味論は要素単位 API の反復と完全に同一 (重複キー・検証は freeze 時に従来どおり)。
-  挿入順保持もそのまま
-- 命名は原則3 (std の Extend::extend に倣う) の範囲で実装時に微調整可
-- graph! へのスプライス構文 (選択肢 c) は本仕様の糖衣として将来足せるため今回は
-  見送り (Fudaba #9 に記録)
+`extend` は文字列からschema module内の既定IDを作れる要素だけを受け付ける。既存ID型を `(id: 型パス)` で明示した要素には、要素単位の `insert_with_id` / `add_with_id` を使う。明示IDを一括投入する構文はIssue #6/#2で確定する。
 
-## 実証 (完了条件)
-
-org-analyzer/dataset.rs と async-dag/fixtures.rs の構築ループを extend 形に
-書き直し、for ループが「データを作る部分」だけに縮退することを示す。
-既存テストは全通過のこと。
+`graph!` の `..式` は `extend` への糖衣であり、同じ型境界と挿入順保証を持つ。詳細は `docs/graph_splice.md` を参照する。

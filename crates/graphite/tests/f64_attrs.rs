@@ -8,19 +8,11 @@
 //! という利用者側の選択で最初から解消している (このテストが確認するのは
 //! むしろ「マクロが余計な derive を強制していない」こと自体)。
 
-/// ノードキー。
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct SensorId(pub String);
-
 /// ノード型。
 #[derive(Debug, Clone, PartialEq)]
 pub struct Sensor {
     pub name: String,
 }
-
-/// ノードキー。
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ReadingId(pub String);
 
 /// ノード型。`f64` フィールドを持つため `Eq` は derive しない。
 #[derive(Debug, Clone, PartialEq)]
@@ -44,7 +36,7 @@ graphite::graph_schema! {
     }
 }
 
-use Measurement::{Measured, MeasuredId};
+use Measurement::{Measured, MeasuredId, ReadingId, SensorId};
 
 #[test]
 fn f64をエッジ属性とノードフィールドに持つスキーマがコンパイル_構築できる() {

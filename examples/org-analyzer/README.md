@@ -224,7 +224,7 @@ $ cargo run -- reorg D03
 
 [NG] freeze検証がViolationを検出し、再構築は失敗しました:
   未知のキーが参照されています (辺 `Sponsors` SponsorsId("spon_D03") の始点, Department): DepartmentId("D03")
-  詳細: SponsorsUnknownSource { edge: SponsorsId("spon_D03"), source: DepartmentId("D03") }
+  詳細: 未知のキーが参照されています (辺 `Sponsors` SponsorsId("spon_D03") の始点, Department): DepartmentId("D03")
 
   解説: 廃止部署が指すsponsors辺(部署->プロジェクト)をカスケード削除
 し忘れたまま再構築しようとしたため、存在しない部署キーを参照する辺が

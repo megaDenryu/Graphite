@@ -1,13 +1,14 @@
 //! `graph!` の入力 DSL のパース。
 //!
-//! 対応する文法 (v4、`docs/schema_v4.md` §2 参照): **全行が `名前 = 値`**。
+//! 対応する文法 (`docs/schema_v4.md` §2 参照): 各静的項目は
+//! `名前 = 値`、または明示IDを渡す `名前 @ ID式 = 値` である。
 //! v4.2 (`docs/graph_splice.md` §1) でスプライス項 `..式` を追加した (下記
 //! 「スプライス項」参照)。
 //!
 //! ```text
 //! graph!(Org {
 //!     alice = Person { name: "Alice".into() },
-//!     bob   = Person { name: "Bob".into() },
+//!     bob @ ExternalPersonId(42) = Person { name: "Bob".into() },
 //!     eng   = Team { name: "Engineering".into() },
 //!
 //!     a_team = BelongsTo(alice -> eng),
@@ -135,6 +136,32 @@ fn capture_until_top_level_comma(content: ParseStream) -> syn::Result<TokenStrea
         collected.extend(std::iter::once(tt));
     }
     Ok(collected)
+}
+
+/// `@` の後から次のトップレベルの単独 `=` までID式を捕獲し、区切りも消費する。
+/// `==`・`>=`・`+=`などの演算子に含まれる`=`は式の一部として残す。
+fn capture_until_top_level_equal(content: ParseStream) -> syn::Result<TokenStream2> {
+    let mut collected = TokenStream2::new();
+    let mut previous_punct_is_joint = false;
+    while !content.is_empty() {
+        if content.peek(Token![,]) {
+            return Err(content.error("ID式の後に`=`が必要です"));
+        }
+        let tt: TokenTree = content.parse()?;
+        if let TokenTree::Punct(punct) = &tt {
+            if punct.as_char() == '='
+                && punct.spacing() == proc_macro2::Spacing::Alone
+                && !previous_punct_is_joint
+            {
+                return Ok(collected);
+            }
+            previous_punct_is_joint = punct.spacing() == proc_macro2::Spacing::Joint;
+        } else {
+            previous_punct_is_joint = false;
+        }
+        collected.extend(std::iter::once(tt));
+    }
+    Err(content.error("ID式の後に`=`が必要です"))
 }
 
 /// 捕獲済みのトークン列を、**新規の独立したトップレベル呼び出し**として
@@ -277,6 +304,7 @@ fn parse_edge_literal_isolated(tokens: TokenStream2) -> syn::Result<EdgeLiteralI
 /// `alice = Person { name: "Alice".into() }` / `alice = alice_value`
 pub struct NodeInstance {
     pub key: Ident,
+    pub id: Option<Expr>,
     pub value: Expr,
 }
 
@@ -286,6 +314,7 @@ pub struct NodeInstance {
 /// (ノードと同様) キーの束縛である。
 pub struct EdgeInstance {
     pub key: Ident,
+    pub id: Option<Expr>,
     pub kind: Ident,
     pub from: Ident,
     pub attrs: Option<Expr>,
@@ -326,7 +355,15 @@ impl Parse for GraphItem {
         }
 
         let key: Ident = input.parse()?;
-        input.parse::<Token![=]>()?;
+        let id = if input.peek(Token![@]) {
+            input.parse::<Token![@]>()?;
+            let span = input.span();
+            let captured = capture_until_top_level_equal(input)?;
+            Some(parse_expr_isolated(captured, span)?)
+        } else {
+            input.parse::<Token![=]>()?;
+            None
+        };
         let span = input.span();
         // 構造化パースを経由せず生トークンとして捕獲してから、独立した
         // 新規トップレベル呼び出しで再パースする (ファイル冒頭のドキュメント
@@ -342,6 +379,7 @@ impl Parse for GraphItem {
             } = parse_edge_literal_isolated(captured)?;
             Ok(GraphItem::Edge(EdgeInstance {
                 key,
+                id,
                 kind,
                 from,
                 attrs,
@@ -349,7 +387,7 @@ impl Parse for GraphItem {
             }))
         } else {
             let value = parse_expr_isolated(captured, span)?;
-            Ok(GraphItem::Node(NodeInstance { key, value }))
+            Ok(GraphItem::Node(NodeInstance { key, id, value }))
         }
     }
 }

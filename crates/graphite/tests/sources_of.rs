@@ -14,20 +14,11 @@
 //! 終点側の each は書けないため、終点側制約のある2種は役割名 (`src`/`dst`)
 //! を使う。
 
-/// ノードキー。`graph_schema!` はこれも生成せず参照するだけ
-/// (`docs/node_id_v4_2.md`)。
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct NodeAId(pub String);
-
 /// ノード型。`graph_schema!` はこの型を生成せず参照するだけ。
 #[derive(Debug, Clone, PartialEq)]
 pub struct NodeA {
     pub name: String,
 }
-
-/// ノードキー。
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct NodeBId(pub String);
 
 /// ノード型。
 #[derive(Debug, Clone, PartialEq)]
@@ -55,8 +46,8 @@ graphite::graph_schema! {
 }
 
 use RevQuery::{
-    AtMostOne, AtMostOneId, ExactlyOne, ExactlyOneId, Unconstrained, UnconstrainedId,
-    UnconstrainedNoPayload, UnconstrainedNoPayloadId,
+    AtMostOne, AtMostOneId, ExactlyOne, ExactlyOneId, NodeAId, NodeBId, Unconstrained,
+    UnconstrainedId, UnconstrainedNoPayload, UnconstrainedNoPayloadId,
 };
 
 #[cfg(test)]

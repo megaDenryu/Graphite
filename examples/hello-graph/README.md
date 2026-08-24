@@ -54,7 +54,7 @@ cargo run
 
 | 生成されるもの | 命名規則 | `Boss` の場合 |
 |---|---|---|
-| 辺キー newtype | `{Kind}Id` | `pub struct BossId(pub String);` |
+| 既定ID newtype | `{Node}Id` / `{Kind}Id` | `pub struct PersonId(pub String);` / `pub struct BossId(pub String);` |
 | タプル struct 本体 | `Kind(From, To[, Payload])` | `pub struct Boss(pub PersonId, pub PersonId, pub BossEdge);` |
 | 読み取りメソッド (固有 impl) | `from()`/`to()`/`payload()` | `Boss::from`/`Boss::to`/`Boss::payload` |
 | クエリ関連関数 (固有 impl) | `of`/`get`/`between`/`iter`/`ids`/`len` | `Boss::of(&g, &id)` 等 |
