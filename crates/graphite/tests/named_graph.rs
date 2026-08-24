@@ -38,7 +38,10 @@ fn 名前付きnodeとedgeは内部位置からrefを返す() {
     assert_eq!(graph.太郎().id(), &PersonId("public-person-42".into()));
     assert_eq!(graph.太郎().name, "太郎");
     assert_eq!(graph.本().id(), &ItemId("public-item-7".into()));
-    assert_eq!(graph.購入().id(), &PurchaseId("public-purchase-9001".into()));
+    assert_eq!(
+        graph.購入().id(),
+        &PurchaseId("public-purchase-9001".into())
+    );
     assert_eq!(graph.購入().buyer().id(), graph.太郎().id());
     assert_eq!(graph.購入().item().id(), graph.本().id());
     assert_eq!(graph.購入().payload().amount, 100);

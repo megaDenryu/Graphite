@@ -243,7 +243,9 @@ pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<Token
                     Some(id) => quote! { __graphite_b.add_named_with_id(#id, #ctor) },
                     // 既定IDを生成できない場合のtrait boundエラーは、macro呼び出し
                     // 全体ではなく、利用者が修正すべきエッジ種別名へ結び付ける。
-                    None => quote_spanned! { kind.span()=> __graphite_b.add_named(#key_str, #ctor) },
+                    None => {
+                        quote_spanned! { kind.span()=> __graphite_b.add_named(#key_str, #ctor) }
+                    }
                 };
                 rest_calls.push(quote! {
                     #[allow(unused_variables)]

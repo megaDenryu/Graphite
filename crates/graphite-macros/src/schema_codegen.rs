@@ -827,10 +827,7 @@ fn gen_internal_position_types(nodes: &[NodeInfo], edges: &[EdgeInfo<'_>]) -> Ve
 /// `graph!` の名前付きwrapperへfreezeをまたいで内部位置を運ぶ型を生成する。
 /// フィールドは非公開で、生成された挿入経路と `NamedGraphElement` 実装だけが
 /// 構築・参照する。公開IDやGraphへの参照は保持しない。
-fn gen_named_position_types(
-    nodes: &[NodeInfo],
-    edges: &[EdgeInfo<'_>],
-) -> Vec<TokenStream> {
+fn gen_named_position_types(nodes: &[NodeInfo], edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
     nodes
         .iter()
         .map(|node| {

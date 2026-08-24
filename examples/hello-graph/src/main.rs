@@ -1015,8 +1015,7 @@ mod tests {
             review_2023 = ReviewedBy(bob -[ReviewEdge { year: 2023 }]-> alice),
             review_2024 = ReviewedBy(bob -[ReviewEdge { year: 2024 }]-> carol),
         });
-        g.expect("正常なグラフは構築に成功するはず")
-            .into_graph()
+        g.expect("正常なグラフは構築に成功するはず").into_graph()
     }
 
     #[test]
