@@ -71,20 +71,20 @@ where
         self.index.contains_key(key)
     }
 
-    /// キーから値を引く。
+    /// キーから値を読み出す。
     pub fn get(&self, key: &K) -> Option<&V> {
         let idx = *self.index.get(key)?;
         self.entries.get(idx).map(|(_, v)| v)
     }
 
-    /// キーから挿入順の内部位置を引く。`graph_schema!` の生成コードが
+    /// キーから挿入順の内部位置を求める。`graph_schema!` の生成コードが
     /// 凍結済みグラフの薄い参照値を構築するために使う。
     #[doc(hidden)]
     pub fn position(&self, key: &K) -> Option<usize> {
         self.index.get(key).copied()
     }
 
-    /// 内部位置からキーと値を引く。内部位置は表の構造を変更しない間だけ
+    /// 内部位置からキーと値を読み出す。内部位置は表の構造を変更しない間だけ
     /// 安定するため、凍結済みグラフの生成コードだけが使う。
     #[doc(hidden)]
     pub fn get_at(&self, position: usize) -> Option<(&K, &V)> {

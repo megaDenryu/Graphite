@@ -277,18 +277,13 @@ pub fn detect_anomalies(org: &OrgChart::Graph) -> AnomalyReport {
 ///
 /// 判定には `EmployeeId` の対そのものが要るため、EdgeRefの両端からIDを集める。
 fn detect_mutual_boss_pairs(org: &OrgChart::Graph) -> Vec<(EmployeeId, EmployeeId)> {
-    let all: Vec<(EmployeeId, EmployeeId)> = Boss::iter(org)
-        .map(|edge| {
-            (
-                edge.subordinate().id().clone(),
-                edge.superior().id().clone(),
-            )
-        })
+    let all: Vec<(&EmployeeId, &EmployeeId)> = Boss::iter(org)
+        .map(|edge| (edge.subordinate().id(), edge.superior().id()))
         .collect();
 
     let mut result: Vec<(EmployeeId, EmployeeId)> = Vec::new();
-    for (a, b) in &all {
-        if a < b && all.contains(&(b.clone(), a.clone())) {
+    for &(a, b) in &all {
+        if a < b && all.contains(&(b, a)) {
             result.push((a.clone(), b.clone()));
         }
     }
@@ -339,16 +334,16 @@ fn detect_boss_cycles(org: &OrgChart::Graph) -> Vec<Vec<EmployeeId>> {
 
 /// 部署跨ぎの上司関係 (上司と部下が異なる部署)。
 fn detect_cross_department_bosses(org: &OrgChart::Graph) -> Vec<CrossDepartmentBoss> {
-    let dept_of: HashMap<EmployeeId, DepartmentId> = BelongsTo::iter(org)
-        .map(|edge| (edge.employee().id().clone(), edge.department().id().clone()))
+    let dept_of: HashMap<&EmployeeId, &DepartmentId> = BelongsTo::iter(org)
+        .map(|edge| (edge.employee().id(), edge.department().id()))
         .collect();
 
     let mut result: Vec<CrossDepartmentBoss> = Boss::iter(org)
         .filter_map(|edge| {
             let emp_id = edge.subordinate().id();
             let boss_id = edge.superior().id();
-            let emp_dept = dept_of.get(emp_id)?;
-            let boss_dept = dept_of.get(boss_id)?;
+            let emp_dept: &DepartmentId = *dept_of.get(emp_id)?;
+            let boss_dept: &DepartmentId = *dept_of.get(boss_id)?;
             if emp_dept == boss_dept {
                 return None;
             }

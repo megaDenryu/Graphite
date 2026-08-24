@@ -30,11 +30,14 @@
 //! }
 //! ```
 //!
+//! 以下、ノード種別ごとの `{Node}Ref<'graph>` を NodeRef、辺種別ごとの
+//! `{Kind}Ref<'graph>` を EdgeRef と総称する。
+//!
 //! 構築用の有向辺値 (`(subordinate: Employee) -> (superior: Employee)`) は役割名の
 //! 公開IDフィールドを保持する。完成済みの `EdgeRef` は役割名のメソッドで `NodeRef` を返す。
 //! 無向辺 (`Person -- Person`) は
 //! `.endpoints() -> (PersonRef<'_>, PersonRef<'_>)` を生やし、`of`/`between` は
-//! どちらの位置に置かれても対称に検索できる。内部の freeze/query 実装は
+//! どちらの位置に置かれても対称に検索できる。内部の凍結処理(`freeze`)と検索処理は
 //! 名前付きフィールドを直接使う。
 //!
 //! 辺はスキーマ module 内の生成型なので固有 impl で読み取り API を生やす。
@@ -534,6 +537,9 @@ fn gen_node_trait_and_impls(
         let get_mut_ident = Ident::new("get_mut", span);
         let ids_ident = Ident::new("ids", span);
         let iter_ident = Ident::new("iter", span);
+        let node_ref_id_ident = Ident::new("id", span);
+        let node_ref_value_ident = Ident::new("value", span);
+        let node_debug_impl = gen_reference_debug_impl(&reference, n.id_ty.is_generated());
         let default_id_impl = if n.id_ty.is_generated() {
             let generated_id = &n.id_ty.generated_ident;
             quote! {
@@ -571,14 +577,14 @@ fn gen_node_trait_and_impls(
             }
 
             impl<'graph> #reference<'graph> {
-                pub fn id(self) -> &'graph #id_ty {
+                pub fn #node_ref_id_ident(self) -> &'graph #id_ty {
                     self.graph.#field
                         .get_at(self.internal_position.0)
                         .expect("NodeRefの内部位置は凍結後に不変のノード表を指す")
                         .0
                 }
 
-                pub fn value(self) -> &'graph super::#ty {
+                pub fn #node_ref_value_ident(self) -> &'graph super::#ty {
                     self.graph.#field
                         .get_at(self.internal_position.0)
                         .expect("NodeRefの内部位置は凍結後に不変のノード表を指す")
@@ -596,6 +602,8 @@ fn gen_node_trait_and_impls(
                         .1
                 }
             }
+
+            #node_debug_impl
 
             impl #ty {
                 pub fn #get_ident<'graph>(g: &'graph #graph_ident, id: &#id_ty) -> Option<#reference<'graph>> {
@@ -715,7 +723,7 @@ fn gen_default_id_types(nodes: &[NodeInfo], edges: &[EdgeInfo<'_>]) -> Vec<Token
         .collect()
 }
 
-/// 公開IDとは別に、凍結済みグラフ内の密な位置を表す非公開型を生成する。
+/// 公開IDとは別に、凍結済みグラフ内の内部位置を表す非公開型を生成する。
 /// 種別ごとのnewtypeにすることで、別のノード表・辺表の位置を取り違えない。
 fn gen_internal_position_types(nodes: &[NodeInfo], edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
     nodes
@@ -729,6 +737,103 @@ fn gen_internal_position_types(nodes: &[NodeInfo], edges: &[EdgeInfo<'_>]) -> Ve
             }
         })
         .collect()
+}
+
+/// 辺レコード構造体・辺参照値の積み荷フィールド `role: 型` を生成する
+/// (積み荷が無ければ空)。有向/無向で生成コードが同一なため
+/// `gen_edge_record_structs` から共有する純粋関数。
+fn edge_record_payload_fields(payload: &Option<EdgePayload>) -> Vec<TokenStream> {
+    payload
+        .iter()
+        .map(|payload| {
+            let role = &payload.role;
+            let ty = &payload.ty;
+            quote! { #role: #ty }
+        })
+        .collect()
+}
+
+/// 辺参照値の積み荷アクセサ (役割名メソッドと `payload()` エイリアス) を
+/// 生成する (積み荷が無ければ空)。有向/無向で生成コードが同一なため
+/// `gen_edge_reference_types` から共有する純粋関数。`payload()` のスパンは
+/// 辺種別トークンを継承する (`docs/ide_support_spec.md` §1.9)。
+fn edge_reference_payload_methods(kind: &Ident, payload: &Option<EdgePayload>) -> TokenStream {
+    let payload_ident = Ident::new("payload", kind.span());
+    let methods = payload.iter().map(|payload| {
+        let role = &payload.role;
+        let ty = &payload.ty;
+        quote! {
+            pub fn #role(self) -> &'graph #ty {
+                &self.record().#role
+            }
+
+            pub fn #payload_ident(self) -> &'graph #ty {
+                &self.record().#role
+            }
+        }
+    });
+    quote! { #(#methods)* }
+}
+
+/// 辺参照値の共通メソッド (内部レコードの取得、`id()`) を生成する。
+/// 有向/無向のどちらの `impl<'graph> #reference<'graph> { .. }` 本体からも
+/// 同形で使うため共有する。`id()` のスパンは辺種別トークンを継承する。
+fn edge_reference_core_methods(
+    accessor: &Ident,
+    record: &Ident,
+    id_ty: &PublicIdType,
+    kind_span: proc_macro2::Span,
+) -> TokenStream {
+    let id_ident = Ident::new("id", kind_span);
+    quote! {
+        fn record(self) -> &'graph #record {
+            self.graph.#accessor
+                .get_at(self.internal_position.0)
+                .expect("EdgeRefの内部位置は凍結後に不変の辺表を指す")
+                .1
+        }
+
+        pub fn #id_ident(self) -> &'graph #id_ty {
+            self.graph.#accessor
+                .get_at(self.internal_position.0)
+                .expect("EdgeRefの内部位置は凍結後に不変の辺表を指す")
+                .0
+        }
+    }
+}
+
+/// `NodeRef`/`EdgeRef` の `Debug` impl を生成する。`&Graph` は表示しない。
+///
+/// ID型・値型 (辺の場合は積み荷) に `Debug` を無条件要求しない契約
+/// (`gen_edge_value_structs` の同種の契約と対) を守る必要がある。当初は
+/// `where #id_ty: std::fmt::Debug` のような条件付き `impl` を試みたが、
+/// `#reference<'graph>` はライフタイムのみが型引数でID型・値型はmacro展開時
+/// に確定した具体型であるため、その `where` 節はジェネリック型引数を介した
+/// 遅延検査にはならず **定義時に即座に充足性が検査される** ことを実測で
+/// 確認した (2026-08-25、`cargo build --workspace --all-targets` で
+/// 利用者定義の非Debug型を使う既存テストが軒並みコンパイルエラーになった)。
+/// そのため `gen_edge_value_structs` の debug_impl と同じ方針
+/// (macro展開時に安全と判定できる範囲だけを表示する無条件 `impl`) を採る。
+/// 安全と判定できるのは自動生成ID型 (`gen_default_id_types` が常に
+/// `#[derive(Debug, ..)]` を付ける) の場合のみで、値型・積み荷型は利用者
+/// 定義でありmacroからは判定できないため表示対象に含めない。
+fn gen_reference_debug_impl(reference: &Ident, id_is_generated: bool) -> TokenStream {
+    let body = if id_is_generated {
+        quote! {
+            f.debug_struct(stringify!(#reference))
+                .field("id", &self.id())
+                .finish_non_exhaustive()
+        }
+    } else {
+        quote! { f.write_str(stringify!(#reference)) }
+    };
+    quote! {
+        impl<'graph> std::fmt::Debug for #reference<'graph> {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                #body
+            }
+        }
+    }
 }
 
 /// 辺値は構築時の公開IDを保持するが、完成後のレコードは端点を内部位置で
@@ -746,11 +851,7 @@ fn gen_edge_record_structs(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
                     to_role,
                     payload,
                 } => {
-                    let payload_field = payload.iter().map(|payload| {
-                        let role = &payload.role;
-                        let ty = &payload.ty;
-                        quote! { #role: #ty }
-                    });
+                    let payload_field = edge_record_payload_fields(payload);
                     quote! {
                         #[allow(dead_code)]
                         struct #record {
@@ -761,11 +862,7 @@ fn gen_edge_record_structs(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
                     }
                 }
                 EdgeInfoShape::Undirected { payload } => {
-                    let payload_field = payload.iter().map(|payload| {
-                        let role = &payload.role;
-                        let ty = &payload.ty;
-                        quote! { #role: #ty }
-                    });
+                    let payload_field = edge_record_payload_fields(payload);
                     quote! {
                         #[allow(dead_code)]
                         struct #record {
@@ -779,8 +876,8 @@ fn gen_edge_record_structs(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
         .collect()
 }
 
-/// 完成済みグラフ上の辺個体を表す薄い参照値を生成する。端点getterは保存
-/// レコード内の内部位置からNodeRefを直接作り、公開ID索引を引かない。
+/// 完成済みグラフ上の辺個体を表す薄い参照値を生成する。端点を返すメソッドは、
+/// 保存レコード内の内部位置から NodeRef を直接作り、公開IDの索引を検索しない。
 fn gen_edge_reference_types(graph_ident: &Ident, edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
     edges
         .iter()
@@ -790,6 +887,8 @@ fn gen_edge_reference_types(graph_ident: &Ident, edges: &[EdgeInfo<'_>]) -> Vec<
             let reference = edge.reference_ident();
             let internal_position = edge.internal_position_ident();
             let record = edge.record_ident();
+            let kind_span = edge.kind.span();
+            let core_methods = edge_reference_core_methods(accessor, &record, id_ty, kind_span);
             match &edge.shape {
                 EdgeInfoShape::Directed {
                     from_role,
@@ -802,19 +901,12 @@ fn gen_edge_reference_types(graph_ident: &Ident, edges: &[EdgeInfo<'_>]) -> Vec<
                     let to_position = edge.to_node.internal_position_ident();
                     let from_id = &edge.from_node.id_ty;
                     let to_id = &edge.to_node.id_ty;
-                    let payload_methods = payload.iter().map(|payload| {
-                        let role = &payload.role;
-                        let ty = &payload.ty;
-                        quote! {
-                            pub fn #role(self) -> &'graph #ty {
-                                &self.record().#role
-                            }
-
-                            pub fn payload(self) -> &'graph #ty {
-                                &self.record().#role
-                            }
-                        }
-                    });
+                    let payload_methods = edge_reference_payload_methods(edge.kind, payload);
+                    let from_ident = Ident::new("from", kind_span);
+                    let to_ident = Ident::new("to", kind_span);
+                    let from_id_ident = Ident::new("from_id", kind_span);
+                    let to_id_ident = Ident::new("to_id", kind_span);
+                    let debug_impl = gen_reference_debug_impl(&reference, edge.id_ty.is_generated());
                     quote! {
                         /// 完成済みグラフ上の有向辺個体。
                         #[derive(Clone, Copy)]
@@ -824,19 +916,7 @@ fn gen_edge_reference_types(graph_ident: &Ident, edges: &[EdgeInfo<'_>]) -> Vec<
                         }
 
                         impl<'graph> #reference<'graph> {
-                            fn record(self) -> &'graph #record {
-                                self.graph.#accessor
-                                    .get_at(self.internal_position.0)
-                                    .expect("EdgeRefの内部位置は凍結後に不変の辺表を指す")
-                                    .1
-                            }
-
-                            pub fn id(self) -> &'graph #id_ty {
-                                self.graph.#accessor
-                                    .get_at(self.internal_position.0)
-                                    .expect("EdgeRefの内部位置は凍結後に不変の辺表を指す")
-                                    .0
-                            }
+                            #core_methods
 
                             pub fn #from_role(self) -> #from_reference<'graph> {
                                 #from_reference {
@@ -852,42 +932,34 @@ fn gen_edge_reference_types(graph_ident: &Ident, edges: &[EdgeInfo<'_>]) -> Vec<
                                 }
                             }
 
-                            pub fn from(self) -> #from_reference<'graph> {
+                            pub fn #from_ident(self) -> #from_reference<'graph> {
                                 self.#from_role()
                             }
 
-                            pub fn to(self) -> #to_reference<'graph> {
+                            pub fn #to_ident(self) -> #to_reference<'graph> {
                                 self.#to_role()
                             }
 
-                            pub fn from_id(self) -> &'graph #from_id {
+                            pub fn #from_id_ident(self) -> &'graph #from_id {
                                 self.from().id()
                             }
 
-                            pub fn to_id(self) -> &'graph #to_id {
+                            pub fn #to_id_ident(self) -> &'graph #to_id {
                                 self.to().id()
                             }
 
-                            #(#payload_methods)*
+                            #payload_methods
                         }
+
+                        #debug_impl
                     }
                 }
                 EdgeInfoShape::Undirected { payload } => {
                     let node_reference = edge.from_node.reference_ident();
                     let node_position = edge.from_node.internal_position_ident();
-                    let payload_methods = payload.iter().map(|payload| {
-                        let role = &payload.role;
-                        let ty = &payload.ty;
-                        quote! {
-                            pub fn #role(self) -> &'graph #ty {
-                                &self.record().#role
-                            }
-
-                            pub fn payload(self) -> &'graph #ty {
-                                &self.record().#role
-                            }
-                        }
-                    });
+                    let payload_methods = edge_reference_payload_methods(edge.kind, payload);
+                    let endpoints_ident = Ident::new("endpoints", kind_span);
+                    let debug_impl = gen_reference_debug_impl(&reference, edge.id_ty.is_generated());
                     quote! {
                         /// 完成済みグラフ上の無向辺個体。
                         #[derive(Clone, Copy)]
@@ -897,21 +969,9 @@ fn gen_edge_reference_types(graph_ident: &Ident, edges: &[EdgeInfo<'_>]) -> Vec<
                         }
 
                         impl<'graph> #reference<'graph> {
-                            fn record(self) -> &'graph #record {
-                                self.graph.#accessor
-                                    .get_at(self.internal_position.0)
-                                    .expect("EdgeRefの内部位置は凍結後に不変の辺表を指す")
-                                    .1
-                            }
+                            #core_methods
 
-                            pub fn id(self) -> &'graph #id_ty {
-                                self.graph.#accessor
-                                    .get_at(self.internal_position.0)
-                                    .expect("EdgeRefの内部位置は凍結後に不変の辺表を指す")
-                                    .0
-                            }
-
-                            pub fn endpoints(self) -> (#node_reference<'graph>, #node_reference<'graph>) {
+                            pub fn #endpoints_ident(self) -> (#node_reference<'graph>, #node_reference<'graph>) {
                                 let (first, second) = self.record().endpoints.endpoints();
                                 (
                                     #node_reference {
@@ -925,8 +985,10 @@ fn gen_edge_reference_types(graph_ident: &Ident, edges: &[EdgeInfo<'_>]) -> Vec<
                                 )
                             }
 
-                            #(#payload_methods)*
+                            #payload_methods
                         }
+
+                        #debug_impl
                     }
                 }
             }
@@ -2008,6 +2070,35 @@ fn gen_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream 
     }
 }
 
+/// 辺の構造を保ったまま積み荷だけを可変借用する `payload_mut` を生成する
+/// (積み荷が無ければ空)。有向/無向で生成コードが同一なため
+/// `gen_directed_edge_query_impl`/`gen_undirected_edge_query_impl` から共有する。
+fn gen_edge_payload_mut_method(
+    schema_name: &Ident,
+    edge: &EdgeInfo<'_>,
+    payload: Option<&EdgePayload>,
+    kind_span: proc_macro2::Span,
+) -> TokenStream {
+    let Some(payload) = payload else {
+        return quote! {};
+    };
+    let id_ty = &edge.id_ty;
+    let accessor = &edge.accessor_ident;
+    let record = edge.record_ident();
+    let payload_role = &payload.role;
+    let payload_ty = &payload.ty;
+    let payload_mut_ident = Ident::new("payload_mut", kind_span);
+    quote! {
+        /// 辺の構造を保ったまま積み荷だけを可変借用する。
+        pub fn #payload_mut_ident<'g>(
+            g: &'g mut #schema_name,
+            id: &#id_ty,
+        ) -> Option<&'g mut #payload_ty> {
+            g.#accessor.get_mut(id).map(|record: &mut #record| &mut record.#payload_role)
+        }
+    }
+}
+
 /// 有向辺の読み取り API。`docs/schema_v4.md` §3.2 の where 制約 → 戻り型
 /// 対応表をそのまま実装する。`of`/`get_of` の戻り型は常に「出次数
 /// (`each_side == Source`)」の制約のみを見る (`docs/edge_endpoints_v4_1.md`
@@ -2035,7 +2126,6 @@ fn gen_directed_edge_query_impl(
     let edge_position = edge.internal_position_ident();
     let from_position = edge.from_node.internal_position_ident();
     let to_position = edge.to_node.internal_position_ident();
-    let record = edge.record_ident();
 
     // IDE 支援 (`docs/ide_support_spec.md` §1.9, G3 ポリシー): このエッジ
     // 種別への固有 impl が生やすメソッド名は、全て `edge.kind` (schema の
@@ -2048,7 +2138,6 @@ fn gen_directed_edge_query_impl(
     let sources_of_ident = Ident::new("sources_of", kind_span);
     let get_sources_of_ident = Ident::new("get_sources_of", kind_span);
     let get_ident = Ident::new("get", kind_span);
-    let payload_mut_ident = Ident::new("payload_mut", kind_span);
     let between_ident = Ident::new("between", kind_span);
     let iter_ident = Ident::new("iter", kind_span);
     let ids_ident = Ident::new("ids", kind_span);
@@ -2294,19 +2383,7 @@ fn gen_directed_edge_query_impl(
         }
     };
 
-    let payload_mut = payload.iter().map(|payload| {
-        let payload_role = &payload.role;
-        let payload_ty = &payload.ty;
-        quote! {
-            /// 辺の構造を保ったまま積み荷だけを可変借用する。
-            pub fn #payload_mut_ident<'g>(
-                g: &'g mut #schema_name,
-                id: &#id_ty,
-            ) -> Option<&'g mut #payload_ty> {
-                g.#accessor.get_mut(id).map(|record: &mut #record| &mut record.#payload_role)
-            }
-        }
-    });
+    let payload_mut = gen_edge_payload_mut_method(schema_name, edge, payload, kind_span);
 
     quote! {
         impl #kind {
@@ -2320,7 +2397,7 @@ fn gen_directed_edge_query_impl(
                 Some(#edge_reference { graph: g, internal_position })
             }
 
-            #(#payload_mut)*
+            #payload_mut
 
             #between
 
@@ -2368,12 +2445,10 @@ fn gen_undirected_edge_query_impl(
     let node_position = edge.from_node.internal_position_ident();
     let edge_reference = edge.reference_ident();
     let edge_position = edge.internal_position_ident();
-    let record = edge.record_ident();
 
     let kind_span = kind.span();
     let of_ident = Ident::new("of", kind_span);
     let get_ident = Ident::new("get", kind_span);
-    let payload_mut_ident = Ident::new("payload_mut", kind_span);
     let between_ident = Ident::new("between", kind_span);
     let iter_ident = Ident::new("iter", kind_span);
     let ids_ident = Ident::new("ids", kind_span);
@@ -2476,19 +2551,7 @@ fn gen_undirected_edge_query_impl(
         }
     };
 
-    let payload_mut = payload.iter().map(|payload| {
-        let payload_role = &payload.role;
-        let payload_ty = &payload.ty;
-        quote! {
-            /// 辺の構造を保ったまま積み荷だけを可変借用する。
-            pub fn #payload_mut_ident<'g>(
-                g: &'g mut #schema_name,
-                id: &#id_ty,
-            ) -> Option<&'g mut #payload_ty> {
-                g.#accessor.get_mut(id).map(|record: &mut #record| &mut record.#payload_role)
-            }
-        }
-    });
+    let payload_mut = gen_edge_payload_mut_method(schema_name, edge, payload, kind_span);
 
     quote! {
         impl #kind {
@@ -2500,7 +2563,7 @@ fn gen_undirected_edge_query_impl(
                 Some(#edge_reference { graph: g, internal_position })
             }
 
-            #(#payload_mut)*
+            #payload_mut
 
             #between
 

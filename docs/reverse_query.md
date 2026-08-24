@@ -27,6 +27,7 @@ Boss::sources_of(&g, &alice);   // alice を終点とする Boss 辺の始点側
   役割名つきで `each superior: 0..1` なら `Option<(EmployeeRef<'graph>, &BossEdge)>`、
   制約なしなら `Vec<..>`。積み荷なしは相手ノードのみ
 - 相手は `NodeRef` で返す (of と同じ解決規則)。キーは `NodeRef::id()` で取得する
+  (参照: `docs/schema_v4.md` §3.1)
 - **無向辺には生成しない** (`of` が既に対称なので同じもの)
 - 実装: freeze 時に終点索引 (`{accessor}_to_index: HashMap<ToPosition, Vec<KindPosition>>`)
   を**構造体フィールドとして永続化** (グラフは凍結後不変なので一度構築すれば

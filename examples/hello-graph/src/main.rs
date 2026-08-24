@@ -201,7 +201,7 @@ fn main() {
 // できることは、`crates/graphite/tests/orgchart_macro.rs` の
 // `名前付きフィールドの辺値はマクロ外でも普通に構築できる` が実例です。
 //
-// ## 3. 完成済みグラフは密な位置で端点を結ぶ
+// ## 3. 完成済みグラフは内部位置で端点を結ぶ
 //
 // builder が受け取る `Boss` 値は公開IDを持ちますが、freeze はIDを種別専用の
 // 非公開位置へ変換します。完成済みグラフの概念的な格納形は次の通りです。
@@ -425,10 +425,7 @@ fn 人ノードを1件読む(g: &Org::Graph) {
         println!("(ノード) Person::get(&g, &alice) = {}", person.name);
     }
     let unknown: Option<Org::PersonRef<'_>> = Org::Person::get(g, &PersonId("dave".to_string()));
-    println!(
-        "(ノード) Person::get(&g, &dave) で値が無い = {}",
-        unknown.is_none()
-    );
+    println!("(ノード) Person::get(&g, &dave) = {unknown:?}");
 }
 
 // やりたいこと: `Team::get` も同じ形。ノード型が違っても命名規則は共通。
@@ -465,10 +462,7 @@ fn each_1のofは直接参照を返す(g: &Org::Graph) {
         safe.map(|t| t.value().name.as_str())
     );
     let unknown: Option<Org::TeamRef<'_>> = BelongsTo::get_of(g, &PersonId("dave".to_string()));
-    println!(
-        "(each 1) BelongsTo::get_of(&g, &dave) で値が無い = {}",
-        unknown.is_none()
-    );
+    println!("(each 1) BelongsTo::get_of(&g, &dave) = {unknown:?}");
 }
 
 // やりたいこと: `each subordinate: 0..1` のエッジは `of` が `Option` を返す。
@@ -559,9 +553,9 @@ fn 無向辺のofとbetweenは対称に辿れる(g: &Org::Graph) {
     let forward: Option<Org::FriendsRef<'_>> = Friends::between(g, &alice, &bob);
     let backward: Option<Org::FriendsRef<'_>> = Friends::between(g, &bob, &alice);
     println!(
-        "(無向) between(alice, bob) = {} / between(bob, alice) = {} (順序を無視して同じ辺)",
-        forward.is_some(),
-        backward.is_some()
+        "(無向) between(alice, bob) = {:?} / between(bob, alice) = {:?} (順序を無視して同じ辺)",
+        forward.map(|edge| edge.id()),
+        backward.map(|edge| edge.id())
     );
 }
 
@@ -865,39 +859,33 @@ fn create_collectingで全違反を集める() {
 //
 // コンパイラは型名を値として使ったことを報告します。
 
-// --- 4.2 フィールドに直接アクセスしようとする (内部ストレージの型が露出する) ---
+// --- 4.2 フィールドに直接アクセスしようとする (非公開フィールドで弾かれる) ---
 //
-// `Org` の各フィールド (`boss` 等) は非公開の内部ストレージ
-// (`KeyedTable<BossId, Boss>`、§2.5 参照) であり、`Person`/`Team` のような
-// ノード値そのものではありません。このファイルは schema 宣言と同じ
-// モジュールなので `g.boss` という式自体は private エラーにはなりません
-// (Rust の可視性はモジュール単位であり、同一モジュール内では非公開
-// フィールドも見えるため)。しかし中身は `Person` ではなく
-// `KeyedTable<BossId, Boss>` そのものなので、`Person` として使おうとした
-// 瞬間に型不一致になります。
+// `Org::Graph` の各フィールド (`boss` 等) は非公開の内部ストレージであり、
+// 格納値は構築用の `Boss` 値そのものではなく非公開レコード型
+// `KeyedTable<BossId, __BossRecord>` です (§2.5 参照)。`graph_schema!` は
+// schema の中身全体を `pub mod Org { .. }` へ生成するため
+// (`crates/graphite-macros/src/schema_codegen.rs` の `generate` 参照)、この
+// ファイルの `fn section4_2` はマクロ呼び出しと同じソースファイルにあっても
+// `Org` module の**外側**にいます。したがって `g.boss` は型不一致以前に
+// 非公開フィールドへのアクセスとして弾かれます。
 //
-// fn section4_2(g: &Org) -> Person {
+// fn section4_2(g: &Org::Graph) -> Person {
 //     g.boss
 // }
 //
 // 実際のエラー (コメントを外して `cargo build` した際に採取):
 //
-//   error[E0308]: mismatched types
-//      --> src\main.rs:690:5
-//       |
-//   689 | fn section4_2(g: &Org) -> Person {
-//       |                           ------ expected `Person` because of return type
-//   690 |     g.boss
-//       |     ^^^^^^ expected `Person`, found `KeyedTable<BossId, Boss>`
-//       |
-//       = note: expected struct `Person`
-//                  found struct `KeyedTable<BossId, Boss>`
+//   error[E0616]: field `boss` of struct `Org::Graph` is private
+//       --> src\main.rs:1310:7
+//        |
+//   1310 |     g.boss
+//        |       ^^^^ private field
 //
-// (`g.boss` という式そのものは同一モジュール内なので private エラーには
-// ならず素朴に評価できてしまいますが、その型は `Person` ではなく内部
-// ストレージの `KeyedTable` そのものであることがこの型不一致から分かります。
-// つまり「boss というフィールドで社員そのものが手に入る」という誤解は
-// この型不一致で正されます。§2.5 で見た内部テーブルの型そのものです。)
+// (`Org` module の内側であれば `g.boss` 自体は評価できますが、その型は
+// `Boss` ではなく非公開レコード型 `KeyedTable<BossId, __BossRecord>` その
+// ものです。つまり「boss というフィールドで社員そのものが手に入る」という
+// 誤解は、まず可視性で、次に型不一致で二重に正されます。)
 
 // --- 4.3 存在しないエッジ種別を graph! に書く ---
 //

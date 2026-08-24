@@ -105,12 +105,17 @@ let g = graphite::graph!(Org {
 
 | 要素 | 構築時の値 | 公開ID | 完成済みグラフの参照 | 非公開の格納形式 |
 |---|---|---|---|---|
-| ノード | 利用者が宣言した `Person` | `PersonId` | `PersonRef<'graph>` | ノード種別専用の密な位置 |
+| ノード | 利用者が宣言した `Person` | `PersonId` | `PersonRef<'graph>` | ノード種別専用の内部位置 |
 | 辺 | 生成された `Boss`。端点IDと積み荷を持つ | `BossId` | `BossRef<'graph>` | 端点位置と積み荷を持つ完成済み記録 |
+
+以下、ノード種別ごとの `{Node}Ref<'graph>` を NodeRef、辺種別ごとの
+`{Kind}Ref<'graph>` を EdgeRef と総称する。
 
 freeze は公開IDを種別専用の位置へ変換する。完成済み辺記録と索引は位置を保持するため、`NodeRef` または `EdgeRef` を得た後の端点走査では公開IDのハッシュ検索を行わない。どちらの参照型も `&Graph` と位置だけを持つ `Copy + Clone` の値であり、ヒープ確保、自己参照、`Rc`、`RefCell`、実行時リフレクションを使わない。
 
 公開される `NodeRef` の `Deref::Target` にノード値型が現れるため、公開schemaのノード値型には到達可能な可視性が必要である。通常は `pub struct Person` と宣言する。
+
+ノード値型が `id`/`value` という名のメソッドを持つ場合、`NodeRef` の同名の固有メソッドが優先される (メソッド解決は `Deref` より先に固有メソッドを探すため)。値側のメソッドを呼びたいときは `(*node_ref).id()` のように明示的に `Deref` させる。
 
 ### 3.2 アクセス (すべて型名前空間の関連関数。g.メソッドは廃止)
 

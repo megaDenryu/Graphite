@@ -61,7 +61,8 @@ mod usage {
             CrossModuleOrg::Employee::get(&g, &EmployeeId("tanaka".to_string())).unwrap().name,
             "田中"
         );
-        let dept = CrossModuleOrg::BelongsTo::of(&g, &EmployeeId("tanaka".to_string()));
+        let dept: CrossModuleOrg::DepartmentRef<'_> =
+            CrossModuleOrg::BelongsTo::of(&g, &EmployeeId("tanaka".to_string()));
         assert_eq!(dept.name, "営業");
     }
 }

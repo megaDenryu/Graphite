@@ -151,7 +151,7 @@ mod tests {
     #[test]
     fn belongs_toのofはeach1なので参照そのものを返す() {
         let g = build_healthy_chart();
-        let d = BelongsTo::of(&g, &emp("田中"));
+        let d: OrgChart::DepartmentRef<'_> = BelongsTo::of(&g, &emp("田中"));
         assert_eq!(d.name, "営業");
     }
 
@@ -926,7 +926,7 @@ mod graph_literal_tests {
             "営業"
         );
 
-        let d = BelongsTo::of(&g, &EmployeeId("tanaka".to_string()));
+        let d: OrgChart::DepartmentRef<'_> = BelongsTo::of(&g, &EmployeeId("tanaka".to_string()));
         assert_eq!(d.name, "営業");
 
         // Boss(部下 -> 上司) の方向規約により、tanaka の上司は sato。
@@ -972,7 +972,7 @@ mod graph_literal_tests {
             OrgChart::Employee::get(&g, &EmployeeId("b".to_string())).unwrap().name,
             "B社員"
         );
-        let d = BelongsTo::of(&g, &EmployeeId("b".to_string()));
+        let d: OrgChart::DepartmentRef<'_> = BelongsTo::of(&g, &EmployeeId("b".to_string()));
         assert_eq!(d.name, "営業");
     }
 
@@ -993,7 +993,7 @@ mod graph_literal_tests {
         })
         .expect("エッジをノード宣言より先に書いても構築できるはず");
 
-        let d = BelongsTo::of(&g, &EmployeeId("tanaka".to_string()));
+        let d: OrgChart::DepartmentRef<'_> = BelongsTo::of(&g, &EmployeeId("tanaka".to_string()));
         assert_eq!(d.name, "営業");
 
         let (boss_emp, attrs) = Boss::of(&g, &EmployeeId("tanaka".to_string()))
@@ -1041,7 +1041,7 @@ mod graph_literal_tests {
         })
         .expect("手動構築でも成功するはず");
 
-        let d = BelongsTo::of(&g, &EmployeeId("tanaka".to_string()));
+        let d: OrgChart::DepartmentRef<'_> = BelongsTo::of(&g, &EmployeeId("tanaka".to_string()));
         assert_eq!(d.name, "営業");
     }
 }

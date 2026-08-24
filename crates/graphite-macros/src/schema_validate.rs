@@ -27,7 +27,7 @@ use std::collections::{HashMap, HashSet};
 use quote::ToTokens;
 use syn::Ident;
 
-use crate::naming::generated_id_ident;
+use crate::naming::{generated_id_ident, reference_ident};
 use crate::schema_dsl::{EdgeDecl, EdgeShape, NodeDecl};
 
 pub fn validate_unique_node_names(nodes: &[NodeDecl]) -> syn::Result<()> {
@@ -108,6 +108,31 @@ pub fn validate_edge_roles(edges: &[EdgeDecl]) -> syn::Result<()> {
     Ok(())
 }
 
+/// 生成名衝突を報告するときに添える解決の助言。衝突した2つの生成名の
+/// どちらが「今まさに登録しようとしている側」かによって、有効な解決策が
+/// 変わるため種別として持つ。
+///
+/// - `既存id型を明示`: 自動生成ID型 (`{ノード名}Id` 等) との衝突。ユーザーが
+///   既存のID型を使い回したい意図であることが多いため `(id: 型)` の明示を促す。
+/// - `ノードまたは辺の名前を変更`: ノードマーカー・エッジ型・参照型
+///   (`{ノード名}Ref` 等) との衝突。これらの生成名はノード名/辺名から機械的に
+///   導出されるため、`(id: 型)` を明示しても衝突は解消できない。宣言名自体の
+///   変更を促す。
+#[derive(Clone, Copy)]
+enum 生成名衝突助言 {
+    既存id型を明示,
+    ノードまたは辺の名前を変更,
+}
+
+impl 生成名衝突助言 {
+    fn 文言(self) -> &'static str {
+        match self {
+            Self::既存id型を明示 => "既存ID型を使う場合は `(id: 型)` を明示してください",
+            Self::ノードまたは辺の名前を変更 => "ノード名・辺名を変更してください",
+        }
+    }
+}
+
 /// schema module の型名前空間へ生成する名前が互いに衝突しないことを検査する。
 /// 既定IDと同名の既存IDを使う意図がある場合は `(id: K)` の明示指定を
 /// 必須にし、Graphite が暗黙に既存型を拾う余地を残さない。
@@ -133,12 +158,16 @@ pub fn validate_generated_type_names(
         );
     }
 
-    let mut register = |name: String, span: proc_macro2::Span, description: String| {
+    let mut register = |name: String,
+                        span: proc_macro2::Span,
+                        description: String,
+                        advice: 生成名衝突助言| {
         if let Some((previous_span, previous_description)) = names.get(&name) {
             let mut error = syn::Error::new(
                 span,
                 format!(
-                    "schema module内の生成名 `{name}` が衝突します ({description} と {previous_description})。既存ID型を使う場合は `(id: 型)` を明示してください"
+                    "schema module内の生成名 `{name}` が衝突します ({description} と {previous_description})。{}",
+                    advice.文言()
                 ),
             );
             error.combine(syn::Error::new(*previous_span, "衝突する生成名はこちら"));
@@ -153,6 +182,7 @@ pub fn validate_generated_type_names(
             node.name.to_string(),
             node.name.span(),
             format!("ノードマーカー `{}`", node.name),
+            生成名衝突助言::ノードまたは辺の名前を変更,
         )?;
     }
     for edge in edges {
@@ -160,6 +190,25 @@ pub fn validate_generated_type_names(
             edge.kind.to_string(),
             edge.kind.span(),
             format!("エッジ型 `{}`", edge.kind),
+            生成名衝突助言::ノードまたは辺の名前を変更,
+        )?;
+    }
+    for node in nodes {
+        let name = reference_ident(&node.name).to_string();
+        register(
+            name.clone(),
+            node.name.span(),
+            format!("参照型 `{name}`"),
+            生成名衝突助言::ノードまたは辺の名前を変更,
+        )?;
+    }
+    for edge in edges {
+        let name = reference_ident(&edge.kind).to_string();
+        register(
+            name.clone(),
+            edge.kind.span(),
+            format!("参照型 `{name}`"),
+            生成名衝突助言::ノードまたは辺の名前を変更,
         )?;
     }
     for node in nodes.iter().filter(|node| node.id_ty.is_none()) {
@@ -168,6 +217,7 @@ pub fn validate_generated_type_names(
             name.clone(),
             node.name.span(),
             format!("自動生成ID型 `{name}`"),
+            生成名衝突助言::既存id型を明示,
         )?;
     }
     for edge in edges.iter().filter(|edge| edge.id_ty.is_none()) {
@@ -176,6 +226,7 @@ pub fn validate_generated_type_names(
             name.clone(),
             edge.kind.span(),
             format!("自動生成ID型 `{name}`"),
+            生成名衝突助言::既存id型を明示,
         )?;
     }
     for path in nodes

@@ -187,7 +187,18 @@ builder (`OrgChart::Builder`)・違反 enum (`OrgChart::Violation`) が置かれ
 `BossRef<'graph>` では `edge.subordinate()` / `edge.superior()` が
 `EmployeeRef<'graph>` を返し、積み荷は `edge.payload()` で読みます。
 
-完成済みグラフは、公開IDを種別ごとの非公開な密な位置へ一度だけ変換します。完成済みの辺記録はIDではなく端点位置を保持し、`NodeRef` と `EdgeRef` は `&Graph` と位置だけを持つ `Copy + Clone` の値です。このため、参照を得た後のID・値・端点・積み荷の取得は公開IDのハッシュ検索を繰り返しません。`NodeRef` は `Deref<Target = NodeValue>` を実装しますが、構築用の辺値と完成済みの `EdgeRef` は役割が異なるため、`EdgeRef` は辺値へ `Deref` しません。
+以下、ノード種別ごとの `{Node}Ref<'graph>` を NodeRef、辺種別ごとの
+`{Kind}Ref<'graph>` を EdgeRef と総称します。
+
+完成済みグラフは、公開IDを種別ごとの非公開な内部位置へ一度だけ変換します。完成済みの辺記録はIDではなく端点位置を保持し、`NodeRef` と `EdgeRef` は `&Graph` と位置だけを持つ `Copy + Clone` の値です。このため、参照を得た後のID・値・端点・積み荷の取得は公開IDのハッシュ検索を繰り返しません。`NodeRef` は `Deref<Target = NodeValue>` を実装しますが、構築用の辺値と完成済みの `EdgeRef` は役割が異なるため、`EdgeRef` は辺値へ `Deref` しません。
+
+`NodeRef` は ID型・値型がどちらも `Debug` を実装するかにかかわらず常に
+`Debug` を実装しますが、値を安全に表示できるのはmacro展開時に判定できる
+場合 (IDが省略記法による自動生成型のとき) に限られ、それ以外は型名だけを
+表示します (ID型・値型へ `Debug` を無条件要求しない契約を守るため)。`EdgeRef`
+も同じ方針で、自動生成IDのときだけ `id` を表示します。ノード値型が
+`id`/`value` という名のメソッドを持つ場合、`NodeRef` の同名の固有メソッドが
+優先されます。値側を呼ぶには `(*node_ref).id()` のように `Deref` させます。
 
 **ノード挿入トレイトと総称 `insert`**: builder には型名付きの
 挿入メソッド (`b.employee(id, value)` など、上記の各 `node` 宣言から1つずつ
@@ -474,9 +485,11 @@ let result: Result<OrgChart::Graph, Vec<OrgChart::Violation>> = OrgChart::Graph:
   (フェーズ5で `node: K` (代表ノード1つ) から拡張した破壊的変更)。
 
 導出エッジ (保存されない計算結果、例: 同じ部署の同僚一覧) は `graph_schema!`
-の DSLには含めていません。生成された struct は同一モジュール内であれば
-私有フィールドに直接アクセスできる (通常の Rust 可視性規則) ので、
-`impl OrgChart { pub fn colleagues(&self, ...) -> Vec<&Employee> { ... } }`
+の DSLには含めていません。`graph_schema!` は schema の中身全体を
+`pub mod OrgChart { .. }` へ生成するため、私有ストレージ・索引へは
+親moduleからアクセスできませんが、`{Type}::get`/`{Kind}::iter` のような
+公開クエリAPIだけで導出クエリを書けます。
+`impl OrgChart::Graph { pub fn colleagues(&self, ...) -> Vec<&Employee> { ... } }`
 のように後から普通のメソッドとして追記してください
 (`crates/graphite/tests/orgchart_macro.rs` に実例あり)。
 
@@ -513,7 +526,7 @@ let result: Result<OrgChart::Graph, Vec<OrgChart::Violation>> = OrgChart::Graph:
 - 既定IDにも `alice @ Org::PersonId("external-name".into()) = ...` と書けば、束縛名とは別の値を渡せます。
 - `insert`・`add`・`extend`・`..式` は文字列から既定IDを作る経路です。明示IDには `insert_with_id`・`add_with_id`、または `graph!` の `@` を使います。スプライスへ明示IDを渡す構文はIssue #6/#2で確定します。
 
-IDは密な添字ではありません。`KeyedTable` はIDをハッシュキーとして扱い、挿入順は別に保持します。詳細は `docs/node_id_v4_2.md` を参照してください。
+IDは内部位置ではありません。`KeyedTable` はIDをハッシュキーとして扱い、挿入順は別に保持します。詳細は `docs/node_id_v4_2.md` を参照してください。
 
 ### 名前空間に関する制約 (`graph!`)
 

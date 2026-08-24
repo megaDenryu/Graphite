@@ -199,6 +199,26 @@ flow! も初回実装から全導線が機能 (式素通し + let 漏らしと�
 | 使用側の `EmployeeId` → 定義 (v4.2) | ✅ ユーザー宣言の `pub struct EmployeeId(pub String);` へ精密着地 (v4.1 まではマクロ生成型としてスキーマにアンカーされていた。ユーザー宣言化により本物の struct 宣言に飛ぶ) |
 | スプライス項 `..staff` の `staff` → 定義 | ✅ ローカル変数宣言へ精密着地 (式素通しの既存機構) |
 
+## 1.13 NodeRef/EdgeRef 導入後のスパン適用 (2026-08-25)
+
+第4段階 (NodeRef/EdgeRef 導入、コミット `1ca50e9` のレビュー是正) で、
+NodeRef/EdgeRef の公開メソッド群にも既存の G3 ポリシー (`§1.9`) を適用した:
+`NodeRef::id`/`value` はノード型トークン (`node Person;` の `Person`) の
+スパンを、`EdgeRef::id`/`from`/`to`/`from_id`/`to_id`/`endpoints`/`payload`
+は辺種別トークン (`edge Boss = ..;` の `Boss`) のスパンを、それぞれ
+`Ident::new(名前, span)` で明示的に継承する (既存の `get_mut`/`payload_mut`
+と同じ書き方)。
+
+**検証範囲**: rust-analyzer 実機での F12 (go to definition) 再計測は
+今回実施していない。代わりに、対象メソッドをわざと誤った引数数で呼び出し
+`E0061` を発生させ、rustc が出す「note: method defined here」の位置
+(rust-analyzer の definition provider と同じスパン情報を使う診断) が
+狙った宣言トークンへ一致することを確認した (`EdgeRef::from_id` →
+`edge Boss = ..;` の `Boss`、`NodeRef::value` → `node Person;` の
+`Person`。ワークスペース外の使い捨てクレートで実施、検証用コードは
+リポジトリに残していない)。rustc の定義スパン表示では検証済みだが、
+rust-analyzer 実機での確認は未実施のままである。
+
 ## 2. 仕様項目
 
 ### G1: `graph!` ノードキーの let 束縛化 (実装対象)
