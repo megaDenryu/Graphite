@@ -5,6 +5,9 @@ struct Person;
 struct Product;
 
 #[derive(Clone, PartialEq)]
+struct Item;
+
+#[derive(Clone, PartialEq)]
 struct TransactionInfo {
     amount: u64,
 }
@@ -16,6 +19,15 @@ graphite::graph_schema! {
 
         edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) where each buyer: 1..2, each product: 0..1, unique pair;
         edge Subscription = (member: Person) -> (product: Product) where each member: 1..*;
+    }
+}
+
+graphite::graph_schema! {
+    schema JapaneseRoles {
+        node Person;
+        node Item;
+
+        edge Ownership = (所有者: Person) -> (所有物: Item) where each 所有者: 1;
     }
 }
 
@@ -75,5 +87,22 @@ fn 上限なしcardinalityも下限を検証する() {
     assert!(violations.iter().any(|violation| matches!(
         violation,
         Commerce::Violation::SubscriptionMemberEachViolation { count: 0, .. }
+    )));
+}
+
+#[test]
+fn 日本語の役割名から多重度違反variantを生成する() {
+    let result = JapaneseRoles::Graph::create_collecting(|builder| {
+        builder.person(JapaneseRoles::PersonId("alice".into()), Person);
+        builder.item(JapaneseRoles::ItemId("book".into()), Item);
+    });
+
+    let violations = match result {
+        Err(violations) => violations,
+        Ok(_) => panic!("所有者ごとに辺が1本必要なはず"),
+    };
+    assert!(violations.iter().any(|violation| matches!(
+        violation,
+        JapaneseRoles::Violation::Ownership所有者EachViolation { count: 0, .. }
     )));
 }

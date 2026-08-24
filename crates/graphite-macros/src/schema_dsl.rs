@@ -30,17 +30,17 @@
 //! 場合は `use` で名前をこのスコープに持ち込む)。エッジ属性型は照合には
 //! 使わず参照するだけなので `syn::Path` (モジュール修飾可) を許す。
 //!
-//! 有向edge宣言は `edge Kind = (role: From) -> (role: To) (where ...)?;`
-//! (積み荷なし) または `edge Kind = (role: From) -[role: Attrs]-> (role: To)`
+//! 有向辺宣言は `edge Kind = (役割名: From) -> (役割名: To) (where ...)?;`
+//! (積み荷なし) または `edge Kind = (役割名: From) -[役割名: Attrs]-> (役割名: To)`
 //! (積み荷あり) の形。
 //! **`Kind` は新しい nominal 型として生成される** (透過的別名ではない)。
 //! 旧多重度注釈 `(1)`/`(0..1)`/`(0..*)` は廃止 (字面ごと消滅、検出もしない)。
 //!
 //! `where` 節はカンマ区切りで複数の制約を書ける:
-//! - `each <role>: N | N..M | N..*` — endpoint roleごとの本数制約
+//! - `each <役割名>: N | N..M | N..*` — 端点の役割名ごとの多重度制約
 //! - `unique pair` — 同じ (始点, 終点) の対に2本目を張ることを禁止
 //!
-//! `each` の `<FromType>` が宣言の `From` と一致するかは意味検査
+//! `each` の役割名が宣言した始点か終点の役割名と一致するかは意味検査
 //! (`schema_validate.rs`) で行う。`each` と `unique pair` は独立した制約
 //! として扱い、両方を同時に書くことも許す (`each 0..1` の下では同対2本は
 //! 既に不可能なので `unique pair` の併記は冗長だが、実装を単純にするため
@@ -50,14 +50,15 @@
 //! ## v4.1 での拡張 (`docs/edge_endpoints_v4_1.md`)
 //!
 //! - 有向端点は `(役割名: 型名)` が必須。積み荷も `[役割名: 型パス]` が必須。
-//! - 柄は4形: `->` / `-[role: Attrs]->` (有向) / `--` / `-[role: Attrs]-` (無向)。
+//! - 柄は4形: `->` / `-[役割名: Attrs]->` (有向) / `--` / `-[役割名: Attrs]-` (無向)。
 //!   無向辺には役割名を書けない (構文エラー)。
-//! - `each <参照名>` の `<参照名>` は役割名つきの辺では役割名 (型名参照は
-//!   意味検査でエラー)、無向辺ではノード型名 (次数制約) を指す。役割名により
+//! - `each <参照名>` の `<参照名>` は有向辺の役割名を指す (型名参照は
+//!   意味検査でエラー)。無向辺は役割名を持たないため `each` を指定できない。
+//!   役割名により
 //!   終点側の入次数制約 (`each <終点役割名>: ..`) も書けるようになる
 //!   (意味解決は `schema_validate.rs::resolve_each_side`)。
 
-use proc_macro2::TokenTree;
+use proc_macro2::{Span, TokenTree};
 use syn::parse::{Parse, ParseStream};
 use syn::{braced, bracketed, parenthesized, Ident, LitInt, Path, Token};
 
@@ -146,11 +147,32 @@ fn parse_optional_id_type(input: ParseStream) -> syn::Result<Option<Path>> {
 /// `each <role>: N | N..M | N..*` の右辺。
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct EachSpec {
-    pub min: usize,
-    pub max: Option<usize>,
+    min: usize,
+    max: Option<usize>,
 }
 
 impl EachSpec {
+    fn new(min: usize, max: Option<usize>, error_span: Span) -> syn::Result<Self> {
+        if let Some(upper) = max {
+            if min <= upper {
+                return Ok(Self { min, max });
+            }
+            return Err(syn::Error::new(
+                error_span,
+                format!("多重度の下限 {min} は上限 {upper} 以下でなければなりません"),
+            ));
+        }
+        Ok(Self { min, max })
+    }
+
+    pub fn min(self) -> usize {
+        self.min
+    }
+
+    pub fn max(self) -> Option<usize> {
+        self.max
+    }
+
     pub fn is_exactly_one(self) -> bool {
         self.min == 1 && self.max == Some(1)
     }
@@ -166,30 +188,23 @@ fn parse_each_spec(input: ParseStream) -> syn::Result<EachSpec> {
     let lit: LitInt = input.parse()?;
     let min: usize = lit.base10_parse()?;
     if !input.peek(Token![..]) {
-        return Ok(EachSpec {
-            min,
-            max: Some(min),
-        });
+        return EachSpec::new(min, Some(min), lit.span());
     }
     input.parse::<Token![..]>()?;
     if input.peek(Token![*]) {
         input.parse::<Token![*]>()?;
-        return Ok(EachSpec { min, max: None });
+        return EachSpec::new(min, None, lit.span());
     }
     let upper: LitInt = input
         .parse()
         .map_err(|_| syn::Error::new(lit.span(), EACH_HELP))?;
     let max: usize = upper.base10_parse()?;
-    if min > max {
-        return Err(syn::Error::new(
-            upper.span(),
-            format!("cardinalityの下限 {min} は上限 {max} 以下でなければなりません"),
-        ));
-    }
-    Ok(EachSpec {
-        min,
-        max: Some(max),
-    })
+    EachSpec::new(min, Some(max), upper.span())
+}
+
+pub struct EachConstraint {
+    pub role: Ident,
+    pub spec: EachSpec,
 }
 
 /// `where` 節の制約1つ分。
@@ -215,14 +230,14 @@ fn parse_constraint(input: ParseStream) -> syn::Result<Constraint> {
         input.parse::<kw::pair>()?;
         Ok(Constraint::UniquePair)
     } else {
-        Err(input.error("`each <役割名>: <cardinality>` または `unique pair` を期待しました"))
+        Err(input.error("`each <役割名>: <多重度>` または `unique pair` を期待しました"))
     }
 }
 
 /// `where` 節全体 (カンマ区切りの制約の列、`where` キーワード自体は省略可)。
 #[derive(Default)]
 pub struct WhereClause {
-    pub each: Vec<(Ident, EachSpec)>,
+    pub each: Vec<EachConstraint>,
     pub unique_pair: bool,
 }
 
@@ -238,16 +253,18 @@ fn parse_optional_where_clause(input: ParseStream) -> syn::Result<WhereClause> {
     loop {
         match parse_constraint(input)? {
             Constraint::Each { ref_ident, spec } => {
-                if let Some((previous, _)) = clause.each.iter().find(|(name, _)| name == &ref_ident)
-                {
+                if let Some(previous) = clause.each.iter().find(|item| item.role == ref_ident) {
                     let mut error = syn::Error::new(
                         ref_ident.span(),
-                        format!("役割 `{ref_ident}` のcardinalityが重複しています"),
+                        format!("役割名 `{ref_ident}` の多重度が重複しています"),
                     );
-                    error.combine(syn::Error::new(previous.span(), "最初の指定はこちら"));
+                    error.combine(syn::Error::new(previous.role.span(), "最初の指定はこちら"));
                     return Err(error);
                 }
-                clause.each.push((ref_ident, spec));
+                clause.each.push(EachConstraint {
+                    role: ref_ident,
+                    spec,
+                });
             }
             Constraint::UniquePair => {
                 clause.unique_pair = true;
@@ -276,8 +293,32 @@ fn parse_optional_where_clause(input: ParseStream) -> syn::Result<WhereClause> {
 /// role中心構文:
 /// - 有向端点は役割名つき (`(役割名: 型名)`) が必須。
 /// - 積み荷も役割名つき (`[役割名: 型パス]`) が必須。
-/// - 無向辺にはendpoint roleを書けない。
-/// - 柄が4形になる: `->` / `-[role: Attrs]->` (有向) / `--` / `-[role: Attrs]-` (無向)。
+/// - 無向辺には端点の役割名を書けない。
+/// - 柄が4形になる: `->` / `-[役割名: Attrs]->` (有向) / `--` / `-[役割名: Attrs]-` (無向)。
+#[derive(Clone)]
+pub struct EdgePayload {
+    pub role: Ident,
+    pub ty: Path,
+}
+
+pub struct DirectedEndpoint {
+    pub role: Ident,
+    pub ty: Ident,
+}
+
+pub enum EdgeShape {
+    Directed {
+        from: DirectedEndpoint,
+        to: DirectedEndpoint,
+        payload: Option<EdgePayload>,
+    },
+    Undirected {
+        first: Ident,
+        second: Ident,
+        payload: Option<EdgePayload>,
+    },
+}
+
 pub struct EdgeDecl {
     /// エッジ種別名。新しい nominal 型として生成される (`docs/schema_v4.md`
     /// §1)。型名なので慣習上 PascalCase だが、パース段階ではケースを検査
@@ -286,17 +327,7 @@ pub struct EdgeDecl {
     /// 既存の公開 ID 型。`None` の場合は schema module 内に `{kind}Id`
     /// newtype を生成する。
     pub id_ty: Option<Path>,
-    pub from: Ident,
-    pub to: Ident,
-    /// 始点のrole。有向辺では必ず `Some`、無向辺では `None`。
-    pub from_role: Option<Ident>,
-    /// 終点の役割名。
-    pub to_role: Option<Ident>,
-    /// 有向 (`->`/`-[Attrs]->`) か無向 (`--`/`-[Attrs]-`) か。
-    pub directed: bool,
-    pub attrs_ty: Option<Path>,
-    /// 積み荷の役割名。積み荷がある場合は必ず `Some`。
-    pub attrs_role: Option<Ident>,
+    pub shape: EdgeShape,
     pub constraints: WhereClause,
 }
 
@@ -353,7 +384,7 @@ fn parse_endpoint_paren_body(content: ParseStream) -> syn::Result<Endpoint> {
 /// `docs/edge_endpoints_v4_1.md` §2 の導出規則どおりに実装する: 最初の `-`
 /// を読んだ後、`[Attrs]` (積み荷、あれば) を読み、最後に `->` (有向) か `-`
 /// (無向) かで向きを判定する。
-fn parse_edge_arrow(input: ParseStream) -> syn::Result<(Option<(Ident, Path)>, bool)> {
+fn parse_edge_arrow(input: ParseStream) -> syn::Result<(Option<EdgePayload>, bool)> {
     // 素の `->` (単一の複合トークン) を先読みして判定する。`-[`/`--` は
     // いずれも `-` と別トークンの2トークンなので `->` と誤って先読み
     // マッチすることはない。
@@ -398,70 +429,96 @@ impl Parse for EdgeDecl {
         let (attrs, directed) = parse_edge_arrow(input)?;
         let to_ep = parse_endpoint(input)?;
 
-        // 役割名の妥当性検査 (`docs/edge_endpoints_v4_1.md` §1/§2)。
-        if !directed {
-            // 無向辺には役割名を書けない (役割の区別がある時点で対称ではない)。
-            if let Some(bad_role) = from_ep.role.as_ref().or(to_ep.role.as_ref()) {
-                return Err(syn::Error::new(
-                    bad_role.span(),
-                    "無向辺 (`--`/`-[Attrs]-`) には役割名を書けません。役割の区別がある場合は役割名つき有向辺を使ってください",
-                ));
-            }
-        } else if from_ep.role.is_none() || to_ep.role.is_none() {
-            let bad_endpoint = if from_ep.role.is_none() {
-                &from_ep.ty
-            } else {
-                &to_ep.ty
-            };
-            return Err(syn::Error::new(
-                bad_endpoint.span(),
-                "有向edgeの端点は役割名を付けて `(役割名: 型名)` と書いてください",
-            ));
-        }
-
-        let attrs_role = attrs.as_ref().map(|(role, _)| role.clone());
-        let attrs_ty = attrs.map(|(_, ty)| ty);
-        if directed {
-            let mut roles: Vec<&Ident> = vec![
-                from_ep.role.as_ref().expect("有向edgeの始点roleは検査済み"),
-                to_ep.role.as_ref().expect("有向edgeの終点roleは検査済み"),
-            ];
-            if let Some(role) = attrs_role.as_ref() {
-                roles.push(role);
-            }
-            for (index, role) in roles.iter().enumerate() {
-                if let Some(previous) = roles[..index].iter().find(|previous| *previous == role) {
-                    let mut error = syn::Error::new(
-                        role.span(),
-                        format!("同一edge内で役割名 `{role}` が重複しています"),
-                    );
-                    error.combine(syn::Error::new(previous.span(), "最初の役割はこちら"));
-                    return Err(error);
+        let shape = match (directed, from_ep, to_ep) {
+            (
+                true,
+                Endpoint {
+                    role: Some(from_role),
+                    ty: from_type,
+                },
+                Endpoint {
+                    role: Some(to_role),
+                    ty: to_type,
+                },
+            ) => {
+                validate_unique_roles(
+                    [&from_role, &to_role]
+                        .into_iter()
+                        .chain(attrs.iter().map(|payload| &payload.role)),
+                )?;
+                EdgeShape::Directed {
+                    from: DirectedEndpoint {
+                        role: from_role,
+                        ty: from_type,
+                    },
+                    to: DirectedEndpoint {
+                        role: to_role,
+                        ty: to_type,
+                    },
+                    payload: attrs,
                 }
             }
-        }
+            (true, Endpoint { role: None, ty, .. }, _) | (true, _, Endpoint { role: None, ty }) => {
+                return Err(syn::Error::new(
+                    ty.span(),
+                    "有向辺の端点は役割名を付けて `(役割名: 型名)` と書いてください",
+                ));
+            }
+            (
+                false,
+                Endpoint {
+                    role: None,
+                    ty: first,
+                },
+                Endpoint {
+                    role: None,
+                    ty: second,
+                },
+            ) => EdgeShape::Undirected {
+                first,
+                second,
+                payload: attrs,
+            },
+            (false, Endpoint { role: Some(role), .. }, _)
+            | (false, _, Endpoint { role: Some(role), .. }) => {
+                return Err(syn::Error::new(
+                    role.span(),
+                    "無向辺 (`--`/`-[役割名: 型]-`) には役割名を書けません。役割の区別がある場合は有向辺を使ってください",
+                ));
+            }
+        };
 
         let constraints = parse_optional_where_clause(input)?;
         input.parse::<Token![;]>()?;
         Ok(EdgeDecl {
             kind,
             id_ty,
-            from: from_ep.ty,
-            to: to_ep.ty,
-            from_role: from_ep.role,
-            to_role: to_ep.role,
-            directed,
-            attrs_ty,
-            attrs_role,
+            shape,
             constraints,
         })
     }
 }
 
+fn validate_unique_roles<'a>(roles: impl IntoIterator<Item = &'a Ident>) -> syn::Result<()> {
+    let mut seen: Vec<&Ident> = Vec::new();
+    for role in roles {
+        if let Some(previous) = seen.iter().find(|previous| ***previous == *role) {
+            let mut error = syn::Error::new(
+                role.span(),
+                format!("同一辺内で役割名 `{role}` が重複しています"),
+            );
+            error.combine(syn::Error::new(previous.span(), "最初の役割はこちら"));
+            return Err(error);
+        }
+        seen.push(role);
+    }
+    Ok(())
+}
+
 /// `-[role: 型パス]->` / `-[role: 型パス]-` の `[ .. ]` の中身。
 /// `edges::BossEdge` のようなモジュール修飾も許す (ノード型名と違い端点照合
 /// に使わないため、単純 `Ident` に制限する必要がない)。
-fn parse_edge_bracket_body(content: ParseStream) -> syn::Result<(Ident, Path)> {
+fn parse_edge_bracket_body(content: ParseStream) -> syn::Result<EdgePayload> {
     let role: Ident = content.parse()?;
     if !content.peek(Token![:]) {
         return Err(syn::Error::new(
@@ -475,7 +532,7 @@ fn parse_edge_bracket_body(content: ParseStream) -> syn::Result<(Ident, Path)> {
         return Err(content
             .error("`-[役割名: 型パス]->` または `-[役割名: 型パス]-` の形式で指定してください"));
     }
-    Ok((role, path))
+    Ok(EdgePayload { role, ty: path })
 }
 
 /// `schema Org { ... }` 全体。

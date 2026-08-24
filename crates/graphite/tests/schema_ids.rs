@@ -65,7 +65,7 @@ fn defaultと明示のid型を同じschemaで使える() {
         external_edge_reverse @ ExternalEdgeId(31) = ExternalLink(right -> left),
         external_incoming @ ExternalEdgeId(40) = ExternalIncoming(left -> right),
         external_incoming_reverse @ ExternalEdgeId(41) = ExternalIncoming(right -> left),
-        external_friend @ ExternalEdgeId(50) = ExternalFriend(left -> right),
+        external_friend @ ExternalEdgeId(50) = ExternalFriend(left -- right),
 
         auto_a = AutomaticNode { name: "a" },
         auto_b @ MixedIds::AutomaticNodeId("custom-b".into()) = AutomaticNode { name: "b" },
@@ -97,7 +97,7 @@ fn defaultと明示のid型を同じschemaで使える() {
 
 #[test]
 fn debugは安全に表示できるidだけを含める() {
-    let generated = MixedIds::AutomaticLink(
+    let generated = MixedIds::AutomaticLink::new(
         MixedIds::AutomaticNodeId("a".into()),
         MixedIds::AutomaticNodeId("b".into()),
     );
@@ -106,7 +106,7 @@ fn debugは安全に表示できるidだけを含める() {
         "AutomaticLink(AutomaticNodeId(\"a\"), AutomaticNodeId(\"b\"))"
     );
 
-    let explicit = MixedIds::ExternalLink(ExternalNodeId(1), ExternalNodeId(2));
+    let explicit = MixedIds::ExternalLink::new(ExternalNodeId(1), ExternalNodeId(2));
     assert_eq!(format!("{explicit:?}"), "ExternalLink");
 }
 

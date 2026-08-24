@@ -125,9 +125,9 @@ fn topological_orderはgraph_dependency構造と整合する() {
     // について pos(from) < pos(to) (3種とも「依存元→依存先」という同じ
     // 向きの意味を持つ、`src/schema.rs` 参照)。
     for (from, to) in Feeds::iter(engine.graph())
-        .map(|(_id, edge)| (edge.from(), edge.to()))
-        .chain(Lhs::iter(engine.graph()).map(|(_id, edge)| (edge.from(), edge.to())))
-        .chain(Rhs::iter(engine.graph()).map(|(_id, edge)| (edge.from(), edge.to())))
+        .map(|(_id, edge)| (&edge.dependency, &edge.dependent))
+        .chain(Lhs::iter(engine.graph()).map(|(_id, edge)| (&edge.operand, &edge.operation)))
+        .chain(Rhs::iter(engine.graph()).map(|(_id, edge)| (&edge.operand, &edge.operation)))
     {
         assert!(
             pos(&from.0) < pos(&to.0),

@@ -1,4 +1,4 @@
-error: エッジ `Boss` の each はendpoint role (`subordinate`/`superior`) を参照してください。存在しないroleです: `Employee`
+error: 辺 `Boss` の `each` は端点の役割名 (`subordinate`/`superior`) を参照してください。役割名 `Employee` は存在しません
   --> tests/ui/role_edge_each_type_name.rs:13:84
    |
 13 |             edge Boss = (subordinate: Employee) -> (superior: Employee) where each Employee: 0..1;

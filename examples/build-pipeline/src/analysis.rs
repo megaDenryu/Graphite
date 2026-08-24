@@ -31,7 +31,7 @@ pub type TaskDependencyGraph = Graph<(), (), TaskId>;
 pub fn task_dependency_graph(g: &BuildPipeline::Graph) -> TaskDependencyGraph {
     let mut producers_of: HashMap<&ArtifactId, Vec<&TaskId>> = HashMap::new();
     for (_id, edge) in Produces::iter(g) {
-        producers_of.entry(edge.to()).or_default().push(edge.from());
+        producers_of.entry(&edge.artifact).or_default().push(&edge.task);
     }
 
     let nodes: Vec<(TaskId, ())> = BuildPipeline::Task::ids(g)
@@ -45,8 +45,8 @@ pub fn task_dependency_graph(g: &BuildPipeline::Graph) -> TaskDependencyGraph {
     // 即座に `Vec` へ確定させることで回避する。
     let mut edges: Vec<(TaskId, TaskId, ())> = Vec::new();
     for (_id, edge) in Consumes::iter(g) {
-        let consumer = edge.from();
-        let artifact = edge.to();
+        let consumer = &edge.task;
+        let artifact = &edge.artifact;
         if let Some(producers) = producers_of.get(artifact) {
             for producer in producers {
                 edges.push(((*producer).clone(), consumer.clone(), ()));
@@ -125,11 +125,11 @@ pub fn validate(g: &BuildPipeline::Graph) -> Vec<DomainIssue> {
 
     let mut producers_of: HashMap<&ArtifactId, Vec<&TaskId>> = HashMap::new();
     for (_id, edge) in Produces::iter(g) {
-        producers_of.entry(edge.to()).or_default().push(edge.from());
+        producers_of.entry(&edge.artifact).or_default().push(&edge.task);
     }
     let mut consumers_of: HashMap<&ArtifactId, Vec<&TaskId>> = HashMap::new();
     for (_id, edge) in Consumes::iter(g) {
-        consumers_of.entry(edge.to()).or_default().push(edge.from());
+        consumers_of.entry(&edge.artifact).or_default().push(&edge.task);
     }
 
     // 1. 孤児成果物: consume されているのに produce するタスクが無い。

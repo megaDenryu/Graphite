@@ -64,7 +64,7 @@ mod org_chart {
             );
             b.belongs_to(
                 BelongsToId("bt1".to_string()),
-                BelongsTo(
+                BelongsTo::new(
                     PersonId("tanaka".to_string()),
                     DepartmentId("sales".to_string()),
                 ),
@@ -106,7 +106,7 @@ mod approval_flow {
             );
             b.approves(
                 ApprovesId("ap1".to_string()),
-                Approves(PersonId("sato".to_string()), PersonId("tanaka".to_string())),
+                Approves::new(PersonId("sato".to_string()), PersonId("tanaka".to_string())),
             );
         })
         .expect("承認フローの構築に成功するはず")

@@ -50,7 +50,7 @@ fn f64をエッジ属性とノードフィールドに持つスキーマがコ�
         b.reading(ReadingId("r1".to_string()), Reading { value: 23.5 });
         b.measured(
             MeasuredId("m1".to_string()),
-            Measured(
+            Measured::new(
                 SensorId("s1".to_string()),
                 ReadingId("r1".to_string()),
                 MeasuredEdge { confidence: 0.95 },

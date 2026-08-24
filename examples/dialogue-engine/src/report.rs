@@ -45,7 +45,7 @@ pub fn to_mermaid(schema: &DialogueGraph::Graph) -> String {
     }
 
     let mut choice_edges: Vec<(&SceneId, &SceneId, &str)> = Choice::iter(schema)
-        .map(|(_key, edge)| (edge.from(), edge.to(), edge.payload().label.as_str()))
+        .map(|(_key, edge)| (&edge.scene, &edge.next, edge.payload().label.as_str()))
         .collect();
     choice_edges.sort_by(|a, b| (a.0, a.1).cmp(&(b.0, b.1)));
     for (from, to, label) in choice_edges {
@@ -58,7 +58,7 @@ pub fn to_mermaid(schema: &DialogueGraph::Graph) -> String {
     }
 
     let mut finale_edges: Vec<(&SceneId, &EndingId)> = Finale::iter(schema)
-        .map(|(_key, edge)| (edge.from(), edge.to()))
+        .map(|(_key, edge)| (&edge.scene, &edge.ending))
         .collect();
     finale_edges.sort();
     for (from, to) in finale_edges {
@@ -150,16 +150,16 @@ pub fn compute_stats(schema: &DialogueGraph::Graph, start: &SceneId) -> Stats {
     let mut incoming: HashMap<SceneId, HashSet<SceneId>> = HashMap::new();
     for (_key, edge) in Choice::iter(schema) {
         incoming
-            .entry(edge.to().clone())
+            .entry(edge.next.clone())
             .or_default()
-            .insert(edge.from().clone());
+            .insert(edge.scene.clone());
     }
     let convergence_count = incoming.values().filter(|froms| froms.len() >= 2).count();
 
     let mut shortest_routes: Vec<(String, usize)> = Vec::new();
     for (_key, edge) in Finale::iter(schema) {
-        let scene_id = edge.from();
-        let ending_id = edge.to();
+        let scene_id = &edge.scene;
+        let ending_id = &edge.ending;
         if let Some(path) = scene_graph.path(start, scene_id) {
             let ending = DialogueGraph::Ending::get(schema, ending_id)
                 .expect("Finale::iter() が返す EndingId は必ず Ending::get() で引ける");
@@ -195,8 +195,8 @@ pub fn route_to_ending(
 
     let mut best: Option<Vec<SceneId>> = None;
     for (_key, edge) in Finale::iter(schema) {
-        let scene_id = edge.from();
-        let e = edge.to();
+        let scene_id = &edge.scene;
+        let e = &edge.ending;
         if e != ending {
             continue;
         }

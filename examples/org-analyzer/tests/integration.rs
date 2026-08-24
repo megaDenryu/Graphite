@@ -96,14 +96,14 @@ fn 異なるシードなら生成結果が変わる() {
     let dept_counts_a: Vec<usize> = OrgChart::Department::ids(&a.chart)
         .map(|d| {
             BelongsTo::iter(&a.chart)
-                .filter(|(_id, edge)| edge.to() == d)
+                .filter(|(_id, edge)| &edge.department == d)
                 .count()
         })
         .collect();
     let dept_counts_b: Vec<usize> = OrgChart::Department::ids(&b.chart)
         .map(|d| {
             BelongsTo::iter(&b.chart)
-                .filter(|(_id, edge)| edge.to() == d)
+                .filter(|(_id, edge)| &edge.department == d)
                 .count()
         })
         .collect();
@@ -164,7 +164,7 @@ fn reorgは廃止部署の全社員を他部署へ再配置する() {
     let target = DepartmentId("D01".to_string());
 
     let before_count = BelongsTo::iter(&generated.chart)
-        .filter(|(_id, edge)| *edge.to() == target)
+        .filter(|(_id, edge)| edge.department == target)
         .count();
     assert!(before_count > 0, "テスト対象部署には元々社員がいるはず");
 
@@ -221,7 +221,7 @@ fn reorgでスポンサー元部署を廃止するとviolationになる() {
     let generated = dataset::generate(TEST_SEED, false);
     // sponsors().iter()を持つ部署を1つ探す (スポンサー辺を発している側)。
     let sponsor_dept = Sponsors::iter(&generated.chart)
-        .map(|(_id, edge)| edge.from().clone())
+        .map(|(_id, edge)| edge.department.clone())
         .next();
 
     let Some(target) = sponsor_dept else {

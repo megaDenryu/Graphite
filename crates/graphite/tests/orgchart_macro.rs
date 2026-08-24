@@ -12,7 +12,7 @@
 //! v4.1 (`docs/edge_endpoints_v4_1.md`) の実証: `Boss` を役割名つき
 //! (`subordinate`/`superior`) に書き換え、終点側 (`superior`) の each 制約
 //! (入次数制約) を検証する。Edge値の公開field `.subordinate`/`.superior` が
-//! role名の単一source of truthになる。
+//! 役割名を定義する唯一の場所になる。
 
 /// ノード型。`graph_schema!` はこの型を生成せず参照するだけ。
 #[derive(Debug, Clone, PartialEq)]
@@ -114,20 +114,20 @@ mod tests {
 
             b.belongs_to(
                 BelongsToId("bt-tanaka".to_string()),
-                BelongsTo(emp("田中"), dept("営業部")),
+                BelongsTo::new(emp("田中"), dept("営業部")),
             );
             b.belongs_to(
                 BelongsToId("bt-sato".to_string()),
-                BelongsTo(emp("佐藤"), dept("営業部")),
+                BelongsTo::new(emp("佐藤"), dept("営業部")),
             );
             // Boss(部下, 上司): 佐藤の上司は田中。
             b.boss(
                 BossId("boss-sato".to_string()),
-                Boss(emp("佐藤"), emp("田中"), BossEdge { since: 2020 }),
+                Boss::new(emp("佐藤"), emp("田中"), BossEdge { since: 2020 }),
             );
             b.reports(
                 ReportsId("r1".to_string()),
-                Reports(emp("田中"), emp("佐藤")),
+                Reports::new(emp("田中"), emp("佐藤")),
             );
         })
         .expect("正常な組織図は構築に成功するはず")
@@ -256,24 +256,24 @@ mod tests {
             );
             b.belongs_to(
                 BelongsToId("bt1".to_string()),
-                BelongsTo(emp("田中"), dept("営業部")),
+                BelongsTo::new(emp("田中"), dept("営業部")),
             );
             b.belongs_to(
                 BelongsToId("bt2".to_string()),
-                BelongsTo(emp("佐藤"), dept("営業部")),
+                BelongsTo::new(emp("佐藤"), dept("営業部")),
             );
             b.belongs_to(
                 BelongsToId("bt3".to_string()),
-                BelongsTo(emp("鈴木"), dept("営業部")),
+                BelongsTo::new(emp("鈴木"), dept("営業部")),
             );
             // 田中に上司を2人つける (each 0..1 違反)
             b.boss(
                 BossId("b1".to_string()),
-                Boss(emp("田中"), emp("佐藤"), BossEdge { since: 2018 }),
+                Boss::new(emp("田中"), emp("佐藤"), BossEdge { since: 2018 }),
             );
             b.boss(
                 BossId("b2".to_string()),
-                Boss(emp("田中"), emp("鈴木"), BossEdge { since: 2019 }),
+                Boss::new(emp("田中"), emp("鈴木"), BossEdge { since: 2019 }),
             );
         });
 
@@ -295,7 +295,7 @@ mod tests {
             );
             b.belongs_to(
                 BelongsToId("bt1".to_string()),
-                BelongsTo(emp("田中"), dept("存在しない部署")),
+                BelongsTo::new(emp("田中"), dept("存在しない部署")),
             );
         });
 
@@ -336,11 +336,11 @@ mod tests {
             );
             b.belongs_to(
                 BelongsToId("dup".to_string()),
-                BelongsTo(emp("田中"), dept("営業部")),
+                BelongsTo::new(emp("田中"), dept("営業部")),
             );
             b.belongs_to(
                 BelongsToId("dup".to_string()),
-                BelongsTo(emp("佐藤"), dept("営業部")),
+                BelongsTo::new(emp("佐藤"), dept("営業部")),
             );
         });
 
@@ -383,19 +383,19 @@ mod tests {
             );
             b.belongs_to(
                 BelongsToId("bt1".to_string()),
-                BelongsTo(emp("田中"), dept("営業部")),
+                BelongsTo::new(emp("田中"), dept("営業部")),
             );
             b.belongs_to(
                 BelongsToId("bt2".to_string()),
-                BelongsTo(emp("佐藤"), dept("営業部")),
+                BelongsTo::new(emp("佐藤"), dept("営業部")),
             );
             b.reports(
                 ReportsId("r1".to_string()),
-                Reports(emp("田中"), emp("佐藤")),
+                Reports::new(emp("田中"), emp("佐藤")),
             );
             b.reports(
                 ReportsId("r2".to_string()),
-                Reports(emp("田中"), emp("佐藤")),
+                Reports::new(emp("田中"), emp("佐藤")),
             );
         });
 
@@ -447,20 +447,20 @@ mod tests {
             // 鈴木をどの部署にも所属させない (belongs_to each違反その1)。
             b.belongs_to(
                 BelongsToId("bt1".to_string()),
-                BelongsTo(emp("田中"), dept("営業部")),
+                BelongsTo::new(emp("田中"), dept("営業部")),
             );
             b.belongs_to(
                 BelongsToId("bt2".to_string()),
-                BelongsTo(emp("佐藤"), dept("営業部")),
+                BelongsTo::new(emp("佐藤"), dept("営業部")),
             );
             // 田中に上司を2人つける (boss each違反その2、belongs_toとは独立)。
             b.boss(
                 BossId("b1".to_string()),
-                Boss(emp("田中"), emp("佐藤"), BossEdge { since: 2018 }),
+                Boss::new(emp("田中"), emp("佐藤"), BossEdge { since: 2018 }),
             );
             b.boss(
                 BossId("b2".to_string()),
-                Boss(emp("田中"), emp("鈴木"), BossEdge { since: 2019 }),
+                Boss::new(emp("田中"), emp("鈴木"), BossEdge { since: 2019 }),
             );
         });
 
@@ -496,7 +496,7 @@ mod tests {
             );
             b.belongs_to(
                 BelongsToId("bt1".to_string()),
-                BelongsTo(emp("田中"), dept("営業部")),
+                BelongsTo::new(emp("田中"), dept("営業部")),
             );
         });
         assert!(result.is_ok());
@@ -556,15 +556,15 @@ mod tests {
             );
             b.belongs_to(
                 BelongsToId("bt1".to_string()),
-                BelongsTo(emp("田中"), dept("営業部")),
+                BelongsTo::new(emp("田中"), dept("営業部")),
             );
             b.belongs_to(
                 BelongsToId("bt2".to_string()),
-                BelongsTo(emp("佐藤"), dept("営業部")),
+                BelongsTo::new(emp("佐藤"), dept("営業部")),
             );
             b.belongs_to(
                 BelongsToId("bt3".to_string()),
-                BelongsTo(emp("鈴木"), dept("開発部")),
+                BelongsTo::new(emp("鈴木"), dept("開発部")),
             );
         })
         .unwrap();
@@ -598,7 +598,7 @@ mod tests {
 
     #[test]
     fn edge値のfield名はschemaのrole名と一致する() {
-        let b = Boss(emp("佐藤"), emp("田中"), BossEdge { since: 2020 });
+        let b = Boss::new(emp("佐藤"), emp("田中"), BossEdge { since: 2020 });
         assert_eq!(b.subordinate, emp("佐藤"));
         assert_eq!(b.superior, emp("田中"));
     }
@@ -631,15 +631,15 @@ mod tests {
             );
             b.belongs_to(
                 BelongsToId("bt1".to_string()),
-                BelongsTo(emp("田中"), dept("営業部")),
+                BelongsTo::new(emp("田中"), dept("営業部")),
             );
             b.belongs_to(
                 BelongsToId("bt2".to_string()),
-                BelongsTo(emp("佐藤"), dept("営業部")),
+                BelongsTo::new(emp("佐藤"), dept("営業部")),
             );
             b.leads(
                 LeadsId("l1".to_string()),
-                Leads(emp("田中"), dept("営業部")),
+                Leads::new(emp("田中"), dept("営業部")),
             );
         })
         .expect("代表が1人の部署は健全なはず");
@@ -690,18 +690,18 @@ mod tests {
             b.extend(vec![
                 (
                     "bt-tanaka".to_string(),
-                    BelongsTo(emp("田中"), dept("営業部")),
+                    BelongsTo::new(emp("田中"), dept("営業部")),
                 ),
                 (
                     "bt-sato".to_string(),
-                    BelongsTo(emp("佐藤"), dept("営業部")),
+                    BelongsTo::new(emp("佐藤"), dept("営業部")),
                 ),
             ]);
             b.extend(vec![(
                 "boss-sato".to_string(),
-                Boss(emp("佐藤"), emp("田中"), BossEdge { since: 2020 }),
+                Boss::new(emp("佐藤"), emp("田中"), BossEdge { since: 2020 }),
             )]);
-            b.extend(vec![("r1".to_string(), Reports(emp("田中"), emp("佐藤")))]);
+            b.extend(vec![("r1".to_string(), Reports::new(emp("田中"), emp("佐藤")))]);
         })
         .expect("extendで構築した組織図も要素単位と同様に成功するはず");
 
@@ -778,11 +778,11 @@ mod tests {
             let edge_ids = b.extend(vec![
                 (
                     "bt-tanaka".to_string(),
-                    BelongsTo(emp("田中"), dept("営業部")),
+                    BelongsTo::new(emp("田中"), dept("営業部")),
                 ),
                 (
                     "bt-sato".to_string(),
-                    BelongsTo(emp("佐藤"), dept("営業部")),
+                    BelongsTo::new(emp("佐藤"), dept("営業部")),
                 ),
             ]);
             assert_eq!(
@@ -839,20 +839,20 @@ mod tests {
             );
             b.belongs_to(
                 BelongsToId("bt1".to_string()),
-                BelongsTo(emp("田中"), dept("営業部")),
+                BelongsTo::new(emp("田中"), dept("営業部")),
             );
             b.belongs_to(
                 BelongsToId("bt2".to_string()),
-                BelongsTo(emp("佐藤"), dept("営業部")),
+                BelongsTo::new(emp("佐藤"), dept("営業部")),
             );
             // 営業部に代表を2人つける (each department: 0..1 違反、入次数)。
             b.leads(
                 LeadsId("l1".to_string()),
-                Leads(emp("田中"), dept("営業部")),
+                Leads::new(emp("田中"), dept("営業部")),
             );
             b.leads(
                 LeadsId("l2".to_string()),
-                Leads(emp("佐藤"), dept("営業部")),
+                Leads::new(emp("佐藤"), dept("営業部")),
             );
         });
 

@@ -1,4 +1,4 @@
-error: 有向edgeの端点は役割名を付けて `(役割名: 型名)` と書いてください
+error: 有向辺の端点は役割名を付けて `(役割名: 型名)` と書いてください
   --> tests/ui/endpoint_role_one_sided.rs:15:52
    |
 15 |             edge Boss = (subordinate: Employee) -> Employee where each subordinate: 0..1;

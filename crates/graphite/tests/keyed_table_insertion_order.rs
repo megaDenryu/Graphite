@@ -76,7 +76,7 @@ mod tests {
                 );
             }
             for i in 0..N {
-                b.choice(ChoiceId(format!("c{i}")), Choice(speaker_id(), line_id(i)));
+                b.choice(ChoiceId(format!("c{i}")), Choice::new(speaker_id(), line_id(i)));
             }
         })
         .expect("制約なし辺種別なので必ず構築に成功する");

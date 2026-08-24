@@ -82,23 +82,23 @@ pub fn step(
 ) -> Result<OrderStateId, TransitionError> {
     let next: Option<OrderStateId> = match event {
         Event::Submit => Submit::iter(fsm)
-            .find(|(_, e)| e.from() == current)
-            .map(|(_, e)| e.to().clone()),
+            .find(|(_, e)| &e.before == current)
+            .map(|(_, e)| e.after.clone()),
         Event::Pay => Pay::iter(fsm)
-            .find(|(_, e)| e.from() == current)
-            .map(|(_, e)| e.to().clone()),
+            .find(|(_, e)| &e.before == current)
+            .map(|(_, e)| e.after.clone()),
         Event::Ship => Ship::iter(fsm)
-            .find(|(_, e)| e.from() == current)
-            .map(|(_, e)| e.to().clone()),
+            .find(|(_, e)| &e.before == current)
+            .map(|(_, e)| e.after.clone()),
         Event::Deliver => Deliver::iter(fsm)
-            .find(|(_, e)| e.from() == current)
-            .map(|(_, e)| e.to().clone()),
+            .find(|(_, e)| &e.before == current)
+            .map(|(_, e)| e.after.clone()),
         Event::Cancel => Cancel::iter(fsm)
-            .find(|(_, e)| e.from() == current)
-            .map(|(_, e)| e.to().clone()),
+            .find(|(_, e)| &e.before == current)
+            .map(|(_, e)| e.after.clone()),
         Event::Refund => Refund::iter(fsm)
-            .find(|(_, e)| e.from() == current)
-            .map(|(_, e)| e.to().clone()),
+            .find(|(_, e)| &e.before == current)
+            .map(|(_, e)| e.after.clone()),
     };
     next.ok_or_else(|| TransitionError {
         state: current.clone(),

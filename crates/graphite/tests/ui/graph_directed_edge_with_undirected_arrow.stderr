@@ -1,0 +1,36 @@
+error[E0599]: no associated item named `__graphite_undirected` found for struct `Knows` in the current scope
+  --> tests/ui/graph_directed_edge_with_undirected_arrow.rs:15:20
+   |
+ 4 | / graphite::graph_schema! {
+ 5 | |     schema Social {
+ 6 | |         node Person;
+ 7 | |         edge Knows = (knower: Person) -> (known: Person);
+   | |__________________- associated item `__graphite_undirected` not found for this struct
+...
+12 |       let _ = graphite::graph!(Social {
+   |  ______________________________-
+13 | |         alice = Person,
+14 | |         bob = Person,
+15 | |         relation = Knows(alice -- bob),
+   | |                   -^^^^^ associated item not found in `Knows`
+   | |___________________|
+   |
+   |
+note: if you're trying to build a new `Knows` consider using one of the following associated functions:
+      Knows::new
+      Knows::__graphite_directed
+  --> tests/ui/graph_directed_edge_with_undirected_arrow.rs:4:1
+   |
+ 4 | / graphite::graph_schema! {
+ 5 | |     schema Social {
+ 6 | |         node Person;
+ 7 | |         edge Knows = (knower: Person) -> (known: Person);
+ 8 | |     }
+ 9 | | }
+   | |_^
+   = note: this error originates in the macro `graphite::graph_schema` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: there is an associated function `__graphite_directed` with a similar name
+   |
+15 -         relation = Knows(alice -- bob),
+15 +         relation = __graphite_directed(alice -- bob),
+   |

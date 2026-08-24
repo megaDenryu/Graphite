@@ -26,8 +26,7 @@
 
 | 関係の性質 | 記法 | 例 |
 |---|---|---|
-| 向きが意味を持つ | `edge Kind = (role_a: A) -> (role_b: B)` | DependsOn, BelongsTo, 遷移 |
-| 向きはあるが、端点を役割名で読みたい | `edge Kind = (役割: A) -> (役割: B)` | Boss (subordinate → superior), Trade (buyer → seller) |
+| 向きがあり、端点を役割名で読む | `edge Kind = (役割名: A) -> (役割名: B)` | Boss (subordinate → superior), Trade (buyer → seller) |
 | 対称 (役割の区別が存在しない) | `edge Kind = A -- A` | Friends, 相互接続, 隣接 |
 | 3 項以上の関係 / 関係にさらに関係が付く | **ノード昇格** (§4) | 取引 (buyer, seller, item), 承認つき任命 |
 

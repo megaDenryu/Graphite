@@ -18,7 +18,7 @@ pub fn generated_id_ident(source: &Ident) -> Ident {
     format_ident!("{}Id", source, span = source.span())
 }
 
-/// エッジ種別名とendpoint role名からcardinality違反variant名を導出する。
+/// 辺種別名と端点の役割名から多重度違反variant名を導出する。
 pub fn each_violation_ident(kind: &Ident, role: &Ident) -> Ident {
     let role_pascal = role
         .to_string()
@@ -100,7 +100,7 @@ mod tests {
     }
 
     #[test]
-    fn role名からcardinality違反variant名を導出できる() {
+    fn 役割名から多重度違反variant名を導出できる() {
         let kind = Ident::new("Purchase", proc_macro2::Span::call_site());
         let role = Ident::new("line_item", proc_macro2::Span::call_site());
         assert_eq!(

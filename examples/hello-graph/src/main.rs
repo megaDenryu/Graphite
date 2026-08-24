@@ -10,7 +10,7 @@
 //! - §1 ノード型・エッジ属性型の宣言 (普通の struct)
 //! - §2 `graph_schema!` によるスキーマ宣言 (v4: `edge Kind = ...;` は
 //!   新しい nominal 型の定義、`where` は制約)
-//! - §2.5 脱糖の実像 — 全要素キー・`KeyedTable` 格納・辺はnamed-field struct
+//! - §2.5 脱糖の実像 — 全要素キー・`KeyedTable` 格納・辺は名前付きフィールドの構造体
 //!   として第一級、という v4 の実装を実測して解説する
 //! - §3 クックブック — `graph_schema!`/`graph!` が生成する公開APIの全列挙
 //! - §4 「できないこと」— コンパイルエラーになる例と、実際のエラー引用
@@ -73,7 +73,7 @@ pub struct ReviewEdge {
 //    `edge Kind = ..` の左辺で言い切っているからです。
 // 3. **`where` は制約** — 制約があるときだけ書きます。省略時は「制約なし」
 //    (=平行辺も含めて自由) を意味します。
-//    - `each <role>: N | N..M | N..*` — endpoint roleごとの本数制約
+//    - `each <役割名>: N | N..M | N..*` — 端点の役割名ごとの多重度制約
 //    - `unique pair` — 同じ (始点, 終点) の対に2本目を張ることを禁止
 //      (=平行辺の禁止)
 //
@@ -95,7 +95,7 @@ pub struct ReviewEdge {
 // 有向の柄から矢尻を落とした形) はこれを解消し、端点を「位置0/位置1」
 // ではなく順序なし対として扱います。`Friends(alice -- bob)` と
 // `Friends(bob -- alice)` は同じ辺であり、生成されるアクセサも
-// `from()`/`to()` という嘘の語彙ではなく `endpoints() -> (&PersonId,
+// 方向を示すアクセサではなく `endpoints() -> (&PersonId,
 // &PersonId)` になります。両端は同じノード型でなければならず、役割名も
 // 書けません (対称性を型にも及ぼす設計、詳細は §3 の実行例参照)。
 
@@ -175,7 +175,7 @@ fn main() {
 // `alice` は `PersonId` です。「名前 = 値」の名前は常にキー、という規則が
 // ノード・エッジ双方に一貫して効いています。
 //
-// ## 2. 辺はnamed-field structとして実在する
+// ## 2. 辺は名前付きフィールドの構造体として実在する
 //
 // `edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1;` から
 // `graph_schema!` が生成する実際の型は次の通りです
@@ -194,7 +194,7 @@ fn main() {
 // }
 // ```
 //
-// 積み荷なしエッジ (`BelongsTo`) もrole名の公開fieldだけを持ちます。
+// 積み荷なしの辺 (`BelongsTo`) も役割名の公開フィールドだけを持ちます。
 // **このEdge値型はマクロの内部表現ではなく、公開structとして実在します** —
 // マクロの外で `Boss { subordinate, superior, appointment }` と普通に構築
 // できることは、`crates/graphite/tests/orgchart_macro.rs` の
@@ -395,7 +395,7 @@ fn builderの型名メソッドで組み立てる() {
         );
         b.belongs_to(
             BelongsToId("dave_dept".to_string()),
-            BelongsTo(PersonId("dave".to_string()), TeamId("sales".to_string())),
+            BelongsTo::new(PersonId("dave".to_string()), TeamId("sales".to_string())),
         );
     })
     .expect("builder の型名メソッドでも構築に成功するはず");
@@ -420,7 +420,8 @@ fn builderの総称insertとaddで組み立てる() {
                 name: "Sales".to_string(),
             },
         );
-        let _dept_id: BelongsToId = b.add("eve_dept", BelongsTo(eve_id.clone(), sales_id.clone()));
+        let _dept_id: BelongsToId =
+            b.add("eve_dept", BelongsTo::new(eve_id.clone(), sales_id.clone()));
     })
     .expect("insert/add 経由の構築も成功するはず");
     let eve: &Person = Org::Person::get(&g, &PersonId("eve".to_string())).unwrap();
@@ -581,8 +582,8 @@ fn belongs_toのiterで制約ありエッジを列挙する(g: &Org::Graph) {
     for (id, edge) in BelongsTo::iter(g) {
         println!(
             "(iter) BelongsTo {id:?}: {:?} -> {:?}",
-            edge.from(),
-            edge.to()
+            &edge.member,
+            &edge.team
         );
     }
 }
@@ -592,8 +593,8 @@ fn bossのiterで積み荷ありエッジを列挙する(g: &Org::Graph) {
     for (id, edge) in Boss::iter(g) {
         println!(
             "(iter) Boss {id:?}: {:?} -> {:?} (since={})",
-            edge.from(),
-            edge.to(),
+            &edge.subordinate,
+            &edge.superior,
             edge.payload().since
         );
     }
@@ -656,11 +657,11 @@ fn 辺キー重複の違反を受け取る() {
         );
         b.belongs_to(
             BelongsToId("dup".to_string()),
-            BelongsTo(PersonId("alice".to_string()), TeamId("eng".to_string())),
+            BelongsTo::new(PersonId("alice".to_string()), TeamId("eng".to_string())),
         );
         b.belongs_to(
             BelongsToId("dup".to_string()),
-            BelongsTo(PersonId("bob".to_string()), TeamId("eng".to_string())),
+            BelongsTo::new(PersonId("bob".to_string()), TeamId("eng".to_string())),
         );
     });
     match result {
@@ -680,7 +681,7 @@ fn 未知の始点キーの違反を受け取る() {
         );
         b.belongs_to(
             BelongsToId("bt1".to_string()),
-            BelongsTo(
+            BelongsTo::new(
                 PersonId("存在しない社員".to_string()),
                 TeamId("eng".to_string()),
             ),
@@ -705,7 +706,7 @@ fn 未知の終点キーの違反を受け取る() {
         );
         b.belongs_to(
             BelongsToId("bt1".to_string()),
-            BelongsTo(
+            BelongsTo::new(
                 PersonId("alice".to_string()),
                 TeamId("存在しないチーム".to_string()),
             ),
@@ -762,19 +763,19 @@ fn unique_pair違反を受け取る() {
         // each member: 1 (BelongsTo) が先に違反しないよう、両者ともチームに所属させておく。
         b.belongs_to(
             BelongsToId("bt_alice".to_string()),
-            BelongsTo(PersonId("alice".to_string()), TeamId("eng".to_string())),
+            BelongsTo::new(PersonId("alice".to_string()), TeamId("eng".to_string())),
         );
         b.belongs_to(
             BelongsToId("bt_bob".to_string()),
-            BelongsTo(PersonId("bob".to_string()), TeamId("eng".to_string())),
+            BelongsTo::new(PersonId("bob".to_string()), TeamId("eng".to_string())),
         );
         b.reports(
             ReportsId("r1".to_string()),
-            Reports(PersonId("alice".to_string()), PersonId("bob".to_string())),
+            Reports::new(PersonId("alice".to_string()), PersonId("bob".to_string())),
         );
         b.reports(
             ReportsId("r2".to_string()),
-            Reports(PersonId("alice".to_string()), PersonId("bob".to_string())),
+            Reports::new(PersonId("alice".to_string()), PersonId("bob".to_string())),
         );
     });
     match result {
@@ -848,7 +849,7 @@ fn create_collectingで全違反を集める() {
 
 // --- 4.1 Kind名を積み荷のように扱おうとする (フィールドは無い) ---
 //
-// `Boss` はスキーマ宣言で定義されたnamed-field struct型です (§2.5)。
+// `Boss` はスキーマ宣言で定義された名前付きフィールドの構造体型です (§2.5)。
 // `since` は `BossEdge` のfieldなので、辺値からは `boss.appointment.since`
 // または `boss.payload().since` と辿ります。型名 `Boss` は辺の実体ではないため、
 // `Boss.since` とは書けません。
@@ -957,7 +958,7 @@ fn create_collectingで全違反を集める() {
 //
 // `graph_schema!`/`graph!` の辺 (`edge Kind = ...` / `Kind(from -> to)`) は
 // **宣言**です — 構築 (`create`) 時にまとめて検証されるデータの繋がりで、
-// 矢印の中の値は `graph!` がnamed-fieldの辺値へ組み立てます。対して
+// 矢印の中の値は `graph!` が名前付きフィールドの辺値へ組み立てます。対して
 // `graphite::flow!` (`docs/flow_macro.md`) の矢印 `-[関数式]->` は
 // **実行**です — 書かれた順に `let 束縛名 = (関数式)(始点..);` という
 // ただの関数呼び出しへ即時に脱糖するだけで、スキーマや builder は一切
@@ -1064,8 +1065,8 @@ mod tests {
         let boss_pairs: Vec<(&BossId, &Boss)> = Boss::iter(&g).collect();
         assert_eq!(boss_pairs.len(), 1);
         let (_, edge) = boss_pairs[0];
-        assert_eq!(edge.from(), &PersonId("bob".to_string()));
-        assert_eq!(edge.to(), &PersonId("alice".to_string()));
+        assert_eq!(edge.subordinate, PersonId("bob".to_string()));
+        assert_eq!(edge.superior, PersonId("alice".to_string()));
         assert_eq!(edge.payload().since, 2021);
     }
 
@@ -1154,11 +1155,11 @@ mod tests {
             );
             b.belongs_to(
                 BelongsToId("dup".to_string()),
-                BelongsTo(PersonId("alice".to_string()), TeamId("eng".to_string())),
+                BelongsTo::new(PersonId("alice".to_string()), TeamId("eng".to_string())),
             );
             b.belongs_to(
                 BelongsToId("dup".to_string()),
-                BelongsTo(PersonId("alice".to_string()), TeamId("eng".to_string())),
+                BelongsTo::new(PersonId("alice".to_string()), TeamId("eng".to_string())),
             );
         });
         assert!(matches!(
@@ -1178,7 +1179,7 @@ mod tests {
             );
             b.belongs_to(
                 BelongsToId("bt1".to_string()),
-                BelongsTo(
+                BelongsTo::new(
                     PersonId("存在しない社員".to_string()),
                     TeamId("eng".to_string()),
                 ),
@@ -1214,19 +1215,19 @@ mod tests {
             // each member: 1 (BelongsTo) が先に違反しないよう、両者ともチームに所属させておく。
             b.belongs_to(
                 BelongsToId("bt_alice".to_string()),
-                BelongsTo(PersonId("alice".to_string()), TeamId("eng".to_string())),
+                BelongsTo::new(PersonId("alice".to_string()), TeamId("eng".to_string())),
             );
             b.belongs_to(
                 BelongsToId("bt_bob".to_string()),
-                BelongsTo(PersonId("bob".to_string()), TeamId("eng".to_string())),
+                BelongsTo::new(PersonId("bob".to_string()), TeamId("eng".to_string())),
             );
             b.reports(
                 ReportsId("r1".to_string()),
-                Reports(PersonId("alice".to_string()), PersonId("bob".to_string())),
+                Reports::new(PersonId("alice".to_string()), PersonId("bob".to_string())),
             );
             b.reports(
                 ReportsId("r2".to_string()),
-                Reports(PersonId("alice".to_string()), PersonId("bob".to_string())),
+                Reports::new(PersonId("alice".to_string()), PersonId("bob".to_string())),
             );
         });
         assert!(matches!(
@@ -1264,8 +1265,8 @@ mod tests {
             member: PersonId("alice".to_string()),
             team: TeamId("eng".to_string()),
         };
-        assert_eq!(e.from(), &PersonId("alice".to_string()));
-        assert_eq!(e.to(), &TeamId("eng".to_string()));
+        assert_eq!(e.member, PersonId("alice".to_string()));
+        assert_eq!(e.team, TeamId("eng".to_string()));
 
         let b = Boss {
             subordinate: PersonId("bob".to_string()),

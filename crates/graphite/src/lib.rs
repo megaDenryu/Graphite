@@ -16,9 +16,11 @@
 mod compute;
 mod graph;
 mod keyed_table;
+mod unordered_pair;
 
 pub use compute::{ComputeGraph, ComputeGraphBuilder, ComputeGraphError};
 pub use graph::{CycleError, Graph, GraphBuilder, GraphError};
 pub use keyed_table::KeyedTable;
+pub use unordered_pair::UnorderedPair;
 
 pub use graphite_macros::{flow, graph, graph_schema};

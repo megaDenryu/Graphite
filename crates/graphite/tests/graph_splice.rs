@@ -58,8 +58,8 @@ fn スプライスでノードのみを追加できる() {
 #[rustfmt::skip]
 fn スプライスで辺のみを追加できる() {
     let deps: Vec<(String, Knows)> = vec![
-        ("k1".to_string(), Knows(PersonId("alice".to_string()), PersonId("bob".to_string()))),
-        ("k2".to_string(), Knows(PersonId("bob".to_string()), PersonId("carol".to_string()))),
+        ("k1".to_string(), Knows::new(PersonId("alice".to_string()), PersonId("bob".to_string()))),
+        ("k2".to_string(), Knows::new(PersonId("bob".to_string()), PersonId("carol".to_string()))),
     ];
 
     let g = graphite::graph!(SpliceDemo {
@@ -82,7 +82,7 @@ fn 静的項とスプライスを混在できる() {
     let staff: Vec<(String, Person)> = vec![("dave".to_string(), Person { name: "Dave".into() })];
     let extra_edges: Vec<(String, Knows)> = vec![(
         "k_extra".to_string(),
-        Knows(PersonId("dave".to_string()), PersonId("alice".to_string())),
+        Knows::new(PersonId("dave".to_string()), PersonId("alice".to_string())),
     )];
 
     let g = graphite::graph!(SpliceDemo {
@@ -125,11 +125,11 @@ fn 静的項とスプライスが混在する場合_挿入順は記述順にな�
     let middle: Vec<(String, Knows)> = vec![
         (
             "k_mid1".to_string(),
-            Knows(PersonId("p_alice".to_string()), PersonId("p_bob".to_string())),
+            Knows::new(PersonId("p_alice".to_string()), PersonId("p_bob".to_string())),
         ),
         (
             "k_mid2".to_string(),
-            Knows(PersonId("p_bob".to_string()), PersonId("p_carol".to_string())),
+            Knows::new(PersonId("p_bob".to_string()), PersonId("p_carol".to_string())),
         ),
     ];
 

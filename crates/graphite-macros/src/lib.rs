@@ -85,7 +85,7 @@ pub fn graph_schema(input: TokenStream) -> TokenStream {
     let has_parse_errors = !parse_errors.is_empty();
 
     // G4a 二次エラー抑制: パースエラーが1件以上あるときは「エッジ端点が
-    // 未知のノード型」というエラーを出さず、そのエッジを黙って生成対象から
+    // 未知のノード型」というエラーを出さず、その辺を生成対象から
     // 除外する (壊れたノード宣言をたまたま参照しているだけの可能性が高い)。
     // パースエラーが0件のときは現行通り validate_edge_endpoints で検査する。
     let edges = if has_parse_errors {

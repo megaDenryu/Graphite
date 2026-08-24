@@ -10,7 +10,7 @@
 //! `N::Id` の型推論を rustc に委ねる。
 //!
 //! エッジ項 (`key = Kind(from -> to)` / `key = Kind(from -[式]-> to)`) は
-//! named-field Edge値型を `Kind::new(from_id.clone(), to_id.clone(), ..)` で構築したあと、
+//! 名前付きフィールドの辺値型を、柄に対応する内部コンストラクタで構築したあと、
 //! 同じ形の総称 `add` メソッド (`schema_codegen.rs::gen_edge_trait_and_impls`
 //! 参照) へ渡す。**辺の名前も (ノードと同様) 常にキーの束縛**
 //! (`docs/schema_v4.md` §0 規則1) なので、エッジ項も `let key = ..;` を生成する。
@@ -54,7 +54,7 @@
 //! 回復パースを行い、パースに失敗した項目を除いた残りをここに渡す。
 //! `generate` の `has_parse_errors` 引数はそのとき1件以上パースエラーが
 //! あったかどうかを伝える。パースエラーがある状態では「エッジ端点が
-//! 未宣言」という検証エラーを出さずそのエッジを黙って落とす (二次エラー
+//! 未宣言」という検証エラーを出さず、その辺を生成対象から除外する (二次エラー
 //! 抑制)。一方 `collect_declared_keys` の重複キー診断はパースエラーの有無に
 //! 関わらず常にハード失敗のまま (現行維持) — これは意図的な設計判断で、
 //! 「同じキーの二重宣言」は回復パース由来の巻き添えとは考えにくく、
@@ -62,7 +62,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use proc_macro2::TokenStream;
+use proc_macro2::{Ident, TokenStream};
 use quote::{quote, quote_spanned};
 
 use crate::instance_dsl::{GraphInput, GraphItem};
@@ -71,7 +71,7 @@ use crate::naming::graph_type_ident;
 /// v4 (`docs/schema_v4.md` §0 規則1): `graph!` 内の識別子はノード・エッジを
 /// 問わず単一の平坦な名前空間 (全行が `名前 = 値` であり、名前は常にキーの
 /// 束縛であるため)。この制約下では「同じ識別子を2回宣言する」ミスが起きやすい
-/// ため、`HashSet` で黙って無視するのではなく、2回目の宣言をその場で
+/// ため、`HashSet` で重複を無視せず、2回目の宣言をその場で
 /// `syn::Error` として報告する。最初の宣言の span も添えて「どこが最初か」を
 /// 示す (`schema_validate.rs::validate_unique_node_names` と同じパターン)。
 ///
@@ -114,7 +114,7 @@ fn collect_declared_keys(items: &[GraphItem]) -> syn::Result<(HashSet<String>, H
 /// `has_parse_errors`: G4b (`docs/ide_support_spec.md` 参照)。呼び出し元
 /// (`lib.rs`) が項目単位の回復パースで1件以上のパースエラーを蓄積していた
 /// 場合に `true` を渡す。このとき「エッジ端点が未宣言」という検証エラーは
-/// 出さず、そのエッジを黙って生成対象から除外する (壊れた項目由来の二次
+/// 出さず、その辺を生成対象から除外する (壊れた項目由来の二次
 /// 噴出を避けるため)。`false` (パースエラー0件) のときは現行通り `Err` で
 /// 全体を中断する。なお `collect_declared_keys` の重複キー診断は
 /// `has_parse_errors` に関わらず常にハード失敗のまま (現行維持)。
@@ -164,7 +164,7 @@ pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<Token
                         // G4b: 二次エラー抑制。他の項目が既にパース失敗して
                         // いる状態では、この「未宣言キー参照」は壊れた項目の
                         // 巻き添えの可能性が高い。エラーにはせず、このエッジ
-                        // を黙って生成対象から除外して次の項目へ進む。
+                        // を生成対象から除外して次の項目へ進む。
                         continue;
                     }
                     // 現行維持: パースエラーが無ければ通常通りエラーにする。
@@ -186,17 +186,21 @@ pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<Token
                 let kind = &edge.kind;
                 let from_ident = edge.from.clone();
                 let to_ident = edge.to.clone();
+                let constructor = if edge.directed {
+                    Ident::new("__graphite_directed", kind.span())
+                } else {
+                    Ident::new("__graphite_undirected", kind.span())
+                };
 
-                // Edge値の関連constructor + 総称 add への脱糖
-                // (`docs/schema_v4.md` §2/§3.2)。未知の Kind 名は
-                // `#kind::new(..)` がそのまま rustc の cannot-find-type/
-                // no-such-function に落ちることで検出される。
+                // 辺値の関連コンストラクタ + 総称 add への脱糖
+                // (`docs/schema_v4.md` §2/§3.2)。柄の向きに対応する関連関数だけを
+                // 生成するため、未知の辺種別と向きの不一致はいずれも rustc が検出する。
                 let ctor = match &edge.attrs {
                     None => {
-                        quote! { #schema_name::#kind::new(#from_ident.clone(), #to_ident.clone()) }
+                        quote! { #schema_name::#kind::#constructor(#from_ident.clone(), #to_ident.clone()) }
                     }
                     Some(attrs_expr) => quote! {
-                        #schema_name::#kind::new(#from_ident.clone(), #to_ident.clone(), #attrs_expr)
+                        #schema_name::#kind::#constructor(#from_ident.clone(), #to_ident.clone(), #attrs_expr)
                     },
                 };
 

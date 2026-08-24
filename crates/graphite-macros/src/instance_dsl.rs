@@ -222,6 +222,7 @@ struct EdgeLiteralInner {
     from: Ident,
     attrs: Option<Expr>,
     to: Ident,
+    directed: bool,
 }
 
 impl Parse for EdgeLiteralInner {
@@ -231,7 +232,7 @@ impl Parse for EdgeLiteralInner {
         parenthesized!(content in input);
 
         let from: Ident = content.parse()?;
-        let attrs = parse_instance_arrow_payload(&content)?;
+        let (attrs, directed) = parse_instance_arrow_payload(&content)?;
         let to: Ident = content.parse()?;
         if !content.is_empty() {
             return Err(content.error(
@@ -247,19 +248,18 @@ impl Parse for EdgeLiteralInner {
             from,
             attrs,
             to,
+            directed,
         })
     }
 }
 
-/// 柄 (4形: `->` / `-[式]->` / `--` / `-[式]-`) をパースし、積み荷式
-/// (あれば) を返す。`graph!` リテラルは有向/無向の区別を一切使わない
-/// (脱糖は従来どおり素通し、`docs/edge_endpoints_v4_1.md` §3「graph! 側:
-/// 辺コンストラクタ内の柄も同4形。脱糖は従来の機構のまま」) ため、
-/// 戻り値は積み荷の有無だけで、向きの情報は捨てる。
-fn parse_instance_arrow_payload(content: ParseStream) -> syn::Result<Option<Expr>> {
+/// 柄 (4形: `->` / `-[式]->` / `--` / `-[式]-`) をパースし、積み荷式の有無と
+/// 向きを返す。コード生成は向きに対応する辺種別専用コンストラクタを呼び、
+/// スキーマ宣言と異なる柄をコンパイルエラーにする。
+fn parse_instance_arrow_payload(content: ParseStream) -> syn::Result<(Option<Expr>, bool)> {
     if content.peek(Token![->]) {
         content.parse::<Token![->]>()?;
-        return Ok(None);
+        return Ok((None, true));
     }
     content.parse::<Token![-]>()?;
     if content.peek(syn::token::Bracket) {
@@ -279,15 +279,16 @@ fn parse_instance_arrow_payload(content: ParseStream) -> syn::Result<Option<Expr
         }
         if content.peek(Token![->]) {
             content.parse::<Token![->]>()?;
+            Ok((Some(attrs_expr), true))
         } else {
             content.parse::<Token![-]>()?;
+            Ok((Some(attrs_expr), false))
         }
-        Ok(Some(attrs_expr))
     } else {
         // 積み荷なしの無向 (`--`): 最初の `-` は既に消費済みなので、2文字目の
         // `-` を読む。
         content.parse::<Token![-]>()?;
-        Ok(None)
+        Ok((None, false))
     }
 }
 
@@ -319,6 +320,7 @@ pub struct EdgeInstance {
     pub from: Ident,
     pub attrs: Option<Expr>,
     pub to: Ident,
+    pub directed: bool,
 }
 
 /// `..式` — 実行時コレクションからノード/辺を一括で流し込む
@@ -376,6 +378,7 @@ impl Parse for GraphItem {
                 from,
                 attrs,
                 to,
+                directed,
             } = parse_edge_literal_isolated(captured)?;
             Ok(GraphItem::Edge(EdgeInstance {
                 key,
@@ -384,6 +387,7 @@ impl Parse for GraphItem {
                 from,
                 attrs,
                 to,
+                directed,
             }))
         } else {
             let value = parse_expr_isolated(captured, span)?;

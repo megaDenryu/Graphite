@@ -64,7 +64,7 @@ pub fn simulate_reorg(org: &OrgChart::Graph, target: &DepartmentId) -> Option<Re
     // 元の belongs_to を社員キー順にソートし、対象部署に所属していた社員を
     // 残存部署へラウンドロビンで機械的に再配置する。
     let mut belongs_to: Vec<(EmployeeId, DepartmentId)> = BelongsTo::iter(org)
-        .map(|(_id, edge)| (edge.from().clone(), edge.to().clone()))
+        .map(|(_id, edge)| (edge.employee.clone(), edge.department.clone()))
         .collect();
     belongs_to.sort_by(|a, b| a.0.cmp(&b.0));
 
@@ -109,8 +109,8 @@ pub fn simulate_reorg(org: &OrgChart::Graph, target: &DepartmentId) -> Option<Re
     let boss_edges: Vec<(EmployeeId, EmployeeId, BossEdge)> = Boss::iter(org)
         .map(|(_id, edge)| {
             (
-                edge.from().clone(),
-                edge.to().clone(),
+                edge.subordinate.clone(),
+                edge.superior.clone(),
                 edge.payload().clone(),
             )
         })
@@ -118,8 +118,8 @@ pub fn simulate_reorg(org: &OrgChart::Graph, target: &DepartmentId) -> Option<Re
     let assigned_edges: Vec<(EmployeeId, ProjectId, AssignedEdge)> = Assigned::iter(org)
         .map(|(_id, edge)| {
             (
-                edge.from().clone(),
-                edge.to().clone(),
+                edge.employee.clone(),
+                edge.project.clone(),
                 edge.payload().clone(),
             )
         })
@@ -128,7 +128,7 @@ pub fn simulate_reorg(org: &OrgChart::Graph, target: &DepartmentId) -> Option<Re
     // 意図的に「素朴」なまま: sponsors 辺は対象部署の分もフィルタせず
     // そのまま引き継ぐ (モジュール doc コメント参照)。
     let sponsors_edges: Vec<(DepartmentId, ProjectId)> = Sponsors::iter(org)
-        .map(|(_id, edge)| (edge.from().clone(), edge.to().clone()))
+        .map(|(_id, edge)| (edge.department.clone(), edge.project.clone()))
         .collect();
 
     let result = OrgChart::Graph::create(|b| {
@@ -142,19 +142,19 @@ pub fn simulate_reorg(org: &OrgChart::Graph, target: &DepartmentId) -> Option<Re
             b.project(id, p);
         }
         for (e, d) in new_belongs_to {
-            b.belongs_to(BelongsToId(format!("bt_{}", e.0)), BelongsTo(e, d));
+            b.belongs_to(BelongsToId(format!("bt_{}", e.0)), BelongsTo::new(e, d));
         }
         for (from, to, attrs) in boss_edges {
-            b.boss(BossId(format!("boss_{}", from.0)), Boss(from, to, attrs));
+            b.boss(BossId(format!("boss_{}", from.0)), Boss::new(from, to, attrs));
         }
         for (e, p, attrs) in assigned_edges {
             b.assigned(
                 AssignedId(format!("asn_{}_{}", e.0, p.0)),
-                Assigned(e, p, attrs),
+                Assigned::new(e, p, attrs),
             );
         }
         for (d, p) in sponsors_edges {
-            b.sponsors(SponsorsId(format!("spon_{}", d.0)), Sponsors(d, p));
+            b.sponsors(SponsorsId(format!("spon_{}", d.0)), Sponsors::new(d, p));
         }
     });
 

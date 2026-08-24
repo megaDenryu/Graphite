@@ -148,10 +148,10 @@ v4 (`docs/schema_v4.md`: 辺の第一級化・where 制約・型名前空間ア�
 | 操作 | 結果 |
 |---|---|
 | schema `-[appointment: BossEdge]->` の積み荷型 → 定義 | ✅ ユーザーstructへ精密 |
-| `OrgChart::Boss::of(&g,..)` / マクロ外の `OrgChart::Boss { subordinate, superior, appointment }` 構築 / リテラルの `Boss(..)` → 定義 | ✅ いずれもschemaの `edge Boss` トークンへ精密着地する。辺種別は生成named-field structとして全文脈で解決される。 |
+| `OrgChart::Boss::of(&g,..)` / マクロ外の `OrgChart::Boss { subordinate, superior, appointment }` 構築 / リテラルの `Boss(..)` → 定義 | ✅ いずれもschemaの `edge Boss` トークンへ精密着地する。辺種別は生成された名前付きフィールドの構造体として全文脈で解決される。 |
 | リテラルのノードキー (`tanaka`)・積み荷フィールド (`since`)・辺キー束縛 (`tanaka_boss`) | ✅ v3 同様に精密 (let 束縛・式素通しの機構は v4 でも維持) |
 | schema `Boss` → 参照検索 | ✅ 宣言 + 全使用 15 件 (アクセス・リテラル・素の構築・型注釈) |
-| `where each Employee` の `Employee` → 定義 | ✅ `2dce96a` で修正し実測確認済み: ユーザーの `struct Employee` 宣言へ精密着地。`EdgeInfo::each_from_token` にトークンを保持し、freeze 検証コード内にゼロコストの型検査文 (`let _: fn(&Type) = \|_\| {};`) として補間することで、このトークンが実在の型参照になった |
+| `where each subordinate` の `subordinate` → 定義 | ✅ 端点の役割名フィールドへ型検査文を生成し、宣言した役割名と同じトークンを検証コードへ補間する |
 | `OrgChart::Boss::of` の `of` 等、生成関連関数のメソッド名トークン → 定義 | ✅ `2dce96a` で修正し実測確認済み: schema の `edge Boss` トークンへ精密着地 (修正前はマクロブロックに着地)。生成 fn ident に由来する Kind/ノード型トークンのスパンを付与 (G3 ポリシー適用) |
 
 v4 の DSL 全トークン種 (辺種別・積み荷型・where 節端点・ノードキー・辺キー・

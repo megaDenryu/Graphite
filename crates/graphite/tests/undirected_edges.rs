@@ -61,11 +61,11 @@ mod tests {
 
             b.friends(
                 FriendsId("f1".to_string()),
-                Friends(person("alice"), person("bob")),
+                Friends::new(person("alice"), person("bob")),
             );
             b.friends(
                 FriendsId("f2".to_string()),
-                Friends(person("carol"), person("alice")),
+                Friends::new(person("carol"), person("alice")),
             );
         })
         .expect("正常な友人関係は構築に成功するはず")
@@ -75,7 +75,11 @@ mod tests {
     fn endpointsアクセサで両端を取得できる() {
         let g = build_chart();
         let f = Friends::get(&g, &FriendsId("f1".to_string())).unwrap();
-        assert_eq!(f.endpoints, (person("alice"), person("bob")));
+        assert_eq!(f.endpoints(), (&person("alice"), &person("bob")));
+        assert_eq!(
+            Friends::new(person("alice"), person("bob")),
+            Friends::new(person("bob"), person("alice"))
+        );
     }
 
     #[test]
@@ -128,11 +132,11 @@ mod tests {
             );
             b.friends(
                 FriendsId("f1".to_string()),
-                Friends(person("alice"), person("bob")),
+                Friends::new(person("alice"), person("bob")),
             );
             b.friends(
                 FriendsId("f2".to_string()),
-                Friends(person("bob"), person("alice")),
+                Friends::new(person("bob"), person("alice")),
             );
         });
 
@@ -159,11 +163,11 @@ mod tests {
             );
             b.friends(
                 FriendsId("self".to_string()),
-                Friends(person("alice"), person("alice")),
+                Friends::new(person("alice"), person("alice")),
             );
             b.friends(
                 FriendsId("f1".to_string()),
-                Friends(person("alice"), person("bob")),
+                Friends::new(person("alice"), person("bob")),
             );
         })
         .expect("自己ループを含む友人関係も構築に成功するはず");
@@ -192,7 +196,7 @@ mod tests {
             );
             b.wire(
                 WireId("w1".to_string()),
-                Wire(person("alice"), person("bob"), Cable { ohm: 5 }),
+                Wire::new(person("alice"), person("bob"), Cable { ohm: 5 }),
             );
         })
         .expect("無向のwireも構築に成功するはず");
@@ -205,7 +209,11 @@ mod tests {
         assert_eq!(cable.ohm, 5);
 
         let w = Wire::get(&g, &WireId("w1".to_string())).unwrap();
-        assert_eq!(w.endpoints, (person("alice"), person("bob")));
+        assert_eq!(w.endpoints(), (&person("alice"), &person("bob")));
+        assert_eq!(
+            Wire::new(person("alice"), person("bob"), Cable { ohm: 5 }),
+            Wire::new(person("bob"), person("alice"), Cable { ohm: 5 })
+        );
         assert_eq!(w.cable.ohm, 5);
     }
 
@@ -240,15 +248,15 @@ mod tests {
             // alice を軸に、bob -> carol -> dave の順で辺を張る。
             b.friends(
                 FriendsId("f1".to_string()),
-                Friends(person("alice"), person("bob")),
+                Friends::new(person("alice"), person("bob")),
             );
             b.friends(
                 FriendsId("f2".to_string()),
-                Friends(person("carol"), person("alice")),
+                Friends::new(person("carol"), person("alice")),
             );
             b.friends(
                 FriendsId("f3".to_string()),
-                Friends(person("alice"), person("dave")),
+                Friends::new(person("alice"), person("dave")),
             );
         })
         .expect("構築に成功するはず");
@@ -280,7 +288,7 @@ mod tests {
             );
             b.friends(
                 FriendsId("f1".to_string()),
-                Friends(person("alice"), person("存在しない")),
+                Friends::new(person("alice"), person("存在しない")),
             );
         });
 

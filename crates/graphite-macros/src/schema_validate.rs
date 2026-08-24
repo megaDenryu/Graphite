@@ -4,7 +4,7 @@
 //! - ノード型名の重複宣言
 //! - エッジ種別名 (Kind) の重複宣言
 //! - エッジの端点 (`from`/`to`) が未宣言のノード型を指している場合
-//! - `where each <role>: ..` が有向edgeの始点/終点roleと一致するか
+//! - `where each <役割名>: ..` が有向辺の始点/終点の役割名と一致するか
 //! - 無向辺の両端が同じノード型であること (`docs/edge_endpoints_v4_1.md` §2)
 //!
 //! いずれも `syn::Error::new_spanned`/`syn::Error::new` で元トークンの span を
@@ -18,7 +18,7 @@
 //! 除いた残り」だけを検証にかけられるようにするため。特に
 //! `validate_edge_endpoints`/`validate_each_type_matches_from` は、パース済みの
 //! 宣言が1件でも壊れていた場合に `lib.rs` が直接は呼ばず、代わりに
-//! [`filter_edges_with_known_endpoints`] で未知端点のエッジを黙って除外する
+//! [`filter_edges_with_known_endpoints`] で未知端点の辺を生成対象から除外する
 //! (二次エラー抑制)。重複ノード名・重複エッジ種別名の診断は回復の有無に
 //! よらず常に実行する (現行維持)。
 
@@ -28,7 +28,7 @@ use quote::ToTokens;
 use syn::Ident;
 
 use crate::naming::generated_id_ident;
-use crate::schema_dsl::{EdgeDecl, NodeDecl};
+use crate::schema_dsl::{EdgeDecl, EdgeShape, NodeDecl};
 
 pub fn validate_unique_node_names(nodes: &[NodeDecl]) -> syn::Result<()> {
     let mut seen: HashMap<String, proc_macro2::Span> = HashMap::new();
@@ -64,7 +64,7 @@ pub fn validate_unique_edge_kinds(edges: &[EdgeDecl]) -> syn::Result<()> {
     Ok(())
 }
 
-/// role getterと既存のEdge APIが同じ値名前空間で衝突しないことを検査する。
+/// 役割名と既存の辺APIが同じ名前空間で衝突しないことを検査する。
 pub fn validate_edge_roles(edges: &[EdgeDecl]) -> syn::Result<()> {
     const RESERVED: &[&str] = &[
         "from",
@@ -84,18 +84,20 @@ pub fn validate_edge_roles(edges: &[EdgeDecl]) -> syn::Result<()> {
         "len",
     ];
     for edge in edges {
-        for role in edge
-            .from_role
-            .iter()
-            .chain(edge.to_role.iter())
-            .chain(edge.attrs_role.iter())
-        {
+        let roles: Vec<&Ident> = match &edge.shape {
+            EdgeShape::Directed { from, to, payload } => [&from.role, &to.role]
+                .into_iter()
+                .chain(payload.iter().map(|value| &value.role))
+                .collect(),
+            EdgeShape::Undirected { payload, .. } => {
+                payload.iter().map(|value| &value.role).collect()
+            }
+        };
+        for role in roles {
             if RESERVED.contains(&role.to_string().as_str()) {
                 return Err(syn::Error::new(
                     role.span(),
-                    format!(
-                        "役割名 `{role}` は生成されるEdge APIと衝突します。別の役割名を指定してください"
-                    ),
+                    format!("役割名 `{role}` は生成される辺APIと衝突します。別の役割名を指定してください"),
                 ));
             }
         }
@@ -211,7 +213,11 @@ pub fn validate_edge_endpoints(nodes: &[NodeDecl], edges: &[EdgeDecl]) -> syn::R
     let declared_set: HashSet<&str> = declared.iter().map(|s| s.as_str()).collect();
 
     for edge in edges {
-        for endpoint in [&edge.from, &edge.to] {
+        let endpoints = match &edge.shape {
+            EdgeShape::Directed { from, to, .. } => [&from.ty, &to.ty],
+            EdgeShape::Undirected { first, second, .. } => [first, second],
+        };
+        for endpoint in endpoints {
             if !declared_set.contains(endpoint.to_string().as_str()) {
                 return Err(syn::Error::new_spanned(
                     endpoint.to_token_stream(),
@@ -230,8 +236,8 @@ pub fn validate_edge_endpoints(nodes: &[NodeDecl], edges: &[EdgeDecl]) -> syn::R
 
 /// `where each <参照名>` が意味する側 (出次数/入次数/次数)。
 ///
-/// - `Source`: 始点roleの出次数制約
-/// - `Target`: 終点roleの入次数制約
+/// - `Source`: 始点の役割名に対する出次数制約
+/// - `Target`: 終点の役割名に対する入次数制約
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum EachSide {
     Source,
@@ -241,35 +247,26 @@ pub enum EachSide {
 /// `where each <参照名>: ..` の `<参照名>` がどちら側 (どの制約) を指すかを
 /// 解決する。解決できない場合は診断つきの `syn::Error` を返す。
 ///
-/// - 有向edge: `<参照名>` は始点/終点いずれかのrole名と一致する必要がある。
-/// - 無向edge: endpoint roleが無いため `each` 自体を拒否する。
+/// - 有向辺: `<参照名>` は始点/終点いずれかの役割名と一致する必要がある。
+/// - 無向辺: 端点の役割名が無いため `each` 自体を拒否する。
 pub fn resolve_each_side(edge: &EdgeDecl, each_ident: &Ident) -> syn::Result<EachSide> {
-    if !edge.directed {
-        return Err(syn::Error::new_spanned(
+    let (from_role, to_role) = match &edge.shape {
+        EdgeShape::Directed { from, to, .. } => (&from.role, &to.role),
+        EdgeShape::Undirected { .. } => return Err(syn::Error::new_spanned(
             each_ident.to_token_stream(),
-            format!("無向edge `{}` にはendpoint roleが無いため `each` は使えません。使える制約は `unique pair` のみです", edge.kind),
-        ));
-    }
-
-    let from_role = edge
-        .from_role
-        .as_ref()
-        .expect("有向edgeの始点roleはparse時に検査済み");
-    let to_role = edge
-        .to_role
-        .as_ref()
-        .expect("有向edgeの終点roleはparse時に検査済み");
-    let s = each_ident.to_string();
-    if s == from_role.to_string() {
+            format!("無向辺 `{}` には端点の役割名が無いため `each` は使えません。使える制約は `unique pair` のみです", edge.kind),
+        )),
+    };
+    if each_ident == from_role {
         Ok(EachSide::Source)
-    } else if s == to_role.to_string() {
+    } else if each_ident == to_role {
         Ok(EachSide::Target)
     } else {
         Err(syn::Error::new_spanned(
             each_ident.to_token_stream(),
             format!(
-                "エッジ `{}` の each はendpoint role (`{}`/`{}`) を参照してください。存在しないroleです: `{}`",
-                edge.kind, from_role, to_role, s
+                "辺 `{}` の `each` は端点の役割名 (`{}`/`{}`) を参照してください。役割名 `{}` は存在しません",
+                edge.kind, from_role, to_role, each_ident
             ),
         ))
     }
@@ -279,8 +276,8 @@ pub fn resolve_each_side(edge: &EdgeDecl, each_ident: &Ident) -> syn::Result<Eac
 /// (`resolve_each_side` 参照)。
 pub fn validate_each_reference(edges: &[EdgeDecl]) -> syn::Result<()> {
     for edge in edges {
-        for (each_ident, _spec) in &edge.constraints.each {
-            resolve_each_side(edge, each_ident)?;
+        for constraint in &edge.constraints.each {
+            resolve_each_side(edge, &constraint.role)?;
         }
     }
     Ok(())
@@ -290,16 +287,19 @@ pub fn validate_each_reference(edges: &[EdgeDecl]) -> syn::Result<()> {
 /// (`docs/edge_endpoints_v4_1.md` §2「両端は同じノード型でなければならない」)。
 pub fn validate_undirected_same_type(edges: &[EdgeDecl]) -> syn::Result<()> {
     for edge in edges {
-        if !edge.directed && edge.from.to_string() != edge.to.to_string() {
+        let EdgeShape::Undirected { first, second, .. } = &edge.shape else {
+            continue;
+        };
+        if first != second {
             let mut err = syn::Error::new_spanned(
-                edge.to.to_token_stream(),
+                second.to_token_stream(),
                 format!(
                     "無向辺 `{}` の両端は同じノード型でなければなりません (`{}` != `{}`)。異なる型を対称に繋ぎたい場合は有向辺として書くか、ノードを昇格してください",
-                    edge.kind, edge.from, edge.to
+                    edge.kind, first, second
                 ),
             );
             err.combine(syn::Error::new_spanned(
-                edge.from.to_token_stream(),
+                first.to_token_stream(),
                 "始点側の型はこちら",
             ));
             return Err(err);
@@ -310,7 +310,7 @@ pub fn validate_undirected_same_type(edges: &[EdgeDecl]) -> syn::Result<()> {
 
 /// G4a (二次エラーの抑制): パース回復により1件以上の壊れた宣言があった
 /// ときに、`lib.rs` が [`validate_edge_endpoints`] の代わりに呼ぶ。
-/// 端点が未宣言のノード型を指すエッジをエラーにはせず、黙って生成対象から
+/// 端点が未宣言のノード型を指す辺をエラーにはせず、生成対象から
 /// 除外する。壊れたノード宣言をたまたま参照しているだけの可能性が高く、
 /// そのまま `validate_edge_endpoints` を呼ぶと「壊れた宣言由来の
 /// compile_error!」1件のはずが「未知端点エラー」まで重ねて出てしまう
@@ -323,7 +323,13 @@ pub fn filter_edges_with_known_endpoints(
     edges
         .into_iter()
         .filter(|edge| {
-            declared.contains(&edge.from.to_string()) && declared.contains(&edge.to.to_string())
+            let endpoints = match &edge.shape {
+                EdgeShape::Directed { from, to, .. } => [&from.ty, &to.ty],
+                EdgeShape::Undirected { first, second, .. } => [first, second],
+            };
+            endpoints
+                .iter()
+                .all(|endpoint| declared.contains(&endpoint.to_string()))
         })
         .collect()
 }

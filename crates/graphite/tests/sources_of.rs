@@ -99,30 +99,30 @@ mod tests {
             // ノード宣言順とは逆順にする)。
             g.unconstrained(
                 UnconstrainedId("u1".to_string()),
-                Unconstrained(na("a2"), nb("b1"), Weight { w: 20 }),
+                Unconstrained::new(na("a2"), nb("b1"), Weight { w: 20 }),
             );
             g.unconstrained(
                 UnconstrainedId("u2".to_string()),
-                Unconstrained(na("a1"), nb("b1"), Weight { w: 10 }),
+                Unconstrained::new(na("a1"), nb("b1"), Weight { w: 10 }),
             );
 
             // UnconstrainedNoPayload: b1 に a3 のみ。
             g.unconstrained_no_payload(
                 UnconstrainedNoPayloadId("un1".to_string()),
-                UnconstrainedNoPayload(na("a3"), nb("b1")),
+                UnconstrainedNoPayload::new(na("a3"), nb("b1")),
             );
 
             // AtMostOne: b1 の代表は a1 のみ (b2 は代表なし)。
-            g.at_most_one(AtMostOneId("m1".to_string()), AtMostOne(na("a1"), nb("b1")));
+            g.at_most_one(AtMostOneId("m1".to_string()), AtMostOne::new(na("a1"), nb("b1")));
 
             // ExactlyOne: b1, b2 ともにちょうど1本。
             g.exactly_one(
                 ExactlyOneId("e1".to_string()),
-                ExactlyOne(na("a1"), nb("b1"), Weight { w: 100 }),
+                ExactlyOne::new(na("a1"), nb("b1"), Weight { w: 100 }),
             );
             g.exactly_one(
                 ExactlyOneId("e2".to_string()),
-                ExactlyOne(na("a2"), nb("b2"), Weight { w: 200 }),
+                ExactlyOne::new(na("a2"), nb("b2"), Weight { w: 200 }),
             );
         })
         .expect("正常なグラフは構築に成功するはず")

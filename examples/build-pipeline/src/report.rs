@@ -118,7 +118,7 @@ pub fn mermaid(g: &BuildPipeline::Graph) -> String {
     }
 
     let mut produces: Vec<(String, String)> = Produces::iter(g)
-        .map(|(_id, edge)| (sanitize_id(&edge.from().0), sanitize_id(&edge.to().0)))
+        .map(|(_id, edge)| (sanitize_id(&edge.task.0), sanitize_id(&edge.artifact.0)))
         .collect();
     produces.sort();
     for (t, a) in produces {
@@ -126,7 +126,7 @@ pub fn mermaid(g: &BuildPipeline::Graph) -> String {
     }
 
     let mut consumes: Vec<(String, String)> = Consumes::iter(g)
-        .map(|(_id, edge)| (sanitize_id(&edge.from().0), sanitize_id(&edge.to().0)))
+        .map(|(_id, edge)| (sanitize_id(&edge.task.0), sanitize_id(&edge.artifact.0)))
         .collect();
     consumes.sort();
     for (t, a) in consumes {

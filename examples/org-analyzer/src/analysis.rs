@@ -188,8 +188,8 @@ pub fn management_chain(org: &OrgChart::Graph, start: &EmployeeId) -> Option<Cha
     let boss_of: HashMap<EmployeeId, (EmployeeId, i32)> = Boss::iter(org)
         .map(|(_id, edge)| {
             (
-                edge.from().clone(),
-                (edge.to().clone(), edge.payload().since),
+                edge.subordinate.clone(),
+                (edge.superior.clone(), edge.payload().since),
             )
         })
         .collect();
@@ -286,7 +286,7 @@ pub fn detect_anomalies(org: &OrgChart::Graph) -> AnomalyReport {
 /// `Engine::feeds_into` と同種の事情)。
 fn detect_mutual_boss_pairs(org: &OrgChart::Graph) -> Vec<(EmployeeId, EmployeeId)> {
     let all: Vec<(&EmployeeId, &EmployeeId)> = Boss::iter(org)
-        .map(|(_id, edge)| (edge.from(), edge.to()))
+        .map(|(_id, edge)| (&edge.subordinate, &edge.superior))
         .collect();
 
     let mut result: Vec<(EmployeeId, EmployeeId)> = Vec::new();
@@ -312,7 +312,7 @@ fn detect_mutual_boss_pairs(org: &OrgChart::Graph) -> Vec<(EmployeeId, EmployeeI
 fn detect_boss_cycles(org: &OrgChart::Graph) -> Vec<Vec<EmployeeId>> {
     let mut graph: Graph<(), (), EmployeeId> = Graph::from_edges(
         OrgChart::Employee::ids(org).cloned(),
-        Boss::iter(org).map(|(_id, edge)| (edge.from().clone(), edge.to().clone())),
+        Boss::iter(org).map(|(_id, edge)| (edge.subordinate.clone(), edge.superior.clone())),
     )
     .expect("Employee::idsは重複せず、Boss::iterの端点は全てEmployee::idsに含まれるはず");
 
@@ -338,13 +338,13 @@ fn detect_boss_cycles(org: &OrgChart::Graph) -> Vec<Vec<EmployeeId>> {
 /// 部署跨ぎの上司関係 (上司と部下が異なる部署)。
 fn detect_cross_department_bosses(org: &OrgChart::Graph) -> Vec<CrossDepartmentBoss> {
     let dept_of: HashMap<&EmployeeId, &DepartmentId> = BelongsTo::iter(org)
-        .map(|(_id, edge)| (edge.from(), edge.to()))
+        .map(|(_id, edge)| (&edge.employee, &edge.department))
         .collect();
 
     let mut result: Vec<CrossDepartmentBoss> = Boss::iter(org)
         .filter_map(|(_id, edge)| {
-            let emp_id = edge.from();
-            let boss_id = edge.to();
+            let emp_id = &edge.subordinate;
+            let boss_id = &edge.superior;
             let emp_dept = *dept_of.get(emp_id)?;
             let boss_dept = *dept_of.get(boss_id)?;
             if emp_dept == boss_dept {

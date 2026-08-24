@@ -375,22 +375,22 @@ pub fn generate(seed: u64, inject_anomalies: bool) -> GeneratedOrg {
         b.extend(
             belongs_to_edges
                 .into_iter()
-                .map(|(e, d)| (format!("bt_{}", e.0), BelongsTo(e, d))),
+                .map(|(e, d)| (format!("bt_{}", e.0), BelongsTo::new(e, d))),
         );
         b.extend(
             boss_edges
                 .into_iter()
-                .map(|(from, to, attrs)| (format!("boss_{}", from.0), Boss(from, to, attrs))),
+                .map(|(from, to, attrs)| (format!("boss_{}", from.0), Boss::new(from, to, attrs))),
         );
         b.extend(
             assigned_edges
                 .into_iter()
-                .map(|(e, p, attrs)| (format!("asn_{}_{}", e.0, p.0), Assigned(e, p, attrs))),
+                .map(|(e, p, attrs)| (format!("asn_{}_{}", e.0, p.0), Assigned::new(e, p, attrs))),
         );
         b.extend(
             sponsors_edges
                 .into_iter()
-                .map(|(d, p)| (format!("spon_{}", d.0), Sponsors(d, p))),
+                .map(|(d, p)| (format!("spon_{}", d.0), Sponsors::new(d, p))),
         );
     })
     .expect("合成データ生成器は常に多重度制約を満たすよう組んでいるはず");

@@ -1,4 +1,4 @@
-error: 無向edge `Friends` にはendpoint roleが無いため `each` は使えません。使える制約は `unique pair` のみです
+error: 無向辺 `Friends` には端点の役割名が無いため `each` は使えません。使える制約は `unique pair` のみです
  --> tests/ui/undirected_each.rs:6:52
   |
 6 |         edge Friends = Person -- Person where each Person: 1;

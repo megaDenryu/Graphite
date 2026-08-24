@@ -99,12 +99,14 @@ impl Engine {
         let dependency_graph: Graph<(), (), CellId> = Graph::from_edges(
             Sheet::Cell::ids(&graph).cloned(),
             Feeds::iter(&graph)
-                .map(|(_id, edge)| (edge.from().clone(), edge.to().clone()))
+                .map(|(_id, edge)| (edge.dependency.clone(), edge.dependent.clone()))
                 .chain(
-                    Lhs::iter(&graph).map(|(_id, edge)| (edge.from().clone(), edge.to().clone())),
+                    Lhs::iter(&graph)
+                        .map(|(_id, edge)| (edge.operand.clone(), edge.operation.clone())),
                 )
                 .chain(
-                    Rhs::iter(&graph).map(|(_id, edge)| (edge.from().clone(), edge.to().clone())),
+                    Rhs::iter(&graph)
+                        .map(|(_id, edge)| (edge.operand.clone(), edge.operation.clone())),
                 ),
         )
         .expect(
@@ -139,7 +141,7 @@ impl Engine {
     /// - `Input` — エッジ本数を問わない (値は `set_input` で直接与える)。
     ///
     /// 本数だけが要件で相手セルの値は不要なので、`{Kind}::iter` を毎回
-    /// 全走査して `.filter(.. edge.to() == cell_id ..)` する代わりに
+    /// 全走査して `.filter(.. edge.dependent == cell_id ..)` する代わりに
     /// `{Kind}::sources_of(graph, cell_id).len()` (`docs/reverse_query.md`)
     /// を使う。freeze 時に構築済みの終点索引を引くだけの O(1) 償却になる。
     fn validate_formula_wiring(graph: &Sheet::Graph) {
@@ -274,8 +276,8 @@ impl Engine {
     /// `sources_of(..).len()` に置き換え済み、上記参照)。
     fn feeds_into<'a>(&'a self, cell_id: &'a CellId) -> impl Iterator<Item = f64> + 'a {
         Feeds::iter(&self.graph)
-            .filter(move |(_id, edge)| edge.to() == cell_id)
-            .map(move |(_id, edge)| self.value(edge.from()))
+            .filter(move |(_id, edge)| &edge.dependent == cell_id)
+            .map(move |(_id, edge)| self.value(&edge.dependency))
     }
 
     /// `cell_id` を終点とする `Lhs` エッジの起点セルの値 (被減数)。
@@ -288,9 +290,9 @@ impl Engine {
     /// 見つからなければ実装の不整合 (バグ) である。
     fn lhs_value(&self, cell_id: &CellId) -> f64 {
         let (_id, edge) = Lhs::iter(&self.graph)
-            .find(|(_id, edge)| edge.to() == cell_id)
+            .find(|(_id, edge)| &edge.operation == cell_id)
             .expect("validate_formula_wiringで存在を検査済みのはず");
-        self.value(edge.from())
+        self.value(&edge.operand)
     }
 
     /// `cell_id` を終点とする `Rhs` エッジの起点セルの値 (減数)。
@@ -301,9 +303,9 @@ impl Engine {
     /// いる場合のみパニックする (実装の不整合)。
     fn rhs_value(&self, cell_id: &CellId) -> f64 {
         let (_id, edge) = Rhs::iter(&self.graph)
-            .find(|(_id, edge)| edge.to() == cell_id)
+            .find(|(_id, edge)| &edge.operation == cell_id)
             .expect("validate_formula_wiringで存在を検査済みのはず");
-        self.value(edge.from())
+        self.value(&edge.operand)
     }
 }
 

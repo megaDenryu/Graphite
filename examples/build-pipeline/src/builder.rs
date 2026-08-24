@@ -60,10 +60,10 @@ pub fn build_graph(
             let edge_key = format!("{}::{}", task_id.0, artifact_id.0);
             match edge.kind {
                 EdgeKind::Produces => {
-                    b.produces(ProducesId(edge_key), Produces(task_id, artifact_id));
+                    b.produces(ProducesId(edge_key), Produces::new(task_id, artifact_id));
                 }
                 EdgeKind::Consumes => {
-                    b.consumes(ConsumesId(edge_key), Consumes(task_id, artifact_id));
+                    b.consumes(ConsumesId(edge_key), Consumes::new(task_id, artifact_id));
                 }
             }
         }

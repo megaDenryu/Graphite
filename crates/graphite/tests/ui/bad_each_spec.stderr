@@ -1,4 +1,4 @@
-error: cardinalityの下限 5 は上限 2 以下でなければなりません
+error: 多重度の下限 5 は上限 2 以下でなければなりません
   --> tests/ui/bad_each_spec.rs:23:103
    |
 23 |             edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 5..2;

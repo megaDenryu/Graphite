@@ -160,7 +160,7 @@ fn 未知の依存先を参照するとunknowntarget違反になる() {
             );
             b.depends_on(
                 async_dag::schema::DependsOnId("api_missing".to_string()),
-                DependsOn(id("api"), id("存在しないサービス")),
+                DependsOn::new(id("api"), id("存在しないサービス")),
             );
         });
     assert!(matches!(

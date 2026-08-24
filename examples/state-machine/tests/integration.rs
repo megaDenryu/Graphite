@@ -131,9 +131,9 @@ fn payのiterは各始点キーにつき1本ずつしか無い_多重度01の保
     let mut seen_sources = std::collections::HashSet::new();
     for (_id, edge) in Pay::iter(&g) {
         assert!(
-            seen_sources.insert(edge.from().clone()),
+            seen_sources.insert(edge.before.clone()),
             "同じ始点キー {:?} から2本以上のPay辺があってはならない (each 0..1 違反)",
-            edge.from()
+            &edge.before
         );
     }
 }
