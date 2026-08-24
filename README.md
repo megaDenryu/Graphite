@@ -200,6 +200,30 @@ builder (`OrgChart::Builder`)・違反 enum (`OrgChart::Violation`) が置かれ
 `id`/`value` という名のメソッドを持つ場合、`NodeRef` の同名の固有メソッドが
 優先されます。値側を呼ぶには `(*node_ref).id()` のように `Deref` させます。
 
+`graph!` の左辺名は、完成後も名前付き要素として残ります。ノードと辺の
+どちらも、同じ呼び出しsiteで生成される名前付きwrapperから Graph-bound Refを
+直接取得できます。
+
+```rust
+let graph = graphite::graph!(OrgChart {
+    alice @ EmployeeId("external-alice".into()) = Employee { /* ... */ },
+    sales = Department { /* ... */ },
+    assignment = BelongsTo(alice -> sales),
+})?;
+
+graph.alice();      // EmployeeRef<'_>
+graph.assignment(); // BelongsToRef<'_>
+```
+
+`alice` というRust名、`EmployeeId("external-alice")` という公開ID、freeze後の
+内部位置は別概念です。名前付きアクセサはbuilderが挿入時に記録した内部位置を
+使うため公開IDのhash lookupを行いません。実行時にIDしか分からない場合は
+従来どおり `OrgChart::Employee::get(&graph, &id)` を使います。wrapperは
+`Deref<Target = OrgChart::Graph>` / `DerefMut` を実装するため既存の借用APIへ
+そのまま渡せます。名前付きAPIを関数境界の外へ持ち出さず素の型として返す場合は
+`graph.into_graph()` を明示します。`..items` でspliceした要素は公開IDを保ちますが、
+呼び出しsiteに左辺名が無いため静的アクセサを暗黙生成しません。
+
 **ノード挿入トレイトと総称 `insert`**: builder には型名付きの
 挿入メソッド (`b.employee(id, value)` など、上記の各 `node` 宣言から1つずつ
 生成) に加えて、総称メソッド `b.insert<N: OrgChart::OrgChartNode>(key: impl Into<String>, value: N) -> N::Id`
@@ -243,7 +267,7 @@ schema ごとの生成物は `OrgChart`/`ApprovalFlow` のように別々の Rus
 問い合わせ先も `OrgChart::Person::get(..)` と
 `ApprovalFlow::Person::get(..)` のように一意に指定できます。
 
-**アクセスは型名前空間の関連関数 (`g.メソッド` は廃止)**: v3 にあった
+**動的アクセスは型名前空間の関連関数**: v3 にあった
 「ラベルごとに1個のビューを返すメソッド `{label}()`」という間接層は v4 では
 無くなりました。辺の読み取りAPI (`of`/`get`/`between`/`iter`/`ids`/`len`) は
 `graph_schema!` が生成した辺型への固有 impl として直接生えます
@@ -251,6 +275,8 @@ schema ごとの生成物は `OrgChart`/`ApprovalFlow` のように別々の Rus
 (`get`/`get_mut`/`ids`/`iter`) はスキーマ module 内のノードマーカーに生えます
 (`OrgChart::Employee::get(&g, ..)`)。ユーザー struct (`Employee` 等) への
 固有 impl は追加しないため、複数 schema が同じ値型を共有できます。
+ここで廃止したのはschema由来のビューAPIであり、`graph!` 左辺名から呼び出しsite
+ごとに生成される `graph.alice()` のような名前付き静的アクセサとは別物です。
 
 - **`Kind::of(&g, &SrcId)`** — そのエッジ種別の自然な戻り値。
   **`where` 制約が戻り型を決めます**:
@@ -304,11 +330,11 @@ let g = graphite::graph!(OrgChart {
     tanaka_dept = BelongsTo(tanaka -> sales),
     sato_dept   = BelongsTo(sato -> sales),
     tanaka_boss = Boss(tanaka -[BossEdge { since: 2020 }]-> sato),
-})?; // Result<OrgChart::Graph, OrgChart::Violation>
+})?; // 呼び出しsite固有の名前付きwrapper (Deref<Target = OrgChart::Graph>)
 ```
 
 静的項目は `名前 = 値`、またはID値を渡す `名前 @ ID式 = 値` です (`docs/schema_v4.md` §0 規則1)。ノードの名前は
-ノードキー、辺の名前は辺キーの束縛であり、**ノードキー・辺キーは1つの
+ノード名、辺名は構築中の公開ID束縛であると同時に完成後の静的アクセサ名で、**ノード・辺は1つの
 `graph!` 呼び出しの中で単一の平坦な名前空間を共有します** (同じ識別子を
 2回使うとコンパイルエラー。詳細は後述「名前空間に関する制約」節)。辺の
 リテラル構文は `Kind(from -> to)` / `Kind(from -[積み荷式]-> to)` で、
@@ -333,9 +359,10 @@ let g = graphite::graph!(OrgChart {
 })?;
 ```
 
-`graph!` は `OrgChart::Graph::create(|__graphite_b| { ... })` の呼び出し列へ脱糖する
-だけで、スキーマの中身 (どのエッジが存在するか等) は一切知りません。値の型も
-一切パースせず、`graph_schema!` が生成した総称 `insert`/`add` メソッド
+`graph!` は `OrgChart::Graph::create_named(|__graphite_b| { ... })` と
+呼び出しsiteローカルの名前付きwrapperへ脱糖します。スキーマの中身
+(どのエッジが存在するか等) は一切知りません。値の型も一切パースせず、
+`graph_schema!` が生成した総称 `insert_named`/`add_named` メソッド
 (下記) へユーザーの式トークンをそのまま渡すだけです (型推論は rustc に
 任せる。ゼロコスト志向、原則5)。
 
@@ -344,25 +371,32 @@ let g = graphite::graph!(OrgChart {
 `docs/ide_support_spec.md` 参照)。展開結果はおおよそ次の形になります:
 
 ```rust
-OrgChart::Graph::create(|__graphite_b| {
+OrgChart::Graph::create_named(|__graphite_b| {
     // (1) 全ノード宣言 (記述順)
-    let tanaka = __graphite_b.insert("tanaka", Employee { .. });
-    let sales = __graphite_b.insert("sales", Department { .. });
+    let (tanaka, tanaka_position) =
+        __graphite_b.insert_named("tanaka", Employee { .. });
+    let (sales, sales_position) =
+        __graphite_b.insert_named("sales", Department { .. });
     // (2) 全エッジ (記述順)
-    let tanaka_dept = __graphite_b.add(
+    let (tanaka_dept, tanaka_dept_position) = __graphite_b.add_named(
         "tanaka_dept",
         <OrgChart::BelongsTo as graphite::DirectedEdgeLiteral<_, _, _>>::from_graph_literal(
             tanaka.clone(), sales.clone(), (),
         ),
     );
-    let tanaka_boss = __graphite_b.add(
+    let (tanaka_boss, tanaka_boss_position) = __graphite_b.add_named(
         "tanaka_boss",
         <OrgChart::Boss as graphite::DirectedEdgeLiteral<_, _, _>>::from_graph_literal(
             tanaka.clone(), sato.clone(), BossEdge { since: 2020 },
         ),
     );
+    (tanaka_position, sales_position, tanaka_dept_position, tanaka_boss_position)
 })
 ```
+
+成功時の `(Graph, positions)` はローカルwrapperへ移され、`g.tanaka()` 等は
+型付き位置handleからRefを直接作ります。上の展開図ではwrapperのstruct/implを
+読みやすさのため省略しています。
 
 `insert`/`add` は `graph_schema!` が各スキーマごとに生成する総称メソッドで、
 `{Schema}::{Schema}Node`/`{Schema}::{Schema}Edge` トレイト境界を介して値の型から正しい内部
@@ -524,7 +558,7 @@ let result: Result<OrgChart::Graph, Vec<OrgChart::Violation>> = OrgChart::Graph:
 - `node Person(id: EmployeeNumber);` と `edge Knows(id: RelationNumber) = ...;` は既存型を使い、`PersonId` や `KnowsId` を生成しません。明示ID型には `Clone + Eq + Hash` だけが必要です。
 - `graph!` の既定ID項は `alice = Person { ... }` と書き、束縛名 `alice` を内部文字列にします。明示ID項は `alice @ EmployeeNumber(42) = Person { ... }` と書きます。`@` の右側は普通のRust式です。明示ID宣言を `@` なしで使うとコンパイルエラーになります。
 - 既定IDにも `alice @ Org::PersonId("external-name".into()) = ...` と書けば、束縛名とは別の値を渡せます。
-- `insert`・`add`・`extend`・`..式` は文字列から既定IDを作る経路です。明示IDには `insert_with_id`・`add_with_id`、または `graph!` の `@` を使います。スプライスへ明示IDを渡す構文はIssue #6/#2で確定します。
+- `insert`・`add`・`extend`・`..式` は文字列から既定IDを作る経路です。明示IDには `insert_with_id`・`add_with_id`、または `graph!` の `@` を使います。splice要素は動的ID経路に残り、静的アクセサを暗黙再公開しません。
 
 IDは内部位置ではありません。`KeyedTable` はIDをハッシュキーとして扱い、挿入順は別に保持します。詳細は `docs/node_id_v4_2.md` を参照してください。
 
@@ -533,7 +567,7 @@ IDは内部位置ではありません。`KeyedTable` はIDをハッシュキー
 `graph!` 内の識別子 (`tanaka = Employee { .. }` の `tanaka`、`tanaka_dept =
 BelongsTo(..)` の `tanaka_dept` の部分) は**ノード・エッジの種別を跨いで
 単一の平坦な名前空間**です (`docs/schema_v4.md` §0 規則1: 全項目が
-`名前 = 値` であり、名前は常にキーの束縛であるため)。異なる種別 (例:
+`名前 = 値` であり、名前は構築時のID束縛と完成後の静的アクセサを兼ねるため)。異なる種別 (例:
 `Scene` ノードと `Choice` エッジ) であっても同じ識別子を2回使うと衝突する
 ため、命名規約 (プレフィックス等) で回避する必要があります。これは設計上の
 既知の制約です。同じ識別子を2回宣言した場合は `syn::Error` (「識別子 `X`

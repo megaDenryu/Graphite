@@ -406,6 +406,7 @@ pub fn build_story() -> Result<DialogueGraph::Graph, DialogueGraph::Violation> {
         f_tsent = Finale(truth_sent -> ending_truth),
         f_cfreeze = Finale(crisis_freeze -> ending_isolation),
     })
+    .map(|graph| graph.into_graph())
 }
 
 /// シナリオの開始シーン。
@@ -450,6 +451,7 @@ pub fn build_broken_story() -> Result<DialogueGraph::Graph, DialogueGraph::Viola
         c_brunreachable_brok = Choice(br_unreachable -[ChoiceEdge { label: "戻る".to_string() }]-> br_ok),
         // br_unreachable は意図的に誰からも参照しない (到達不能)。
     })
+    .map(|graph| graph.into_graph())
 }
 
 pub fn broken_start_scene_id() -> SceneId {
@@ -478,6 +480,7 @@ pub fn build_pure_loop_story() -> Result<DialogueGraph::Graph, DialogueGraph::Vi
         // どのシーンにも finale が無い = t_loop_a/t_loop_b は循環しつつ
         // どのエンディングにも到達できない「罠」になる。
     })
+    .map(|graph| graph.into_graph())
 }
 
 pub fn pure_loop_start_scene_id() -> SceneId {

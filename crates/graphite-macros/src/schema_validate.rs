@@ -27,7 +27,7 @@ use std::collections::{HashMap, HashSet};
 use quote::ToTokens;
 use syn::Ident;
 
-use crate::naming::{generated_id_ident, reference_ident};
+use crate::naming::{generated_id_ident, named_position_ident, reference_ident};
 use crate::schema_dsl::{EdgeDecl, EdgeShape, NodeDecl};
 
 pub fn validate_unique_node_names(nodes: &[NodeDecl]) -> syn::Result<()> {
@@ -208,6 +208,24 @@ pub fn validate_generated_type_names(
             name.clone(),
             edge.kind.span(),
             format!("参照型 `{name}`"),
+            生成名衝突助言::ノードまたは辺の名前を変更,
+        )?;
+    }
+    for node in nodes {
+        let name = named_position_ident(&node.name).to_string();
+        register(
+            name.clone(),
+            node.name.span(),
+            format!("名前付き位置型 `{name}`"),
+            生成名衝突助言::ノードまたは辺の名前を変更,
+        )?;
+    }
+    for edge in edges {
+        let name = named_position_ident(&edge.kind).to_string();
+        register(
+            name.clone(),
+            edge.kind.span(),
+            format!("名前付き位置型 `{name}`"),
             生成名衝突助言::ノードまたは辺の名前を変更,
         )?;
     }

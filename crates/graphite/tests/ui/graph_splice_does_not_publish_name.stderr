@@ -1,0 +1,12 @@
+error[E0599]: no method named `spliced` found for struct `__GraphiteWorldNamedGraph<World::Graph, __PersonNamedPosition>` in the current scope
+  --> tests/ui/graph_splice_does_not_publish_name.rs:18:19
+   |
+12 |       let graph = graphite::graph!(World {
+   |  _________________-
+13 | |         declared = Person,
+14 | |         ..people,
+15 | |     })
+   | |______- method `spliced` not found for this struct
+...
+18 |       let _ = graph.spliced();
+   |                     ^^^^^^^ method not found in `__GraphiteWorldNamedGraph<World::Graph, __PersonNamedPosition>`

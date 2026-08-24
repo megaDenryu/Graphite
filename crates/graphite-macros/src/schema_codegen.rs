@@ -80,7 +80,8 @@ use syn::{Ident, Path};
 
 use crate::naming::{
     each_violation_ident, edge_record_ident, edge_storage_ident, generated_id_ident,
-    graph_type_ident, internal_position_ident, plural_field_name, reference_ident, to_snake_case,
+    graph_type_ident, internal_position_ident, named_position_ident, plural_field_name,
+    reference_ident, to_snake_case,
 };
 use crate::schema_dsl::{EachSpec, EdgeDecl, EdgePayload, EdgeShape, NodeDecl, SchemaInput};
 use crate::schema_validate::{self, EachSide};
@@ -165,6 +166,10 @@ impl NodeInfo {
 
     fn reference_ident(&self) -> Ident {
         reference_ident(&self.type_ident)
+    }
+
+    fn named_position_ident(&self) -> Ident {
+        named_position_ident(&self.type_ident)
     }
 }
 
@@ -261,6 +266,10 @@ impl<'a> EdgeInfo<'a> {
     fn record_ident(&self) -> Ident {
         edge_record_ident(self.kind)
     }
+
+    fn named_position_ident(&self) -> Ident {
+        named_position_ident(self.kind)
+    }
 }
 
 pub fn generate(schema: &SchemaInput) -> TokenStream {
@@ -291,6 +300,7 @@ pub fn generate(schema: &SchemaInput) -> TokenStream {
 
     let default_id_defs = gen_default_id_types(&node_infos, &edge_infos);
     let internal_position_defs = gen_internal_position_types(&node_infos, &edge_infos);
+    let named_position_defs = gen_named_position_types(&node_infos, &edge_infos);
     let edge_value_struct_defs = gen_edge_value_structs(&edge_infos);
     let edge_record_defs = gen_edge_record_structs(&edge_infos);
     let edge_reference_defs = gen_edge_reference_types(&graph_ident, &edge_infos);
@@ -326,6 +336,7 @@ pub fn generate(schema: &SchemaInput) -> TokenStream {
         &insertable_trait_ident,
         &default_id_trait_ident,
         &builder_ident,
+        &graph_ident,
         &edge_infos,
     );
     let edge_query_impls = edge_infos
@@ -339,6 +350,7 @@ pub fn generate(schema: &SchemaInput) -> TokenStream {
 
             #(#default_id_defs)*
             #(#internal_position_defs)*
+            #(#named_position_defs)*
             #(#edge_value_struct_defs)*
             #(#edge_record_defs)*
             #violation_def
@@ -465,13 +477,31 @@ fn gen_insertable_traits(
         /// 型付き ID を受け取るノード・エッジ共通の挿入トレイト。
         pub trait #insertable_trait_ident: Sized {
             type Id;
-            fn insert_with_id(self, b: &mut #builder_ident, id: Self::Id) -> Self::Id;
+            type NamedPosition;
+
+            fn insert_named_with_id(
+                self,
+                b: &mut #builder_ident,
+                id: Self::Id,
+            ) -> (Self::Id, Self::NamedPosition);
+
+            fn insert_with_id(self, b: &mut #builder_ident, id: Self::Id) -> Self::Id {
+                self.insert_named_with_id(b, id).0
+            }
         }
 
         /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
         /// 実装する。明示ID型には実装せず、文字列変換を要求しない。
         pub trait #default_id_trait_ident: #insertable_trait_ident {
-            fn insert_with_binding(self, b: &mut #builder_ident, binding: String) -> Self::Id;
+            fn insert_named_with_binding(
+                self,
+                b: &mut #builder_ident,
+                binding: String,
+            ) -> (Self::Id, Self::NamedPosition);
+
+            fn insert_with_binding(self, b: &mut #builder_ident, binding: String) -> Self::Id {
+                self.insert_named_with_binding(b, binding).0
+            }
         }
     }
 }
@@ -525,6 +555,7 @@ fn gen_node_trait_and_impls(
         let field = &n.field_ident;
         let reference = n.reference_ident();
         let internal_position = n.internal_position_ident();
+        let named_position = n.named_position_ident();
         // IDE 支援 (`docs/ide_support_spec.md` §1.9, G3 ポリシー): このノード
         // 型への `{Schema}Node`/`{Schema}Insertable` impl が生やすメソッド名は
         // `n.type_ident` (ノード型そのもののトークン) のスパンを持たせる。
@@ -532,7 +563,7 @@ fn gen_node_trait_and_impls(
         // 単一の由来トークンを持たない schema 全体のインフラなので call_site
         // のままでよい (指示どおり、impl 側だけに適用する)。
         let span = ty.span();
-        let insert_with_id_ident = Ident::new("insert_with_id", span);
+        let insert_named_with_id_ident = Ident::new("insert_named_with_id", span);
         let get_ident = Ident::new("get", span);
         let get_mut_ident = Ident::new("get_mut", span);
         let ids_ident = Ident::new("ids", span);
@@ -544,8 +575,16 @@ fn gen_node_trait_and_impls(
             let generated_id = &n.id_ty.generated_ident;
             quote! {
                 impl #default_id_trait_ident for super::#ty {
-                    fn insert_with_binding(self, b: &mut #builder_ident, binding: String) -> Self::Id {
-                        #insertable_trait_ident::insert_with_id(self, b, #generated_id(binding))
+                    fn insert_named_with_binding(
+                        self,
+                        b: &mut #builder_ident,
+                        binding: String,
+                    ) -> (Self::Id, Self::NamedPosition) {
+                        #insertable_trait_ident::insert_named_with_id(
+                            self,
+                            b,
+                            #generated_id(binding),
+                        )
                     }
                 }
             }
@@ -555,11 +594,17 @@ fn gen_node_trait_and_impls(
         quote! {
             impl #insertable_trait_ident for super::#ty {
                 type Id = #id_ty;
+                type NamedPosition = #named_position;
 
-                fn #insert_with_id_ident(self, b: &mut #builder_ident, id: Self::Id) -> Self::Id {
+                fn #insert_named_with_id_ident(
+                    self,
+                    b: &mut #builder_ident,
+                    id: Self::Id,
+                ) -> (Self::Id, Self::NamedPosition) {
+                    let named_position = #named_position(#internal_position(b.#field.len()));
                     let returned_id = id.clone();
                     b.#accessor(id, self);
-                    returned_id
+                    (returned_id, named_position)
                 }
             }
 
@@ -600,6 +645,17 @@ fn gen_node_trait_and_impls(
                         .get_at(self.internal_position.0)
                         .expect("NodeRefの内部位置は凍結後に不変のノード表を指す")
                         .1
+                }
+            }
+
+            impl graphite::NamedGraphElement<#graph_ident> for #named_position {
+                type Reference<'graph> = #reference<'graph>;
+
+                fn bind<'graph>(&self, graph: &'graph #graph_ident) -> Self::Reference<'graph> {
+                    #reference {
+                        graph,
+                        internal_position: self.0,
+                    }
                 }
             }
 
@@ -658,22 +714,34 @@ fn gen_edge_trait_and_impls(
     insertable_trait_ident: &Ident,
     default_id_trait_ident: &Ident,
     builder_ident: &Ident,
+    graph_ident: &Ident,
     edges: &[EdgeInfo<'_>],
 ) -> TokenStream {
     let edge_impls = edges.iter().map(|e| {
         let kind = e.kind;
         let id_ty = &e.id_ty;
         let accessor = &e.accessor_ident;
+        let reference = e.reference_ident();
+        let internal_position = e.internal_position_ident();
+        let named_position = e.named_position_ident();
         // 必須ではないが (このメソッドはユーザーが直接呼ぶ想定ではない)、
         // 他の生成メソッドとの一貫性のため `edge.kind` のスパンを付ける
         // (`docs/ide_support_spec.md` §1.9 の指示: 余裕があれば付けてよい)。
-        let insert_with_id_ident = Ident::new("insert_with_id", kind.span());
+        let insert_named_with_id_ident = Ident::new("insert_named_with_id", kind.span());
         let default_id_impl = if e.id_ty.is_generated() {
             let generated_id = &e.id_ty.generated_ident;
             quote! {
                 impl #default_id_trait_ident for #kind {
-                    fn insert_with_binding(self, b: &mut #builder_ident, binding: String) -> Self::Id {
-                        #insertable_trait_ident::insert_with_id(self, b, #generated_id(binding))
+                    fn insert_named_with_binding(
+                        self,
+                        b: &mut #builder_ident,
+                        binding: String,
+                    ) -> (Self::Id, Self::NamedPosition) {
+                        #insertable_trait_ident::insert_named_with_id(
+                            self,
+                            b,
+                            #generated_id(binding),
+                        )
                     }
                 }
             }
@@ -683,11 +751,28 @@ fn gen_edge_trait_and_impls(
         quote! {
             impl #insertable_trait_ident for #kind {
                 type Id = #id_ty;
+                type NamedPosition = #named_position;
 
-                fn #insert_with_id_ident(self, b: &mut #builder_ident, id: Self::Id) -> Self::Id {
+                fn #insert_named_with_id_ident(
+                    self,
+                    b: &mut #builder_ident,
+                    id: Self::Id,
+                ) -> (Self::Id, Self::NamedPosition) {
+                    let named_position = #named_position(#internal_position(b.#accessor.len()));
                     let returned_id = id.clone();
                     b.#accessor(id, self);
-                    returned_id
+                    (returned_id, named_position)
+                }
+            }
+
+            impl graphite::NamedGraphElement<#graph_ident> for #named_position {
+                type Reference<'graph> = #reference<'graph>;
+
+                fn bind<'graph>(&self, graph: &'graph #graph_ident) -> Self::Reference<'graph> {
+                    #reference {
+                        graph,
+                        internal_position: self.0,
+                    }
                 }
             }
 
@@ -736,6 +821,36 @@ fn gen_internal_position_types(nodes: &[NodeInfo], edges: &[EdgeInfo<'_>]) -> Ve
                 struct #position(usize);
             }
         })
+        .collect()
+}
+
+/// `graph!` の名前付きwrapperへfreezeをまたいで内部位置を運ぶ型を生成する。
+/// フィールドは非公開で、生成された挿入経路と `NamedGraphElement` 実装だけが
+/// 構築・参照する。公開IDやGraphへの参照は保持しない。
+fn gen_named_position_types(
+    nodes: &[NodeInfo],
+    edges: &[EdgeInfo<'_>],
+) -> Vec<TokenStream> {
+    nodes
+        .iter()
+        .map(|node| {
+            let named_position = node.named_position_ident();
+            let internal_position = node.internal_position_ident();
+            quote! {
+                #[doc(hidden)]
+                #[derive(Clone, Copy)]
+                pub struct #named_position(#internal_position);
+            }
+        })
+        .chain(edges.iter().map(|edge| {
+            let named_position = edge.named_position_ident();
+            let internal_position = edge.internal_position_ident();
+            quote! {
+                #[doc(hidden)]
+                #[derive(Clone, Copy)]
+                pub struct #named_position(#internal_position);
+            }
+        }))
         .collect()
 }
 
@@ -1509,10 +1624,9 @@ fn gen_schema_struct(
     }
 }
 
-/// スキーマ struct 本体の impl。v4 (`docs/schema_v4.md` §3.2「g.メソッドは
-/// 廃止」) によりノード・エッジの個別アクセサは一切ここに生やさない。
-/// 残るのは構築用の `create`/`create_collecting` だけ (読み取りは型名前空間
-/// の関連関数 = schema module 内のノードマーカー/辺種別の固有 impl 経由)。
+/// スキーマ struct 本体の impl。IDによる動的読み取りは型名前空間の関連関数、
+/// `graph!` 左辺名の静的読み取りは呼び出しsite wrapperへ生成するため、素の
+/// Graphには個別アクセサを生やさない。ここには構築経路だけを置く。
 fn gen_schema_impl(
     schema_name: &Ident,
     violation_ident: &Ident,
@@ -1531,6 +1645,18 @@ fn gen_schema_impl(
                 let mut builder = #builder_ident::new();
                 f(&mut builder);
                 builder.freeze()
+            }
+
+            /// `graph!` が名前付き要素の位置handleを凍結境界の外へ運ぶための
+            /// 内部構築経路。Graphの凍結に成功した場合だけhandleを返す。
+            #[doc(hidden)]
+            pub fn create_named<F, N>(f: F) -> Result<(Self, N), #violation_ident>
+            where
+                F: for<'b> FnOnce(&'b mut #builder_ident) -> N,
+            {
+                let mut builder = #builder_ident::new();
+                let named_positions = f(&mut builder);
+                builder.freeze().map(|graph| (graph, named_positions))
             }
 
             /// [`Self::create`] の複数違反収集版。builder をクロージャに
@@ -1649,11 +1775,33 @@ fn gen_builder_impl(
                 value.insert_with_binding(self, key.into())
             }
 
+            /// `graph!` が公開IDと名前付き要素の内部位置を同時に受け取る経路。
+            #[doc(hidden)]
+            pub fn insert_named<N>(
+                &mut self,
+                key: impl Into<String>,
+                value: N,
+            ) -> (N::Id, N::NamedPosition)
+            where
+                N: #node_trait_ident + #default_id_trait_ident,
+            {
+                value.insert_named_with_binding(self, key.into())
+            }
+
             /// `@ ID式` を書いたノード項の脱糖先。明示ID型と既定ID型の
             /// どちらにも使える。
-            /// 参照: #6の名前付き静的アクセサを実装するときは脱糖先を再検討する。
             pub fn insert_with_id<N: #node_trait_ident>(&mut self, id: N::Id, value: N) -> N::Id {
                 value.insert_with_id(self, id)
+            }
+
+            /// `graph!` の `@ ID式` 付きノードを名前付き位置と共に挿入する経路。
+            #[doc(hidden)]
+            pub fn insert_named_with_id<N: #node_trait_ident>(
+                &mut self,
+                id: N::Id,
+                value: N,
+            ) -> (N::Id, N::NamedPosition) {
+                value.insert_named_with_id(self, id)
             }
 
             /// `insert` のエッジ版。`graph!` の辺行 `key = Kind(from -> to)`
@@ -1666,11 +1814,33 @@ fn gen_builder_impl(
                 value.insert_with_binding(self, key.into())
             }
 
+            /// `graph!` が公開IDと名前付き辺の内部位置を同時に受け取る経路。
+            #[doc(hidden)]
+            pub fn add_named<E>(
+                &mut self,
+                key: impl Into<String>,
+                value: E,
+            ) -> (E::Id, E::NamedPosition)
+            where
+                E: #edge_trait_ident + #default_id_trait_ident,
+            {
+                value.insert_named_with_binding(self, key.into())
+            }
+
             /// `@ ID式` を書いたエッジ項の脱糖先。明示ID型と既定ID型の
             /// どちらにも使える。
-            /// 参照: #6の名前付き静的アクセサを実装するときは脱糖先を再検討する。
             pub fn add_with_id<E: #edge_trait_ident>(&mut self, id: E::Id, value: E) -> E::Id {
                 value.insert_with_id(self, id)
+            }
+
+            /// `graph!` の `@ ID式` 付き辺を名前付き位置と共に挿入する経路。
+            #[doc(hidden)]
+            pub fn add_named_with_id<E: #edge_trait_ident>(
+                &mut self,
+                id: E::Id,
+                value: E,
+            ) -> (E::Id, E::NamedPosition) {
+                value.insert_named_with_id(self, id)
             }
 
             /// `insert`/`add` のイテレータ版 (`docs/bulk_construction.md`、
@@ -1690,7 +1860,7 @@ fn gen_builder_impl(
                 K: Into<String>,
                 T: #default_id_trait_ident,
             {
-                // スプライスの完全な名前・ID意味論は #6/#2 で確定する。
+                // splice要素は公開IDだけを持ち、名前付き位置handleを返さない。
                 items.into_iter().map(|(k, v)| v.insert_with_binding(self, k.into())).collect()
             }
 

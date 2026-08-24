@@ -35,4 +35,15 @@ pub trait UndirectedEdgeLiteral<Endpoint, Payload>: Sized {
     fn from_graph_literal(first: Endpoint, second: Endpoint, payload: Payload) -> Self;
 }
 
+/// `graph!` が名前付き要素の内部位置から Graph-bound Ref を直接構築するための
+/// 内部契約。公開 ID の索引は経由しない。
+#[doc(hidden)]
+pub trait NamedGraphElement<G> {
+    type Reference<'graph>
+    where
+        G: 'graph;
+
+    fn bind<'graph>(&self, graph: &'graph G) -> Self::Reference<'graph>;
+}
+
 pub use graphite_macros::{flow, graph, graph_schema};

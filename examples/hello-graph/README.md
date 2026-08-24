@@ -73,32 +73,35 @@ cargo run
 構築時の `Boss` と完成後の `BossRef` の違いは `src/main.rs` §2.5 で説明しています。
 `Boss` は端点IDと積み荷を持つ名前付きフィールドの構造体です。freeze は端点IDを非公開位置へ変換し、完成済みグラフは `graphite::KeyedTable<BossId, BossRecord>` を保持します。利用者は `BossRef<'graph>` を通して完成済み記録を読みます。`graph!` の
 `key = Boss(from -[積み荷式]-> to)` は
-`__graphite_b.add(key, <Boss as graphite::DirectedEdgeLiteral<_, _, _>>::from_graph_literal(from.clone(), to.clone(), 積み荷式))` という
-ただのメソッド呼び出しに脱糖されるだけです。
+`__graphite_b.add_named(key, <Boss as graphite::DirectedEdgeLiteral<_, _, _>>::from_graph_literal(from.clone(), to.clone(), 積み荷式))` という
+通常のメソッド呼び出しと、内部位置handleを持つローカルwrapperへ脱糖されます。
 
 ## クックブック チートシート (`src/main.rs` §3 と1対1対応)
 
 `src/main.rs` §3 の各関数が、それぞれ生成APIの1つずつに対応しています。
 「やりたいこと」列の順は `main.rs` の呼び出し順 (構築 → ノードを読む →
 エッジを辿る → 一覧する → 検証エラーを受ける) と同じです。v4 では
-`g.メソッド()` は一切生成されず、**すべて型名前空間の関連関数**です
-(ノードは `{Schema}Node` トレイト経由、辺は各 `Kind` への固有 impl)。
+IDによる動的検索は**型名前空間の関連関数**です (ノードは `{Schema}Node`
+トレイト経由、辺は各 `Kind` への固有 impl)。一方、`graph!` 左辺名は
+`g.alice()` / `g.bob_boss()` のような呼び出しsite固有の静的アクセサになります。
 
 ### 構築
 
 | やりたいこと | 書き方 | 戻り値の型 |
 |---|---|---|
-| `graph!` にノード式・エッジをインラインで書く | `graphite::graph!(Org { alice = Person { .. }, ad = BelongsTo(alice -> eng), .. })` | `Result<Org, OrgViolation>` |
+| `graph!` にノード式・エッジをインラインで書く | `graphite::graph!(Org { alice = Person { .. }, ad = BelongsTo(alice -> eng), .. })` | `Result<名前付きwrapper, OrgViolation>` (wrapperは `Deref<Target = Org::Graph>`) |
 | 外部で作った値を `graph!` に渡す | `let v = Person{..}; graph!(Org { alice = v, .. })` | 同上 |
 | 外部で作ったエッジ積み荷を `graph!` に渡す | `graph!(Org { .. bb = Boss(bob -[promotion]-> alice), .. })` | 同上 |
 | builder の型名メソッドで組み立てる | `Org::create(\|b\| { b.person(id, value); b.belongs_to(edge_id, BelongsTo { member: from, team: to }); })` | 同上 |
 | builder の総称 `insert`/`add` で組み立てる | `let id: PersonId = b.insert("eve", Person{..}); let eid = b.add("k", BelongsTo { member: id, team: team_id });` | `N::Id`/`E::Id` (呼び出し側の値の型で決まる) |
+| 名前付きAPIを捨てて素のGraphへ戻す | `let graph: Org::Graph = named.into_graph();` | `Org::Graph` |
 
 ### ノードを読む
 
 | やりたいこと | 書き方 | 戻り値の型 |
 |---|---|---|
 | 人ノードを1件読む | `Person::get(&g, &PersonId("alice".to_string()))` | `Option<PersonRef<'_>>` |
+| 左辺名から人ノードを直接読む | `g.alice()` | `PersonRef<'_>` (ID hash lookupなし) |
 | チームノードを1件読む | `Team::get(&g, &TeamId("eng".to_string()))` | `Option<TeamRef<'_>>` |
 | `PersonId` を手で組み立てる (`graph!` のキーと同一視) | `PersonId("alice".to_string())` | `PersonId` |
 
@@ -151,7 +154,7 @@ cargo run
 | チェーン形 | `x -[f]-> y -[g]-> z` | `let y = (f)(x); let z = (g)(y);` |
 | fan-out (同じ始点を複数の矢印に流す) | `x -[f]-> y, x -[g]-> z` | `let y = (f)(x); let z = (g)(x);` |
 | fan-in (タプル始点で多引数呼び出し) | `(a, b) -[f]-> y` | `let y = (f)(a, b);` |
-| 束縛を後で使う | `y`/`z` は普通のローカル変数として `flow!` の後に見える | (`graph!` のキーが builder クロージャに閉じるのとは対照的) |
+| 束縛を後で使う | `y`/`z` は普通のローカル変数として `flow!` の後に見える | (`graph!` の左辺はローカル変数ではなく名前付きwrapperのメソッドとして残る) |
 
 ## できる/できない一覧
 

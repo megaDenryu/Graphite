@@ -18,6 +18,6 @@ let graph = Org::Graph::create(|builder| {
 
 入力は `IntoIterator<Item = (K, T)>` であり、`K: Into<String>` を満たす必要がある。戻り値は挿入順の `Vec<T::Id>` である。重複IDと端点の検証は、要素単位の `insert` / `add` と同じくfreeze時に行う。
 
-`extend` は文字列からschema module内の既定IDを作れる要素だけを受け付ける。既存ID型を `(id: 型パス)` で明示した要素には、要素単位の `insert_with_id` / `add_with_id` を使う。明示IDを一括投入する構文はIssue #6/#2で確定する。
+`extend` は文字列からschema module内の既定IDを作れる要素だけを受け付ける。既存ID型を `(id: 型パス)` で明示した要素には、要素単位の `insert_with_id` / `add_with_id` を使う。明示IDを一括投入する専用構文は現時点では提供しない。
 
 `graph!` の `..式` は `extend` への糖衣であり、同じ型境界と挿入順保証を持つ。詳細は `docs/graph_splice.md` を参照する。

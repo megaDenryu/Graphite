@@ -38,6 +38,7 @@ pub fn sample_orchestration() -> Orchestration::Graph {
         healthcheck_worker = DependsOn(healthcheck -> worker),
     })
     .expect("本編のサービスグラフは正常に構築できるはず")
+    .into_graph()
 }
 
 /// 循環依存デモ用の小さな3サービス例 (a -> b -> c -> a)。
@@ -59,4 +60,5 @@ pub fn cyclic_demo() -> Orchestration::Graph {
         c_a = DependsOn(c -> a),
     })
     .expect("スキーマ上は正常 (循環検査は図式適合の範囲外)")
+    .into_graph()
 }

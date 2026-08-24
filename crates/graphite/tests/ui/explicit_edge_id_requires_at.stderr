@@ -25,9 +25,9 @@ help: the trait `ExplicitEdgeDefaultId` is implemented for `Person`
  7 | |     schema ExplicitEdge {
  8 | |         node Person;
    | |___________________^
-note: required by a bound in `ExplicitEdge::Builder::add`
+note: required by a bound in `ExplicitEdge::Builder::add_named`
   --> tests/ui/explicit_edge_id_requires_at.rs:7:12
    |
  7 |     schema ExplicitEdge {
-   |            ^^^^^^^^^^^^ required by this bound in `Builder::add`
+   |            ^^^^^^^^^^^^ required by this bound in `Builder::add_named`
    = note: this error originates in the macro `graphite::graph_schema` (in Nightly builds, run with -Z macro-backtrace for more info)

@@ -28,6 +28,26 @@ pub fn internal_position_ident(source: &Ident) -> Ident {
     format_ident!("__{}InternalPosition", source, span = source.span())
 }
 
+/// ノード型名・辺種別名から `graph!` の名前付き要素が保持する位置handle型名を導出する。
+pub fn named_position_ident(source: &Ident) -> Ident {
+    format_ident!("__{}NamedPosition", source, span = source.span())
+}
+
+/// `graph!` の左辺名からローカルwrapperの位置フィールド名を導出する。
+pub fn named_binding_position_ident(source: &Ident) -> Ident {
+    format_ident!("__graphite_named_{}", source, span = source.span())
+}
+
+/// 呼び出しsiteに生成する名前付きグラフwrapperのローカル型名。
+pub fn named_graph_wrapper_ident(source: &Ident) -> Ident {
+    format_ident!("__Graphite{}NamedGraph", source, span = source.span())
+}
+
+/// 名前付きグラフwrapperの型付き位置handle用の型引数名。
+pub fn named_wrapper_parameter_ident(index: usize, source: &Ident) -> Ident {
+    format_ident!("__GraphiteNamedPosition{}", index, span = source.span())
+}
+
 /// 辺種別名から凍結後の非公開レコード型名を導出する。
 pub fn edge_record_ident(source: &Ident) -> Ident {
     format_ident!("__{}Record", source, span = source.span())
@@ -115,14 +135,35 @@ mod tests {
     }
 
     #[test]
-    fn 参照型と内部位置と辺レコードの型名を導出できる() {
+    fn 参照型と内部位置と名前付き位置と辺レコードの型名を導出できる() {
         let source = Ident::new("Purchase", proc_macro2::Span::call_site());
         assert_eq!(reference_ident(&source).to_string(), "PurchaseRef");
         assert_eq!(
             internal_position_ident(&source).to_string(),
             "__PurchaseInternalPosition"
         );
+        assert_eq!(
+            named_position_ident(&source).to_string(),
+            "__PurchaseNamedPosition"
+        );
         assert_eq!(edge_record_ident(&source).to_string(), "__PurchaseRecord");
+    }
+
+    #[test]
+    fn 名前付きwrapperの内部名を導出できる() {
+        let source = Ident::new("購入", proc_macro2::Span::call_site());
+        assert_eq!(
+            named_binding_position_ident(&source).to_string(),
+            "__graphite_named_購入"
+        );
+        assert_eq!(
+            named_graph_wrapper_ident(&source).to_string(),
+            "__Graphite購入NamedGraph"
+        );
+        assert_eq!(
+            named_wrapper_parameter_ident(2, &source).to_string(),
+            "__GraphiteNamedPosition2"
+        );
     }
 
     #[test]

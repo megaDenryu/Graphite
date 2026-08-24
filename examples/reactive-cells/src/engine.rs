@@ -498,7 +498,8 @@ mod tests {
 
             r_discount_amount_adjustment = Rhs(discount_amount -> adjustment),
         })
-        .expect("構造としては正常に構築できる (Lhs不足は検証対象外)");
+        .expect("構造としては正常に構築できる (Lhs不足は検証対象外)")
+        .into_graph();
         let _ = Engine::new(broken);
     }
 
@@ -509,7 +510,8 @@ mod tests {
         let broken = graphite::graph!(Sheet {
             lonely = Cell { formula: Formula::Mul },
         })
-        .expect("構造としては正常に構築できる (Feeds不足は検証対象外)");
+        .expect("構造としては正常に構築できる (Feeds不足は検証対象外)")
+        .into_graph();
         let _ = Engine::new(broken);
     }
 }

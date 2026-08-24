@@ -237,13 +237,16 @@ fn main() {
 // カテゴリ順: 構築 → ノードを読む → エッジを辿る → 一覧する →
 // 検証エラーを受ける。
 //
-// v4 (`docs/schema_v4.md` §3.2) では「すべて型名前空間の関連関数」です。
-// `g.メソッド()` は一切生成されません:
+// v4 (`docs/schema_v4.md` §3.2) の動的検索は型名前空間の関連関数です。
+// これとは別に、graph! の左辺名は呼び出しsite固有の `g.alice()` のような
+// 静的アクセサになります:
 // - ノード: schema module 内のマーカー型 (`Org::Person::get(&g, &id)` 等)。
 // - エッジ: 各 `Kind` への固有 impl (`Boss::of`/`get`/`between`/`iter`/
 //   `ids`/`len`)。`of`/`between` の戻り型は宣言した `where` 制約が決めます
 //   (`each 1` → 直接参照、`each 0..1` → `Option`、制約なし → `Vec`、
 //   `unique pair` → `between` が `Option`)。
+// - 名前付き静的アクセス: `g.alice()` / `g.bob_boss()`。内部位置から直接
+//   NodeRef/EdgeRefを作り、公開IDのhash lookupを行いません。
 //
 // スタイル: イテレータ連鎖 (`map`/`filter`/`collect`) やクロージャによる
 // データ加工は使わず、素の `for`/`if let`/`match` だけで書いています
@@ -302,7 +305,7 @@ fn section3() {
 // この g を以降の「ノードを読む」「エッジを辿る」「一覧する」節で使い回す。
 fn インライン式でgraphリテラルを組み立てる() -> Org::Graph {
     #[rustfmt::skip]
-    let g: Org::Graph = graphite::graph!(Org {
+    let g = graphite::graph!(Org {
         alice = Person { name: "Alice".into() },
         bob   = Person { name: "Bob".into() },
         carol = Person { name: "Carol".into() },
@@ -319,10 +322,9 @@ fn インライン式でgraphリテラルを組み立てる() -> Org::Graph {
         alice_bob_friends = Friends(alice -- bob),
     })
     .expect("正常なグラフは構築に成功するはず");
-    let alice_person: Org::PersonRef<'_> =
-        Org::Person::get(&g, &PersonId("alice".to_string())).unwrap();
+    let alice_person: Org::PersonRef<'_> = g.alice();
     println!("(構築1: インライン式) alice = {}", alice_person.name);
-    g
+    g.into_graph()
 }
 
 // やりたいこと: グラフの外で作った値を graph! にそのまま渡す (`alice = alice_value` の形)。
@@ -334,14 +336,13 @@ fn 外部変数を渡してgraphリテラルを組み立てる() {
         name: "Engineering".to_string(),
     };
     #[rustfmt::skip]
-    let g: Org::Graph = graphite::graph!(Org {
+    let g = graphite::graph!(Org {
         alice = alice_value,
         eng   = eng_value,
         alice_dept = BelongsTo(alice -> eng),
     })
     .expect("外部変数を渡した graph! も構築に成功するはず");
-    let alice_person: Org::PersonRef<'_> =
-        Org::Person::get(&g, &PersonId("alice".to_string())).unwrap();
+    let alice_person: Org::PersonRef<'_> = g.alice();
     println!("(構築2: 外部変数渡し) alice = {}", alice_person.name);
 }
 
@@ -349,7 +350,7 @@ fn 外部変数を渡してgraphリテラルを組み立てる() {
 fn 外部で作ったエッジ属性をgraphリテラルに渡す() {
     let promotion: BossEdge = BossEdge { since: 2019 };
     #[rustfmt::skip]
-    let g: Org::Graph = graphite::graph!(Org {
+    let g = graphite::graph!(Org {
         alice = Person { name: "Alice".into() },
         bob   = Person { name: "Bob".into() },
         eng   = Team { name: "Engineering".into() },
@@ -358,11 +359,10 @@ fn 外部で作ったエッジ属性をgraphリテラルに渡す() {
         bob_boss   = Boss(bob -[promotion]-> alice),
     })
     .expect("外部エッジ属性を渡した graph! も構築に成功するはず");
-    let boss_pair: (Org::PersonRef<'_>, &BossEdge) =
-        Boss::of(&g, &PersonId("bob".to_string())).unwrap();
+    let boss: Org::BossRef<'_> = g.bob_boss();
     println!(
         "(構築3: 外部エッジ属性渡し) bob の上司就任年 = {}",
-        boss_pair.1.since
+        boss.payload().since
     );
 }
 
@@ -988,8 +988,8 @@ fn section5() {
         (valid, doubled) -[merge]-> summary, // fan-in: タプル始点は多引数呼び出しに脱糖
     };
     // parsed/valid/doubled/summary はいずれも flow! の後で普通のローカル
-    // 変数として見える (§3 の graph! のノード/エッジキーが builder クロージャ
-    // の中に閉じるのとは対照的)。
+    // 変数として見える (§3 の graph! 左辺名は名前付きwrapperのメソッドとして
+    // 完成後に残るが、ローカル変数そのものが外へ漏れるわけではない)。
     println!("(flow!) parsed={parsed} valid={valid} doubled={doubled}");
     println!("(flow!) summary = {summary}");
 }
@@ -1016,6 +1016,7 @@ mod tests {
             review_2024 = ReviewedBy(bob -[ReviewEdge { year: 2024 }]-> carol),
         });
         g.expect("正常なグラフは構築に成功するはず")
+            .into_graph()
     }
 
     #[test]

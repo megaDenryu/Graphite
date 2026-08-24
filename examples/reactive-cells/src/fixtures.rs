@@ -84,6 +84,7 @@ pub fn default_sheet() -> Result<Sheet::Graph, Sheet::Violation> {
         f_adjustment_grand_total        = Feeds(adjustment -> grand_total),
         f_shipping_fee_grand_total      = Feeds(shipping_fee -> grand_total),
     })
+    .map(|graph| graph.into_graph())
 }
 
 /// 循環デモ専用の壊れたシート。3セル `a -> b -> c -> a` の `Feeds`
@@ -110,6 +111,7 @@ pub fn cyclic_demo_sheet() -> Result<Sheet::Graph, Sheet::Violation> {
         f_b_c = Feeds(b -> c),
         f_c_a = Feeds(c -> a),
     })
+    .map(|graph| graph.into_graph())
 }
 
 #[cfg(test)]

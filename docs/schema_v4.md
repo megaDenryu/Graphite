@@ -78,9 +78,15 @@ let g = graphite::graph!(Org {
     b_boss = Boss(bob -[promo]-> alice),
     lead @ ExistingRelationId(8) = Assigned(alice -[Role { name: "lead".into() }]-> proj),
 });
+
+let alice_ref = g.alice(); // PersonRef<'_>: 公開IDのhash lookupなし
+let lead_ref = g.lead();   // AssignedRef<'_>
 ```
 
-- 静的項目は `名前 = 値`、または明示IDを渡す `名前 @ ID式 = 値`。名前はノードキーまたは辺キーの束縛になる。
+- 静的項目は `名前 = 値`、または明示IDを渡す `名前 @ ID式 = 値`。名前は構築中のノード/辺ID束縛であると同時に、完成後の静的アクセサ名になる。
+- `graph!` は呼び出しsiteごとの名前集合を持つローカルwrapperを返す。wrapperは `Deref<Target = Org::Graph>` / `DerefMut` と `into_graph()` を持つ。公開境界で素の `Org::Graph` を返す場合は `graph.into_graph()` を明示する。
+- 静的アクセサはbuilderへのpush時に得た種別専用の内部位置handleからNodeRef/EdgeRefを直接作る。公開ID索引を検索しない。名前と公開ID値は独立している。
+- `..式` の要素は公開IDを保持するが左辺名を持たないため、新wrapperへ静的アクセサを再公開しない。
 - 辺リテラルは `Kind(from -> to)` / `Kind(from -[積み荷式]-> to)`。
   `graph!` はこれを柄に対応する辺リテラルトレイトの構築関数へ脱糖する。
   スキーマ宣言と柄の向きが一致しなければコンパイルエラーになる。
@@ -117,7 +123,7 @@ freeze は公開IDを種別専用の位置へ変換する。完成済み辺記�
 
 ノード値型が `id`/`value` という名のメソッドを持つ場合、`NodeRef` の同名の固有メソッドが優先される (メソッド解決は `Deref` より先に固有メソッドを探すため)。値側のメソッドを呼びたいときは `(*node_ref).id()` のように明示的に `Deref` させる。
 
-### 3.2 アクセス (すべて型名前空間の関連関数。g.メソッドは廃止)
+### 3.2 アクセス (動的検索は型名前空間、静的な名前はwrapperメソッド)
 
 ```rust
 // ノード (schema module 内のノードマーカー。
@@ -136,6 +142,10 @@ Org::Boss::between(&g, &bob, &alice);  // 対で検索: unique pair → Option�
 Org::Boss::iter(&g);                   // BossRef<'_>
 Org::Boss::ids(&g);  Org::Boss::len(&g);
 Org::Boss::payload_mut(&mut g, &boss_id); // Option<&mut BossEdge>
+
+// graph! の同じ呼び出しsiteで名前が分かる場合 (ID検索なし)
+g.alice();
+g.b_boss();
 ```
 
 有向の `EdgeRef` は `from()` / `to()` と `from_id()` / `to_id()` に加え、スキーマの役割名による取得メソッドを持つ。無向の `EdgeRef` は方向を捏造せず、`endpoints()` で2つの `NodeRef` を返し、`from` / `to` は持たない。辺値の端点IDは構築の入力であり、完成後の端点は変更できない。ノード値と辺の積み荷だけを `get_mut` / `payload_mut` で変更できる。
@@ -178,8 +188,8 @@ Org::Boss::payload_mut(&mut g, &boss_id); // Option<&mut BossEdge>
 
 ## 6. 見送り・保留 (根拠つき)
 
-- 役割名を使った `EdgeRef` アクセサ、役割検索API、名前付き静的アクセサは
-  後続Issueで扱う。Issue #1では辺値の公開フィールドと型名前空間APIを生成する。
+- 役割別探索API (`purchase_as_buyer` 等) は後続Issueで扱う。役割名を使った
+  `EdgeRef` アクセサと、`graph!` 左辺名の静的アクセサは実装済み。
 - ノード宣言へのキーワード統一 (`node Person;` の再検討) — v4 安定後、
   Fudaba #1 後継として
 - 「グラフで書くべきもの vs 構造体で書くべきもの」のモデリング指針 —

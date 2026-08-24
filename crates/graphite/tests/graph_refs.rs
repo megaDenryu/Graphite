@@ -34,6 +34,7 @@ fn 構築する() -> 世界::Graph {
         友人関係 = 友人(太郎 -- 花子),
     })
     .unwrap()
+    .into_graph()
 }
 
 #[test]

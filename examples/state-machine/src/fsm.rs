@@ -178,7 +178,8 @@ pub fn build() -> OrderFsm::Graph {
         refund_shipped   = Refund(shipped -[RefundEdge { audit_label: "AUDIT-REFUND-SHIPPED".into() }]-> refunded),
         refund_delivered = Refund(delivered -[RefundEdge { audit_label: "AUDIT-REFUND-DELIVERED".into() }]-> refunded),
     })
-    .expect("正規のFSM定義は構築に成功するはず");
+    .expect("正規のFSM定義は構築に成功するはず")
+    .into_graph();
     g
 }
 
@@ -218,7 +219,8 @@ pub fn build_with_unreachable_state() -> OrderFsm::Graph {
         // held_for_review へ入る辺が無い (書いたつもりで繋げ忘れた想定)。
         cancel_held = Cancel(held_for_review -[CancelEdge { reason: "審査により保留後キャンセル".into(), refund_required: true }]-> cancelled),
     })
-    .expect("辺の端点は全てノードキーとして宣言済みなので構築自体は成功する");
+    .expect("辺の端点は全てノードキーとして宣言済みなので構築自体は成功する")
+    .into_graph();
     g
 }
 
@@ -255,6 +257,7 @@ pub fn build_with_dead_end_bug() -> OrderFsm::Graph {
 
         refund_paid = Refund(paid -[RefundEdge { audit_label: "AUDIT-REFUND-PAID".into() }]-> refunded),
     })
-    .expect("辺の端点は全てノードキーとして宣言済みなので構築自体は成功する");
+    .expect("辺の端点は全てノードキーとして宣言済みなので構築自体は成功する")
+    .into_graph();
     g
 }

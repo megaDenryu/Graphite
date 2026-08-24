@@ -19,9 +19,9 @@ help: this trait has no implementations, consider adding one
  6 | / graphite::graph_schema! {
  7 | |     schema Explicit {
    | |___________________^
-note: required by a bound in `Explicit::Builder::insert`
+note: required by a bound in `Explicit::Builder::insert_named`
   --> tests/ui/explicit_id_requires_at.rs:7:12
    |
  7 |     schema Explicit {
-   |            ^^^^^^^^ required by this bound in `Builder::insert`
+   |            ^^^^^^^^ required by this bound in `Builder::insert_named`
    = note: this error originates in the macro `graphite::graph_schema` (in Nightly builds, run with -Z macro-backtrace for more info)

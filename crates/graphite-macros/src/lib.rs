@@ -163,7 +163,8 @@ pub fn graph_schema(input: TokenStream) -> TokenStream {
 }
 
 /// `graph_schema!` で宣言したスキーマのインスタンスをリテラルに近い記法で
-/// 組み立てる。`SchemaName::Graph::create(|b| { ... })` へ脱糖する。
+/// 組み立てる。`SchemaName::Graph::create_named(|b| { ... })` と、左辺名の
+/// 静的アクセサを持つ呼び出しsiteローカルwrapperへ脱糖する。
 ///
 /// ```text
 /// let g = graphite::graph!(OrgChart {
@@ -194,10 +195,10 @@ pub fn graph(input: TokenStream) -> TokenStream {
     match instance_codegen::generate(&graph, has_parse_errors) {
         Ok(tokens) => {
             if has_parse_errors {
-                // G4b: `graph!` は式位置で使われる (`SchemaName::create(..)`
+                // G4b: `graph!` は式位置で使われる (`SchemaName::create_named(..)`
                 // という式に脱糖する) ため、蓄積した compile_error! を単純に
                 // 前置すると式として不正になる。ブロック式
-                // `{ compile_error!(..); ...; SchemaName::create(..) }`
+                // `{ compile_error!(..); ...; SchemaName::create_named(..) }`
                 // の形にして式として妥当な形を保つ。
                 quote! {
                     {

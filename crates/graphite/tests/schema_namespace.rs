@@ -29,14 +29,16 @@ fn 同じノード値型と辺名を複数schemaで使っても生成型が衝�
         member = Person { name: "Member".into() },
         manages = Relation(manager -> member),
     })
-    .expect("Orgの構築に成功するはず");
+    .expect("Orgの構築に成功するはず")
+    .into_graph();
 
     let social: Social::Graph = graphite::graph!(Social {
         alice = Person { name: "Alice".into() },
         bob = Person { name: "Bob".into() },
         follows = Relation(alice -> bob),
     })
-    .expect("Socialの構築に成功するはず");
+    .expect("Socialの構築に成功するはず")
+    .into_graph();
 
     assert_eq!(Org::Person::get(&org, &Org::PersonId("manager".into())).unwrap().name, "Manager");
     assert_eq!(Social::Person::get(&social, &Social::PersonId("alice".into())).unwrap().name, "Alice");
@@ -70,7 +72,8 @@ fn 日本語のschema名とノード名と辺名と束縛名を通常の識別�
         次郎 = 人物 { 名前: "次郎".into() },
         知人 = 関係(太郎 -[取引情報 { 金額: 100 }]-> 次郎),
     })
-    .expect("日本語識別子を使ったグラフの構築に成功するはず");
+    .expect("日本語識別子を使ったグラフの構築に成功するはず")
+    .into_graph();
 
     assert_eq!(世界::人物::get(&graph, &世界::人物Id("太郎".into())).unwrap().名前, "太郎");
     assert_eq!(世界::関係::len(&graph), 1);

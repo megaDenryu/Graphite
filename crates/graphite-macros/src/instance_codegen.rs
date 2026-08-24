@@ -1,7 +1,9 @@
 //! `graph!` のコード生成本体 (v4、`docs/schema_v4.md` §2 参照。スプライス項は
 //! v4.2、`docs/graph_splice.md` §1)。
 //!
-//! `SchemaName::Graph::create(|__graphite_b| { ... })` の呼び出し列へ脱糖する。
+//! `SchemaName::Graph::create_named(|__graphite_b| { ... })` と、呼び出しsite
+//! ごとの名前付きwrapper型へ脱糖する。wrapperは素のGraphと静的項ごとの
+//! 型付き内部位置handleを所有し、左辺名のメソッドからGraph-bound Refを返す。
 //!
 //! ノード項・エッジの積み荷の値はいずれもユーザーの式トークンをそのまま
 //! 埋め込むだけで、値の型はマクロが一切パースしない。ノード項は
@@ -28,15 +30,21 @@
 //! 機能する:
 //!
 //! ```text
-//! Org::Graph::create(|__graphite_b| {
+//! Org::Graph::create_named(|__graphite_b| {
 //!     // (1) 全ノード宣言 (記述順)
-//!     let alice = __graphite_b.insert("alice", Person { .. });
-//!     let eng = __graphite_b.insert("eng", Team { .. });
+//!     let (alice, alice_position) = __graphite_b.insert_named("alice", Person { .. });
+//!     let (eng, eng_position) = __graphite_b.insert_named("eng", Team { .. });
 //!     // (2) 全エッジとスプライスを記述順に (`docs/graph_splice.md` §1)
-//!     let a_team = __graphite_b.add("a_team", BelongsTo(alice.clone(), eng.clone()));
+//!     let (a_team, a_team_position) =
+//!         __graphite_b.add_named("a_team", BelongsTo(alice.clone(), eng.clone()));
 //!     __graphite_b.extend(staff);
+//!     (alice_position, eng_position, a_team_position)
 //! })
 //! ```
+//!
+//! freeze成功後、この `(Graph, positions)` をローカルwrapperへ移す。静的
+//! アクセサは位置handleからRefを直接構築し、公開IDのhash lookupを行わない。
+//! スプライスはhandleを返さないため、元の名前を暗黙再公開しない。
 //!
 //! エッジはノードキー (`from`/`to`) を参照するため、`let` 束縛は使用より
 //!前に定義されている必要がある。よって展開は「全ノード → (全エッジ+全
@@ -62,11 +70,14 @@
 
 use std::collections::{HashMap, HashSet};
 
-use proc_macro2::TokenStream;
+use proc_macro2::{Ident, TokenStream};
 use quote::{quote, quote_spanned};
 
 use crate::instance_dsl::{EdgeDirection, GraphInput, GraphItem};
-use crate::naming::graph_type_ident;
+use crate::naming::{
+    graph_type_ident, named_binding_position_ident, named_graph_wrapper_ident,
+    named_wrapper_parameter_ident,
+};
 
 /// v4 (`docs/schema_v4.md` §0 規則1): `graph!` 内の識別子はノード・エッジを
 /// 問わず単一の平坦な名前空間 (全行が `名前 = 値` であり、名前は常にキーの
@@ -93,6 +104,12 @@ fn collect_declared_keys(items: &[GraphItem]) -> syn::Result<(HashSet<String>, H
             GraphItem::Spread(_) => continue,
         };
         let key_str = key.to_string();
+        if key_str == "into_graph" {
+            return Err(syn::Error::new(
+                key.span(),
+                "識別子 `into_graph` は名前付きグラフを素のGraphへ戻す予約メソッド名です",
+            ));
+        }
         if let Some(&prev_span) = key_spans.get(&key_str) {
             let mut err = syn::Error::new(
                 key.span(),
@@ -131,6 +148,8 @@ pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<Token
     // するだけなので自然に順序が保たれる) 保持する。
     let mut node_calls: Vec<TokenStream> = Vec::new();
     let mut rest_calls: Vec<TokenStream> = Vec::new();
+    let mut named_keys: Vec<Ident> = Vec::new();
+    let mut named_positions: Vec<Ident> = Vec::new();
 
     for item in &input.items {
         match item {
@@ -138,6 +157,7 @@ pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<Token
                 // スパン規約: let の束縛識別子はノード宣言に書かれた出現の
                 // Ident をそのまま使う (文字列から作り直さない)。
                 let key_ident = node.key.clone();
+                let named_position = named_binding_position_ident(&node.key);
                 let key_str = node.key.to_string();
                 let explicit_id = &node.id;
                 let value = &node.value;
@@ -147,13 +167,15 @@ pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<Token
                 // `unused variable` を出すが、これはユーザーのグラフ設計
                 // の問題ではなくノイズなので抑制する。
                 let call = match explicit_id {
-                    Some(id) => quote! { __graphite_b.insert_with_id(#id, #value) },
-                    None => quote! { __graphite_b.insert(#key_str, #value) },
+                    Some(id) => quote! { __graphite_b.insert_named_with_id(#id, #value) },
+                    None => quote! { __graphite_b.insert_named(#key_str, #value) },
                 };
                 node_calls.push(quote! {
                     #[allow(unused_variables)]
-                    let #key_ident = #call;
+                    let (#key_ident, #named_position) = #call;
                 });
+                named_keys.push(key_ident);
+                named_positions.push(named_position);
             }
             GraphItem::Edge(edge) => {
                 // 端点キーがノードとして宣言されているかどうかの検証。
@@ -181,6 +203,7 @@ pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<Token
                 // スパン規約: エッジ関連の識別子・キーはすべて書かれた出現の
                 // トークンをそのまま使う。
                 let key_ident = edge.key.clone();
+                let named_position = named_binding_position_ident(&edge.key);
                 let key_str = edge.key.to_string();
                 let explicit_id = &edge.id;
                 let kind = &edge.kind;
@@ -217,15 +240,17 @@ pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<Token
                 // ノード同様、どこからも参照されない辺キーは
                 // `unused variable` 警告のノイズになるため抑制する。
                 let call = match explicit_id {
-                    Some(id) => quote! { __graphite_b.add_with_id(#id, #ctor) },
+                    Some(id) => quote! { __graphite_b.add_named_with_id(#id, #ctor) },
                     // 既定IDを生成できない場合のtrait boundエラーは、macro呼び出し
                     // 全体ではなく、利用者が修正すべきエッジ種別名へ結び付ける。
-                    None => quote_spanned! { kind.span()=> __graphite_b.add(#key_str, #ctor) },
+                    None => quote_spanned! { kind.span()=> __graphite_b.add_named(#key_str, #ctor) },
                 };
                 rest_calls.push(quote! {
                     #[allow(unused_variables)]
-                    let #key_ident = #call;
+                    let (#key_ident, #named_position) = #call;
                 });
+                named_keys.push(key_ident);
+                named_positions.push(named_position);
             }
             GraphItem::Spread(spread) => {
                 // 統一 `extend` への脱糖 (`docs/graph_splice.md` §1/§2)。
@@ -239,10 +264,83 @@ pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<Token
         }
     }
 
-    Ok(quote! {
-        #schema_name::#graph_ident::create(|__graphite_b| {
+    let wrapper_ident = named_graph_wrapper_ident(schema_name);
+    let wrapper_parameters: Vec<Ident> = named_keys
+        .iter()
+        .enumerate()
+        .map(|(index, key)| named_wrapper_parameter_ident(index, key))
+        .collect();
+    let accessors = named_keys
+        .iter()
+        .zip(named_positions.iter())
+        .zip(wrapper_parameters.iter())
+        .map(|((key, position), parameter)| {
+            quote! {
+                pub fn #key(
+                    &self,
+                ) -> <#parameter as graphite::NamedGraphElement<#schema_name::#graph_ident>>::Reference<'_> {
+                    <#parameter as graphite::NamedGraphElement<#schema_name::#graph_ident>>::bind(
+                        &self.#position,
+                        &self.__graphite_graph,
+                    )
+                }
+            }
+        });
+    let accessor_impl = if wrapper_parameters.is_empty() {
+        quote! {}
+    } else {
+        quote! {
+            impl<#(#wrapper_parameters),*> #wrapper_ident<#schema_name::#graph_ident #(, #wrapper_parameters)*>
+            where
+                #(#wrapper_parameters: graphite::NamedGraphElement<#schema_name::#graph_ident>),*
+            {
+                #(#accessors)*
+            }
+        }
+    };
+
+    Ok(quote! {{
+        struct #wrapper_ident<__GraphiteGraph #(, #wrapper_parameters)*> {
+            __graphite_graph: __GraphiteGraph,
+            #(#named_positions: #wrapper_parameters,)*
+        }
+
+        impl<__GraphiteGraph #(, #wrapper_parameters)*>
+            #wrapper_ident<__GraphiteGraph #(, #wrapper_parameters)*>
+        {
+            pub fn into_graph(self) -> __GraphiteGraph {
+                self.__graphite_graph
+            }
+        }
+
+        impl<__GraphiteGraph #(, #wrapper_parameters)*> std::ops::Deref
+            for #wrapper_ident<__GraphiteGraph #(, #wrapper_parameters)*>
+        {
+            type Target = __GraphiteGraph;
+
+            fn deref(&self) -> &Self::Target {
+                &self.__graphite_graph
+            }
+        }
+
+        impl<__GraphiteGraph #(, #wrapper_parameters)*> std::ops::DerefMut
+            for #wrapper_ident<__GraphiteGraph #(, #wrapper_parameters)*>
+        {
+            fn deref_mut(&mut self) -> &mut Self::Target {
+                &mut self.__graphite_graph
+            }
+        }
+
+        #accessor_impl
+
+        #schema_name::#graph_ident::create_named(|__graphite_b| {
             #(#node_calls)*
             #(#rest_calls)*
+            (#(#named_positions,)*)
         })
-    })
+        .map(|(__graphite_graph, (#(#named_positions,)*))| #wrapper_ident {
+            __graphite_graph,
+            #(#named_positions,)*
+        })
+    }})
 }
