@@ -479,8 +479,20 @@ impl Parse for EdgeDecl {
                 second,
                 payload: attrs,
             },
-            (false, Endpoint { role: Some(role), .. }, _)
-            | (false, _, Endpoint { role: Some(role), .. }) => {
+            (
+                false,
+                Endpoint {
+                    role: Some(role), ..
+                },
+                _,
+            )
+            | (
+                false,
+                _,
+                Endpoint {
+                    role: Some(role), ..
+                },
+            ) => {
                 return Err(syn::Error::new(
                     role.span(),
                     "無向辺 (`--`/`-[役割名: 型]-`) には役割名を書けません。役割の区別がある場合は有向辺を使ってください",

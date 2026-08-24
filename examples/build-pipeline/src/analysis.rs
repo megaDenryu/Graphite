@@ -31,7 +31,10 @@ pub type TaskDependencyGraph = Graph<(), (), TaskId>;
 pub fn task_dependency_graph(g: &BuildPipeline::Graph) -> TaskDependencyGraph {
     let mut producers_of: HashMap<&ArtifactId, Vec<&TaskId>> = HashMap::new();
     for (_id, edge) in Produces::iter(g) {
-        producers_of.entry(&edge.artifact).or_default().push(&edge.task);
+        producers_of
+            .entry(&edge.artifact)
+            .or_default()
+            .push(&edge.task);
     }
 
     let nodes: Vec<(TaskId, ())> = BuildPipeline::Task::ids(g)
@@ -125,11 +128,17 @@ pub fn validate(g: &BuildPipeline::Graph) -> Vec<DomainIssue> {
 
     let mut producers_of: HashMap<&ArtifactId, Vec<&TaskId>> = HashMap::new();
     for (_id, edge) in Produces::iter(g) {
-        producers_of.entry(&edge.artifact).or_default().push(&edge.task);
+        producers_of
+            .entry(&edge.artifact)
+            .or_default()
+            .push(&edge.task);
     }
     let mut consumers_of: HashMap<&ArtifactId, Vec<&TaskId>> = HashMap::new();
     for (_id, edge) in Consumes::iter(g) {
-        consumers_of.entry(&edge.artifact).or_default().push(&edge.task);
+        consumers_of
+            .entry(&edge.artifact)
+            .or_default()
+            .push(&edge.task);
     }
 
     // 1. 孤児成果物: consume されているのに produce するタスクが無い。

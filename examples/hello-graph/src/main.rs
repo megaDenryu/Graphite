@@ -582,8 +582,7 @@ fn belongs_toのiterで制約ありエッジを列挙する(g: &Org::Graph) {
     for (id, edge) in BelongsTo::iter(g) {
         println!(
             "(iter) BelongsTo {id:?}: {:?} -> {:?}",
-            &edge.member,
-            &edge.team
+            &edge.member, &edge.team
         );
     }
 }

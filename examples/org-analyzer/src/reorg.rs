@@ -145,7 +145,10 @@ pub fn simulate_reorg(org: &OrgChart::Graph, target: &DepartmentId) -> Option<Re
             b.belongs_to(BelongsToId(format!("bt_{}", e.0)), BelongsTo::new(e, d));
         }
         for (from, to, attrs) in boss_edges {
-            b.boss(BossId(format!("boss_{}", from.0)), Boss::new(from, to, attrs));
+            b.boss(
+                BossId(format!("boss_{}", from.0)),
+                Boss::new(from, to, attrs),
+            );
         }
         for (e, p, attrs) in assigned_edges {
             b.assigned(

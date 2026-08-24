@@ -113,7 +113,10 @@ mod tests {
             );
 
             // AtMostOne: b1 の代表は a1 のみ (b2 は代表なし)。
-            g.at_most_one(AtMostOneId("m1".to_string()), AtMostOne::new(na("a1"), nb("b1")));
+            g.at_most_one(
+                AtMostOneId("m1".to_string()),
+                AtMostOne::new(na("a1"), nb("b1")),
+            );
 
             // ExactlyOne: b1, b2 ともにちょうど1本。
             g.exactly_one(

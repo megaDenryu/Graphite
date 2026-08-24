@@ -701,7 +701,10 @@ mod tests {
                 "boss-sato".to_string(),
                 Boss::new(emp("佐藤"), emp("田中"), BossEdge { since: 2020 }),
             )]);
-            b.extend(vec![("r1".to_string(), Reports::new(emp("田中"), emp("佐藤")))]);
+            b.extend(vec![(
+                "r1".to_string(),
+                Reports::new(emp("田中"), emp("佐藤")),
+            )]);
         })
         .expect("extendで構築した組織図も要素単位と同様に成功するはず");
 

@@ -1,8 +1,7 @@
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 /// 順序を持たない同型値の対。
-#[derive(Clone)]
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct UnorderedPair<T> {
     first: T,
     second: T,

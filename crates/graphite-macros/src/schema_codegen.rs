@@ -210,8 +210,9 @@ struct EdgeEach {
 impl<'a> EdgeInfo<'a> {
     fn payload(&self) -> Option<&EdgePayload> {
         match &self.shape {
-            EdgeInfoShape::Directed { payload, .. }
-            | EdgeInfoShape::Undirected { payload } => payload.as_ref(),
+            EdgeInfoShape::Directed { payload, .. } | EdgeInfoShape::Undirected { payload } => {
+                payload.as_ref()
+            }
         }
     }
 
@@ -1555,13 +1556,9 @@ fn gen_freeze_body(
 
     let edge_blocks = edges.iter().map(|e| match &e.shape {
         EdgeInfoShape::Directed {
-            from_role,
-            to_role,
-            ..
+            from_role, to_role, ..
         } => gen_directed_edge_freeze_block(violation_ident, e, from_role, to_role),
-        EdgeInfoShape::Undirected { .. } => {
-            gen_undirected_edge_freeze_block(violation_ident, e)
-        }
+        EdgeInfoShape::Undirected { .. } => gen_undirected_edge_freeze_block(violation_ident, e),
     });
 
     let node_field_names = nodes.iter().map(|n| &n.field_ident);
@@ -1621,13 +1618,7 @@ fn gen_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream 
             from_role,
             to_role,
             payload,
-        } => gen_directed_edge_query_impl(
-            schema_name,
-            edge,
-            from_role,
-            to_role,
-            payload.as_ref(),
-        ),
+        } => gen_directed_edge_query_impl(schema_name, edge, from_role, to_role, payload.as_ref()),
         EdgeInfoShape::Undirected { payload } => {
             gen_undirected_edge_query_impl(schema_name, edge, payload.as_ref())
         }
