@@ -233,7 +233,11 @@ tokenを起点にrename・参照検索できる。日本語識別子も文字列
 
 ### G1: `graph!` ノードキーの let 束縛化 (実装対象)
 
-現行の展開はキー識別子をその場で文字列化する:
+> 以下はG1を導入した時点の展開設計を保存した記録である。名前付き静的
+> アクセサ導入後の現行展開 (`create_named` / `insert_named`) は §1.14 と
+> `crates/graphite-macros/src/instance_codegen.rs` を参照する。
+
+G1導入前の展開はキー識別子をその場で文字列化していた:
 
 ```rust
 b.employee(EmployeeId("tanaka".to_string()), Employee { .. });

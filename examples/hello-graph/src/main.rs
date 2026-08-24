@@ -148,8 +148,8 @@ fn main() {
 // `BossId` と `PersonId` は、どちらも `Org` schema module 内へ生成されます。
 // そのため、同じ綴りのIDでも別schemaの生成型とは混ざりません。
 //
-// `graph!` リテラルの各行 `名前 = 値` の「名前」は、ノード行でもエッジ行
-// でも常に**キーの束縛**です (`docs/schema_v4.md` §0 規則1)。これは
+// `graph!` リテラルの各行 `名前 = 値` の「名前」は、構築中にはノード/辺の
+// 公開ID束縛、完成後には静的アクセサ名です (`docs/schema_v4.md` §0 規則1)。これは
 // `instance_codegen.rs` の脱糖を見ると直接分かります — 例えば
 //
 // ```rust
@@ -160,7 +160,7 @@ fn main() {
 // builder、`clone()` は端点のキーを渡すため):
 //
 // ```rust
-// let tanaka_boss = __graphite_b.add(
+// let (tanaka_boss, tanaka_boss_position) = __graphite_b.add_named(
 //     "tanaka_boss",
 //     <Org::Boss as graphite::DirectedEdgeLiteral<_, _, _>>::from_graph_literal(
 //         bob.clone(),
@@ -170,11 +170,11 @@ fn main() {
 // );
 // ```
 //
-// `tanaka_boss` はここで `Boss` の値そのものではなく、`add` が返す
-// **`BossId`** に束縛されます。ノード行 (`alice = Person { .. }`) も
-// 同じ形で `__graphite_b.insert("alice", Person { .. })` に展開され、
-// `alice` は `PersonId` です。「名前 = 値」の名前は常にキー、という規則が
-// ノード・エッジ双方に一貫して効いています。
+// `tanaka_boss` はここで `Boss` の値そのものではなく **`BossId`** に束縛され、
+// `tanaka_boss_position` はfreeze後の静的アクセサへ運ばれます。ノード行
+// (`alice = Person { .. }`) も同じ形で
+// `__graphite_b.insert_named("alice", Person { .. })` に展開され、構築中の
+// `alice` は `PersonId`、完成後の `g.alice()` は `PersonRef` を返します。
 //
 // ## 2. 辺は名前付きフィールドの構造体として実在する
 //
