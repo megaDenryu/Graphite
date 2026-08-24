@@ -78,7 +78,7 @@ fn 日本語のschema名とノード名と辺名と束縛名を通常の識別�
         .next()
         .and_then(|id| 世界::関係::get(&graph, id))
         .expect("日本語roleを持つedgeを取得できるはず");
-    assert_eq!(edge.始点, 世界::人物Id("太郎".into()));
-    assert_eq!(edge.終点, 世界::人物Id("次郎".into()));
-    assert_eq!(edge.明細.金額, 100);
+    assert_eq!(edge.始点().id(), &世界::人物Id("太郎".into()));
+    assert_eq!(edge.終点().id(), &世界::人物Id("次郎".into()));
+    assert_eq!(edge.明細().金額, 100);
 }

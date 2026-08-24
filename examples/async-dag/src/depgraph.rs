@@ -8,7 +8,7 @@
 //! 実装を1回書けば済む — アプリ側が「並行実行できる集合をどう求めるか」
 //! を自分で再発明する必要が無い、というのが README の主張。
 
-use crate::schema::{DependsOn, Orchestration, Service, ServiceId};
+use crate::schema::{DependsOn, Orchestration, ServiceId};
 use graphite::{CycleError, Graph};
 
 /// ノード値・辺値のいずれも不要 (依存関係の「形」だけが要る) なので
@@ -35,9 +35,9 @@ pub fn build_dependency_graph(g: &Orchestration::Graph) -> ServiceDependencyGrap
         .collect();
 
     let mut edges: Vec<(ServiceId, ServiceId, ())> = Vec::new();
-    for (_id, edge) in DependsOn::iter(g) {
-        let dependent = &edge.dependent;
-        let prerequisite = &edge.dependency;
+    for edge in DependsOn::iter(g) {
+        let dependent = edge.dependent().id();
+        let prerequisite = edge.dependency().id();
         edges.push((prerequisite.clone(), dependent.clone(), ()));
     }
 
@@ -66,7 +66,7 @@ pub fn compute_waves(
 pub fn wave_duration_ms(g: &Orchestration::Graph, wave: &[ServiceId]) -> u64 {
     wave.iter()
         .filter_map(|id| Orchestration::Service::get(g, id))
-        .map(|s: &Service| s.startup_ms)
+        .map(|s| s.startup_ms)
         .max()
         .unwrap_or(0)
 }
@@ -82,6 +82,7 @@ pub fn total_serial_ms(g: &Orchestration::Graph) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::schema::Service;
 
     #[test]
     #[rustfmt::skip]

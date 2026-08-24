@@ -76,7 +76,8 @@ mod tests {
     fn endpointsアクセサで両端を取得できる() {
         let g = build_chart();
         let f = Friends::get(&g, &FriendsId("f1".to_string())).unwrap();
-        assert_eq!(f.endpoints(), (&person("alice"), &person("bob")));
+        let (first, second) = f.endpoints();
+        assert_eq!((first.id(), second.id()), (&person("alice"), &person("bob")));
         assert_eq!(
             Friends::new(person("alice"), person("bob")),
             Friends::new(person("bob"), person("alice"))
@@ -99,7 +100,7 @@ mod tests {
             vec!["Bob".to_string(), "Carol".to_string()]
         );
 
-        let friends_of_bob: Vec<&Person> = Friends::of(&g, &person("bob"));
+        let friends_of_bob: Vec<Social::PersonRef<'_>> = Friends::of(&g, &person("bob"));
         assert_eq!(friends_of_bob.len(), 1);
         assert_eq!(friends_of_bob[0].name, "Alice");
     }
@@ -174,7 +175,7 @@ mod tests {
         .expect("自己ループを含む友人関係も構築に成功するはず");
 
         // alice の次数は「自己ループ (1本) + bob との辺 (1本)」で2本。
-        let friends_of_alice: Vec<&Person> = Friends::of(&g, &person("alice"));
+        let friends_of_alice: Vec<Social::PersonRef<'_>> = Friends::of(&g, &person("alice"));
         assert_eq!(friends_of_alice.len(), 2);
 
         assert!(Friends::between(&g, &person("alice"), &person("alice")).is_some());
@@ -210,12 +211,13 @@ mod tests {
         assert_eq!(cable.ohm, 5);
 
         let w = Wire::get(&g, &WireId("w1".to_string())).unwrap();
-        assert_eq!(w.endpoints(), (&person("alice"), &person("bob")));
+        let (first, second) = w.endpoints();
+        assert_eq!((first.id(), second.id()), (&person("alice"), &person("bob")));
         assert_eq!(
             Wire::new(person("alice"), person("bob"), Cable { ohm: 5 }),
             Wire::new(person("bob"), person("alice"), Cable { ohm: 5 })
         );
-        assert_eq!(w.cable.ohm, 5);
+        assert_eq!(w.cable().ohm, 5);
     }
 
     #[test]
@@ -325,7 +327,7 @@ mod graph_literal_tests {
         })
         .expect("graph! での無向辺構築は成功するはず");
 
-        let f: &Person = Friends::of(&g, &PersonId("bob".to_string())).into_iter().next().unwrap();
+        let f = Friends::of(&g, &PersonId("bob".to_string())).into_iter().next().unwrap();
         assert_eq!(f.name, "Alice");
 
         let (w_other, cable) = Wire::of(&g, &PersonId("bob".to_string())).into_iter().next().unwrap();

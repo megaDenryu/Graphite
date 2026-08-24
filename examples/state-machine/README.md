@@ -194,24 +194,22 @@ pub fn step(
 ) -> Result<OrderStateId, TransitionError> {
     let next: Option<OrderStateId> = match event {
         Event::Submit => Submit::iter(fsm)
-            .find(|(_, e)| &e.before == current)
-            .map(|(_, e)| e.after.clone()),
+            .find(|edge| edge.before().id() == current)
+            .map(|edge| edge.after().id().clone()),
         Event::Pay => Pay::iter(fsm)
-            .find(|(_, e)| &e.before == current)
-            .map(|(_, e)| e.after.clone()),
+            .find(|edge| edge.before().id() == current)
+            .map(|edge| edge.after().id().clone()),
         // ...Ship/Deliver/Cancel/Refundも同様
         Event::Refund => Refund::iter(fsm)
-            .find(|(_, e)| &e.before == current)
-            .map(|(_, e)| e.after.clone()),
+            .find(|edge| edge.before().id() == current)
+            .map(|edge| edge.after().id().clone()),
     };
     next.ok_or_else(|| TransitionError { state: current.clone(), event })
 }
 ```
 
-v4 の `{Kind}::of`/`get_of` は「終点ノードの値そのもの」(`&OrderState`)
-を返す設計であり、終点の**キー**は返さない (`docs/schema_v4.md` §3.2)。
-`step` は次状態のキーを返す必要があるため、`{Kind}::iter` で辺値を読み、
-役割名フィールド `before`/`after` を使って現在状態と次状態のキーを得る。
+現在の `{Kind}::iter` は完成済みグラフに束縛された `{Kind}Ref<'graph>` を返す。
+`step` は役割名メソッドの `before()` / `after()` が返す `OrderStateRef<'graph>` からIDを取得する (`docs/schema_v4.md` §3.2)。
 `where each before: 0..1` により
 一致する辺は高々1本しか無いので `find` で十分。遷移規則そのものは一切
 書かれていない (規則は `build()` の `graph!` リテラルにしか存在しない)。

@@ -50,12 +50,10 @@ Rust 的な型安全性そのものを失う。
 必ず非パニック版の `try_` 関数を対で用意し、パニックする関数の doc コメントに
 `# Panics` 節を書いて条件を明記する。
 
-**Graphite での具体例**: 多重度 `(1)` のアクセサ `{label}(&SrcId) -> &T` は
+**Graphite での具体例**: `each X: 1` のアクセサ `Kind::of(&Graph, &SrcId) -> TRef<'graph>` は
 「このスキーマが発行したキー以外を渡す」という契約違反時のみパニックし、
-`# Panics` 節にその旨を明記している。対になる `try_{label}(&SrcId) -> Option<&T>`
+`# Panics` 節にその旨を明記している。対になる `Kind::get_of(&Graph, &SrcId) -> Option<TRef<'graph>>`
 が非パニック版として必ず生成される (`Vec` の `v[i]`/`v.get(i)` と同じ関係)。
-フェーズ5で追加した ID 版アクセサ `{label}_id`/`try_{label}_id` も同じ対称性を
-踏襲する。
 
 ### 原則3: std 命名規約準拠
 

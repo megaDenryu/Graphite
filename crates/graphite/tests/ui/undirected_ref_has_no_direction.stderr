@@ -1,0 +1,44 @@
+error[E0599]: no method named `from` found for struct `FriendRef<'graph>` in the current scope
+  --> tests/ui/undirected_ref_has_no_direction.rs:22:18
+   |
+ 3 | / graphite::graph_schema! {
+ 4 | |     schema Social {
+ 5 | |         node Person;
+ 6 | |         edge Friend = Person -- Person;
+ 7 | |     }
+ 8 | | }
+   | |_- method `from` not found for this struct
+...
+22 |       let _ = edge.from();
+   |                    ^^^^ this is an associated function, not a method
+   |
+   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
+note: the candidate is defined in the trait `From`
+  --> $RUST/core/src/convert/mod.rs
+   |
+   |     fn from(value: T) -> Self;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: use associated function syntax instead
+   |
+22 -     let _ = edge.from();
+22 +     let _ = FriendRef<'_>::from();
+   |
+
+error[E0599]: no method named `to` found for struct `FriendRef<'graph>` in the current scope
+  --> tests/ui/undirected_ref_has_no_direction.rs:23:18
+   |
+ 3 | / graphite::graph_schema! {
+ 4 | |     schema Social {
+ 5 | |         node Person;
+ 6 | |         edge Friend = Person -- Person;
+ 7 | |     }
+ 8 | | }
+   | |_- method `to` not found for this struct
+...
+23 |       let _ = edge.to();
+   |                    ^^
+   |
+help: there is a method `into` with a similar name
+   |
+23 |     let _ = edge.into();
+   |                  ++

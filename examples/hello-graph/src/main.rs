@@ -95,8 +95,8 @@ pub struct ReviewEdge {
 // 有向の柄から矢尻を落とした形) はこれを解消し、端点を「位置0/位置1」
 // ではなく順序なし対として扱います。`Friends(alice -- bob)` と
 // `Friends(bob -- alice)` は同じ辺であり、生成されるアクセサも
-// 方向を示すアクセサではなく `endpoints() -> (&PersonId,
-// &PersonId)` になります。両端は同じノード型でなければならず、役割名も
+// 方向を示すアクセサではなく `endpoints() -> (PersonRef,
+// PersonRef)` になります。両端は同じノード型でなければならず、役割名も
 // 書けません (対称性を型にも及ぼす設計、詳細は §3 の実行例参照)。
 
 #[rustfmt::skip]
@@ -118,9 +118,6 @@ use Org::{
     BelongsTo, BelongsToId, Boss, Friends, FriendsId, PersonId, Reports, ReportsId, ReviewedBy,
     TeamId,
 };
-
-#[cfg(test)]
-use Org::BossId;
 
 fn main() {
     section3();
@@ -204,48 +201,32 @@ fn main() {
 // できることは、`crates/graphite/tests/orgchart_macro.rs` の
 // `名前付きフィールドの辺値はマクロ外でも普通に構築できる` が実例です。
 //
-// ## 3. 格納先は KeyedTable — HashMap 直書きではない
+// ## 3. 完成済みグラフは密な位置で端点を結ぶ
 //
-// `Org::Graph` struct 本体は次の形で生成されます
-// (`schema_codegen.rs::gen_schema_struct`。フィールド名はノード種別名の
-// 複数形・エッジ種別名の snake_case):
+// builder が受け取る `Boss` 値は公開IDを持ちますが、freeze はIDを種別専用の
+// 非公開位置へ変換します。完成済みグラフの概念的な格納形は次の通りです。
 //
 // ```rust
 // pub struct Graph {
 //     persons: graphite::KeyedTable<PersonId, Person>,
 //     teams: graphite::KeyedTable<TeamId, Team>,
-//
-//     belongs_to: graphite::KeyedTable<BelongsToId, BelongsTo>,
-//     belongs_to_from_index: std::collections::HashMap<PersonId, Vec<BelongsToId>>,
-//
-//     boss: graphite::KeyedTable<BossId, Boss>,
-//     boss_from_index: std::collections::HashMap<PersonId, Vec<BossId>>,
-//
-//     reports: graphite::KeyedTable<ReportsId, Reports>,
-//     reports_from_index: std::collections::HashMap<PersonId, Vec<ReportsId>>,
-//
-//     reviewed_by: graphite::KeyedTable<ReviewedById, ReviewedBy>,
-//     reviewed_by_from_index: std::collections::HashMap<PersonId, Vec<ReviewedById>>,
+//     boss: graphite::KeyedTable<BossId, BossRecord>,
+//     boss_from_index: std::collections::HashMap<PersonPosition, Vec<BossPosition>>,
 // }
 // ```
 //
-// ノード表もエッジ表も同じ `KeyedTable<Key, Value>` (`crates/graphite/src/
-// keyed_table.rs`) というジェネリック機構を共有しています — v3 では
-// ノード用の素朴な `HashMap` とエッジ用のビュー6型が別々の機構でしたが、
-// v4 は「キー付き要素表」という1つの機構にノードと辺の両方を載せています。
-// `{accessor}_from_index` (始点キー -> そこから出る辺キーの一覧) は
-// `freeze` 時に構築される索引で、`Kind::of`/`between` の実装が使います。
+// `BossRecord` は端点位置と積み荷を持ちます。公開の `PersonRef<'graph>` と
+// `BossRef<'graph>` は `&Graph` と位置だけを持つ `Copy + Clone` の値です。
+// 公開IDから参照を得る最初の検索後は、端点を辿るたびにIDのハッシュ検索を
+// 繰り返しません。
 //
 // ## 4. メンタルモデル: 「ラベル=表」から「辺=第一級の行」へ
 //
 // v3 の比喩は「ラベルはリレーショナルDBの表名、辺はその1行」でしたが、
 // v4 ではさらに一歩進み、**辺という「行」自体が独立したキーを持つ実体**
-// になりました。`Boss::of(&g, &bob)` は「`boss` 表を `bob` で引く」ので
-// はなく、正確には「`boss_from_index` で `bob` から出る `BossId` の一覧を
-// 引き、`boss` 表からその `BossId` の `Boss` を取り、その `superior` で
-// `persons` 表を引く」という3段の索引です。§4.2 で実際に `g.boss` へ
-// 直接アクセスしようとした際の型不一致から、この `KeyedTable<BossId,
-// Boss>` という実際の格納型がそのまま見えます。
+// になりました。`Boss::of(&g, &bob)` は公開IDを `PersonPosition` へ一度変換し、
+// 位置索引から `BossPosition` を取得して `BossRef` を返します。`BossRef` の
+// `superior()` は記録済みの端点位置から `PersonRef` を直接組み立てます。
 
 // ============================================================
 // §3 クックブック — 生成される公開APIの全列挙
@@ -338,7 +319,8 @@ fn インライン式でgraphリテラルを組み立てる() -> Org::Graph {
         alice_bob_friends = Friends(alice -- bob),
     })
     .expect("正常なグラフは構築に成功するはず");
-    let alice_person: &Person = Org::Person::get(&g, &PersonId("alice".to_string())).unwrap();
+    let alice_person: Org::PersonRef<'_> =
+        Org::Person::get(&g, &PersonId("alice".to_string())).unwrap();
     println!("(構築1: インライン式) alice = {}", alice_person.name);
     g
 }
@@ -358,7 +340,8 @@ fn 外部変数を渡してgraphリテラルを組み立てる() {
         alice_dept = BelongsTo(alice -> eng),
     })
     .expect("外部変数を渡した graph! も構築に成功するはず");
-    let alice_person: &Person = Org::Person::get(&g, &PersonId("alice".to_string())).unwrap();
+    let alice_person: Org::PersonRef<'_> =
+        Org::Person::get(&g, &PersonId("alice".to_string())).unwrap();
     println!("(構築2: 外部変数渡し) alice = {}", alice_person.name);
 }
 
@@ -375,7 +358,8 @@ fn 外部で作ったエッジ属性をgraphリテラルに渡す() {
         bob_boss   = Boss(bob -[promotion]-> alice),
     })
     .expect("外部エッジ属性を渡した graph! も構築に成功するはず");
-    let boss_pair: (&Person, &BossEdge) = Boss::of(&g, &PersonId("bob".to_string())).unwrap();
+    let boss_pair: (Org::PersonRef<'_>, &BossEdge) =
+        Boss::of(&g, &PersonId("bob".to_string())).unwrap();
     println!(
         "(構築3: 外部エッジ属性渡し) bob の上司就任年 = {}",
         boss_pair.1.since
@@ -403,7 +387,8 @@ fn builderの型名メソッドで組み立てる() {
         );
     })
     .expect("builder の型名メソッドでも構築に成功するはず");
-    let dave: &Person = Org::Person::get(&g, &PersonId("dave".to_string())).unwrap();
+    let dave: Org::PersonRef<'_> =
+        Org::Person::get(&g, &PersonId("dave".to_string())).unwrap();
     println!("(構築4: builderの型名メソッド) dave = {}", dave.name);
 }
 
@@ -428,7 +413,8 @@ fn builderの総称insertとaddで組み立てる() {
             b.add("eve_dept", BelongsTo::new(eve_id.clone(), sales_id.clone()));
     })
     .expect("insert/add 経由の構築も成功するはず");
-    let eve: &Person = Org::Person::get(&g, &PersonId("eve".to_string())).unwrap();
+    let eve: Org::PersonRef<'_> =
+        Org::Person::get(&g, &PersonId("eve".to_string())).unwrap();
     println!("(構築5: builderの総称insert/add) eve = {}", eve.name);
 }
 
@@ -436,17 +422,22 @@ fn builderの総称insertとaddで組み立てる() {
 
 // やりたいこと: `{Type}::get(&g, &id)` で1件読む (無ければ None)。
 fn 人ノードを1件読む(g: &Org::Graph) {
-    let alice: Option<&Person> = Org::Person::get(g, &PersonId("alice".to_string()));
+    let alice: Option<Org::PersonRef<'_>> =
+        Org::Person::get(g, &PersonId("alice".to_string()));
     if let Some(person) = alice {
         println!("(ノード) Person::get(&g, &alice) = {}", person.name);
     }
-    let unknown: Option<&Person> = Org::Person::get(g, &PersonId("dave".to_string()));
-    println!("(ノード) Person::get(&g, &dave)  = {unknown:?} (この g には居ない)");
+    let unknown: Option<Org::PersonRef<'_>> =
+        Org::Person::get(g, &PersonId("dave".to_string()));
+    println!(
+        "(ノード) Person::get(&g, &dave) で値が無い = {}",
+        unknown.is_none()
+    );
 }
 
 // やりたいこと: `Team::get` も同じ形。ノード型が違っても命名規則は共通。
 fn チームノードを1件読む(g: &Org::Graph) {
-    let eng: Option<&Team> = Org::Team::get(g, &TeamId("eng".to_string()));
+    let eng: Option<Org::TeamRef<'_>> = Org::Team::get(g, &TeamId("eng".to_string()));
     if let Some(team) = eng {
         println!("(ノード) Team::get(&g, &eng) = {}", team.name);
     }
@@ -456,7 +447,7 @@ fn チームノードを1件読む(g: &Org::Graph) {
 // キー (`alice = ..`) はこの `PersonId("alice".to_string())` と同一視される。
 fn personidの作り方とgraphのキーの対応を確認する(g: &Org::Graph) {
     let hand_built_id: PersonId = PersonId("alice".to_string());
-    let alice: &Person = Org::Person::get(g, &hand_built_id)
+    let alice: Org::PersonRef<'_> = Org::Person::get(g, &hand_built_id)
         .expect("graph!のキーaliceがPersonId(\"alice\")と一致するはず");
     println!(
         "(型) PersonId(\"alice\".to_string()) で graph! の alice = {} が引ける",
@@ -466,40 +457,50 @@ fn personidの作り方とgraphのキーの対応を確認する(g: &Org::Graph)
 
 // --- エッジを辿る (Kind::of/get/between) ---
 
-// やりたいこと: `each member: 1` のエッジは `of` が参照そのものを返す
+// やりたいこと: `each member: 1` のエッジは `of` がノード参照を返す
 // (未知キーはパニックする契約。非パニック版は `get_of`)。
 fn each_1のofは直接参照を返す(g: &Org::Graph) {
-    let team: &Team = BelongsTo::of(g, &PersonId("alice".to_string()));
+    let team: Org::TeamRef<'_> = BelongsTo::of(g, &PersonId("alice".to_string()));
     println!("(each 1) BelongsTo::of(&g, &alice) = {}", team.name);
 
-    let safe: Option<&Team> = BelongsTo::get_of(g, &PersonId("alice".to_string()));
+    let safe: Option<Org::TeamRef<'_>> =
+        BelongsTo::get_of(g, &PersonId("alice".to_string()));
     println!(
         "(each 1) BelongsTo::get_of(&g, &alice) = {:?}",
-        safe.map(|t| &t.name)
+        safe.map(|t| t.value().name.as_str())
     );
-    let unknown: Option<&Team> = BelongsTo::get_of(g, &PersonId("dave".to_string()));
-    println!("(each 1) BelongsTo::get_of(&g, &dave) = {unknown:?} (未知キーはNone)");
+    let unknown: Option<Org::TeamRef<'_>> =
+        BelongsTo::get_of(g, &PersonId("dave".to_string()));
+    println!(
+        "(each 1) BelongsTo::get_of(&g, &dave) で値が無い = {}",
+        unknown.is_none()
+    );
 }
 
 // やりたいこと: `each subordinate: 0..1` のエッジは `of` が `Option` を返す。
-// 積み荷ありなので `Option<(&Node, &Attrs)>` になり、積み荷へは "ふつうの
-// フィールドアクセス" で辿れる (`attrs.since`)。
+// 積み荷ありなので `Option<(NodeRef, &Attrs)>` になり、積み荷へは
+// フィールドアクセスで辿れる (`attrs.since`)。
 fn each_0か1のofはoptionを返す(g: &Org::Graph) {
-    let boss: Option<(&Person, &BossEdge)> = Boss::of(g, &PersonId("bob".to_string()));
+    let boss: Option<(Org::PersonRef<'_>, &BossEdge)> =
+        Boss::of(g, &PersonId("bob".to_string()));
     if let Some((boss_person, attrs)) = boss {
         println!(
             "(each 0..1) Boss::of(&g, &bob) = {} (就任年: {})",
             boss_person.name, attrs.since
         );
     }
-    let no_boss: Option<(&Person, &BossEdge)> = Boss::of(g, &PersonId("alice".to_string()));
-    println!("(each 0..1) Boss::of(&g, &alice) = {no_boss:?} (aliceには上司がいない)");
+    let no_boss: Option<(Org::PersonRef<'_>, &BossEdge)> =
+        Boss::of(g, &PersonId("alice".to_string()));
+    println!(
+        "(each 0..1) Boss::of(&g, &alice) で値が無い = {}",
+        no_boss.is_none()
+    );
 }
 
 // やりたいこと: `unique pair` のエッジは `between` が `Option` を返す
 // (同じ対に2本目を張れないので「あるかないか」で十分)。
 fn unique_pairのbetweenはoptionを返す(g: &Org::Graph) {
-    let r: Option<&Reports> = Reports::between(
+    let r: Option<Org::ReportsRef<'_>> = Reports::between(
         g,
         &PersonId("alice".to_string()),
         &PersonId("bob".to_string()),
@@ -520,9 +521,10 @@ fn unique_pairのbetweenはoptionを返す(g: &Org::Graph) {
 }
 
 // やりたいこと: 制約なしのエッジは `of` が `Vec` を返す (平行辺を許すため)。
-// 積み荷ありなので `Vec<(&Node, &Attrs)>`。
+// 積み荷ありなので `Vec<(NodeRef, &Attrs)>`。
 fn 制約なしのofはvecを返す(g: &Org::Graph) {
-    let reviewers: Vec<(&Person, &ReviewEdge)> = ReviewedBy::of(g, &PersonId("bob".to_string()));
+    let reviewers: Vec<(Org::PersonRef<'_>, &ReviewEdge)> =
+        ReviewedBy::of(g, &PersonId("bob".to_string()));
     for (reviewer, attrs) in &reviewers {
         println!(
             "(制約なし) ReviewedBy::of(&g, &bob) に {} ({}年度) が含まれる",
@@ -532,14 +534,18 @@ fn 制約なしのofはvecを返す(g: &Org::Graph) {
 }
 
 // やりたいこと: 無向辺 (`Friends`) は方向を示すアクセサを持たず、
-// `endpoints() -> (&PersonId, &PersonId)` を持つ (`docs/edge_endpoints_v4_1.md`
+// `endpoints() -> (PersonRef, PersonRef)` を持つ (`docs/edge_endpoints_v4_1.md`
 // §2)。位置0/1は `Friends(alice -- bob)` と書いた際の記述順そのままだが、
 // 意味論としては順序なし対であることに注意 (次の関数で確認する)。
 fn 無向辺のendpointsアクセサで両端を読む(g: &Org::Graph) {
     let friends_id = FriendsId("alice_bob_friends".to_string());
-    let edge: &Friends = Friends::get(g, &friends_id).unwrap();
+    let edge: Org::FriendsRef<'_> = Friends::get(g, &friends_id).unwrap();
     let (p0, p1) = edge.endpoints();
-    println!("(無向) Friends::get(&g, &alice_bob_friends).endpoints() = ({p0:?}, {p1:?})");
+    println!(
+        "(無向) Friends::get(&g, &alice_bob_friends).endpoints() = ({:?}, {:?})",
+        p0.id(),
+        p1.id()
+    );
 }
 
 // やりたいこと: `of`/`between` はどちらの位置に置かれても対称に辿れる。
@@ -549,7 +555,7 @@ fn 無向辺のofとbetweenは対称に辿れる(g: &Org::Graph) {
     let alice = PersonId("alice".to_string());
     let bob = PersonId("bob".to_string());
 
-    let friends_of_bob: Vec<&Person> = Friends::of(g, &bob);
+    let friends_of_bob: Vec<Org::PersonRef<'_>> = Friends::of(g, &bob);
     for friend in &friends_of_bob {
         println!(
             "(無向) Friends::of(&g, &bob) に {} が含まれる (aliceが位置0でも辿れる)",
@@ -557,8 +563,8 @@ fn 無向辺のofとbetweenは対称に辿れる(g: &Org::Graph) {
         );
     }
 
-    let forward: Option<&Friends> = Friends::between(g, &alice, &bob);
-    let backward: Option<&Friends> = Friends::between(g, &bob, &alice);
+    let forward: Option<Org::FriendsRef<'_>> = Friends::between(g, &alice, &bob);
+    let backward: Option<Org::FriendsRef<'_>> = Friends::between(g, &bob, &alice);
     println!(
         "(無向) between(alice, bob) = {} / between(bob, alice) = {} (順序を無視して同じ辺)",
         forward.is_some(),
@@ -581,23 +587,26 @@ fn team_idsで全ノードキーを列挙する(g: &Org::Graph) {
     }
 }
 
-// やりたいこと: `Kind::iter(&g)` は `(&{Kind}Id, &Kind)` の組。積み荷なしエッジの例。
+// やりたいこと: `Kind::iter(&g)` は `{Kind}Ref` を返す。積み荷なしエッジの例。
 fn belongs_toのiterで制約ありエッジを列挙する(g: &Org::Graph) {
-    for (id, edge) in BelongsTo::iter(g) {
+    for edge in BelongsTo::iter(g) {
         println!(
-            "(iter) BelongsTo {id:?}: {:?} -> {:?}",
-            &edge.member, &edge.team
+            "(iter) BelongsTo {:?}: {:?} -> {:?}",
+            edge.id(),
+            edge.member().id(),
+            edge.team().id()
         );
     }
 }
 
 // やりたいこと: 積み荷ありエッジの `iter()` も同じ形。`edge.payload()` で積み荷を読む。
 fn bossのiterで積み荷ありエッジを列挙する(g: &Org::Graph) {
-    for (id, edge) in Boss::iter(g) {
+    for edge in Boss::iter(g) {
         println!(
-            "(iter) Boss {id:?}: {:?} -> {:?} (since={})",
-            &edge.subordinate,
-            &edge.superior,
+            "(iter) Boss {:?}: {:?} -> {:?} (since={})",
+            edge.id(),
+            edge.subordinate().id(),
+            edge.superior().id(),
             edge.payload().since
         );
     }
@@ -1050,7 +1059,7 @@ mod tests {
         let g = build();
         let mut names: Vec<&str> = ReviewedBy::of(&g, &PersonId("bob".to_string()))
             .into_iter()
-            .map(|(p, _)| p.name.as_str())
+            .map(|(p, _)| p.value().name.as_str())
             .collect();
         names.sort();
         assert_eq!(names, vec!["Alice", "Carol"]);
@@ -1065,11 +1074,11 @@ mod tests {
     #[test]
     fn iterで表全体を列挙できる() {
         let g = build();
-        let boss_pairs: Vec<(&BossId, &Boss)> = Boss::iter(&g).collect();
+        let boss_pairs: Vec<Org::BossRef<'_>> = Boss::iter(&g).collect();
         assert_eq!(boss_pairs.len(), 1);
-        let (_, edge) = boss_pairs[0];
-        assert_eq!(edge.subordinate, PersonId("bob".to_string()));
-        assert_eq!(edge.superior, PersonId("alice".to_string()));
+        let edge = boss_pairs[0];
+        assert_eq!(edge.subordinate().id(), &PersonId("bob".to_string()));
+        assert_eq!(edge.superior().id(), &PersonId("alice".to_string()));
         assert_eq!(edge.payload().since, 2021);
     }
 

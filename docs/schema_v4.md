@@ -95,32 +95,45 @@ let g = graphite::graph!(Org {
 `Org::Boss` のように、この module 内へ配置される。グラフ本体のストレージと
 索引フィールドは module 外へ公開しない。
 
-- 辺種別ごと: `pub struct Boss { pub subordinate: PersonId, pub superior: PersonId, pub appointment: BossEdge }`。
-  **名前付きフィールドの構造体として実在し、マクロ外でも普通に構築できる** (原則6)。
-  端点は `edge.subordinate` / `edge.superior` のように役割名の公開フィールドで読む。
-  積み荷ありの辺だけ `fn payload(&self) -> &BossEdge` も生成する。
+- 辺種別ごと: 構築用の値 `pub struct Boss { pub subordinate: PersonId, pub superior: PersonId, pub appointment: BossEdge }` と、完成済みグラフを読む `pub struct BossRef<'graph>` を生成する。構築用の値はマクロ外でも普通に構築できる。`BossRef` は `edge.subordinate()` / `edge.superior()` で `PersonRef<'graph>` を返し、積み荷ありの辺だけ `payload()` も持つ。
+- ノード種別ごと: `pub struct PersonRef<'graph>` を生成する。`PersonRef` は `&Org::Graph` と非公開位置を保持し、`id()`、`value()`、`Deref<Target = Person>` を提供する。
 - ID型を省略したノード・辺: `pub struct PersonId(pub String);` / `pub struct BossId(pub String);`。どちらも schema module 内に生成される。`(id: 型パス)` を指定した宣言は生成型を持たない。
 - 違反 enum: each系違反 + `unique pair` 違反 + 辺キー重複違反。
   each違反variantはKindと役割名から導出する (`BossSubordinateEachViolation` 等)。
+
+生成物は次の対称な役割へ分かれる。
+
+| 要素 | 構築時の値 | 公開ID | 完成済みグラフの参照 | 非公開の格納形式 |
+|---|---|---|---|---|
+| ノード | 利用者が宣言した `Person` | `PersonId` | `PersonRef<'graph>` | ノード種別専用の密な位置 |
+| 辺 | 生成された `Boss`。端点IDと積み荷を持つ | `BossId` | `BossRef<'graph>` | 端点位置と積み荷を持つ完成済み記録 |
+
+freeze は公開IDを種別専用の位置へ変換する。完成済み辺記録と索引は位置を保持するため、`NodeRef` または `EdgeRef` を得た後の端点走査では公開IDのハッシュ検索を行わない。どちらの参照型も `&Graph` と位置だけを持つ `Copy + Clone` の値であり、ヒープ確保、自己参照、`Rc`、`RefCell`、実行時リフレクションを使わない。
+
+公開される `NodeRef` の `Deref::Target` にノード値型が現れるため、公開schemaのノード値型には到達可能な可視性が必要である。通常は `pub struct Person` と宣言する。
 
 ### 3.2 アクセス (すべて型名前空間の関連関数。g.メソッドは廃止)
 
 ```rust
 // ノード (schema module 内のノードマーカー。
 // ユーザー struct への固有 impl は行わない — 複数 schema 共有時の衝突回避)
-let p: Option<&Person> = Org::Person::get(&g, &alice_id);
-Org::Person::ids(&g);  Org::Person::iter(&g);   // (&PersonId, &Person)
+let p: Option<Org::PersonRef<'_>> = Org::Person::get(&g, &alice_id);
+Org::Person::ids(&g);  Org::Person::iter(&g);   // &PersonId / PersonRef<'_>
+Org::Person::get_mut(&mut g, &alice_id);        // Option<&mut Person>
 
 // 辺 — 種別型 (マクロ生成) への固有 impl
 Org::Boss::of(&g, &bob);               // 走査: where の制約が戻り型を決める
-                                        //   each:1 → (&Person, &BossEdge)
+                                        //   each:1 → (PersonRef<'_>, &BossEdge)
                                         //   each:0..1 → Option<..>
                                         //   その他の範囲・制約なし → Vec<..>
-Org::Boss::get(&g, &boss_id);          // キーで辺 1 本: Option<&Boss>
+Org::Boss::get(&g, &boss_id);          // キーで辺 1 本: Option<BossRef<'_>>
 Org::Boss::between(&g, &bob, &alice);  // 対で検索: unique pair → Option、他 → Vec
-Org::Boss::iter(&g);                   // (&BossId, &Boss)
+Org::Boss::iter(&g);                   // BossRef<'_>
 Org::Boss::ids(&g);  Org::Boss::len(&g);
+Org::Boss::payload_mut(&mut g, &boss_id); // Option<&mut BossEdge>
 ```
+
+有向の `EdgeRef` は `from()` / `to()` と `from_id()` / `to_id()` に加え、スキーマの役割名による取得メソッドを持つ。無向の `EdgeRef` は方向を捏造せず、`endpoints()` で2つの `NodeRef` を返し、`from` / `to` は持たない。辺値の端点IDは構築の入力であり、完成後の端点は変更できない。ノード値と辺の積み荷だけを `get_mut` / `payload_mut` で変更できる。
 
 - 旧ビュー API (`g.boss().of(..)`、EdgeOne 等 6 型) は**全廃**。
   ランタイムの共通機構は「キー付き要素表」に対するジェネリクスとして

@@ -129,11 +129,12 @@ fn 同じ状態と同じイベントは常に同じ遷移先を返す_決定性(
 fn payのiterは各始点キーにつき1本ずつしか無い_多重度01の保証() {
     let g = fsm::build();
     let mut seen_sources = std::collections::HashSet::new();
-    for (_id, edge) in Pay::iter(&g) {
+    for edge in Pay::iter(&g) {
+        let before = edge.before().id();
         assert!(
-            seen_sources.insert(edge.before.clone()),
+            seen_sources.insert(before.clone()),
             "同じ始点キー {:?} から2本以上のPay辺があってはならない (each 0..1 違反)",
-            &edge.before
+            before
         );
     }
 }

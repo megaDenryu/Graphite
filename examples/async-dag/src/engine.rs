@@ -133,9 +133,9 @@ mod tests {
 
         // DependsOn の全ペアについて、依存先 (prerequisite) の完了時刻が
         // 依存元 (dependent) の開始時刻より前 (以下) であることを確認する。
-        for (_id, edge) in DependsOn::iter(&g) {
-            let dependent = &edge.dependent;
-            let prerequisite = &edge.dependency;
+        for edge in DependsOn::iter(&g) {
+            let dependent = edge.dependent().id();
+            let prerequisite = edge.dependency().id();
             let dependent_record = report.record_of(dependent);
             let prerequisite_record = report.record_of(prerequisite);
             assert!(

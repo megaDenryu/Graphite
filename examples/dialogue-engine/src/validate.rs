@@ -65,7 +65,7 @@ pub fn validate(schema: &DialogueGraph::Graph, start: &SceneId) -> ValidationRep
 
     // 3-a. finale を持つシーンの集合 (到達可能性チェックの終点候補)。
     let finale_scene_ids: HashSet<SceneId> = Finale::iter(schema)
-        .map(|(_key, edge)| edge.scene.clone())
+        .map(|edge| edge.scene().id().clone())
         .collect();
 
     // 3-b. 「そのシーンから、finale を持つシーンへ到達できるか」を全シーン
@@ -85,8 +85,8 @@ pub fn validate(schema: &DialogueGraph::Graph, start: &SceneId) -> ValidationRep
     // 4. 到達不能なエンディング: reachable な finale シーンが指す先だけを
     //    「到達可能エンディング」とし、その補集合を報告する。
     let reachable_endings: HashSet<EndingId> = Finale::iter(schema)
-        .filter(|(_key, edge)| reachable.contains(&edge.scene))
-        .map(|(_key, edge)| edge.ending.clone())
+        .filter(|edge| reachable.contains(edge.scene().id()))
+        .map(|edge| edge.ending().id().clone())
         .collect();
     let mut unreachable_endings: Vec<EndingId> = DialogueGraph::Ending::ids(schema)
         .filter(|id| !reachable_endings.contains(*id))

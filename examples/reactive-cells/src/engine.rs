@@ -99,14 +99,14 @@ impl Engine {
         let dependency_graph: Graph<(), (), CellId> = Graph::from_edges(
             Sheet::Cell::ids(&graph).cloned(),
             Feeds::iter(&graph)
-                .map(|(_id, edge)| (edge.dependency.clone(), edge.dependent.clone()))
+                .map(|edge| (edge.dependency().id().clone(), edge.dependent().id().clone()))
                 .chain(
                     Lhs::iter(&graph)
-                        .map(|(_id, edge)| (edge.operand.clone(), edge.operation.clone())),
+                        .map(|edge| (edge.operand().id().clone(), edge.operation().id().clone())),
                 )
                 .chain(
                     Rhs::iter(&graph)
-                        .map(|(_id, edge)| (edge.operand.clone(), edge.operation.clone())),
+                        .map(|edge| (edge.operand().id().clone(), edge.operation().id().clone())),
                 ),
         )
         .expect(
@@ -145,7 +145,8 @@ impl Engine {
     /// `{Kind}::sources_of(graph, cell_id).len()` (`docs/reverse_query.md`)
     /// を使う。freeze 時に構築済みの終点索引を引くだけの O(1) 償却になる。
     fn validate_formula_wiring(graph: &Sheet::Graph) {
-        for (cell_id, cell) in Sheet::Cell::iter(graph) {
+        for cell in Sheet::Cell::iter(graph) {
+            let cell_id = cell.id();
             match cell.formula {
                 Formula::Input => {}
                 Formula::Mul | Formula::Sum => {
@@ -263,21 +264,12 @@ impl Engine {
     /// `cell_id` を終点とする `Feeds` エッジの起点セルの値を、挿入順
     /// (`docs/schema_v4.md` §3.2 の順序保証) で列挙する。
     ///
-    /// `{Kind}::sources_of` (`docs/reverse_query.md`) は使わない — 相手を
-    /// **ノード値** (`&Cell`、`formula` フィールドのみ) で返す設計であり、
-    /// ここで要る「相手セルの現在値 (`f64`)」は `self.values: HashMap<CellId,
-    /// f64>` (グラフ本体とは別の可変ストア、このファイル冒頭のモジュール doc
-    /// 決定2参照) から `CellId` で引く必要がある。`Cell` は自分の `CellId` を
-    /// 保持しないため `&Cell` から鍵を復元できず、`sources_of` は最小方針
-    /// (`docs/reverse_query.md`: 「キー版が要る場合は将来検討 (今回は生やさ
-    /// ない)」) によりキーを返さない。そのため相手のキーそのものが要る
-    /// ここでは、キーも一緒に読める `{Kind}::iter` の絞り込みを使い続ける
-    /// (`validate_formula_wiring` の本数チェックは値もキーも不要なので
-    /// `sources_of(..).len()` に置き換え済み、上記参照)。
+    /// `{Kind}::sources_of` は相手側のNodeRefを返す。NodeRefの `id()` から
+    /// 現在値ストアのキーを直接得られるため、辺表の全走査は不要である。
     fn feeds_into<'a>(&'a self, cell_id: &'a CellId) -> impl Iterator<Item = f64> + 'a {
-        Feeds::iter(&self.graph)
-            .filter(move |(_id, edge)| &edge.dependent == cell_id)
-            .map(move |(_id, edge)| self.value(&edge.dependency))
+        Feeds::sources_of(&self.graph, cell_id)
+            .into_iter()
+            .map(move |dependency| self.value(dependency.id()))
     }
 
     /// `cell_id` を終点とする `Lhs` エッジの起点セルの値 (被減数)。
@@ -289,10 +281,11 @@ impl Engine {
     /// が `Engine::new` の時点で検査済みなので、ここに到達した時点で
     /// 見つからなければ実装の不整合 (バグ) である。
     fn lhs_value(&self, cell_id: &CellId) -> f64 {
-        let (_id, edge) = Lhs::iter(&self.graph)
-            .find(|(_id, edge)| &edge.operation == cell_id)
+        let operand = Lhs::sources_of(&self.graph, cell_id)
+            .into_iter()
+            .next()
             .expect("validate_formula_wiringで存在を検査済みのはず");
-        self.value(&edge.operand)
+        self.value(operand.id())
     }
 
     /// `cell_id` を終点とする `Rhs` エッジの起点セルの値 (減数)。
@@ -302,10 +295,11 @@ impl Engine {
     /// [`Self::lhs_value`] と同様、`Engine::new` の検査済み前提が破れて
     /// いる場合のみパニックする (実装の不整合)。
     fn rhs_value(&self, cell_id: &CellId) -> f64 {
-        let (_id, edge) = Rhs::iter(&self.graph)
-            .find(|(_id, edge)| &edge.operation == cell_id)
+        let operand = Rhs::sources_of(&self.graph, cell_id)
+            .into_iter()
+            .next()
             .expect("validate_formula_wiringで存在を検査済みのはず");
-        self.value(&edge.operand)
+        self.value(operand.id())
     }
 }
 

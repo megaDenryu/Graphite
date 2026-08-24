@@ -36,19 +36,19 @@ impl ValidationReport {
 }
 
 /// 6種のイベント辺を全部束ねて、ラベルの区別を捨てた汎用グラフへ射影する。
-/// `{Kind}::iter` は辺の名前付きフィールドの構造体を返す (属性つきの `Cancel`/`Refund` も
-/// 含め、`before`/`after` でキーだけ取り出せる) が、ここでは到達可否の構造
+/// `{Kind}::iter` は完成済みグラフに束縛されたEdgeRefを返す。属性つきの
+/// `Cancel`/`Refund` も含め、`before()`/`after()` からキーだけ取り出せるが、ここでは到達可否の構造
 /// しか見ないので属性は捨てる。
 fn project(fsm: &OrderFsm::Graph) -> Graph<(), (), OrderStateId> {
     let nodes: Vec<OrderStateId> = OrderFsm::OrderState::ids(fsm).cloned().collect();
 
     let mut edges: Vec<(OrderStateId, OrderStateId)> = Vec::new();
-    edges.extend(Submit::iter(fsm).map(|(_, e)| (e.before.clone(), e.after.clone())));
-    edges.extend(Pay::iter(fsm).map(|(_, e)| (e.before.clone(), e.after.clone())));
-    edges.extend(Ship::iter(fsm).map(|(_, e)| (e.before.clone(), e.after.clone())));
-    edges.extend(Deliver::iter(fsm).map(|(_, e)| (e.before.clone(), e.after.clone())));
-    edges.extend(Cancel::iter(fsm).map(|(_, e)| (e.before.clone(), e.after.clone())));
-    edges.extend(Refund::iter(fsm).map(|(_, e)| (e.before.clone(), e.after.clone())));
+    edges.extend(Submit::iter(fsm).map(|edge| (edge.before().id().clone(), edge.after().id().clone())));
+    edges.extend(Pay::iter(fsm).map(|edge| (edge.before().id().clone(), edge.after().id().clone())));
+    edges.extend(Ship::iter(fsm).map(|edge| (edge.before().id().clone(), edge.after().id().clone())));
+    edges.extend(Deliver::iter(fsm).map(|edge| (edge.before().id().clone(), edge.after().id().clone())));
+    edges.extend(Cancel::iter(fsm).map(|edge| (edge.before().id().clone(), edge.after().id().clone())));
+    edges.extend(Refund::iter(fsm).map(|edge| (edge.before().id().clone(), edge.after().id().clone())));
 
     Graph::from_edges(nodes, edges)
         .expect("OrderFsmのノードキー・6種のエッジの端点キーは常に整合しているはず")

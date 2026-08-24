@@ -127,8 +127,8 @@ cargo run -- chain E003 --seed 7 --inject-anomalies
 [警告] 循環を検出したため打ち切りました (社員 E003 まで戻っています)
 ```
 
-`Boss::of` (`where each subordinate: 0..1`) は `Option<(&Employee, &BossEdge)>` を
-返すだけで上司の ID そのものは含まないため、`Boss::iter(&g)` から
+`Boss::of` (`where each subordinate: 0..1`) は `Option<(EmployeeRef<'graph>, &BossEdge)>` を
+返し、上司のIDは `EmployeeRef::id()` から取得できる。`management_chain` は1回の走査で
 `EmployeeId -> (EmployeeId, since)` の索引を作ってから辿っている。訪問済み集合を
 持ちながら辿ることで、途中で循環に入った場合も無限ループせず検出・打ち切りできる。
 
@@ -272,9 +272,9 @@ Graphiteには可変な削除APIが存在せず、「新しいノード集合と
 
 ### 3. 型付きアクセサによる誤り耐性
 
-`BelongsTo::of(&g, &emp_id)` は `&Department` を、`Boss::of(&g, &emp_id)` は
-`Option<(&Employee, &BossEdge)>` を、`Assigned::of(&g, &emp_id)` は
-`Vec<(&Project, &AssignedEdge)>` を返す — `where each` 制約がそのまま戻り値
+`BelongsTo::of(&g, &emp_id)` は `DepartmentRef<'graph>` を、`Boss::of(&g, &emp_id)` は
+`Option<(EmployeeRef<'graph>, &BossEdge)>` を、`Assigned::of(&g, &emp_id)` は
+`Vec<(ProjectRef<'graph>, &AssignedEdge)>` を返す — `where each` 制約がそのまま戻り値
 の型 (直接返却 / `Option` / `Vec`) に反映されている。生HashMap実装で
 `HashMap<EmployeeId, Vec<DepartmentId>>` のように多重度を型で表現し忘れると、
 「本当は1つのはずの部署が複数入っている」バグを型システムが教えてくれない。
@@ -293,7 +293,7 @@ Graphiteには可変な削除APIが存在せず、「新しいノード集合と
 `anomalies` コマンドの相互上司検出・部署跨ぎ上司検出は、生HashMapなら
 「全社員をループしてO(N)の検索を都度行う」か「逆引きインデックスを自分で
 構築・保守する」必要がある。Graphiteの `Boss::iter(&g)`/`BelongsTo::iter(&g)`
-は最初からその形 (`(&{Kind}Id, &{Kind})` のイテレータ、役割名フィールドと
+は最初からその形 (`{Kind}Ref<'graph>` のイテレータ、役割名の端点取得メソッドと
 `.payload()` で分解) で提供されるため、`filter`/`collect`/`contains` といった
 通常のイテレータコンビネータだけで検出ロジックを書ける (`src/analysis.rs`
 参照)。
@@ -315,19 +315,14 @@ tests/
 
 ## Graphite APIで不足を感じた点 (フェーズ5の種として)
 
-- **`boss()` のような多重度(0..1)アクセサが相手ノードのIDを返さない**。
-  `Option<(&Employee, &BossEdge)>` は値は取れるが「その上司のキーは何か」
-  が分からないため、`chain` コマンドのようにチェーンを辿る用途では結局
-  `boss().iter()` から自前でインデックス (`HashMap<EmployeeId, (EmployeeId,
-  BossEdge)>`) を作り直す必要があった。`{label}_target(&SrcId) ->
-  Option<&DstId>` のような「相手キーだけを返す」アクセサがあると、
-  グラフを辿るタイプの処理 (経路探索・チェーン追跡) がもう一段書きやすい。
+- **多重度(0..1)アクセサから相手ノードのIDを得る手段**。
+  現在の `Option<(EmployeeRef<'graph>, &BossEdge)>` は `EmployeeRef::id()` で相手IDを得られる。
   → **解決 (フェーズ5で `{label}_id` として追加、その後ビュー方式
   (`docs/edge_view_api.md`) へ、さらにスキーマv4 (`docs/schema_v4.md`) で
   辺の第一級キー化へ移行)**: v4 では辺そのものがキー付き要素 (`{Kind}Id`)
-  であり、`Kind::iter(&g)` が返す `(&{Kind}Id, &Kind)` の `Kind` 値に
-  役割名フィールド (`subordinate`/`superior` 等) があるため、相手キーは
-  `iter()` から直接取れる。
+  であり、`Kind::iter(&g)` が返す `{Kind}Ref<'graph>` の役割名メソッド
+  (`subordinate()`/`superior()` 等) が `NodeRef` を返すため、相手キーは
+  `NodeRef::id()` から直接取れる。
   `management_chain` は `Boss::iter(&g)` から
   `HashMap<EmployeeId, (EmployeeId, i32)>` の索引を1回作って辿っており、
   これは「上司を根まで辿る」という探索自体が単発アクセサでは表現できない

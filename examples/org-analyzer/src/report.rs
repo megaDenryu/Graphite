@@ -89,10 +89,10 @@ pub fn print_anomalies(org: &OrgChart::Graph, report: &AnomalyReport) {
     } else {
         for (a, b) in &report.mutual_boss_pairs {
             let name_a = OrgChart::Employee::get(org, a)
-                .map(|e| e.name.as_str())
+                .map(|e| e.value().name.as_str())
                 .unwrap_or("?");
             let name_b = OrgChart::Employee::get(org, b)
-                .map(|e| e.name.as_str())
+                .map(|e| e.value().name.as_str())
                 .unwrap_or("?");
             println!("  {} ({}) <-> {} ({})", name_a, a.0, name_b, b.0);
         }
@@ -107,7 +107,7 @@ pub fn print_anomalies(org: &OrgChart::Graph, report: &AnomalyReport) {
                 .iter()
                 .map(|id| {
                     let name = OrgChart::Employee::get(org, id)
-                        .map(|e| e.name.as_str())
+                        .map(|e| e.value().name.as_str())
                         .unwrap_or("?");
                     format!("{}({})", name, id.0)
                 })
@@ -147,7 +147,7 @@ fn print_project_list(org: &OrgChart::Graph, ids: &[crate::schema::ProjectId]) {
     }
     for id in ids {
         let name = OrgChart::Project::get(org, id)
-            .map(|p| p.name.as_str())
+            .map(|p| p.value().name.as_str())
             .unwrap_or("?");
         println!("  {} ({})", name, id.0);
     }
@@ -164,10 +164,10 @@ pub fn print_reorg(org: &OrgChart::Graph, report: &ReorgReport) {
     println!("--- 再配置先 (社員キー順、ラウンドロビン) ---");
     for (emp_id, new_dept) in report.reassigned.iter().take(10) {
         let name = OrgChart::Employee::get(org, emp_id)
-            .map(|e| e.name.as_str())
+            .map(|e| e.value().name.as_str())
             .unwrap_or("?");
         let dept_name = OrgChart::Department::get(org, new_dept)
-            .map(|d| d.name.as_str())
+            .map(|d| d.value().name.as_str())
             .unwrap_or("?");
         println!(
             "  {} ({}) -> {} ({})",

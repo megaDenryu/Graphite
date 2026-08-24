@@ -72,8 +72,8 @@ fn スプライスで辺のみを追加できる() {
 
     assert_eq!(Knows::len(&g), 2);
     let k1 = Knows::get(&g, &KnowsId("k1".to_string())).expect("k1が存在するはず");
-    assert_eq!(k1.knower, PersonId("alice".to_string()));
-    assert_eq!(k1.known, PersonId("bob".to_string()));
+    assert_eq!(k1.knower().id(), &PersonId("alice".to_string()));
+    assert_eq!(k1.known().id(), &PersonId("bob".to_string()));
 }
 
 #[test]

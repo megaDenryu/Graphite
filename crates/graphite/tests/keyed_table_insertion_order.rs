@@ -86,11 +86,11 @@ mod tests {
 
         let of_texts: Vec<String> = Choice::of(&g, &speaker_id())
             .into_iter()
-            .map(|line: &Line| line.text.clone())
+            .map(|line| line.text.clone())
             .collect();
         assert_eq!(of_texts, expected_texts(N));
 
-        let iter_ids: Vec<String> = Choice::iter(&g).map(|(id, _)| id.0.clone()).collect();
+        let iter_ids: Vec<String> = Choice::iter(&g).map(|edge| edge.id().0.clone()).collect();
         let expected_ids: Vec<String> = (0..N).map(|i| format!("c{i}")).collect();
         assert_eq!(iter_ids, expected_ids);
 
@@ -99,7 +99,7 @@ mod tests {
 
         let between_texts: Vec<String> = Choice::between(&g, &speaker_id(), &line_id(3))
             .into_iter()
-            .map(|c| c.line.0.clone())
+            .map(|edge| edge.line().id().0.clone())
             .collect();
         assert_eq!(between_texts, vec!["l3".to_string()]);
     }
@@ -128,11 +128,11 @@ mod tests {
 
         let of_texts: Vec<String> = Choice::of(&g, &SpeakerId("s".to_string()))
             .into_iter()
-            .map(|line: &Line| line.text.clone())
+            .map(|line| line.text.clone())
             .collect();
         assert_eq!(of_texts, expected_texts(6));
 
-        let iter_ids: Vec<String> = Choice::iter(&g).map(|(id, _)| id.0.clone()).collect();
+        let iter_ids: Vec<String> = Choice::iter(&g).map(|edge| edge.id().0.clone()).collect();
         assert_eq!(
             iter_ids,
             vec!["c0", "c1", "c2", "c3", "c4", "c5"]

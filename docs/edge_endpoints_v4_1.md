@@ -56,9 +56,10 @@ w1 = Wire(n1 -[Cable { ohm: 5 }]- n2),
   - `Friends::of(&g, &x)` — x に接続する相手側を挿入順の `Vec` で返す
   - `Friends::between(&g, &a, &b)` — 対称
   - `get`/`iter`/`ids`/`len` は有向と同じ
-- 生成する名前付きフィールドの構造体は、非公開の順序なし対
+- 構築用の辺値は、非公開の順序なし対
   `endpoints: graphite::UnorderedPair<PersonId>` を保持する。
-  公開アクセサ `endpoints() -> (&PersonId, &PersonId)` で両端を読む。
+  完成済みの辺参照は公開アクセサ
+  `endpoints() -> (PersonRef<'graph>, PersonRef<'graph>)` で両端を読む。IDが必要なら各参照の `id()` を使う。
 - 格納: 実装の自由 (正規化 or 両方向索引) だが、`iter`/`of` の**挿入順保持**の
   仕様 (schema_v4 §3.2) は無向でも維持すること。
 

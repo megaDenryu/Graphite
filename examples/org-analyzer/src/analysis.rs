@@ -174,10 +174,8 @@ pub struct ChainResult {
 
 /// 指定した社員から `Boss` 辺を根 (トップ層) まで辿る。
 ///
-/// `Boss::of` (each subordinate: 0..1) は `Option<(&Employee, &BossEdge)>` を
-/// 返すだけで上司の `EmployeeId` そのものは含まないため、辿るには
-/// `Boss::iter` から `EmployeeId -> (EmployeeId, since)` の索引を先に
-/// 作っておく必要がある。
+/// `Boss::iter` が返すEdgeRefの役割名getterから両端のNodeRefを取り、
+/// `EmployeeId -> (EmployeeId, since)` の索引を先に作って辿る。
 ///
 /// 訪問済み集合を持ちながら辿ることで循環を検出する。循環に突入したら
 /// そこで打ち切り、`cycle_back_to` にループの戻り先キーを記録する
@@ -186,10 +184,10 @@ pub fn management_chain(org: &OrgChart::Graph, start: &EmployeeId) -> Option<Cha
     let start_employee = OrgChart::Employee::get(org, start)?;
 
     let boss_of: HashMap<EmployeeId, (EmployeeId, i32)> = Boss::iter(org)
-        .map(|(_id, edge)| {
+        .map(|edge| {
             (
-                edge.subordinate.clone(),
-                (edge.superior.clone(), edge.payload().since),
+                edge.subordinate().id().clone(),
+                (edge.superior().id().clone(), edge.payload().since),
             )
         })
         .collect();
@@ -277,22 +275,16 @@ pub fn detect_anomalies(org: &OrgChart::Graph) -> AnomalyReport {
 /// 相互上司ペアの検出。README に載っている手法そのもの:
 /// 全ペアを集めておき、`(a, b)` かつ `(b, a)` が両方存在するものを拾う。
 ///
-/// `Boss::sources_of` (`docs/reverse_query.md`) には書き換えない: ここで
-/// 判定に使っているのは `EmployeeId` の対 (`(a, b)`/`(b, a)`) そのものの
-/// 存在であり、相手の**キー**が要る。`sources_of` は of と対称に相手を
-/// ノード値 (`&Employee`) で返す設計 (キー版は最小方針により生やさない)
-/// なので、ここでは元の `Boss::iter` によるキー収集を使い続ける方が自然
-/// (`docs/reverse_query.md` の最小方針、`examples/reactive-cells` の
-/// `Engine::feeds_into` と同種の事情)。
+/// 判定には `EmployeeId` の対そのものが要るため、EdgeRefの両端からIDを集める。
 fn detect_mutual_boss_pairs(org: &OrgChart::Graph) -> Vec<(EmployeeId, EmployeeId)> {
-    let all: Vec<(&EmployeeId, &EmployeeId)> = Boss::iter(org)
-        .map(|(_id, edge)| (&edge.subordinate, &edge.superior))
+    let all: Vec<(EmployeeId, EmployeeId)> = Boss::iter(org)
+        .map(|edge| (edge.subordinate().id().clone(), edge.superior().id().clone()))
         .collect();
 
     let mut result: Vec<(EmployeeId, EmployeeId)> = Vec::new();
     for (a, b) in &all {
-        if a < b && all.contains(&(b, a)) {
-            result.push(((*a).clone(), (*b).clone()));
+        if a < b && all.contains(&(b.clone(), a.clone())) {
+            result.push((a.clone(), b.clone()));
         }
     }
     result.sort();
@@ -312,7 +304,9 @@ fn detect_mutual_boss_pairs(org: &OrgChart::Graph) -> Vec<(EmployeeId, EmployeeI
 fn detect_boss_cycles(org: &OrgChart::Graph) -> Vec<Vec<EmployeeId>> {
     let mut graph: Graph<(), (), EmployeeId> = Graph::from_edges(
         OrgChart::Employee::ids(org).cloned(),
-        Boss::iter(org).map(|(_id, edge)| (edge.subordinate.clone(), edge.superior.clone())),
+        Boss::iter(org).map(|edge| {
+            (edge.subordinate().id().clone(), edge.superior().id().clone())
+        }),
     )
     .expect("Employee::idsは重複せず、Boss::iterの端点は全てEmployee::idsに含まれるはず");
 
@@ -337,16 +331,16 @@ fn detect_boss_cycles(org: &OrgChart::Graph) -> Vec<Vec<EmployeeId>> {
 
 /// 部署跨ぎの上司関係 (上司と部下が異なる部署)。
 fn detect_cross_department_bosses(org: &OrgChart::Graph) -> Vec<CrossDepartmentBoss> {
-    let dept_of: HashMap<&EmployeeId, &DepartmentId> = BelongsTo::iter(org)
-        .map(|(_id, edge)| (&edge.employee, &edge.department))
+    let dept_of: HashMap<EmployeeId, DepartmentId> = BelongsTo::iter(org)
+        .map(|edge| (edge.employee().id().clone(), edge.department().id().clone()))
         .collect();
 
     let mut result: Vec<CrossDepartmentBoss> = Boss::iter(org)
-        .filter_map(|(_id, edge)| {
-            let emp_id = &edge.subordinate;
-            let boss_id = &edge.superior;
-            let emp_dept = *dept_of.get(emp_id)?;
-            let boss_dept = *dept_of.get(boss_id)?;
+        .filter_map(|edge| {
+            let emp_id = edge.subordinate().id();
+            let boss_id = edge.superior().id();
+            let emp_dept = dept_of.get(emp_id)?;
+            let boss_dept = dept_of.get(boss_id)?;
             if emp_dept == boss_dept {
                 return None;
             }

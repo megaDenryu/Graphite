@@ -86,11 +86,13 @@ mod fixed_pipeline_showcase {
         assert_eq!(BuildPipeline::Task::ids(&g).count(), 3);
         assert_eq!(BuildPipeline::Artifact::ids(&g).count(), 2);
 
-        let produced: Vec<&Artifact> = Produces::of(&g, &TaskId("build".to_string()));
+        let produced: Vec<BuildPipeline::ArtifactRef<'_>> =
+            Produces::of(&g, &TaskId("build".to_string()));
         assert_eq!(produced.len(), 1);
         assert_eq!(produced[0].path, "target/core.rlib");
 
-        let consumed: Vec<&Artifact> = Consumes::of(&g, &TaskId("test".to_string()));
+        let consumed: Vec<BuildPipeline::ArtifactRef<'_>> =
+            Consumes::of(&g, &TaskId("test".to_string()));
         assert_eq!(consumed.len(), 1);
         assert_eq!(consumed[0].path, "target/core.rlib");
     }

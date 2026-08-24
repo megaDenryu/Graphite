@@ -11,6 +11,7 @@ use crate::schema::{
     Cancel, CancelEdge, Deliver, OrderFsm, OrderState, OrderStateId, Pay, Refund, RefundEdge, Ship,
     Submit,
 };
+use crate::schema::OrderFsm::OrderStateRef;
 
 /// FSM が受理するイベント一覧。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -63,16 +64,13 @@ impl std::error::Error for TransitionError {}
 
 /// 遷移エンジン本体。
 ///
-/// イベントの `match` で `{Kind}::iter` を引き、`from` が `current` に
-/// `before` が一致する辺を探して `after` を返すだけ。`where each before: 0..1`
+/// イベントの `match` で `{Kind}::iter` を引き、`before` のIDが `current` に
+/// 一致する辺を探して `after` のIDを返すだけ。`where each before: 0..1`
 /// (schema 側の制約) により、一致する辺は高々1本しか無い。
 ///
-/// v4 の `{Kind}::of`/`get_of` は「終点ノードの値そのもの」(`&OrderState`)
-/// を返す設計であり、終点の**キー**は返さない
-/// (`docs/schema_v4.md` §3.2、`crates/graphite/tests/orgchart_macro.rs`)。
-/// `step` はキーを次の状態として返す必要があるため、`{Kind}::of` ではなく
-/// `{Kind}::iter` で辺の名前付きフィールドの構造体を読み、役割名フィールド
-/// `before`/`after` からキーを得る。遷移規則そのものはここには一切書かれていない
+/// `{Kind}::iter` は完成済みグラフに束縛されたEdgeRefを返し、役割名getterが
+/// NodeRefを返す。`step` は `before().id()` / `after().id()` からキーを得る。
+/// 遷移規則そのものはここには一切書かれていない
 /// (schema と `build` にしか無い) — enum+match 散在アンチパターンとの
 /// 決定的な違い。
 pub fn step(
@@ -82,23 +80,23 @@ pub fn step(
 ) -> Result<OrderStateId, TransitionError> {
     let next: Option<OrderStateId> = match event {
         Event::Submit => Submit::iter(fsm)
-            .find(|(_, e)| &e.before == current)
-            .map(|(_, e)| e.after.clone()),
+            .find(|edge| edge.before().id() == current)
+            .map(|edge| edge.after().id().clone()),
         Event::Pay => Pay::iter(fsm)
-            .find(|(_, e)| &e.before == current)
-            .map(|(_, e)| e.after.clone()),
+            .find(|edge| edge.before().id() == current)
+            .map(|edge| edge.after().id().clone()),
         Event::Ship => Ship::iter(fsm)
-            .find(|(_, e)| &e.before == current)
-            .map(|(_, e)| e.after.clone()),
+            .find(|edge| edge.before().id() == current)
+            .map(|edge| edge.after().id().clone()),
         Event::Deliver => Deliver::iter(fsm)
-            .find(|(_, e)| &e.before == current)
-            .map(|(_, e)| e.after.clone()),
+            .find(|edge| edge.before().id() == current)
+            .map(|edge| edge.after().id().clone()),
         Event::Cancel => Cancel::iter(fsm)
-            .find(|(_, e)| &e.before == current)
-            .map(|(_, e)| e.after.clone()),
+            .find(|edge| edge.before().id() == current)
+            .map(|edge| edge.after().id().clone()),
         Event::Refund => Refund::iter(fsm)
-            .find(|(_, e)| &e.before == current)
-            .map(|(_, e)| e.after.clone()),
+            .find(|edge| edge.before().id() == current)
+            .map(|edge| edge.after().id().clone()),
     };
     next.ok_or_else(|| TransitionError {
         state: current.clone(),
@@ -111,7 +109,7 @@ pub fn step(
 pub fn cancel_details<'a>(
     fsm: &'a OrderFsm::Graph,
     current: &OrderStateId,
-) -> Option<(&'a OrderState, &'a CancelEdge)> {
+) -> Option<(OrderStateRef<'a>, &'a CancelEdge)> {
     Cancel::of(fsm, current)
 }
 
@@ -119,7 +117,7 @@ pub fn cancel_details<'a>(
 pub fn refund_details<'a>(
     fsm: &'a OrderFsm::Graph,
     current: &OrderStateId,
-) -> Option<(&'a OrderState, &'a RefundEdge)> {
+) -> Option<(OrderStateRef<'a>, &'a RefundEdge)> {
     Refund::of(fsm, current)
 }
 

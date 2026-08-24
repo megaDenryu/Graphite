@@ -1,11 +1,11 @@
 #[derive(Clone, PartialEq)]
-struct Person;
+pub struct Person;
 
 #[derive(Clone, PartialEq)]
-struct Product;
+pub struct Product;
 
 #[derive(Clone, PartialEq)]
-struct Item;
+pub struct Item;
 
 #[derive(Clone, PartialEq)]
 struct TransactionInfo {

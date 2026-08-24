@@ -45,7 +45,13 @@ pub fn to_mermaid(schema: &DialogueGraph::Graph) -> String {
     }
 
     let mut choice_edges: Vec<(&SceneId, &SceneId, &str)> = Choice::iter(schema)
-        .map(|(_key, edge)| (&edge.scene, &edge.next, edge.payload().label.as_str()))
+        .map(|edge| {
+            (
+                edge.scene().id(),
+                edge.next().id(),
+                edge.payload().label.as_str(),
+            )
+        })
         .collect();
     choice_edges.sort_by(|a, b| (a.0, a.1).cmp(&(b.0, b.1)));
     for (from, to, label) in choice_edges {
@@ -58,7 +64,7 @@ pub fn to_mermaid(schema: &DialogueGraph::Graph) -> String {
     }
 
     let mut finale_edges: Vec<(&SceneId, &EndingId)> = Finale::iter(schema)
-        .map(|(_key, edge)| (&edge.scene, &edge.ending))
+        .map(|edge| (edge.scene().id(), edge.ending().id()))
         .collect();
     finale_edges.sort();
     for (from, to) in finale_edges {
@@ -148,18 +154,18 @@ pub fn compute_stats(schema: &DialogueGraph::Graph, start: &SceneId) -> Stats {
     // 合流点: ある終点シーンへ、異なる始点シーンから2本以上の choice 辺が
     // 入っているシーン。
     let mut incoming: HashMap<SceneId, HashSet<SceneId>> = HashMap::new();
-    for (_key, edge) in Choice::iter(schema) {
+    for edge in Choice::iter(schema) {
         incoming
-            .entry(edge.next.clone())
+            .entry(edge.next().id().clone())
             .or_default()
-            .insert(edge.scene.clone());
+            .insert(edge.scene().id().clone());
     }
     let convergence_count = incoming.values().filter(|froms| froms.len() >= 2).count();
 
     let mut shortest_routes: Vec<(String, usize)> = Vec::new();
-    for (_key, edge) in Finale::iter(schema) {
-        let scene_id = &edge.scene;
-        let ending_id = &edge.ending;
+    for edge in Finale::iter(schema) {
+        let scene_id = edge.scene().id();
+        let ending_id = edge.ending().id();
         if let Some(path) = scene_graph.path(start, scene_id) {
             let ending = DialogueGraph::Ending::get(schema, ending_id)
                 .expect("Finale::iter() が返す EndingId は必ず Ending::get() で引ける");
@@ -194,9 +200,9 @@ pub fn route_to_ending(
     let scene_graph = schema.scene_graph();
 
     let mut best: Option<Vec<SceneId>> = None;
-    for (_key, edge) in Finale::iter(schema) {
-        let scene_id = &edge.scene;
-        let e = &edge.ending;
+    for edge in Finale::iter(schema) {
+        let scene_id = edge.scene().id();
+        let e = edge.ending().id();
         if e != ending {
             continue;
         }

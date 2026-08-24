@@ -19,7 +19,7 @@
 use async_dag::depgraph::{self, build_dependency_graph};
 use async_dag::engine::{self, ExecutionReport};
 use async_dag::fixtures::{cyclic_demo, sample_orchestration};
-use async_dag::schema::{DependsOn, Orchestration, Service, ServiceId};
+use async_dag::schema::{DependsOn, Orchestration, ServiceId};
 
 fn main() {
     循環依存デモ();
@@ -84,7 +84,7 @@ fn 波を計算して表示する(g: &Orchestration::Graph) -> Vec<Vec<ServiceId
         let names: Vec<&str> = wave
             .iter()
             .filter_map(|id| Orchestration::Service::get(g, id))
-            .map(|s: &Service| s.name.as_str())
+            .map(|s| s.value().name.as_str())
             .collect();
         let duration = depgraph::wave_duration_ms(g, wave);
         println!(
@@ -112,7 +112,7 @@ fn 波を並列実行してログを表示する(
     sorted_records.sort_by_key(|r| r.start);
     for record in &sorted_records {
         let name = Orchestration::Service::get(g, &record.service)
-            .map(|s| s.name.as_str())
+            .map(|s| s.value().name.as_str())
             .unwrap_or("?");
         println!(
             "  wave {}: {name} 開始={}ms 完了={}ms",

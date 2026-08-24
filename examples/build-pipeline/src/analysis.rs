@@ -9,7 +9,7 @@
 //! 射影を使って別レイヤーとして実装する
 //! (README「導出エッジ」節が想定する使い分けそのもの)。
 
-use crate::schema::{ArtifactId, BuildPipeline, Consumes, Produces, Task, TaskId};
+use crate::schema::{ArtifactId, BuildPipeline, Consumes, Produces, TaskId};
 use graphite::{CycleError, Graph};
 use std::collections::{HashMap, HashSet};
 use std::fmt;
@@ -30,11 +30,11 @@ pub type TaskDependencyGraph = Graph<(), (), TaskId>;
 /// `Graph::build` が `UnknownEndpoint` を返すことはない (`expect` で妥当)。
 pub fn task_dependency_graph(g: &BuildPipeline::Graph) -> TaskDependencyGraph {
     let mut producers_of: HashMap<&ArtifactId, Vec<&TaskId>> = HashMap::new();
-    for (_id, edge) in Produces::iter(g) {
+    for edge in Produces::iter(g) {
         producers_of
-            .entry(&edge.artifact)
+            .entry(edge.artifact().id())
             .or_default()
-            .push(&edge.task);
+            .push(edge.task().id());
     }
 
     let nodes: Vec<(TaskId, ())> = BuildPipeline::Task::ids(g)
@@ -47,9 +47,9 @@ pub fn task_dependency_graph(g: &BuildPipeline::Graph) -> TaskDependencyGraph {
     // `FnMut` の性質上、その借用は呼び出しの外へ逃がせない)。ループで
     // 即座に `Vec` へ確定させることで回避する。
     let mut edges: Vec<(TaskId, TaskId, ())> = Vec::new();
-    for (_id, edge) in Consumes::iter(g) {
-        let consumer = &edge.task;
-        let artifact = &edge.artifact;
+    for edge in Consumes::iter(g) {
+        let consumer = edge.task().id();
+        let artifact = edge.artifact().id();
         if let Some(producers) = producers_of.get(artifact) {
             for producer in producers {
                 edges.push(((*producer).clone(), consumer.clone(), ()));
@@ -127,18 +127,18 @@ pub fn validate(g: &BuildPipeline::Graph) -> Vec<DomainIssue> {
     let mut issues = Vec::new();
 
     let mut producers_of: HashMap<&ArtifactId, Vec<&TaskId>> = HashMap::new();
-    for (_id, edge) in Produces::iter(g) {
+    for edge in Produces::iter(g) {
         producers_of
-            .entry(&edge.artifact)
+            .entry(edge.artifact().id())
             .or_default()
-            .push(&edge.task);
+            .push(edge.task().id());
     }
     let mut consumers_of: HashMap<&ArtifactId, Vec<&TaskId>> = HashMap::new();
-    for (_id, edge) in Consumes::iter(g) {
+    for edge in Consumes::iter(g) {
         consumers_of
-            .entry(&edge.artifact)
+            .entry(edge.artifact().id())
             .or_default()
-            .push(&edge.task);
+            .push(edge.task().id());
     }
 
     // 1. 孤児成果物: consume されているのに produce するタスクが無い。
@@ -287,7 +287,7 @@ pub fn critical_path(g: &BuildPipeline::Graph) -> Result<CriticalPath, CycleErro
 
     let secs_of = |id: &TaskId| -> u32 {
         BuildPipeline::Task::get(g, id)
-            .map(|t: &Task| t.secs)
+            .map(|t| t.secs)
             .unwrap_or(0)
     };
 

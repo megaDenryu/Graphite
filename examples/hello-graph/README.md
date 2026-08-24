@@ -64,17 +64,14 @@ cargo run
 
 | 制約 | `of` の戻り値 | `between` の戻り値 | `iter()` の要素 |
 |---|---|---|---|
-| `each X: 1` | `&T` (積み荷つきは `(&T, &Attrs)`)。未知キーはパニック (非パニック版 `get_of`) | `Vec<&Kind>` | `(&{Kind}Id, &Kind)` |
-| `each X: 0..1` | `Option<&T>` (積み荷つきは `Option<(&T, &Attrs)>`) | `Vec<&Kind>` | 同上 |
-| `each X: N` / `N..M` / `N..*` のその他の範囲 | `Vec<&T>` (積み荷つきは `Vec<(&T, &Attrs)>`) | `Vec<&Kind>` | 同上 |
-| `unique pair` | `Vec<&T>` (積み荷つきは `Vec<(&T, &Attrs)>`) | `Option<&Kind>` (対で高々1本のため) | 同上 |
-| 制約なし | `Vec<&T>` (積み荷つきは `Vec<(&T, &Attrs)>`) | `Vec<&Kind>` | 同上 |
+| `each X: 1` | `TRef<'graph>` (積み荷つきは `(TRef<'graph>, &Attrs)`)。未知キーはパニック (非パニック版 `get_of`) | `Vec<KindRef<'graph>>` | `KindRef<'graph>` |
+| `each X: 0..1` | `Option<TRef<'graph>>` (積み荷つきは `Option<(TRef<'graph>, &Attrs)>`) | `Vec<KindRef<'graph>>` | 同上 |
+| `each X: N` / `N..M` / `N..*` のその他の範囲 | `Vec<TRef<'graph>>` (積み荷つきは `Vec<(TRef<'graph>, &Attrs)>`) | `Vec<KindRef<'graph>>` | 同上 |
+| `unique pair` | `Vec<TRef<'graph>>` (積み荷つきは `Vec<(TRef<'graph>, &Attrs)>`) | `Option<KindRef<'graph>>` (対で高々1本のため) | 同上 |
+| 制約なし | `Vec<TRef<'graph>>` (積み荷つきは `Vec<(TRef<'graph>, &Attrs)>`) | `Vec<KindRef<'graph>>` | 同上 |
 
-「`Boss` を値として `.attr` で持っているのか?」という疑問には `src/main.rs`
-§2.5 (脱糖の実像) で直接回答しています。要点だけ言うと **No** —
-`Boss` は名前付きフィールドの構造体であり、積み荷は公開フィールド `.appointment` として
-保持します。格納先は `Org` 構造体の非公開フィールド
-(`graphite::KeyedTable<BossId, Boss>`) であり、`graph!` の
+構築時の `Boss` と完成後の `BossRef` の違いは `src/main.rs` §2.5 で説明しています。
+`Boss` は端点IDと積み荷を持つ名前付きフィールドの構造体です。freeze は端点IDを非公開位置へ変換し、完成済みグラフは `graphite::KeyedTable<BossId, BossRecord>` を保持します。利用者は `BossRef<'graph>` を通して完成済み記録を読みます。`graph!` の
 `key = Boss(from -[積み荷式]-> to)` は
 `__graphite_b.add(key, <Boss as graphite::DirectedEdgeLiteral<_, _, _>>::from_graph_literal(from.clone(), to.clone(), 積み荷式))` という
 ただのメソッド呼び出しに脱糖されるだけです。
@@ -101,21 +98,21 @@ cargo run
 
 | やりたいこと | 書き方 | 戻り値の型 |
 |---|---|---|
-| 人ノードを1件読む | `Person::get(&g, &PersonId("alice".to_string()))` | `Option<&Person>` |
-| チームノードを1件読む | `Team::get(&g, &TeamId("eng".to_string()))` | `Option<&Team>` |
+| 人ノードを1件読む | `Person::get(&g, &PersonId("alice".to_string()))` | `Option<PersonRef<'_>>` |
+| チームノードを1件読む | `Team::get(&g, &TeamId("eng".to_string()))` | `Option<TeamRef<'_>>` |
 | `PersonId` を手で組み立てる (`graph!` のキーと同一視) | `PersonId("alice".to_string())` | `PersonId` |
 
 ### エッジを辿る (Kind::of/get/between)
 
 | やりたいこと | 書き方 | 戻り値の型 |
 |---|---|---|
-| `each member: 1` を辿る (パニック版) | `BelongsTo::of(&g, &id)` | `&Team` |
-| `each member: 1` を安全に辿る | `BelongsTo::get_of(&g, &id)` | `Option<&Team>` |
-| `each subordinate: 0..1` +積み荷ありを辿る | `Boss::of(&g, &id)` | `Option<(&Person, &BossEdge)>` |
-| `unique pair` を対で検索する | `Reports::between(&g, &from, &to)` | `Option<&Reports>` |
-| 制約なしを辿る | `ReviewedBy::of(&g, &id)` (for ループで受ける) | `Vec<(&Person, &ReviewEdge)>` |
-| キーで辺1本を検索する | `BelongsTo::get(&g, &BelongsToId("bt1".to_string()))` | `Option<&BelongsTo>` |
-| 無向辺 (`--`) の両端を読む/対称に辿る (v4.1) | `Friends::get(&g,&id).endpoints()` / `Friends::of(&g, &id)` (どちらの位置でも対称) | `(&PersonId, &PersonId)` / `Vec<&Person>` |
+| `each member: 1` を辿る (パニック版) | `BelongsTo::of(&g, &id)` | `TeamRef<'_>` |
+| `each member: 1` を安全に辿る | `BelongsTo::get_of(&g, &id)` | `Option<TeamRef<'_>>` |
+| `each subordinate: 0..1` +積み荷ありを辿る | `Boss::of(&g, &id)` | `Option<(PersonRef<'_>, &BossEdge)>` |
+| `unique pair` を対で検索する | `Reports::between(&g, &from, &to)` | `Option<ReportsRef<'_>>` |
+| 制約なしを辿る | `ReviewedBy::of(&g, &id)` (for ループで受ける) | `Vec<(PersonRef<'_>, &ReviewEdge)>` |
+| キーで辺1本を検索する | `BelongsTo::get(&g, &BelongsToId("bt1".to_string()))` | `Option<BelongsToRef<'_>>` |
+| 無向辺 (`--`) の両端を読む/対称に辿る (v4.1) | `Friends::get(&g,&id).endpoints()` / `Friends::of(&g, &id)` (どちらの位置でも対称) | `(PersonRef<'_>, PersonRef<'_>)` / `Vec<PersonRef<'_>>` |
 
 ### 一覧する (iter/ids/len)
 
@@ -123,8 +120,8 @@ cargo run
 |---|---|---|
 | 人ノードの全キーを列挙する | `Person::ids(&g)` | `impl Iterator<Item = &PersonId>` |
 | チームノードの全キーを列挙する | `Team::ids(&g)` | `impl Iterator<Item = &TeamId>` |
-| エッジを全部列挙する (キー付き) | `BelongsTo::iter(&g)` | `impl Iterator<Item = (&BelongsToId, &BelongsTo)>` |
-| 積み荷ありエッジを全部列挙する | `Boss::iter(&g)` | `impl Iterator<Item = (&BossId, &Boss)>` (積み荷は `edge.payload()`) |
+| エッジを全部列挙する (キー付き) | `BelongsTo::iter(&g)` | `impl Iterator<Item = BelongsToRef<'_>>` |
+| 積み荷ありエッジを全部列挙する | `Boss::iter(&g)` | `impl Iterator<Item = BossRef<'_>>` (積み荷は `edge.payload()`) |
 | 表の辺の本数を確認する | `BelongsTo::len(&g)` | `usize` |
 
 ### 検証エラーを受ける
@@ -161,12 +158,12 @@ cargo run
 | やりたいこと | できる? | 方法 / 実際に出るエラー |
 |---|---|---|
 | `Boss` エッジの相手ノードを取得する | できる | `Boss::of(&g, &id)` (`src/main.rs` §3) |
-| `Boss` エッジの積み荷 (`since`) を読む | できる | `Boss::of(&g, &id)` が返す `(&Person, &BossEdge)` の2番目、または `edge.payload().since` |
+| `Boss` エッジの積み荷 (`since`) を読む | できる | `Boss::of(&g, &id)` が返す `(PersonRef, &BossEdge)` の2番目、または `edge.payload().since` |
 | 未知キーで安全に問い合わせる | できる | `BelongsTo::get_of(&g, &id)` (`Option` で返る) |
 | キーで辺1本を検索する | できる | `BelongsTo::get(&g, &edge_id)` |
-| 全エッジをイテレータで走査する | できる | `Boss::iter(&g)` (`(&BossId, &Boss)` の組) |
+| 全エッジをイテレータで走査する | できる | `Boss::iter(&g)` (`BossRef<'_>`) |
 | `Boss` を積み荷のように (`Boss.since`) 読む | **できない** | `error[E0609]: no field \`since\` on type \`fn(PersonId, PersonId, BossEdge) -> Boss {Boss}\`` (§4.1) |
-| `g.boss` とフィールドのように書いて `Person` を得る | **できない** | `error[E0308]: mismatched types` (中身は `KeyedTable<BossId, Boss>`。§4.2、§2.5 参照) |
+| `g.boss` とフィールドのように書いて `Person` を得る | **できない** | グラフの格納フィールドは非公開であり、公開APIは `BossRef<'graph>` を返す型名前空間の関連関数に限定される (§4.2、§2.5 参照) |
 | `graph!` に存在しないエッジ種別を書く | **できない** | `error[E0433]: failed to resolve: use of undeclared type \`NoSuchKind\`` (素のrustc型解決。§4.3) |
 | `graph!` のエッジ端点に間違ったノード型を渡す | **できない** | `error[E0308]: mismatched types` (`expected TeamId, found PersonId`。§4.4) |
 

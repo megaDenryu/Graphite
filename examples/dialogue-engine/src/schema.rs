@@ -94,8 +94,8 @@ impl DialogueGraph::Graph {
     /// 生の辺 (キー付き) を走査する `Choice::iter` をフィルタして使う。
     pub fn scene_choices(&self, id: &SceneId) -> Vec<(SceneId, String)> {
         DialogueGraph::Choice::iter(self)
-            .filter(|(_key, edge)| &edge.scene == id)
-            .map(|(_key, edge)| (edge.next.clone(), edge.payload().label.clone()))
+            .filter(|edge| edge.scene().id() == id)
+            .map(|edge| (edge.next().id().clone(), edge.payload().label.clone()))
             .collect()
     }
 
@@ -113,10 +113,10 @@ impl DialogueGraph::Graph {
             for id in DialogueGraph::Scene::ids(self) {
                 b.node(id.clone(), id.clone());
             }
-            for (_key, edge) in DialogueGraph::Choice::iter(self) {
+            for edge in DialogueGraph::Choice::iter(self) {
                 b.edge(
-                    edge.scene.clone(),
-                    edge.next.clone(),
+                    edge.scene().id().clone(),
+                    edge.next().id().clone(),
                     edge.payload().label.clone(),
                 );
             }

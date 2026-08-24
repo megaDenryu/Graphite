@@ -4,9 +4,9 @@
 //! `sources_of` 専用の最小スキーマをこのファイルに用意する。カバーする
 //! 組み合わせ (積み荷の有無 × 終点側 each 制約):
 //!
-//! - `Unconstrained`  : 積み荷あり、終点側制約なし → `Vec<(&NodeA, &Weight)>`
-//! - `UnconstrainedNoPayload` : 積み荷なし、終点側制約なし → `Vec<&NodeA>`
-//! - `AtMostOne`      : 積み荷なし、`each dst: 0..1` → `Option<&NodeA>`
+//! - `Unconstrained`  : 積み荷あり、終点側制約なし → `Vec<(NodeARef, &Weight)>`
+//! - `UnconstrainedNoPayload` : 積み荷なし、終点側制約なし → `Vec<NodeARef>`
+//! - `AtMostOne`      : 積み荷なし、`each dst: 0..1` → `Option<NodeARef>`
 //! - `ExactlyOne`     : 積み荷あり、`each dst: 1` → 直接参照 (パニック +
 //!   非パニック版 `get_sources_of`)
 //!
@@ -153,7 +153,8 @@ mod tests {
     #[test]
     fn 制約なしかつ積み荷なしはvecでノード値のみ返す() {
         let g = build();
-        let sources: Vec<&NodeA> = UnconstrainedNoPayload::sources_of(&g, &nb("b1"));
+        let sources: Vec<RevQuery::NodeARef<'_>> =
+            UnconstrainedNoPayload::sources_of(&g, &nb("b1"));
         assert_eq!(sources.len(), 1);
         assert_eq!(sources[0].name, "a3");
 
@@ -164,10 +165,10 @@ mod tests {
     fn 終点側0か1制約かつ積み荷なしはoptionを返す() {
         let g = build();
 
-        let m: Option<&NodeA> = AtMostOne::sources_of(&g, &nb("b1"));
+        let m: Option<RevQuery::NodeARef<'_>> = AtMostOne::sources_of(&g, &nb("b1"));
         assert_eq!(m.expect("b1の代表はa1のはず").name, "a1");
 
-        let none: Option<&NodeA> = AtMostOne::sources_of(&g, &nb("b2"));
+        let none: Option<RevQuery::NodeARef<'_>> = AtMostOne::sources_of(&g, &nb("b2"));
         assert!(none.is_none(), "b2には代表がいないはず");
     }
 
@@ -212,7 +213,7 @@ mod tests {
         // 返す。sources_of(&g, &b1) はその逆で a1 を含む始点側の一覧を返す
         // (自分自身が相手にとってのsources_ofに現れることを確認する)。
         let g = build();
-        let targets: Vec<(&NodeB, &Weight)> = Unconstrained::of(&g, &na("a1"));
+        let targets: Vec<(RevQuery::NodeBRef<'_>, &Weight)> = Unconstrained::of(&g, &na("a1"));
         assert_eq!(targets.len(), 1);
         assert_eq!(targets[0].0.name, "b1");
 

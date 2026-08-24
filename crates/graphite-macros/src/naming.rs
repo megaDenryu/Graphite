@@ -18,6 +18,21 @@ pub fn generated_id_ident(source: &Ident) -> Ident {
     format_ident!("{}Id", source, span = source.span())
 }
 
+/// ノード型名・辺種別名から完成済みグラフ上の参照型名を導出する。
+pub fn reference_ident(source: &Ident) -> Ident {
+    format_ident!("{}Ref", source, span = source.span())
+}
+
+/// ノード型名・辺種別名から非公開の内部位置型名を導出する。
+pub fn internal_position_ident(source: &Ident) -> Ident {
+    format_ident!("__{}InternalPosition", source, span = source.span())
+}
+
+/// 辺種別名から凍結後の非公開レコード型名を導出する。
+pub fn edge_record_ident(source: &Ident) -> Ident {
+    format_ident!("__{}Record", source, span = source.span())
+}
+
 /// 辺種別名と端点の役割名から多重度違反variant名を導出する。
 pub fn each_violation_ident(kind: &Ident, role: &Ident) -> Ident {
     let role_pascal = role
@@ -97,6 +112,17 @@ mod tests {
     fn 既定生成id型名を導出できる() {
         let source = Ident::new("Employee", proc_macro2::Span::call_site());
         assert_eq!(generated_id_ident(&source).to_string(), "EmployeeId");
+    }
+
+    #[test]
+    fn 参照型と内部位置と辺レコードの型名を導出できる() {
+        let source = Ident::new("Purchase", proc_macro2::Span::call_site());
+        assert_eq!(reference_ident(&source).to_string(), "PurchaseRef");
+        assert_eq!(
+            internal_position_ident(&source).to_string(),
+            "__PurchaseInternalPosition"
+        );
+        assert_eq!(edge_record_ident(&source).to_string(), "__PurchaseRecord");
     }
 
     #[test]

@@ -59,7 +59,8 @@ mod tests {
         .expect("正常な依存グラフは構築に成功するはず");
 
         assert_eq!(Orchestration::Service::ids(&g).count(), 3);
-        let deps: Vec<&Service> = DependsOn::of(&g, &ServiceId("api".to_string()));
+        let deps: Vec<Orchestration::ServiceRef<'_>> =
+            DependsOn::of(&g, &ServiceId("api".to_string()));
         assert_eq!(deps.len(), 1);
         assert_eq!(deps[0].name, "db");
     }

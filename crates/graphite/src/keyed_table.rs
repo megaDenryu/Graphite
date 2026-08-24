@@ -77,6 +77,33 @@ where
         self.entries.get(idx).map(|(_, v)| v)
     }
 
+    /// キーから挿入順の内部位置を引く。`graph_schema!` の生成コードが
+    /// 凍結済みグラフの薄い参照値を構築するために使う。
+    #[doc(hidden)]
+    pub fn position(&self, key: &K) -> Option<usize> {
+        self.index.get(key).copied()
+    }
+
+    /// 内部位置からキーと値を引く。内部位置は表の構造を変更しない間だけ
+    /// 安定するため、凍結済みグラフの生成コードだけが使う。
+    #[doc(hidden)]
+    pub fn get_at(&self, position: usize) -> Option<(&K, &V)> {
+        self.entries.get(position).map(|(key, value)| (key, value))
+    }
+
+    /// キーから値を可変借用する。構造を変更せず値だけを更新する。
+    #[doc(hidden)]
+    pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
+        let position = *self.index.get(key)?;
+        self.entries.get_mut(position).map(|(_, value)| value)
+    }
+
+    /// 内部位置を挿入順に列挙する。
+    #[doc(hidden)]
+    pub fn positions(&self) -> std::ops::Range<usize> {
+        0..self.entries.len()
+    }
+
     /// 全キーを走査するイテレータ。挿入順を保持する (仕様、上記構造体
     /// doc 参照)。
     pub fn ids(&self) -> impl Iterator<Item = &K> {
@@ -145,5 +172,27 @@ mod tests {
         t.insert("a".to_string(), 1);
         assert!(t.contains_key(&"a".to_string()));
         assert!(!t.contains_key(&"b".to_string()));
+    }
+
+    #[test]
+    fn 内部位置から同じ要素を参照できる() {
+        let mut table: KeyedTable<String, i32> = KeyedTable::new();
+        table.insert("a".to_string(), 1);
+        table.insert("b".to_string(), 2);
+
+        let position = table.position(&"b".to_string()).unwrap();
+        assert_eq!(table.get_at(position), Some((&"b".to_string(), &2)));
+        assert_eq!(table.positions().collect::<Vec<_>>(), vec![0, 1]);
+    }
+
+    #[test]
+    fn get_mutは値だけを更新する() {
+        let mut table: KeyedTable<String, i32> = KeyedTable::new();
+        table.insert("a".to_string(), 1);
+
+        *table.get_mut(&"a".to_string()).unwrap() = 2;
+
+        assert_eq!(table.get(&"a".to_string()), Some(&2));
+        assert_eq!(table.position(&"a".to_string()), Some(0));
     }
 }

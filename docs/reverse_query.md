@@ -24,12 +24,11 @@ Boss::sources_of(&g, &alice);   // alice を終点とする Boss 辺の始点側
 ```
 
 - 戻り型は **to 側の each 制約が決める** (of が from 側 each で決まるのと対称):
-  役割名つきで `each superior: 0..1` なら `Option<(&Employee, &BossEdge)>`、
+  役割名つきで `each superior: 0..1` なら `Option<(EmployeeRef<'graph>, &BossEdge)>`、
   制約なしなら `Vec<..>`。積み荷なしは相手ノードのみ
-- 相手はノード値で返す (of と同じ解決規則)。キー版が要る場合は将来 of 系と
-  合わせて検討 (今回は生やさない — 最小)
+- 相手は `NodeRef` で返す (of と同じ解決規則)。キーは `NodeRef::id()` で取得する
 - **無向辺には生成しない** (`of` が既に対称なので同じもの)
-- 実装: freeze 時に終点索引 (`{accessor}_to_index: HashMap<ToId, Vec<KindId>>`)
+- 実装: freeze 時に終点索引 (`{accessor}_to_index: HashMap<ToPosition, Vec<KindPosition>>`)
   を**構造体フィールドとして永続化** (グラフは凍結後不変なので一度構築すれば
   済む。メモリは O(E))。v4.1 で一時構築していた入次数検証もこの索引を使う形に
   統合してよい

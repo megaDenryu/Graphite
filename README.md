@@ -174,18 +174,20 @@ Graphite の基盤は**多重グラフ**です。辺は独立した要素であ�
 `use` でこのスコープに名前を持ち込んでください。
 
 これで `OrgChart` という Rust module が生成されます。その中にノード・辺種別ごとの
-newtype キー (`OrgChart::EmployeeId`/`DepartmentId`/`BelongsToId`/`BossId`/`ReportsId`) と名前付きフィールドの構造体
-(`OrgChart::Boss`)・グラフ本体 (`OrgChart::Graph`、フィールドは非公開)・
+newtype キー (`OrgChart::EmployeeId`/`DepartmentId`/`BelongsToId`/`BossId`/`ReportsId`) と構築用の辺値
+(`OrgChart::Boss`)・完成済みグラフを読む参照型 (`OrgChart::EmployeeRef<'graph>`/`BossRef<'graph>`)・グラフ本体 (`OrgChart::Graph`、フィールドは非公開)・
 builder (`OrgChart::Builder`)・違反 enum (`OrgChart::Violation`) が置かれます。
 ノード値の型 (`Employee`/
 `Department`) とエッジ属性型 (`BossEdge`) はいずれもユーザーが宣言した型を
 そのまま参照するだけで、`graph_schema!` は一切生成しません。ID型は宣言ごとに選べます。`node Employee;` と `edge Boss = ...;` は schema module 内に型付き文字列IDを生成し、`node Employee(id: EmployeeNumber);` と `edge Boss(id: RelationNumber) = ...;` は既存型を使います。
 
-辺の名前付きフィールドの構造体は**マクロの外でも普通に構築できます**
+構築用の辺値は**マクロの外でも普通に構築できます**
 (`OrgChart::Boss { subordinate, superior, appointment }`)。端点と積み荷の
-公開フィールド名はスキーマの役割名そのものです。端点は
-`edge.subordinate` / `edge.superior` のように役割名で読み、積み荷ありの辺は
-`fn payload(&self) -> &BossEdge` も提供します。
+公開フィールド名はスキーマの役割名そのものです。完成済みグラフから得る
+`BossRef<'graph>` では `edge.subordinate()` / `edge.superior()` が
+`EmployeeRef<'graph>` を返し、積み荷は `edge.payload()` で読みます。
+
+完成済みグラフは、公開IDを種別ごとの非公開な密な位置へ一度だけ変換します。完成済みの辺記録はIDではなく端点位置を保持し、`NodeRef` と `EdgeRef` は `&Graph` と位置だけを持つ `Copy + Clone` の値です。このため、参照を得た後のID・値・端点・積み荷の取得は公開IDのハッシュ検索を繰り返しません。`NodeRef` は `Deref<Target = NodeValue>` を実装しますが、構築用の辺値と完成済みの `EdgeRef` は役割が異なるため、`EdgeRef` は辺値へ `Deref` しません。
 
 **ノード挿入トレイトと総称 `insert`**: builder には型名付きの
 挿入メソッド (`b.employee(id, value)` など、上記の各 `node` 宣言から1つずつ
@@ -221,6 +223,7 @@ rustc の型推論に任せます。実行時のリフレクション・型判�
 (自動生成IDには `Debug + Clone + PartialEq + Eq + Hash` を導出します。明示ID型に必要なのは `Clone + Eq + Hash` だけで、`Debug`・`Display`・文字列変換は要求しません。これはID型の話でノード値の型とは別物です。詳細は後述「キーの設計」参照)。
 テストでの比較・表示のために `#[derive(Debug, Clone, PartialEq)]` を
 付けるかどうかは利用者の自由です (上記の例は付けている例)。
+公開される `NodeRef` の `Deref::Target` にノード値型が現れるため、公開schemaで使うノード値型には到達可能な可視性が必要です。通常は例のように `pub struct Employee` と宣言します。
 
 **複数 schema でノード型を共有する場合**: 既定IDは schema module の中に生成されるため、同じ `Person` を参照しても `Org::PersonId` と `Approval::PersonId` は別型です。同じIDを共有したい場合は、両方で `node Person(id: PersonId);` と明示します (`crates/graphite/tests/node_id_shared_across_schemas.rs`)。
 
@@ -234,7 +237,7 @@ schema ごとの生成物は `OrgChart`/`ApprovalFlow` のように別々の Rus
 無くなりました。辺の読み取りAPI (`of`/`get`/`between`/`iter`/`ids`/`len`) は
 `graph_schema!` が生成した辺型への固有 impl として直接生えます
 (`OrgChart::Boss::of(&g, ..)` のように呼びます)。ノードの読み取り API
-(`get`/`ids`/`iter`) はスキーマ module 内のノードマーカーに生えます
+(`get`/`get_mut`/`ids`/`iter`) はスキーマ module 内のノードマーカーに生えます
 (`OrgChart::Employee::get(&g, ..)`)。ユーザー struct (`Employee` 等) への
 固有 impl は追加しないため、複数 schema が同じ値型を共有できます。
 
@@ -243,25 +246,26 @@ schema ごとの生成物は `OrgChart`/`ApprovalFlow` のように別々の Rus
 
   | 制約             | `of` の戻り値                                              |
   |------------------|-------------------------------------------------------------|
-  | `each X: 1`      | `&T` (属性付きは `(&T, &Attrs)`)。未知キーはパニック (非パニック版 `get_of` あり) |
-  | `each X: 0..1`   | `Option<&T>` (属性付きは `Option<(&T, &Attrs)>`)             |
-  | 制約なし          | `Vec<&T>` (属性付きは `Vec<(&T, &Attrs)>`)                   |
+  | `each X: 1`      | `TRef<'graph>` (属性付きは `(TRef<'graph>, &Attrs)`)。未知キーはパニック (非パニック版 `get_of` あり) |
+  | `each X: 0..1`   | `Option<TRef<'graph>>` (属性付きは `Option<(TRef<'graph>, &Attrs)>`) |
+  | 制約なし          | `Vec<TRef<'graph>>` (属性付きは `Vec<(TRef<'graph>, &Attrs)>`) |
 
   `each X: 1` の `of` は未知キーを渡すとパニックします (`Vec` の `v[i]` と
   同じ「呼び出し規約違反」の扱い。非パニック版 `get_of` も対で提供されます)。
 - **`Kind::sources_of(&g, &ToId)`** — `of` の逆方向 (終点側から始点側を検索する
   逆引きクエリ)。戻り値は **終点側の `each` 制約** (役割名がある場合はその
-  役割の制約) が `of` と対称に決めます (制約なしなら `Vec<&T>`、属性付きは
-  `Vec<(&T, &Attrs)>`)。無向辺には生成されません (`of` が既に対称なので不要。
+  役割の制約) が `of` と対称に決めます (制約なしなら `Vec<TRef<'graph>>`、属性付きは
+  `Vec<(TRef<'graph>, &Attrs)>`)。無向辺には生成されません (`of` が既に対称なので不要。
   詳細: `docs/reverse_query.md`)。
 - **`Kind::get(&g, &{Kind}Id)`** — 辺そのものをキー (`{Kind}Id`) で1本検索
-  します。見つかれば `Some(&Kind)` (役割名の公開フィールドを持つ名前付きフィールドの構造体)。
+  します。見つかれば `Some(KindRef<'graph>)` を返します。
 - **`Kind::between(&g, &SrcId, &DstId)`** — (始点, 終点) の対で検索します。
-  `where unique pair` が付いていれば `Option<&Kind>`、無ければ平行辺を
-  許すため `Vec<&Kind>` を返します。
-- **`Kind::iter(&g)`** — 表全体を `(&{Kind}Id, &Kind)` で走査します。`match`
+  `where unique pair` が付いていれば `Option<KindRef<'graph>>`、無ければ平行辺を
+  許すため `Vec<KindRef<'graph>>` を返します。
+- **`Kind::iter(&g)`** — 表全体を `KindRef<'graph>` で走査します。`match`
   パターンでのグラフクエリの代替として使えます。
 - **`Kind::ids(&g)`/`Kind::len(&g)`** — 全キー列挙 / 本数。
+- **`Type::get_mut(&mut g, &TypeId)`/`Kind::payload_mut(&mut g, &KindId)`** — ノード値または辺の積み荷だけを可変参照として取得します。端点と内部位置は変更できません。
 
 ノード種別ごとのキー列挙は `{Schema}::{Type}::ids(&g)` です。
 
@@ -409,9 +413,9 @@ let g = graphite::graph!(OrgChart {
 ### 3. アクセサ・アルゴリズムを使う
 
 ```rust
-let dept = OrgChart::BelongsTo::of(&g, &OrgChart::EmployeeId("tanaka".to_string())); // &Department (each 1)
-let (boss, attrs) = OrgChart::Boss::of(&g, &OrgChart::EmployeeId("tanaka".to_string())).unwrap(); // Option<(&Employee, &BossEdge)>
-let reports = OrgChart::Reports::of(&g, &OrgChart::EmployeeId("tanaka".to_string())); // Vec<&Employee> (制約なし)
+let dept = OrgChart::BelongsTo::of(&g, &OrgChart::EmployeeId("tanaka".to_string())); // DepartmentRef (each 1)
+let (boss, attrs) = OrgChart::Boss::of(&g, &OrgChart::EmployeeId("tanaka".to_string())).unwrap(); // Option<(EmployeeRef, &BossEdge)>
+let reports = OrgChart::Reports::of(&g, &OrgChart::EmployeeId("tanaka".to_string())); // Vec<EmployeeRef> (制約なし)
 
 // get_of: each 1 の非パニック版。未知キーは None に落ちる。
 let dept_opt = OrgChart::BelongsTo::get_of(&g, &OrgChart::EmployeeId("no-such-id".to_string())); // None
@@ -419,7 +423,7 @@ let dept_opt = OrgChart::BelongsTo::get_of(&g, &OrgChart::EmployeeId("no-such-id
 // iter(): match パターンの代替。イテレータチェーンでクエリを書く。
 // 例: 相互に上司であるペア (A の boss が B かつ B の boss が A) を検出する。
 let all: Vec<(&OrgChart::EmployeeId, &OrgChart::EmployeeId)> = OrgChart::Boss::iter(&g)
-    .map(|(_id, edge)| (&edge.subordinate, &edge.superior))
+    .map(|edge| (edge.subordinate().id(), edge.superior().id()))
     .collect();
 let mutual_bosses: Vec<(&OrgChart::EmployeeId, &OrgChart::EmployeeId)> = all
     .iter()
@@ -431,7 +435,7 @@ let mutual_bosses: Vec<(&OrgChart::EmployeeId, &OrgChart::EmployeeId)> = all
 let all_employee_ids: Vec<&EmployeeId> = OrgChart::Employee::ids(&g).collect();
 
 // Kind::get: 辺キー (newtype) そのもので1本検索する。
-let edge: Option<&OrgChart::BelongsTo> = OrgChart::BelongsTo::get(
+let edge: Option<OrgChart::BelongsToRef<'_>> = OrgChart::BelongsTo::get(
     &g,
     &OrgChart::BelongsToId("tanaka_dept".to_string()),
 );
@@ -681,9 +685,9 @@ cargo test
 
 - **多重度 `(1)` アクセサへ未知キーを渡した場合は v0 ではパニックとする —
   解決済み (フェーズ4、その後ビュー方式へ移行)**。多重度 `(1)` のビューの
-  `of(&SrcId) -> &T` (パニック版) は「このスキーマが発行したキーだけを
+  `of(&SrcId) -> TRef<'graph>` (パニック版) は「このスキーマが発行したキーだけを
   渡すことが呼び出し側の責務」という設計のまま残しつつ、非パニック版
-  `get(&SrcId) -> Option<&T>` (属性付きは `Option<(&T, &Attrs)>`) を対で
+  `get(&SrcId) -> Option<TRef<'graph>>` (属性付きは `Option<(TRef<'graph>, &Attrs)>`) を対で
   持ちます。`Vec` の `v[i]` (パニック) と `v.get(i)` (`Option`) の対と
   同じ関係です (フェーズ4では `{label}`/`try_{label}` という導出名の
   メソッド対でしたが、`docs/edge_view_api.md` でビュー1個の `of`/`get`
@@ -693,7 +697,7 @@ cargo test
   `match g { @{ a -[boss]-> b, b -[boss]-> a } => ... }` のような辺ラベル
   付きパターンマッチは、Rust の安定版では `match` アーム位置に任意の
   カスタム構文を注入できないため今後も実装しません。代わりに、各エッジ
-  種別ごとのビューの `iter() -> impl Iterator<Item = (&SrcId, &DstId[, &Attrs])>`
+  種別ごとの `iter() -> impl Iterator<Item = KindRef<'graph>>`
   と、各ノード種別ごとのキー列挙 `{node_snake}_ids()` を追加し、メソッド
   チェーンで同種のクエリ (例: 相互上司の検出) を書けるようにしました
   (独自パーサ・コンビネータ DSL は「独自パーサの再演になる」という

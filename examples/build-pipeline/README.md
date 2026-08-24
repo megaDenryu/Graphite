@@ -198,7 +198,7 @@ task <名前>: <コマンド...> (<秒数>s)      タスク定義
   しない。
 - **each制約 API と `Vec` の使い分け**: `Produces`/`Consumes` はどちらも
   多重度の each 制約を付けていない (無制約 = `Vec` を返す) ので
-  `Produces::of(&g, &TaskId) -> Vec<&Artifact>` が自動生成される。自作なら
+  `Produces::of(&g, &TaskId) -> Vec<ArtifactRef<'graph>>` が自動生成される。自作なら
   `HashMap<String, Vec<String>>` を用意したうえで `.get(key).cloned()
   .unwrap_or_default()` のような空デフォルト処理を毎回書く必要がある
   (書き忘れると未知キーで `panic`)。
