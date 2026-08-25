@@ -141,10 +141,8 @@ fn chainはトップ層まで辿ると停止する() {
         .find(|id| {
             let emp = OrgChart::Employee::get(&generated.chart, id).unwrap();
             emp.grade == 5
-                && Boss::of_subordinate(
-                    OrgChart::Employee::get(&generated.chart, id).unwrap(),
-                )
-                .is_none()
+                && Boss::of_subordinate(OrgChart::Employee::get(&generated.chart, id).unwrap())
+                    .is_none()
         })
         .cloned();
 

@@ -61,7 +61,8 @@ fn f64をエッジ属性とノードフィールドに持つスキーマがコ�
 
     let readings: Vec<_> = Measurement::Measured::of_sensor(
         Measurement::Sensor::get(&g, &SensorId("s1".to_string())).unwrap(),
-    ).collect();
+    )
+    .collect();
     assert_eq!(readings.len(), 1);
     assert_eq!(readings[0].reading().value, 23.5);
     assert_eq!(readings[0].payload().confidence, 0.95);

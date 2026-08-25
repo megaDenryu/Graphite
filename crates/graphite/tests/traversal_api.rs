@@ -21,8 +21,7 @@ graphite::graph_schema! {
 }
 
 use Traversal::{
-    Friends, FriendsId, Mentor, MentorId, PersonId, ProductId, Purchase, PurchaseId, 関係,
-    関係Id,
+    Friends, FriendsId, Mentor, MentorId, PersonId, ProductId, Purchase, PurchaseId, 関係, 関係Id,
 };
 
 fn person(id: &str) -> PersonId {
@@ -109,7 +108,10 @@ fn 日本語役割名と自己型辺の両役割は曖昧にならない() {
 
     assert_eq!(bob.関係_as_始点().next().unwrap().終点().name, "carol");
     assert_eq!(関係::of_終点(carol).next().unwrap().始点().name, "bob");
-    assert_eq!(bob.mentor_as_superior().next().unwrap().subordinate().name, "alice");
+    assert_eq!(
+        bob.mentor_as_superior().next().unwrap().subordinate().name,
+        "alice"
+    );
 }
 
 #[test]

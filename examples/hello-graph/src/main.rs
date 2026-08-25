@@ -459,7 +459,10 @@ fn personidの作り方とgraphのキーの対応を確認する(g: &Org::Graph)
 fn each_1のofは直接参照を返す(g: &Org::Graph) {
     let alice = Org::Person::get(g, &PersonId("alice".to_string())).unwrap();
     let membership: Org::BelongsToRef<'_> = BelongsTo::of_member(alice);
-    println!("(each 1) BelongsTo::of_member(alice) = {}", membership.team().name);
+    println!(
+        "(each 1) BelongsTo::of_member(alice) = {}",
+        membership.team().name
+    );
 
     let unknown = Org::Person::get(g, &PersonId("dave".to_string()));
     println!("Person::get(&g, &dave) = {unknown:?}");
@@ -472,7 +475,8 @@ fn each_0か1のofはoptionを返す(g: &Org::Graph) {
     if let Some(edge) = boss {
         println!(
             "(each 0..1) Boss::of_subordinate(bob) = {} (就任年: {})",
-            edge.superior().name, edge.payload().since
+            edge.superior().name,
+            edge.payload().since
         );
     }
     let alice = Org::Person::get(g, &PersonId("alice".to_string())).unwrap();
@@ -506,7 +510,8 @@ fn 制約なしのofはvecを返す(g: &Org::Graph) {
     for edge in ReviewedBy::of_reviewee(bob) {
         println!(
             "(制約なし) ReviewedBy::of_reviewee(bob) に {} ({}年度) が含まれる",
-            edge.reviewer().name, edge.payload().year
+            edge.reviewer().name,
+            edge.payload().year
         );
     }
 }

@@ -110,10 +110,9 @@ pub fn summarize(org: &OrgChart::Graph) -> SummaryReport {
     let mut zero_report_managers: Vec<(EmployeeId, String, String)> = Vec::new();
     let mut sum: usize = 0;
     for id in &managers {
-        let count = Boss::of_superior(
-            OrgChart::Employee::get(org, id).expect("列挙した社員は存在する"),
-        )
-        .count();
+        let count =
+            Boss::of_superior(OrgChart::Employee::get(org, id).expect("列挙した社員は存在する"))
+                .count();
         sum += count;
         let emp = OrgChart::Employee::get(org, id).unwrap();
         if count > max {

@@ -97,9 +97,10 @@ mod tests {
         let ids_only: Vec<String> = Choice::ids(&g).map(|id| id.0.clone()).collect();
         assert_eq!(ids_only, expected_ids);
 
-        let between_texts: Vec<String> = Choice::between(speaker, Dialogue::Line::get(&g, &line_id(3)).unwrap())
-            .map(|edge| edge.line().id().0.clone())
-            .collect();
+        let between_texts: Vec<String> =
+            Choice::between(speaker, Dialogue::Line::get(&g, &line_id(3)).unwrap())
+                .map(|edge| edge.line().id().0.clone())
+                .collect();
         assert_eq!(between_texts, vec!["l3".to_string()]);
     }
 

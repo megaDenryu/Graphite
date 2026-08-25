@@ -134,7 +134,8 @@ mod tests {
     #[test]
     fn 制約なしかつ積み荷ありはiteratorで辺を返り挿入順を保持する() {
         let g = build();
-        let sources: Vec<_> = Unconstrained::of_target(RevQuery::NodeB::get(&g, &nb("b1")).unwrap()).collect();
+        let sources: Vec<_> =
+            Unconstrained::of_target(RevQuery::NodeB::get(&g, &nb("b1")).unwrap()).collect();
         assert_eq!(sources.len(), 2);
         // 挿入順 (u1: a2, u2: a1) を保持する — ノード宣言順 (a1, a2, ...) では
         // ない。
@@ -147,11 +148,17 @@ mod tests {
     #[test]
     fn 制約なしかつ積み荷なしはvecでノード値のみ返す() {
         let g = build();
-        let sources: Vec<_> = UnconstrainedNoPayload::of_target(RevQuery::NodeB::get(&g, &nb("b1")).unwrap()).collect();
+        let sources: Vec<_> =
+            UnconstrainedNoPayload::of_target(RevQuery::NodeB::get(&g, &nb("b1")).unwrap())
+                .collect();
         assert_eq!(sources.len(), 1);
         assert_eq!(sources[0].source().name, "a3");
 
-        assert!(UnconstrainedNoPayload::of_target(RevQuery::NodeB::get(&g, &nb("b2")).unwrap()).next().is_none());
+        assert!(
+            UnconstrainedNoPayload::of_target(RevQuery::NodeB::get(&g, &nb("b2")).unwrap())
+                .next()
+                .is_none()
+        );
     }
 
     #[test]
@@ -184,7 +191,8 @@ mod tests {
         // 返す。sources_of(&g, &b1) はその逆で a1 を含む始点側の一覧を返す
         // (自分自身が相手にとってのsources_ofに現れることを確認する)。
         let g = build();
-        let targets: Vec<_> = Unconstrained::of_source(RevQuery::NodeA::get(&g, &na("a1")).unwrap()).collect();
+        let targets: Vec<_> =
+            Unconstrained::of_source(RevQuery::NodeA::get(&g, &na("a1")).unwrap()).collect();
         assert_eq!(targets.len(), 1);
         assert_eq!(targets[0].target().name, "b1");
 

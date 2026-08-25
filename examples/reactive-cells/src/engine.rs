@@ -266,8 +266,8 @@ impl Engine {
     /// `Feeds::of_dependent` は辺参照を返す。起点NodeRefの `id()` から
     /// 現在値ストアのキーを直接得られるため、辺表の全走査は不要である。
     fn feeds_into<'a>(&'a self, cell_id: &'a CellId) -> impl Iterator<Item = f64> + 'a {
-        let cell = Sheet::Cell::get(&self.graph, cell_id)
-            .expect("評価対象セルはグラフに存在するはず");
+        let cell =
+            Sheet::Cell::get(&self.graph, cell_id).expect("評価対象セルはグラフに存在するはず");
         Feeds::of_dependent(cell).map(move |edge| self.value(edge.dependency().id()))
     }
 
@@ -280,8 +280,8 @@ impl Engine {
     /// が `Engine::new` の時点で検査済みなので、ここに到達した時点で
     /// 見つからなければ実装の不整合 (バグ) である。
     fn lhs_value(&self, cell_id: &CellId) -> f64 {
-        let cell = Sheet::Cell::get(&self.graph, cell_id)
-            .expect("評価対象セルはグラフに存在するはず");
+        let cell =
+            Sheet::Cell::get(&self.graph, cell_id).expect("評価対象セルはグラフに存在するはず");
         let operand = Lhs::of_operation(cell)
             .next()
             .expect("validate_formula_wiringで存在を検査済みのはず");
@@ -295,8 +295,8 @@ impl Engine {
     /// [`Self::lhs_value`] と同様、`Engine::new` の検査済み前提が破れて
     /// いる場合のみパニックする (実装の不整合)。
     fn rhs_value(&self, cell_id: &CellId) -> f64 {
-        let cell = Sheet::Cell::get(&self.graph, cell_id)
-            .expect("評価対象セルはグラフに存在するはず");
+        let cell =
+            Sheet::Cell::get(&self.graph, cell_id).expect("評価対象セルはグラフに存在するはず");
         let operand = Rhs::of_operation(cell)
             .next()
             .expect("validate_formula_wiringで存在を検査済みのはず");

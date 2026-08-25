@@ -66,12 +66,7 @@ pub fn validate_unique_edge_kinds(edges: &[EdgeDecl]) -> syn::Result<()> {
 
 /// 役割名と既存の辺APIが同じ名前空間で衝突しないことを検査する。
 pub fn validate_edge_roles(edges: &[EdgeDecl]) -> syn::Result<()> {
-    const RESERVED: &[&str] = &[
-        "endpoints",
-        "id",
-        "record",
-        "payload",
-    ];
+    const RESERVED: &[&str] = &["endpoints", "id", "record", "payload"];
     for edge in edges {
         let roles: Vec<&Ident> = match &edge.shape {
             EdgeShape::Directed { from, to, payload } => [&from.role, &to.role]

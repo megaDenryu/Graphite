@@ -151,7 +151,8 @@ mod tests {
     #[test]
     fn belongs_toのofはeach1なので参照そのものを返す() {
         let g = build_healthy_chart();
-        let d = BelongsTo::of_employee(OrgChart::Employee::get(&g, &emp("田中")).unwrap()).department();
+        let d =
+            BelongsTo::of_employee(OrgChart::Employee::get(&g, &emp("田中")).unwrap()).department();
         assert_eq!(d.name, "営業");
     }
 
@@ -174,11 +175,15 @@ mod tests {
     fn reportsのofは制約なしなのでvecを返す() {
         let g = build_healthy_chart();
 
-        let subordinates: Vec<_> = Reports::of_reporter(OrgChart::Employee::get(&g, &emp("田中")).unwrap()).map(|edge| edge.recipient()).collect();
+        let subordinates: Vec<_> =
+            Reports::of_reporter(OrgChart::Employee::get(&g, &emp("田中")).unwrap())
+                .map(|edge| edge.recipient())
+                .collect();
         assert_eq!(subordinates.len(), 1);
         assert_eq!(subordinates[0].name, "佐藤");
 
-        let none: Vec<_> = Reports::of_reporter(OrgChart::Employee::get(&g, &emp("佐藤")).unwrap()).collect();
+        let none: Vec<_> =
+            Reports::of_reporter(OrgChart::Employee::get(&g, &emp("佐藤")).unwrap()).collect();
         assert!(none.is_empty());
     }
 
@@ -342,9 +347,16 @@ mod tests {
     #[test]
     fn reportsのbetweenはunique_pairなのでoptionを返す() {
         let g = build_healthy_chart();
-        let r = Reports::between(OrgChart::Employee::get(&g, &emp("田中")).unwrap(), OrgChart::Employee::get(&g, &emp("佐藤")).unwrap());
+        let r = Reports::between(
+            OrgChart::Employee::get(&g, &emp("田中")).unwrap(),
+            OrgChart::Employee::get(&g, &emp("佐藤")).unwrap(),
+        );
         assert!(r.is_some());
-        assert!(Reports::between(OrgChart::Employee::get(&g, &emp("佐藤")).unwrap(), OrgChart::Employee::get(&g, &emp("田中")).unwrap()).is_none());
+        assert!(Reports::between(
+            OrgChart::Employee::get(&g, &emp("佐藤")).unwrap(),
+            OrgChart::Employee::get(&g, &emp("田中")).unwrap()
+        )
+        .is_none());
     }
 
     #[test]
@@ -636,7 +648,10 @@ mod tests {
         // `of` は常に始点側 (`leader`) キーで検索する (入次数制約は `of` の
         // 戻り型には影響しない、`docs/edge_endpoints_v4_1.md` §1)。始点側は
         // 無制約なので `Vec` を返す。
-        let departments_led_by_tanaka: Vec<_> = Leads::of_leader(OrgChart::Employee::get(&g, &emp("田中")).unwrap()).map(|edge| edge.department()).collect();
+        let departments_led_by_tanaka: Vec<_> =
+            Leads::of_leader(OrgChart::Employee::get(&g, &emp("田中")).unwrap())
+                .map(|edge| edge.department())
+                .collect();
         assert_eq!(departments_led_by_tanaka.len(), 1);
         assert_eq!(departments_led_by_tanaka[0].name, "営業");
 

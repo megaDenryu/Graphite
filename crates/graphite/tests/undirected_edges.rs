@@ -104,7 +104,9 @@ mod tests {
         );
 
         let bob = Social::Person::get(&g, &person("bob")).unwrap();
-        let friends_of_bob: Vec<_> = Friends::incident(bob).map(|edge| other(edge.endpoints(), bob)).collect();
+        let friends_of_bob: Vec<_> = Friends::incident(bob)
+            .map(|edge| other(edge.endpoints(), bob))
+            .collect();
         assert_eq!(friends_of_bob.len(), 1);
         assert_eq!(friends_of_bob[0].name, "Alice");
     }
@@ -212,7 +214,9 @@ mod tests {
         .expect("無向のwireも構築に成功するはず");
 
         let bob = Social::Person::get(&g, &person("bob")).unwrap();
-        let wire = Wire::incident(bob).next().expect("bob に接続する wire があるはず");
+        let wire = Wire::incident(bob)
+            .next()
+            .expect("bob に接続する wire があるはず");
         assert_eq!(other(wire.endpoints(), bob).name, "Alice");
         assert_eq!(wire.payload().ohm, 5);
 
@@ -344,6 +348,13 @@ mod graph_literal_tests {
         assert_eq!(wire.payload().ohm, 8);
     }
 }
-    fn other<'g>(endpoints: (Social::PersonRef<'g>, Social::PersonRef<'g>), node: Social::PersonRef<'g>) -> Social::PersonRef<'g> {
-        if endpoints.0.id() == node.id() { endpoints.1 } else { endpoints.0 }
+fn other<'g>(
+    endpoints: (Social::PersonRef<'g>, Social::PersonRef<'g>),
+    node: Social::PersonRef<'g>,
+) -> Social::PersonRef<'g> {
+    if endpoints.0.id() == node.id() {
+        endpoints.1
+    } else {
+        endpoints.0
     }
+}

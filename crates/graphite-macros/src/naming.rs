@@ -84,7 +84,11 @@ pub fn construction_stamp_field_ident(span: proc_macro2::Span) -> Ident {
 
 /// ノード型名から非公開ストレージ名を機械的に導出する。
 pub fn node_storage_ident(source: &Ident) -> Ident {
-    format_ident!("__graphite_node_{}", to_snake_case(&source.to_string()), span = source.span())
+    format_ident!(
+        "__graphite_node_{}",
+        to_snake_case(&source.to_string()),
+        span = source.span()
+    )
 }
 
 /// 辺種別名と役割名から `edge_as_role` 形式のNodeRefメソッド名を導出する。
@@ -102,7 +106,11 @@ pub fn role_query_method_ident(role: &Ident) -> Ident {
 
 /// 辺種別名から非公開の対索引フィールド名を導出する。
 pub fn pair_index_field_ident(kind: &Ident) -> Ident {
-    format_ident!("__graphite_{}_by_pair", to_snake_case(&kind.to_string()), span = kind.span())
+    format_ident!(
+        "__graphite_{}_by_pair",
+        to_snake_case(&kind.to_string()),
+        span = kind.span()
+    )
 }
 
 /// `PascalCase` / `camelCase` の識別子を `snake_case` に変換する。
@@ -144,7 +152,10 @@ mod tests {
     fn 探索名を機械的に導出できる() {
         let kind = Ident::new("関係", proc_macro2::Span::call_site());
         let role = Ident::new("始点", proc_macro2::Span::call_site());
-        assert_eq!(traversal_method_ident(&kind, &role).to_string(), "関係_as_始点");
+        assert_eq!(
+            traversal_method_ident(&kind, &role).to_string(),
+            "関係_as_始点"
+        );
         assert_eq!(role_query_method_ident(&role).to_string(), "of_始点");
     }
 

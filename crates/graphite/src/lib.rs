@@ -55,7 +55,11 @@ impl<P> ExactlyOneRoleIndex<P> {
             buckets
                 .into_iter()
                 .map(|mut bucket| {
-                    assert_eq!(bucket.len(), 1, "多重度1の役割索引には各ノードの辺位置が1つ必要です");
+                    assert_eq!(
+                        bucket.len(),
+                        1,
+                        "多重度1の役割索引には各ノードの辺位置が1つ必要です"
+                    );
                     bucket.pop().expect("長さを検査済みです")
                 })
                 .collect(),
@@ -78,7 +82,10 @@ impl<P> OptionalRoleIndex<P> {
             buckets
                 .into_iter()
                 .map(|mut bucket| {
-                    assert!(bucket.len() <= 1, "多重度0..1の役割索引には辺位置を高々1つだけ格納できます");
+                    assert!(
+                        bucket.len() <= 1,
+                        "多重度0..1の役割索引には辺位置を高々1つだけ格納できます"
+                    );
                     bucket.pop()
                 })
                 .collect(),

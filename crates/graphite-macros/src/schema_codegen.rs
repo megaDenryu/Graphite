@@ -2221,7 +2221,9 @@ fn finalize_role_index(
     node_position: &Ident,
 ) -> TokenStream {
     let constructor = match edge.each_for(side).map(|each| each.spec) {
-        Some(spec) if spec.is_exactly_one() => quote! { graphite::ExactlyOneRoleIndex::from_buckets },
+        Some(spec) if spec.is_exactly_one() => {
+            quote! { graphite::ExactlyOneRoleIndex::from_buckets }
+        }
         Some(spec) if spec.is_zero_or_one() => quote! { graphite::OptionalRoleIndex::from_buckets },
         _ => quote! { graphite::MultipleRoleIndex::from_buckets },
     };
@@ -2421,7 +2423,11 @@ fn gen_freeze_body(
             let pair = pair_index_field_ident(e.kind);
             match &e.shape {
                 EdgeInfoShape::Directed { .. } => {
-                    vec![e.index_field_ident.clone(), e.to_index_field_ident.clone(), pair]
+                    vec![
+                        e.index_field_ident.clone(),
+                        e.to_index_field_ident.clone(),
+                        pair,
+                    ]
                 }
                 EdgeInfoShape::Undirected { .. } => vec![e.index_field_ident.clone(), pair],
             }
@@ -2481,8 +2487,12 @@ fn gen_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream 
 
 fn role_index_type(edge: &EdgeInfo<'_>, side: EachSide, edge_position: &Ident) -> TokenStream {
     match edge.each_for(side).map(|each| each.spec) {
-        Some(spec) if spec.is_exactly_one() => quote! { graphite::ExactlyOneRoleIndex<#edge_position> },
-        Some(spec) if spec.is_zero_or_one() => quote! { graphite::OptionalRoleIndex<#edge_position> },
+        Some(spec) if spec.is_exactly_one() => {
+            quote! { graphite::ExactlyOneRoleIndex<#edge_position> }
+        }
+        Some(spec) if spec.is_zero_or_one() => {
+            quote! { graphite::OptionalRoleIndex<#edge_position> }
+        }
         _ => quote! { graphite::MultipleRoleIndex<#edge_position> },
     }
 }
