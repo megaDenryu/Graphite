@@ -119,9 +119,7 @@ impl Engine {
             .cloned()
             .collect();
 
-        let values: HashMap<CellId, f64> = graph.cell_ids()
-            .map(|id| (id.clone(), 0.0))
-            .collect();
+        let values: HashMap<CellId, f64> = graph.cell_ids().map(|id| (id.clone(), 0.0)).collect();
 
         Ok(Self {
             graph,
@@ -209,7 +207,9 @@ impl Engine {
     ///   直接代入は契約違反 — 式を経由せず値を書き換えると依存グラフと
     ///   値ストアが不整合になるため)。
     pub fn set_input(&mut self, id: &CellId, value: f64) -> Vec<RecomputeStep> {
-        let cell = self.graph.cell_by_id(id)
+        let cell = self
+            .graph
+            .cell_by_id(id)
             .unwrap_or_else(|| panic!("set_input: 未知のセルキーです: {id:?}"));
         assert!(
             matches!(cell.formula, Formula::Input),
@@ -233,7 +233,9 @@ impl Engine {
             if cell_id == id || !affected.contains(cell_id) {
                 continue;
             }
-            let formula = self.graph.cell_by_id(cell_id)
+            let formula = self
+                .graph
+                .cell_by_id(cell_id)
                 .expect("topo_orderに含まれるキーはcell_by_id()に必ず存在する")
                 .formula;
             let new_value = self.eval_formula(cell_id, formula);
@@ -266,9 +268,12 @@ impl Engine {
     /// `cell.feeds_as_dependent()` は辺参照を返す。起点NodeRefの `id()` から
     /// 現在値ストアのキーを直接得られるため、辺表の全走査は不要である。
     fn feeds_into<'a>(&'a self, cell_id: &'a CellId) -> impl Iterator<Item = f64> + 'a {
-        let cell =
-            self.graph.cell_by_id(cell_id).expect("評価対象セルはグラフに存在するはず");
-        cell.feeds_as_dependent().map(move |edge| self.value(edge.dependency().id()))
+        let cell = self
+            .graph
+            .cell_by_id(cell_id)
+            .expect("評価対象セルはグラフに存在するはず");
+        cell.feeds_as_dependent()
+            .map(move |edge| self.value(edge.dependency().id()))
     }
 
     /// `cell_id` を終点とする `Lhs` エッジの起点セルの値 (被減数)。
@@ -280,9 +285,12 @@ impl Engine {
     /// が `Engine::new` の時点で検査済みなので、ここに到達した時点で
     /// 見つからなければ実装の不整合 (バグ) である。
     fn lhs_value(&self, cell_id: &CellId) -> f64 {
-        let cell =
-            self.graph.cell_by_id(cell_id).expect("評価対象セルはグラフに存在するはず");
-        let operand = cell.lhs_as_operation()
+        let cell = self
+            .graph
+            .cell_by_id(cell_id)
+            .expect("評価対象セルはグラフに存在するはず");
+        let operand = cell
+            .lhs_as_operation()
             .next()
             .expect("validate_formula_wiringで存在を検査済みのはず");
         self.value(operand.operand().id())
@@ -295,9 +303,12 @@ impl Engine {
     /// [`Self::lhs_value`] と同様、`Engine::new` の検査済み前提が破れて
     /// いる場合のみパニックする (実装の不整合)。
     fn rhs_value(&self, cell_id: &CellId) -> f64 {
-        let cell =
-            self.graph.cell_by_id(cell_id).expect("評価対象セルはグラフに存在するはず");
-        let operand = cell.rhs_as_operation()
+        let cell = self
+            .graph
+            .cell_by_id(cell_id)
+            .expect("評価対象セルはグラフに存在するはず");
+        let operand = cell
+            .rhs_as_operation()
             .next()
             .expect("validate_formula_wiringで存在を検査済みのはず");
         self.value(operand.operand().id())

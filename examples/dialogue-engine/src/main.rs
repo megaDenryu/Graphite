@@ -155,7 +155,8 @@ fn cmd_route(story: &DialogueGraph::Graph, start: &SceneId, rest: &[String]) {
     match report::route_to_ending(story, start, &ending_id) {
         Some(steps) => {
             for (i, (scene_id, label)) in steps.iter().enumerate() {
-                let scene = story.scene_by_id(scene_id)
+                let scene = story
+                    .scene_by_id(scene_id)
                     .expect("route が返すキーは必ず scene_by_id() で引ける");
                 match label {
                     Some(l) => {
@@ -172,9 +173,7 @@ fn cmd_route(story: &DialogueGraph::Graph, start: &SceneId, rest: &[String]) {
 }
 
 fn available_endings(story: &DialogueGraph::Graph) -> String {
-    let mut ids: Vec<String> = story.ending_ids()
-        .map(|id| id.0.clone())
-        .collect();
+    let mut ids: Vec<String> = story.ending_ids().map(|id| id.0.clone()).collect();
     ids.sort();
     ids.join(", ")
 }

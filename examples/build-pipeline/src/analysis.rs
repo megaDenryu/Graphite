@@ -37,9 +37,7 @@ pub fn task_dependency_graph(g: &BuildPipeline::Graph) -> TaskDependencyGraph {
             .push(edge.task().id());
     }
 
-    let nodes: Vec<(TaskId, ())> = g.task_ids()
-        .map(|id| (id.clone(), ()))
-        .collect();
+    let nodes: Vec<(TaskId, ())> = g.task_ids().map(|id| (id.clone(), ())).collect();
 
     // `flat_map` にすると内側のイテレータが `producers_of` への借用を
     // `FnMut` クロージャの呼び出しをまたいで持ち越そうとしてしまい
@@ -200,9 +198,8 @@ pub fn plan(g: &BuildPipeline::Graph) -> Result<Vec<Wave>, CycleError<TaskId>> {
     // 循環があれば代表ノード付きで早期に報告する。
     dep_graph.topological_sort()?;
 
-    let mut remaining: HashMap<TaskId, usize> = g.task_ids()
-        .map(|id| (id.clone(), 0usize))
-        .collect();
+    let mut remaining: HashMap<TaskId, usize> =
+        g.task_ids().map(|id| (id.clone(), 0usize)).collect();
     for id in g.task_ids() {
         for succ in dep_graph.out_neighbors(id) {
             *remaining.get_mut(succ).expect("g.succはtask_ids()由来") += 1;
@@ -285,8 +282,7 @@ pub fn critical_path(g: &BuildPipeline::Graph) -> Result<CriticalPath, CycleErro
     let dep_graph = task_dependency_graph(g);
     let order = dep_graph.topological_sort()?;
 
-    let secs_of =
-        |id: &TaskId| -> u32 { g.task_by_id(id).map(|t| t.secs).unwrap_or(0) };
+    let secs_of = |id: &TaskId| -> u32 { g.task_by_id(id).map(|t| t.secs).unwrap_or(0) };
 
     if order.is_empty() {
         return Ok(CriticalPath {

@@ -68,7 +68,8 @@ use OrgChart::{
 /// schema module 内の私有ストレージと索引へ親 module からはアクセスできない。
 impl OrgChart::Graph {
     pub fn colleagues(&self, id: &EmployeeId) -> Vec<&Employee> {
-        let department_id = self.belongs_to_iter()
+        let department_id = self
+            .belongs_to_iter()
             .find_map(|edge| (edge.employee().id() == id).then(|| edge.department().id().clone()));
         let Some(department_id) = department_id else {
             return Vec::new();
@@ -146,21 +147,18 @@ mod tests {
     #[test]
     fn 正常構築できる() {
         let g = build_healthy_chart();
-        assert_eq!(
-            g.employee_by_id(&emp("田中")).unwrap().name,
-            "田中"
-        );
-        assert_eq!(
-            g.department_by_id(&dept("営業部")).unwrap().name,
-            "営業"
-        );
+        assert_eq!(g.employee_by_id(&emp("田中")).unwrap().name, "田中");
+        assert_eq!(g.department_by_id(&dept("営業部")).unwrap().name, "営業");
     }
 
     #[test]
     fn belongs_toの役割探索はeach1なので参照そのものを返す() {
         let g = build_healthy_chart();
-        let d =
-            g.employee_by_id(&emp("田中")).unwrap().belongs_to_as_employee().department();
+        let d = g
+            .employee_by_id(&emp("田中"))
+            .unwrap()
+            .belongs_to_as_employee()
+            .department();
         assert_eq!(d.name, "営業");
     }
 
@@ -168,14 +166,20 @@ mod tests {
     fn bossの役割探索はeach0か1なのでoptionを返す() {
         let g = build_healthy_chart();
 
-        let b = g.employee_by_id(&emp("佐藤")).unwrap().boss_as_subordinate();
+        let b = g
+            .employee_by_id(&emp("佐藤"))
+            .unwrap()
+            .boss_as_subordinate();
         let edge = b.expect("佐藤の上司は田中のはず");
         let boss_emp = edge.superior();
         let attrs = edge.payload();
         assert_eq!(boss_emp.name, "田中");
         assert_eq!(attrs.since, 2020);
 
-        let no_boss = g.employee_by_id(&emp("田中")).unwrap().boss_as_subordinate();
+        let no_boss = g
+            .employee_by_id(&emp("田中"))
+            .unwrap()
+            .boss_as_subordinate();
         assert!(no_boss.is_none());
     }
 
@@ -183,15 +187,20 @@ mod tests {
     fn reportsの役割探索は制約なしなのでvecを返す() {
         let g = build_healthy_chart();
 
-        let subordinates: Vec<_> =
-            g.employee_by_id(&emp("田中")).unwrap().reports_as_reporter()
-                .map(|edge| edge.recipient())
-                .collect();
+        let subordinates: Vec<_> = g
+            .employee_by_id(&emp("田中"))
+            .unwrap()
+            .reports_as_reporter()
+            .map(|edge| edge.recipient())
+            .collect();
         assert_eq!(subordinates.len(), 1);
         assert_eq!(subordinates[0].name, "佐藤");
 
-        let none: Vec<_> =
-            g.employee_by_id(&emp("佐藤")).unwrap().reports_as_reporter().collect();
+        let none: Vec<_> = g
+            .employee_by_id(&emp("佐藤"))
+            .unwrap()
+            .reports_as_reporter()
+            .collect();
         assert!(none.is_empty());
     }
 
@@ -355,10 +364,16 @@ mod tests {
     #[test]
     fn reportsのbetweenはunique_pairなのでoptionを返す() {
         let g = build_healthy_chart();
-        let r = g.employee_by_id(&emp("田中")).unwrap().reports_between(g.employee_by_id(&emp("佐藤")).unwrap());
+        let r = g
+            .employee_by_id(&emp("田中"))
+            .unwrap()
+            .reports_between(g.employee_by_id(&emp("佐藤")).unwrap());
         assert!(r.is_some());
-        assert!(g.employee_by_id(&emp("佐藤")).unwrap().reports_between(g.employee_by_id(&emp("田中")).unwrap())
-        .is_none());
+        assert!(g
+            .employee_by_id(&emp("佐藤"))
+            .unwrap()
+            .reports_between(g.employee_by_id(&emp("田中")).unwrap())
+            .is_none());
     }
 
     #[test]
@@ -411,10 +426,14 @@ mod tests {
     #[test]
     fn getは辺キーで1本を検索する() {
         let g = build_healthy_chart();
-        let e = g.belongs_to_by_id(&BelongsToId("bt-tanaka".to_string())).expect("存在するはず");
+        let e = g
+            .belongs_to_by_id(&BelongsToId("bt-tanaka".to_string()))
+            .expect("存在するはず");
         assert_eq!(e.employee().id(), &emp("田中"));
         assert_eq!(e.department().id(), &dept("営業部"));
-        assert!(g.belongs_to_by_id(&BelongsToId("存在しない".to_string())).is_none());
+        assert!(g
+            .belongs_to_by_id(&BelongsToId("存在しない".to_string()))
+            .is_none());
     }
 
     #[test]
@@ -650,10 +669,12 @@ mod tests {
         // `of` は常に始点側 (`leader`) キーで検索する (入次数制約は `of` の
         // 戻り型には影響しない、`docs/edge_endpoints_v4_1.md` §1)。始点側は
         // 無制約なので `Vec` を返す。
-        let departments_led_by_tanaka: Vec<_> =
-            g.employee_by_id(&emp("田中")).unwrap().leads_as_leader()
-                .map(|edge| edge.department())
-                .collect();
+        let departments_led_by_tanaka: Vec<_> = g
+            .employee_by_id(&emp("田中"))
+            .unwrap()
+            .leads_as_leader()
+            .map(|edge| edge.department())
+            .collect();
         assert_eq!(departments_led_by_tanaka.len(), 1);
         assert_eq!(departments_led_by_tanaka[0].name, "営業");
 
@@ -715,7 +736,8 @@ mod tests {
         .expect("extendで構築した組織図も要素単位と同様に成功するはず");
 
         let employees_of = |g: &OrgChart::Graph| -> Vec<(String, Employee)> {
-            let mut v: Vec<(String, Employee)> = g.employee_iter()
+            let mut v: Vec<(String, Employee)> = g
+                .employee_iter()
                 .map(|employee| (employee.id().0.clone(), employee.value().clone()))
                 .collect();
             v.sort_by(|a, b| a.0.cmp(&b.0));
@@ -724,7 +746,8 @@ mod tests {
         assert_eq!(employees_of(&g1), employees_of(&g2));
 
         let departments_of = |g: &OrgChart::Graph| -> Vec<(String, Department)> {
-            let mut v: Vec<(String, Department)> = g.department_iter()
+            let mut v: Vec<(String, Department)> = g
+                .department_iter()
                 .map(|department| (department.id().0.clone(), department.value().clone()))
                 .collect();
             v.sort_by(|a, b| a.0.cmp(&b.0));
@@ -826,10 +849,7 @@ mod tests {
         })
         .expect("正常な組織図は構築に成功するはず");
 
-        assert_eq!(
-            g.employee_by_id(&emp("田中")).unwrap().name,
-            "田中"
-        );
+        assert_eq!(g.employee_by_id(&emp("田中")).unwrap().name, "田中");
     }
 
     #[test]

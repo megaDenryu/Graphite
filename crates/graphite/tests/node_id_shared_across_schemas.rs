@@ -135,33 +135,30 @@ fn 組織図で得たキーを承認フローのクエリにそのまま渡せ�
     let flow = approval_flow::build();
 
     // 組織図側で「田中さんのキー」を取得する。
-    let tanaka_id_in_org: &PersonId = org.person_ids()
+    let tanaka_id_in_org: &PersonId = org
+        .person_ids()
         .find(|id| org.person_by_id(id).unwrap().name == "田中")
         .expect("組織図に田中さんがいるはず");
 
     // 両schemaが同じ既存型を明示指定しているため、そのキーを型変換も
     // ラップもせずに承認フロー側のクエリへ渡せる。
-    let tanaka_in_flow = flow.person_by_id(tanaka_id_in_org)
+    let tanaka_in_flow = flow
+        .person_by_id(tanaka_id_in_org)
         .expect("組織図で得たキーがそのまま承認フローでも引けるはず");
     assert_eq!(tanaka_in_flow.name, "田中");
 
     // 逆方向 (承認フロー → 組織図) も同様に成立する。
-    let sato_id_in_flow: &PersonId = flow.person_ids()
-        .find(|id| {
-            flow.person_by_id(id)
-                .unwrap()
-                .name
-                == "佐藤"
-        })
+    let sato_id_in_flow: &PersonId = flow
+        .person_ids()
+        .find(|id| flow.person_by_id(id).unwrap().name == "佐藤")
         .expect("承認フローに佐藤さんがいるはず");
-    let sato_in_org = org.person_by_id(sato_id_in_flow)
+    let sato_in_org = org
+        .person_by_id(sato_id_in_flow)
         .expect("承認フローで得たキーがそのまま組織図でも引けるはず");
     assert_eq!(sato_in_org.name, "佐藤");
 
     // 承認フロー自体の意味論も一応確認しておく: 佐藤 -> 田中 の承認関係。
     let sato_ref = flow.person_by_id(sato_id_in_flow).unwrap();
-    let approves_target = sato_ref.approves_as_approver()
-        .next()
-        .unwrap();
+    let approves_target = sato_ref.approves_as_approver().next().unwrap();
     assert_eq!(approves_target.approved().name, "田中");
 }

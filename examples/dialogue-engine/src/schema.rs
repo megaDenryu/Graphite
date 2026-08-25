@@ -142,8 +142,7 @@ impl DialogueGraph::Graph {
     /// このシーンに選択肢が 0 本、かつ finale も無いか (= デッドエンド)。
     pub fn is_dead_end(&self, id: &SceneId) -> bool {
         self.scene_by_id(id).is_none_or(|scene| {
-            scene.choice_as_scene().next().is_none()
-                && scene.finale_as_scene().is_none()
+            scene.choice_as_scene().next().is_none() && scene.finale_as_scene().is_none()
         })
     }
 }

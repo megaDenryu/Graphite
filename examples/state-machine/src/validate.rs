@@ -44,21 +44,28 @@ fn project(fsm: &OrderFsm::Graph) -> Graph<(), (), OrderStateId> {
 
     let mut edges: Vec<(OrderStateId, OrderStateId)> = Vec::new();
     edges.extend(
-        fsm.submit_iter().map(|edge| (edge.before().id().clone(), edge.after().id().clone())),
-    );
-    edges
-        .extend(fsm.pay_iter().map(|edge| (edge.before().id().clone(), edge.after().id().clone())));
-    edges.extend(
-        fsm.ship_iter().map(|edge| (edge.before().id().clone(), edge.after().id().clone())),
+        fsm.submit_iter()
+            .map(|edge| (edge.before().id().clone(), edge.after().id().clone())),
     );
     edges.extend(
-        fsm.deliver_iter().map(|edge| (edge.before().id().clone(), edge.after().id().clone())),
+        fsm.pay_iter()
+            .map(|edge| (edge.before().id().clone(), edge.after().id().clone())),
     );
     edges.extend(
-        fsm.cancel_iter().map(|edge| (edge.before().id().clone(), edge.after().id().clone())),
+        fsm.ship_iter()
+            .map(|edge| (edge.before().id().clone(), edge.after().id().clone())),
     );
     edges.extend(
-        fsm.refund_iter().map(|edge| (edge.before().id().clone(), edge.after().id().clone())),
+        fsm.deliver_iter()
+            .map(|edge| (edge.before().id().clone(), edge.after().id().clone())),
+    );
+    edges.extend(
+        fsm.cancel_iter()
+            .map(|edge| (edge.before().id().clone(), edge.after().id().clone())),
+    );
+    edges.extend(
+        fsm.refund_iter()
+            .map(|edge| (edge.before().id().clone(), edge.after().id().clone())),
     );
 
     Graph::from_edges(nodes, edges)

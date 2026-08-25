@@ -111,10 +111,7 @@ fn 実行ログは依存先が依存元より先に完了していることを�
     let waves = depgraph::compute_waves(&g).unwrap();
     let report = async_dag::engine::run_waves(&g, &waves);
 
-    assert_eq!(
-        report.records.len(),
-        g.service_ids().count()
-    );
+    assert_eq!(report.records.len(), g.service_ids().count());
 
     for edge in g.depends_on_iter() {
         let dependent = edge.dependent().id();

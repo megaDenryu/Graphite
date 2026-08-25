@@ -93,7 +93,8 @@ mod tests {
         .expect("制約なし辺種別なので必ず構築に成功する");
 
         let speaker = g.speaker_by_id(&speaker_id()).unwrap();
-        let 役割探索のテキスト: Vec<String> = speaker.choice_as_speaker()
+        let 役割探索のテキスト: Vec<String> = speaker
+            .choice_as_speaker()
             .map(|edge| edge.line().text.clone())
             .collect();
         assert_eq!(役割探索のテキスト, expected_texts(N));
@@ -105,10 +106,10 @@ mod tests {
         let ids_only: Vec<String> = g.choice_ids().map(|id| id.0.clone()).collect();
         assert_eq!(ids_only, expected_ids);
 
-        let between_texts: Vec<String> =
-            speaker.choice_between(g.line_by_id(&line_id(3)).unwrap())
-                .map(|edge| edge.line().id().0.clone())
-                .collect();
+        let between_texts: Vec<String> = speaker
+            .choice_between(g.line_by_id(&line_id(3)).unwrap())
+            .map(|edge| edge.line().id().0.clone())
+            .collect();
         assert_eq!(between_texts, vec!["l3".to_string()]);
     }
 

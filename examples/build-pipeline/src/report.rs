@@ -53,9 +53,7 @@ pub fn format_critical_path(cp: &CriticalPath, g: &BuildPipeline::Graph) -> Stri
     let mut out = String::new();
     out.push_str("クリティカルパス (依存関係上、最も時間がかかる経路):\n");
     for (i, task_id) in cp.path.iter().enumerate() {
-        let secs = g.task_by_id(task_id)
-            .map(|t| t.secs)
-            .unwrap_or(0);
+        let secs = g.task_by_id(task_id).map(|t| t.secs).unwrap_or(0);
         if i > 0 {
             out.push_str("  -> ");
         } else {
@@ -96,7 +94,9 @@ pub fn mermaid(g: &BuildPipeline::Graph) -> String {
     let mut task_ids: Vec<_> = g.task_ids().collect();
     task_ids.sort_by(|a, b| a.0.cmp(&b.0));
     for id in &task_ids {
-        let task = g.task_by_id(id).expect("g.task_ids()由来のキーは必ず存在する");
+        let task = g
+            .task_by_id(id)
+            .expect("g.task_ids()由来のキーは必ず存在する");
         out.push_str(&format!(
             "    T_{}[\"{} ({}s)\"]\n",
             sanitize_id(&id.0),
@@ -108,8 +108,9 @@ pub fn mermaid(g: &BuildPipeline::Graph) -> String {
     let mut artifact_ids: Vec<_> = g.artifact_ids().collect();
     artifact_ids.sort_by(|a, b| a.0.cmp(&b.0));
     for id in &artifact_ids {
-        let artifact =
-            g.artifact_by_id(id).expect("g.artifact_ids()由来のキーは必ず存在する");
+        let artifact = g
+            .artifact_by_id(id)
+            .expect("g.artifact_ids()由来のキーは必ず存在する");
         out.push_str(&format!(
             "    A_{}[(\"{}\")]\n",
             sanitize_id(&id.0),
@@ -117,7 +118,8 @@ pub fn mermaid(g: &BuildPipeline::Graph) -> String {
         ));
     }
 
-    let mut produces: Vec<(String, String)> = g.produces_iter()
+    let mut produces: Vec<(String, String)> = g
+        .produces_iter()
         .map(|edge| {
             (
                 sanitize_id(&edge.task().id().0),
@@ -130,7 +132,8 @@ pub fn mermaid(g: &BuildPipeline::Graph) -> String {
         out.push_str(&format!("    T_{t} -->|produces| A_{a}\n"));
     }
 
-    let mut consumes: Vec<(String, String)> = g.consumes_iter()
+    let mut consumes: Vec<(String, String)> = g
+        .consumes_iter()
         .map(|edge| {
             (
                 sanitize_id(&edge.task().id().0),

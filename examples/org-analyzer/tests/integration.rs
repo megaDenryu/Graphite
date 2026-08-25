@@ -74,10 +74,14 @@ fn 同じシードなら生成結果は決定的である() {
     let a = dataset::generate(123, false);
     let b = dataset::generate(123, false);
 
-    let names_a: Vec<String> = a.chart.employee_ids()
+    let names_a: Vec<String> = a
+        .chart
+        .employee_ids()
         .map(|id| a.chart.employee_by_id(id).unwrap().name.clone())
         .collect();
-    let names_b: Vec<String> = b.chart.employee_ids()
+    let names_b: Vec<String> = b
+        .chart
+        .employee_ids()
         .map(|id| b.chart.employee_by_id(id).unwrap().name.clone())
         .collect();
 
@@ -93,16 +97,22 @@ fn 異なるシードなら生成結果が変わる() {
     let a = dataset::generate(1, false);
     let b = dataset::generate(2, false);
 
-    let dept_counts_a: Vec<usize> = a.chart.department_ids()
+    let dept_counts_a: Vec<usize> = a
+        .chart
+        .department_ids()
         .map(|d| {
-            a.chart.belongs_to_iter()
+            a.chart
+                .belongs_to_iter()
                 .filter(|edge| edge.department().id() == d)
                 .count()
         })
         .collect();
-    let dept_counts_b: Vec<usize> = b.chart.department_ids()
+    let dept_counts_b: Vec<usize> = b
+        .chart
+        .department_ids()
         .map(|d| {
-            b.chart.belongs_to_iter()
+            b.chart
+                .belongs_to_iter()
                 .filter(|edge| edge.department().id() == d)
                 .count()
         })
@@ -137,11 +147,17 @@ fn chainはトップ層まで辿ると停止する() {
     let generated = dataset::generate(TEST_SEED, false);
     // grade5 (部長) の誰か1人はトップ層 (boss無し) のはず。トップ層から
     // 辿ると即座にentries=1件・循環無しで停止する。
-    let top_id = generated.chart.employee_ids()
+    let top_id = generated
+        .chart
+        .employee_ids()
         .find(|id| {
             let emp = generated.chart.employee_by_id(id).unwrap();
             emp.grade == 5
-                && generated.chart.employee_by_id(id).unwrap().boss_as_subordinate()
+                && generated
+                    .chart
+                    .employee_by_id(id)
+                    .unwrap()
+                    .boss_as_subordinate()
                     .is_none()
         })
         .cloned();
@@ -165,7 +181,9 @@ fn reorgは廃止部署の全社員を他部署へ再配置する() {
     let generated = dataset::generate(TEST_SEED, false);
     let target = DepartmentId("D01".to_string());
 
-    let before_count = generated.chart.belongs_to_iter()
+    let before_count = generated
+        .chart
+        .belongs_to_iter()
         .filter(|edge| edge.department().id() == &target)
         .count();
     assert!(before_count > 0, "テスト対象部署には元々社員がいるはず");
@@ -183,7 +201,8 @@ fn reorgは廃止部署の全社員を他部署へ再配置する() {
             assert!(new_org.department_by_id(&target).is_none());
             // 再配置された社員は新部署に所属している
             for (emp_id, new_dept) in &report.reassigned {
-                let actual = new_org.employee_by_id(emp_id)
+                let actual = new_org
+                    .employee_by_id(emp_id)
                     .map(|employee| employee.belongs_to_as_employee().department());
                 assert_eq!(
                     actual.map(|d| d.name.clone()),
@@ -223,7 +242,9 @@ fn reorgは存在しない部署キーでnoneを返す() {
 fn reorgでスポンサー元部署を廃止するとviolationになる() {
     let generated = dataset::generate(TEST_SEED, false);
     // sponsors().iter()を持つ部署を1つ探す (スポンサー辺を発している側)。
-    let sponsor_dept = generated.chart.sponsors_iter()
+    let sponsor_dept = generated
+        .chart
+        .sponsors_iter()
         .map(|edge| edge.department().id().clone())
         .next();
 

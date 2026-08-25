@@ -111,7 +111,8 @@ fn 波を並列実行してログを表示する(
     let mut sorted_records = report.records.clone();
     sorted_records.sort_by_key(|r| r.start);
     for record in &sorted_records {
-        let name = g.service_by_id(&record.service)
+        let name = g
+            .service_by_id(&record.service)
             .map(|s| s.value().name.as_str())
             .unwrap_or("?");
         println!(

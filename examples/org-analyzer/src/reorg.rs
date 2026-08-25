@@ -51,7 +51,8 @@ pub enum ReorgOutcome {
 pub fn simulate_reorg(org: &OrgChart::Graph, target: &DepartmentId) -> Option<ReorgReport> {
     let removed_department_name = org.department_by_id(target)?.name.clone();
 
-    let mut remaining_depts: Vec<DepartmentId> = org.department_ids()
+    let mut remaining_depts: Vec<DepartmentId> = org
+        .department_ids()
         .filter(|d| *d != target)
         .cloned()
         .collect();
@@ -63,7 +64,8 @@ pub fn simulate_reorg(org: &OrgChart::Graph, target: &DepartmentId) -> Option<Re
 
     // 元の belongs_to を社員キー順にソートし、対象部署に所属していた社員を
     // 残存部署へラウンドロビンで機械的に再配置する。
-    let mut belongs_to: Vec<(EmployeeId, DepartmentId)> = org.belongs_to_iter()
+    let mut belongs_to: Vec<(EmployeeId, DepartmentId)> = org
+        .belongs_to_iter()
         .map(|edge| (edge.employee().id().clone(), edge.department().id().clone()))
         .collect();
     belongs_to.sort_by(|a, b| a.0.cmp(&b.0));
@@ -83,13 +85,9 @@ pub fn simulate_reorg(org: &OrgChart::Graph, target: &DepartmentId) -> Option<Re
     }
 
     // ノード集合の再構築 (対象部署だけ除く)。
-    let employees: Vec<(EmployeeId, Employee)> = org.employee_ids()
-        .map(|id| {
-            (
-                id.clone(),
-                org.employee_by_id(id).unwrap().value().clone(),
-            )
-        })
+    let employees: Vec<(EmployeeId, Employee)> = org
+        .employee_ids()
+        .map(|id| (id.clone(), org.employee_by_id(id).unwrap().value().clone()))
         .collect();
     let departments: Vec<(DepartmentId, Department)> = remaining_depts
         .iter()
@@ -100,18 +98,15 @@ pub fn simulate_reorg(org: &OrgChart::Graph, target: &DepartmentId) -> Option<Re
             )
         })
         .collect();
-    let projects: Vec<(ProjectId, Project)> = org.project_ids()
-        .map(|id| {
-            (
-                id.clone(),
-                org.project_by_id(id).unwrap().value().clone(),
-            )
-        })
+    let projects: Vec<(ProjectId, Project)> = org
+        .project_ids()
+        .map(|id| (id.clone(), org.project_by_id(id).unwrap().value().clone()))
         .collect();
 
     // boss / assigned は Employee が両端 (or 片端) なので部署削除の影響を
     // 受けない。素通しで良い。
-    let boss_edges: Vec<(EmployeeId, EmployeeId, BossEdge)> = org.boss_iter()
+    let boss_edges: Vec<(EmployeeId, EmployeeId, BossEdge)> = org
+        .boss_iter()
         .map(|edge| {
             (
                 edge.subordinate().id().clone(),
@@ -120,7 +115,8 @@ pub fn simulate_reorg(org: &OrgChart::Graph, target: &DepartmentId) -> Option<Re
             )
         })
         .collect();
-    let assigned_edges: Vec<(EmployeeId, ProjectId, AssignedEdge)> = org.assigned_iter()
+    let assigned_edges: Vec<(EmployeeId, ProjectId, AssignedEdge)> = org
+        .assigned_iter()
         .map(|edge| {
             (
                 edge.employee().id().clone(),
@@ -132,7 +128,8 @@ pub fn simulate_reorg(org: &OrgChart::Graph, target: &DepartmentId) -> Option<Re
 
     // 意図的に「素朴」なまま: sponsors 辺は対象部署の分もフィルタせず
     // そのまま引き継ぐ (モジュール doc コメント参照)。
-    let sponsors_edges: Vec<(DepartmentId, ProjectId)> = org.sponsors_iter()
+    let sponsors_edges: Vec<(DepartmentId, ProjectId)> = org
+        .sponsors_iter()
         .map(|edge| (edge.department().id().clone(), edge.project().id().clone()))
         .collect();
 

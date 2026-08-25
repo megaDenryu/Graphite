@@ -71,7 +71,8 @@ pub fn play(
         }
 
         visited.push(current.clone());
-        let scene = schema.scene_by_id(&current)
+        let scene = schema
+            .scene_by_id(&current)
             .unwrap_or_else(|| panic!("プレイ中に未知のシーンキーに到達しました: {current:?}"));
 
         narrate(&format!("[{}] {}", scene.speaker, scene.text));

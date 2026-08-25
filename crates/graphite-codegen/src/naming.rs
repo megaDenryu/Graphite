@@ -192,7 +192,10 @@ mod tests {
     #[test]
     fn 日本語スキーマでも種別apiのメソッド名を導出できる() {
         let 人物 = Ident::new("人物", proc_macro2::Span::call_site());
-        assert_eq!(kind_api_method_ident(&人物, "by_id").to_string(), "人物_by_id");
+        assert_eq!(
+            kind_api_method_ident(&人物, "by_id").to_string(),
+            "人物_by_id"
+        );
         let 購入 = Ident::new("購入", proc_macro2::Span::call_site());
         assert_eq!(
             kind_api_method_ident(&購入, "try_between").to_string(),

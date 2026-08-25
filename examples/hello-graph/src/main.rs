@@ -450,7 +450,8 @@ fn チームノードを1件読む(g: &Org::Graph) {
 // キー (`alice = ..`) はこの `PersonId("alice".to_string())` と同一視される。
 fn personidの作り方とgraphのキーの対応を確認する(g: &Org::Graph) {
     let hand_built_id: PersonId = PersonId("alice".to_string());
-    let alice: Org::PersonRef<'_> = g.person_by_id(&hand_built_id)
+    let alice: Org::PersonRef<'_> = g
+        .person_by_id(&hand_built_id)
         .expect("graph!のキーaliceがPersonId(\"alice\")と一致するはず");
     println!(
         "(型) PersonId(\"alice\".to_string()) で graph! の alice = {} が引ける",
@@ -498,10 +499,7 @@ fn unique_pairのbetweenはoptionを返す(g: &Org::Graph) {
     let alice = g.person_by_id(&PersonId("alice".to_string())).unwrap();
     let bob = g.person_by_id(&PersonId("bob".to_string())).unwrap();
     let r: Option<Org::ReportsRef<'_>> = alice.reports_between(bob);
-    println!(
-        "(unique pair) alice.reports_between(bob) = {}",
-        r.is_some()
-    );
+    println!("(unique pair) alice.reports_between(bob) = {}", r.is_some());
     let none = bob.reports_between(alice);
     println!(
         "(unique pair) bob.reports_between(alice) = {} (逆向きは無い)",
@@ -1045,7 +1043,8 @@ mod tests {
     fn 制約なしの役割探索はiteratorを返す() {
         let g = build();
         let bob = g.person_by_id(&PersonId("bob".to_string())).unwrap();
-        let mut names: Vec<String> = bob.reviewed_by_as_reviewee()
+        let mut names: Vec<String> = bob
+            .reviewed_by_as_reviewee()
             .map(|edge| edge.reviewer().name.clone())
             .collect();
         names.sort();
@@ -1067,9 +1066,7 @@ mod tests {
     fn person_getで1件読める() {
         let g = build();
         assert_eq!(
-            g.person_by_id(&PersonId("alice".to_string()))
-                .unwrap()
-                .name,
+            g.person_by_id(&PersonId("alice".to_string())).unwrap().name,
             "Alice"
         );
         assert!(g.person_by_id(&PersonId("dave".to_string())).is_none());

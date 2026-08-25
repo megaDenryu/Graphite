@@ -50,21 +50,24 @@ pub fn validate(schema: &DialogueGraph::Graph, start: &SceneId) -> ValidationRep
         .into_iter()
         .cloned()
         .collect();
-    let mut unreachable_scenes: Vec<SceneId> = schema.scene_ids()
+    let mut unreachable_scenes: Vec<SceneId> = schema
+        .scene_ids()
         .filter(|id| !reachable.contains(*id))
         .cloned()
         .collect();
     unreachable_scenes.sort();
 
     // 2. デッドエンド
-    let mut dead_end_scenes: Vec<SceneId> = schema.scene_ids()
+    let mut dead_end_scenes: Vec<SceneId> = schema
+        .scene_ids()
         .filter(|id| schema.is_dead_end(id))
         .cloned()
         .collect();
     dead_end_scenes.sort();
 
     // 3-a. finale を持つシーンの集合 (到達可能性チェックの終点候補)。
-    let finale_scene_ids: HashSet<SceneId> = schema.finale_iter()
+    let finale_scene_ids: HashSet<SceneId> = schema
+        .finale_iter()
         .map(|edge| edge.scene().id().clone())
         .collect();
 
@@ -72,7 +75,8 @@ pub fn validate(schema: &DialogueGraph::Graph, start: &SceneId) -> ValidationRep
     //      について計算する (自分自身が finale シーンなら当然到達できる —
     //      reachable_from は反射的なので finale_scene_ids に自身が含まれて
     //      いれば自動的に true になる)。
-    let can_reach_ending: HashSet<SceneId> = schema.scene_ids()
+    let can_reach_ending: HashSet<SceneId> = schema
+        .scene_ids()
         .filter(|id| {
             scene_graph
                 .reachable_from(id)
@@ -84,11 +88,13 @@ pub fn validate(schema: &DialogueGraph::Graph, start: &SceneId) -> ValidationRep
 
     // 4. 到達不能なエンディング: reachable な finale シーンが指す先だけを
     //    「到達可能エンディング」とし、その補集合を報告する。
-    let reachable_endings: HashSet<EndingId> = schema.finale_iter()
+    let reachable_endings: HashSet<EndingId> = schema
+        .finale_iter()
         .filter(|edge| reachable.contains(edge.scene().id()))
         .map(|edge| edge.ending().id().clone())
         .collect();
-    let mut unreachable_endings: Vec<EndingId> = schema.ending_ids()
+    let mut unreachable_endings: Vec<EndingId> = schema
+        .ending_ids()
         .filter(|id| !reachable_endings.contains(*id))
         .cloned()
         .collect();

@@ -30,9 +30,7 @@ pub type ServiceDependencyGraph = Graph<(), (), ServiceId>;
 /// 図式適合検査が保証する) なので、`Graph::build` が `UnknownEndpoint`
 /// を返すことはない。
 pub fn build_dependency_graph(g: &Orchestration::Graph) -> ServiceDependencyGraph {
-    let nodes: Vec<(ServiceId, ())> = g.service_ids()
-        .map(|id| (id.clone(), ()))
-        .collect();
+    let nodes: Vec<(ServiceId, ())> = g.service_ids().map(|id| (id.clone(), ())).collect();
 
     let mut edges: Vec<(ServiceId, ServiceId, ())> = Vec::new();
     for edge in g.depends_on_iter() {

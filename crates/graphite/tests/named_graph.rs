@@ -61,7 +61,8 @@ fn 名前付きnodeとedgeは内部位置からrefを返す() {
 
     // 公開IDの動的検索は、静的アクセサとは独立した従来経路として残る。
     assert_eq!(
-        graph.person_by_id(&PersonId("public-person-42".into()))
+        graph
+            .person_by_id(&PersonId("public-person-42".into()))
             .unwrap()
             .name,
         "太郎"

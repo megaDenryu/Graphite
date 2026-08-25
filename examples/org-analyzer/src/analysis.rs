@@ -9,9 +9,7 @@ use std::collections::{HashMap, HashSet};
 use graphite::{CycleError, Graph};
 
 use crate::dataset::MANAGER_GRADE_THRESHOLD;
-use crate::schema::{
-    DepartmentId, EmployeeId, OrgChart, ProjectId,
-};
+use crate::schema::{DepartmentId, EmployeeId, OrgChart, ProjectId};
 
 // ============================================================
 // summary
@@ -68,15 +66,20 @@ pub fn summarize(org: &OrgChart::Graph) -> SummaryReport {
     // の役割探索 `department.belongs_to_as_department()` を使うと、
     // 全エッジを走査して HashMap に集計する前段が不要になる (freeze 時に
     // 構築済みの終点索引を `id` ごとに引くだけで済む)。
-    let mut dept_counts: Vec<DeptCount> = org.department_ids()
+    let mut dept_counts: Vec<DeptCount> = org
+        .department_ids()
         .map(|id| DeptCount {
             department: id.clone(),
-            name: org.department_by_id(id)
+            name: org
+                .department_by_id(id)
                 .expect("department_idsから得たキーは必ず存在する")
                 .name
                 .clone(),
-            count: org.department_by_id(id).expect("列挙した部署は存在する").belongs_to_as_department()
-            .count(),
+            count: org
+                .department_by_id(id)
+                .expect("列挙した部署は存在する")
+                .belongs_to_as_department()
+                .count(),
         })
         .collect();
     dept_counts.sort_by(|a, b| a.department.cmp(&b.department));
@@ -84,7 +87,8 @@ pub fn summarize(org: &OrgChart::Graph) -> SummaryReport {
     // grade 分布
     let mut grade_counter: HashMap<u8, usize> = HashMap::new();
     for id in org.employee_ids() {
-        let grade = org.employee_by_id(id)
+        let grade = org
+            .employee_by_id(id)
             .expect("employee_idsから得たキーは必ず存在する")
             .grade;
         *grade_counter.entry(grade).or_insert(0) += 1;
@@ -98,7 +102,8 @@ pub fn summarize(org: &OrgChart::Graph) -> SummaryReport {
     // span of control: 社員 (boss) を終点とする Boss エッジの本数 =
     // 直属部下数。`superior.boss_as_superior()` で直接引く
     // (`direct_reports` を全エッジから事前に集計する HashMap は不要になる)。
-    let managers: Vec<EmployeeId> = org.employee_ids()
+    let managers: Vec<EmployeeId> = org
+        .employee_ids()
         .filter(|id| org.employee_by_id(id).unwrap().grade >= MANAGER_GRADE_THRESHOLD)
         .cloned()
         .collect();
@@ -108,9 +113,11 @@ pub fn summarize(org: &OrgChart::Graph) -> SummaryReport {
     let mut zero_report_managers: Vec<(EmployeeId, String, String)> = Vec::new();
     let mut sum: usize = 0;
     for id in &managers {
-        let count =
-            org.employee_by_id(id).expect("列挙した社員は存在する").boss_as_superior()
-                .count();
+        let count = org
+            .employee_by_id(id)
+            .expect("列挙した社員は存在する")
+            .boss_as_superior()
+            .count();
         sum += count;
         let emp = org.employee_by_id(id).unwrap();
         if count > max {
@@ -129,12 +136,16 @@ pub fn summarize(org: &OrgChart::Graph) -> SummaryReport {
     };
 
     // プロジェクト別アサイン人数。同じ理由で `project.assigned_as_project()` を使う。
-    let mut project_assignments: Vec<ProjectAssignmentCount> = org.project_ids()
+    let mut project_assignments: Vec<ProjectAssignmentCount> = org
+        .project_ids()
         .map(|id| ProjectAssignmentCount {
             project: id.clone(),
             name: org.project_by_id(id).unwrap().name.clone(),
-            count: org.project_by_id(id).expect("列挙したプロジェクトは存在する").assigned_as_project()
-            .count(),
+            count: org
+                .project_by_id(id)
+                .expect("列挙したプロジェクトは存在する")
+                .assigned_as_project()
+                .count(),
         })
         .collect();
     project_assignments.sort_by(|a, b| a.project.cmp(&b.project));
@@ -187,7 +198,8 @@ pub struct ChainResult {
 pub fn management_chain(org: &OrgChart::Graph, start: &EmployeeId) -> Option<ChainResult> {
     let start_employee = org.employee_by_id(start)?;
 
-    let boss_of: HashMap<EmployeeId, (EmployeeId, i32)> = org.boss_iter()
+    let boss_of: HashMap<EmployeeId, (EmployeeId, i32)> = org
+        .boss_iter()
         .map(|edge| {
             (
                 edge.subordinate().id().clone(),
@@ -218,7 +230,8 @@ pub fn management_chain(org: &OrgChart::Graph, start: &EmployeeId) -> Option<Cha
                     cycle_back_to = Some(boss_id.clone());
                     break;
                 }
-                let boss_employee = org.employee_by_id(boss_id)
+                let boss_employee = org
+                    .employee_by_id(boss_id)
                     .expect("Boss::iterの終点は必ずemployeeに存在するはず");
                 entries.push(ChainEntry {
                     depth,
@@ -281,7 +294,8 @@ pub fn detect_anomalies(org: &OrgChart::Graph) -> AnomalyReport {
 ///
 /// 判定には `EmployeeId` の対そのものが要るため、EdgeRefの両端からIDを集める。
 fn detect_mutual_boss_pairs(org: &OrgChart::Graph) -> Vec<(EmployeeId, EmployeeId)> {
-    let all: Vec<(&EmployeeId, &EmployeeId)> = org.boss_iter()
+    let all: Vec<(&EmployeeId, &EmployeeId)> = org
+        .boss_iter()
         .map(|edge| (edge.subordinate().id(), edge.superior().id()))
         .collect();
 
@@ -338,11 +352,13 @@ fn detect_boss_cycles(org: &OrgChart::Graph) -> Vec<Vec<EmployeeId>> {
 
 /// 部署跨ぎの上司関係 (上司と部下が異なる部署)。
 fn detect_cross_department_bosses(org: &OrgChart::Graph) -> Vec<CrossDepartmentBoss> {
-    let dept_of: HashMap<&EmployeeId, &DepartmentId> = org.belongs_to_iter()
+    let dept_of: HashMap<&EmployeeId, &DepartmentId> = org
+        .belongs_to_iter()
         .map(|edge| (edge.employee().id(), edge.department().id()))
         .collect();
 
-    let mut result: Vec<CrossDepartmentBoss> = org.boss_iter()
+    let mut result: Vec<CrossDepartmentBoss> = org
+        .boss_iter()
         .filter_map(|edge| {
             let emp_id = edge.subordinate().id();
             let boss_id = edge.superior().id();
@@ -372,9 +388,12 @@ fn detect_cross_department_bosses(org: &OrgChart::Graph) -> Vec<CrossDepartmentB
 /// をプロジェクトごとに直接引いて空かどうかを見れば
 /// 十分 (freeze 時に構築済みの終点索引を引くだけ)。
 fn detect_unstaffed_projects(org: &OrgChart::Graph) -> Vec<ProjectId> {
-    let mut result: Vec<ProjectId> = org.project_ids()
+    let mut result: Vec<ProjectId> = org
+        .project_ids()
         .filter(|p| {
-            org.project_by_id(p).unwrap().assigned_as_project()
+            org.project_by_id(p)
+                .unwrap()
+                .assigned_as_project()
                 .next()
                 .is_none()
         })
@@ -387,9 +406,12 @@ fn detect_unstaffed_projects(org: &OrgChart::Graph) -> Vec<ProjectId> {
 /// どの部署からもスポンサーされていないプロジェクト。同じ理由で
 /// `project.sponsors_as_project()` を使う。
 fn detect_sponsorless_projects(org: &OrgChart::Graph) -> Vec<ProjectId> {
-    let mut result: Vec<ProjectId> = org.project_ids()
+    let mut result: Vec<ProjectId> = org
+        .project_ids()
         .filter(|p| {
-            org.project_by_id(p).unwrap().sponsors_as_project()
+            org.project_by_id(p)
+                .unwrap()
+                .sponsors_as_project()
                 .next()
                 .is_none()
         })

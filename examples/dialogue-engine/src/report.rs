@@ -22,7 +22,8 @@ pub fn to_mermaid(schema: &DialogueGraph::Graph) -> String {
     let mut scene_ids: Vec<&SceneId> = schema.scene_ids().collect();
     scene_ids.sort();
     for id in &scene_ids {
-        let scene = schema.scene_by_id(id)
+        let scene = schema
+            .scene_by_id(id)
             .expect("scene_ids() が返すキーは必ず scene_by_id() で引ける");
         out.push_str(&format!(
             "    {}[\"{}: {}\"]\n",
@@ -35,7 +36,8 @@ pub fn to_mermaid(schema: &DialogueGraph::Graph) -> String {
     let mut ending_ids: Vec<&EndingId> = schema.ending_ids().collect();
     ending_ids.sort();
     for id in &ending_ids {
-        let ending = schema.ending_by_id(id)
+        let ending = schema
+            .ending_by_id(id)
             .expect("ending_ids() が返すキーは必ず ending_by_id() で引ける");
         out.push_str(&format!(
             "    {}{{{{\"{}\"}}}}\n",
@@ -44,7 +46,8 @@ pub fn to_mermaid(schema: &DialogueGraph::Graph) -> String {
         ));
     }
 
-    let mut choice_edges: Vec<(&SceneId, &SceneId, &str)> = schema.choice_iter()
+    let mut choice_edges: Vec<(&SceneId, &SceneId, &str)> = schema
+        .choice_iter()
         .map(|edge| {
             (
                 edge.scene().id(),
@@ -63,7 +66,8 @@ pub fn to_mermaid(schema: &DialogueGraph::Graph) -> String {
         ));
     }
 
-    let mut finale_edges: Vec<(&SceneId, &EndingId)> = schema.finale_iter()
+    let mut finale_edges: Vec<(&SceneId, &EndingId)> = schema
+        .finale_iter()
         .map(|edge| (edge.scene().id(), edge.ending().id()))
         .collect();
     finale_edges.sort();
@@ -167,7 +171,8 @@ pub fn compute_stats(schema: &DialogueGraph::Graph, start: &SceneId) -> Stats {
         let scene_id = edge.scene().id();
         let ending_id = edge.ending().id();
         if let Some(path) = scene_graph.path(start, scene_id) {
-            let ending = schema.ending_by_id(ending_id)
+            let ending = schema
+                .ending_by_id(ending_id)
                 .expect("finale_iter() が返す EndingId は必ず ending_by_id() で引ける");
             shortest_routes.push((ending.title.clone(), path.len()));
         }

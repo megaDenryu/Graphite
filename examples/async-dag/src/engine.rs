@@ -65,7 +65,8 @@ pub fn run_waves(g: &Orchestration::Graph, waves: &[Vec<ServiceId>]) -> Executio
     for (wave_index, wave) in waves.iter().enumerate() {
         thread::scope(|scope| {
             for id in wave {
-                let service = g.service_by_id(id)
+                let service = g
+                    .service_by_id(id)
                     .unwrap_or_else(|| panic!("波に含まれるキー{id:?}g.はservice_ids()由来のはず"));
                 let records = &records;
                 scope.spawn(move || {

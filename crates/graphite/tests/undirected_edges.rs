@@ -102,7 +102,8 @@ mod tests {
         // alice は f1 の位置0、f2 の位置1 に置かれているが、どちらからでも
         // 相手を辿れる。
         let alice = g.person_by_id(&person("alice")).unwrap();
-        let mut friends_of_alice: Vec<String> = alice.friends_incident()
+        let mut friends_of_alice: Vec<String> = alice
+            .friends_incident()
             .map(|edge| other(edge.endpoints(), alice).name.clone())
             .collect();
         friends_of_alice.sort();
@@ -112,7 +113,8 @@ mod tests {
         );
 
         let bob = g.person_by_id(&person("bob")).unwrap();
-        let friends_of_bob: Vec<_> = bob.friends_incident()
+        let friends_of_bob: Vec<_> = bob
+            .friends_incident()
             .map(|edge| other(edge.endpoints(), bob))
             .collect();
         assert_eq!(friends_of_bob.len(), 1);
@@ -222,7 +224,8 @@ mod tests {
         .expect("無向のwireも構築に成功するはず");
 
         let bob = g.person_by_id(&person("bob")).unwrap();
-        let wire = bob.wire_incident()
+        let wire = bob
+            .wire_incident()
             .next()
             .expect("bob に接続する wire があるはず");
         assert_eq!(other(wire.endpoints(), bob).name, "Alice");
@@ -286,7 +289,8 @@ mod tests {
         .expect("構築に成功するはず");
 
         let alice = g.person_by_id(&person("alice")).unwrap();
-        let names: Vec<String> = alice.friends_incident()
+        let names: Vec<String> = alice
+            .friends_incident()
             .map(|edge| other(edge.endpoints(), alice).name.clone())
             .collect();
         assert_eq!(
