@@ -1,0 +1,11 @@
+[package]
+name = "xtask"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+graphite-codegen = { path = "../crates/graphite-codegen" }
+proc-macro2 = { workspace = true }
+syn = { workspace = true }
+

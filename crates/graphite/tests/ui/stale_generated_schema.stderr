@@ -1,0 +1,10 @@
+error[E0080]: evaluation panicked: Graphite schema の生成ファイルが古いため、リポジトリルートで cargo xtask generate を実行してください
+  --> tests/ui/stale_generated_schema.rs:8:1
+   |
+ 8 | / graphite::graph_schema! {
+ 9 | |     generated = "generated/stale.rs";
+10 | |     schema Stale {
+11 | |         node Person;
+12 | |     }
+13 | | }
+   | |_^ evaluation of `_` failed here

@@ -20,7 +20,15 @@ pub struct Cable {
 }
 
 #[rustfmt::skip]
+#[allow(non_snake_case, dead_code, private_interfaces)]
+#[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
+pub mod Social {
+    include!("generated/undirected_edges_social.rs");
+}
+
+#[rustfmt::skip]
 graphite::graph_schema! {
+    generated = "generated/undirected_edges_social.rs";
     schema Social {
         node Person;
 

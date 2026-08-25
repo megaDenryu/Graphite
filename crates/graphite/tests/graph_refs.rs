@@ -14,7 +14,15 @@ pub struct 取引情報 {
 }
 
 #[rustfmt::skip]
+#[allow(non_snake_case, dead_code, private_interfaces)]
+#[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
+pub mod 世界 {
+    include!("generated/graph_refs_世界.rs");
+}
+
+#[rustfmt::skip]
 graphite::graph_schema! {
+    generated = "generated/graph_refs_世界.rs";
     schema 世界 {
         node 人物;
         node 商品;

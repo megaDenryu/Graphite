@@ -1,20 +1,27 @@
 # ID型の既定生成と明示指定
 
-この文書は、`graph_schema!` がノード・エッジのID型を選ぶ規則と、`graph!` がID値を受け取る規則を定める生存型文書である。
+この文書は、schema宣言がノード・エッジのID型を選ぶ規則と、`graph!` がID値を受け取る規則を定める生存型文書である。ID型の実体は `cargo xtask generate` が生成する通常のRustファイルに置かれる。生成の配線と生成先の規約は `docs/code_generation.md` を参照する。
 
 ## schema宣言
 
-ID型を省略すると、`graph_schema!` は schema module 内に型付き文字列IDを生成する。
+ID型を省略すると、schema module 内に型付き文字列IDを生成する。
 
 ```rust
 graphite::graph_schema! {
+    generated = "generated/org.rs";
     schema Org {
         node Person;
         edge Knows = (knower: Person) -> (known: Person);
     }
 }
 
-// 生成される公開型
+#[allow(non_snake_case, dead_code, private_interfaces)]
+#[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
+pub mod Org {
+    include!("generated/org.rs");
+}
+
+// generated/org.rs に生成される公開型
 // Org::PersonId(pub String)
 // Org::KnowsId(pub String)
 ```
@@ -33,10 +40,17 @@ pub struct EmployeeNumber(pub u64);
 pub struct RelationNumber(pub u64);
 
 graphite::graph_schema! {
+    generated = "generated/org.rs";
     schema Org {
         node Person(id: EmployeeNumber);
         edge Knows(id: RelationNumber) = (knower: Person) -> (known: Person);
     }
+}
+
+#[allow(non_snake_case, dead_code, private_interfaces)]
+#[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
+pub mod Org {
+    include!("generated/org.rs");
 }
 ```
 

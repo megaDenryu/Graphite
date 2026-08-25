@@ -29,7 +29,15 @@ pub struct Widget {
 // にしているのは、マクロ呼び出し直前の doc comment は rustdoc に
 // 展開してもらえず `unused_doc_comments` 警告の原因になるため)。
 #[rustfmt::skip]
+#[allow(non_snake_case, dead_code, private_interfaces)]
+#[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
+pub mod WidgetGraph {
+    include!("generated/orphan_node_no_warning_widget_graph.rs");
+}
+
+#[rustfmt::skip]
 graphite::graph_schema! {
+    generated = "generated/orphan_node_no_warning_widget_graph.rs";
     schema WidgetGraph {
         node Widget;
     }

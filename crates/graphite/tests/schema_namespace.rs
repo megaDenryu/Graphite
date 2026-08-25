@@ -6,7 +6,15 @@ pub struct Person {
 }
 
 #[rustfmt::skip]
+#[allow(non_snake_case, dead_code, private_interfaces)]
+#[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
+pub mod Org {
+    include!("generated/schema_namespace_org.rs");
+}
+
+#[rustfmt::skip]
 graphite::graph_schema! {
+    generated = "generated/schema_namespace_org.rs";
     schema Org {
         node Person;
         edge Relation = (source: Person) -> (target: Person);
@@ -14,7 +22,15 @@ graphite::graph_schema! {
 }
 
 #[rustfmt::skip]
+#[allow(non_snake_case, dead_code, private_interfaces)]
+#[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
+pub mod Social {
+    include!("generated/schema_namespace_social.rs");
+}
+
+#[rustfmt::skip]
 graphite::graph_schema! {
+    generated = "generated/schema_namespace_social.rs";
     schema Social {
         node Person;
         edge Relation = (source: Person) -> (target: Person);
@@ -57,7 +73,15 @@ pub struct 取引情報 {
 }
 
 #[rustfmt::skip]
+#[allow(non_snake_case, dead_code, private_interfaces)]
+#[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
+pub mod 世界 {
+    include!("generated/schema_namespace_世界.rs");
+}
+
+#[rustfmt::skip]
 graphite::graph_schema! {
+    generated = "generated/schema_namespace_世界.rs";
     schema 世界 {
         node 人物;
         edge 関係 = (始点: 人物) -[明細: 取引情報]-> (終点: 人物);

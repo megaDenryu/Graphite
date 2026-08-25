@@ -8,7 +8,20 @@ pub struct Product {
     name: String,
 }
 
+#[allow(non_snake_case, dead_code, private_interfaces)]
+#[allow(
+    clippy::needless_lifetimes,
+    clippy::wrong_self_convention,
+    clippy::clone_on_copy,
+    clippy::write_literal
+)]
+pub mod Traversal {
+    include!("generated/traversal_api_traversal.rs");
+}
+
+#[rustfmt::skip]
 graphite::graph_schema! {
+    generated = "generated/traversal_api_traversal.rs";
     schema Traversal {
         node Person;
         node Product;

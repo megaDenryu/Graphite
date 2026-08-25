@@ -1,7 +1,7 @@
 error[E0599]: no method named `from` found for struct `FriendRef<'graph>` in the current scope
   --> tests/ui/undirected_ref_has_no_direction.rs:22:18
    |
- 3 | / graphite::graph_schema! {
+ 3 | / graphite::__graph_schema_inline_for_test! {
  4 | |     schema Social {
  5 | |         node Person;
  6 | |         edge Friend = Person -- Person;
@@ -27,7 +27,7 @@ help: use associated function syntax instead
 error[E0599]: no method named `to` found for struct `FriendRef<'graph>` in the current scope
   --> tests/ui/undirected_ref_has_no_direction.rs:23:18
    |
- 3 | / graphite::graph_schema! {
+ 3 | / graphite::__graph_schema_inline_for_test! {
  4 | |     schema Social {
  5 | |         node Person;
  6 | |         edge Friend = Person -- Person;

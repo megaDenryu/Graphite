@@ -32,6 +32,7 @@ pub struct ExistingPersonId(pub u64);
 pub struct ExistingRelationId(pub u64);
 
 graphite::graph_schema! {
+    generated = "generated/org.rs";
     schema Org {
         node Person(id: ExistingPersonId);
         node Team;
@@ -43,9 +44,17 @@ graphite::graph_schema! {
         edge Assigned(id: ExistingRelationId) = (person: Person) -[role: Role]-> (project: Project);
     }
 }
+
+#[allow(non_snake_case, dead_code, private_interfaces)]
+#[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
+pub mod Org {
+    include!("generated/org.rs");
+}
 ```
 
-`graph_schema!` は Rust module を生成するため、モジュール直下に書く。
+`graph_schema!` は宣言の検証と生成指紋の照合を行うため、モジュール直下に書く。
+通常のRust module本体は`cargo xtask generate`が`generated/org.rs`へ生成し、
+`include!`で読み込む。詳細は`docs/code_generation.md`を参照する。
 参照する型も関数の外に宣言する。関数本体のローカル型は、関数内に生成された
 module から参照できない。
 
@@ -96,7 +105,7 @@ let lead_ref = g.lead();   // AssignedRef<'_>
 
 ### 3.1 生成される型
 
-`schema Org` は `#[allow(non_snake_case)] pub mod Org` を生成する。以下の
+`schema Org` は`generated/org.rs`に通常のRustコードとしてmodule本文を生成する。以下の
 生成物は `Org::Graph`、`Org::Builder`、`Org::Violation`、`Org::Person`、
 `Org::Boss` のように、この module 内へ配置される。グラフ本体のストレージと
 索引フィールドは module 外へ公開しない。

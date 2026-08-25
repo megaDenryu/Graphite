@@ -26,18 +26,22 @@ Vertex 側では「グラフ指向」を独立言語の構文・型システム�
 Graphite の設計判断のほとんどはここで既に検討済みです。車輪の再発明をする前に
 必ず参照してください。
 
-## 2 クレート構成とその理由
+## 4 クレート構成とその理由
 
 ```
 crates/graphite/         # ランタイムクレート。利用者が唯一 depend するクレート
-crates/graphite-macros/  # proc-macro クレート (graph_schema!, graph! を実装する)
+crates/graphite-codegen/ # schemaの構文解析・検証・指紋・Rust生成を担う純粋層
+crates/graphite-macros/  # コンパイル時検証・指紋照合と graph!/flow! を担うproc-macroクレート
+xtask/                   # 生成元探索と通常Rustファイルの読み書きを担う開発用入口
 ```
 
 `graphite-macros` はなぜ分離が必要か: proc-macro クレート (`proc-macro = true`) は
 手続き型マクロ=コンパイラプラグインの一種であり、生成する側 (マクロ) と生成された
 コードが依存する側 (ランタイム型) を同じクレートに置けない、という **Rust の技術的
 制約**です。選択の余地はありません (serde/serde_derive、diesel、sqlx が全て同じ
-2 分割を採用しているのはこのため)。
+2 分割を採用しているのはこのため)。Graphiteではさらに、マクロとファイル生成が
+同じ処理を使うように`graphite-codegen`へ純粋な生成処理を分離し、ファイルI/Oは
+`xtask`だけへ閉じ込める。
 
 利用者は `graphite` だけに依存し、`graphite-macros` のマクロは `graphite` から
 re-export される想定です (`graphite::graph_schema!` のように使う。serde が
@@ -52,6 +56,10 @@ cargo build 2> build_errors.txt; Get-Content build_errors.txt -Head 50
 
 # テスト
 cargo test
+
+# 追跡可能なschema Rustコードを生成・検査
+cargo xtask generate
+cargo xtask generate --check
 ```
 
 **ビルドコマンドは必ず** `cargo build 2> build_errors.txt; Get-Content build_errors.txt -Head 50`
@@ -63,6 +71,10 @@ cargo test
 - **コミットメッセージは日本語**
 - 新機能・API設計で判断に迷ったら `docs/design_principles.md` (Rust的な精神・
   型のstrictnessを具体化した6原則) を必ず参照する
+- ツールの入口は`cargo xtask`へ集約する。現在のコマンドは
+  `cargo xtask generate [--check]`である
+- 生存型文書は`docs/`へ置き、READMEから参照する。`dev_history_*.md`は
+  過去の経緯を保存するログ型文書として扱う
 
 ## 運用ポリシー (重要): モデル委譲
 

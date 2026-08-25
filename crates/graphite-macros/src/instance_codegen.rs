@@ -83,7 +83,7 @@ use proc_macro2::{Ident, TokenStream};
 use quote::{quote, quote_spanned};
 
 use crate::instance_dsl::{EdgeDirection, GraphInput, GraphItem};
-use crate::naming::{
+use graphite_codegen::naming::{
     graph_type_ident, named_binding_position_ident, named_graph_wrapper_ident,
     named_wrapper_parameter_ident,
 };

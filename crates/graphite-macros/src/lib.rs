@@ -11,14 +11,19 @@
 //! `crates/graphite/tests/orgchart_handwritten.rs` (フェーズ2の手書き
 //! テンプレート) に準拠する。
 //!
+//! schema の公開APIは第7段階で通常の Rust ファイルへ移した。`graph_schema!`
+//! は宣言を検証して生成ファイルの指紋と照合するだけで、型と実装を展開しない
+//! (規約は `docs/code_generation.md`)。構文解析・検証・生成は
+//! `graphite-codegen` にあり、ファイルの読み書きは `xtask` が行う。
+//!
 //! 設計の一次資料:
 //! - `../../../Bullet/docs/rust_graph_extension_sketch.md`
 //! - `../../../Bullet/docs/graph_design_sketches.md`
 //!
 //! ## 宣言単位のエラー回復展開 (項目G4、`docs/ide_support_spec.md` 参照)
 //!
-//! `graph_schema!`/`graph!` は共に「宣言 (schema 側) / 項目 (graph! 側)」
-//! 単位の回復パーサ (`schema_dsl::SchemaInput::parse_recovering` /
+//! schema 側と `graph!` 側は共に「宣言 / 項目」
+//! 単位の回復パーサ (`graphite_codegen` の `SchemaInput::parse_recovering` /
 //! `instance_dsl::GraphInput::parse_recovering`) でボディを読む。ヘッダ
 //! (`schema Name {` / `SchemaName {`) 自体が壊れている場合のみ、従来通り
 //! 全体を諦めて `Err` の `compile_error!` を返す。ボディ内で壊れた宣言/項目
@@ -29,24 +34,23 @@
 //! これにより、DSL 入力の一部が編集途中で構文的に壊れていても、それ以外の
 //! 宣言由来の型・アクセサは生成され続け、利用側コードが一斉に赤くならない
 //! (rust-analyzer の speculative expansion にも効く可能性がある)。
+//!
+//! schema 側の回復展開は、公開APIをファイル生成へ移した後も
+//! `graphite_codegen::expand_inline_for_test` に残っている。`graph_schema!`
+//! は回復展開せず診断を全件返し、回復の挙動は `#[doc(hidden)]` の
+//! `__graph_schema_inline_for_test!` を通じて compile-fail テストが検査する。
 
 mod flow_codegen;
 mod flow_dsl;
 mod instance_codegen;
 mod instance_dsl;
-mod naming;
-mod schema_codegen;
-mod schema_dsl;
-mod schema_validate;
-
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use syn::parse::Parser;
 
-/// ノード種別・エッジ種別 (where 制約付き) から、スキーマ名の Rust module
-/// と、その中の `Graph`・`Builder`・`Violation`・ノードマーカー・エッジ型を
-/// 生成する。
+/// ノード種別・エッジ種別を宣言し、通常の Rust 生成ファイルが宣言と一致する
+/// ことをコンパイル時に検査する。
 ///
 /// ```text
 /// pub struct Employee { pub name: String, pub id: u32 }
@@ -54,6 +58,7 @@ use syn::parse::Parser;
 /// pub struct BossEdge { pub since: i32 }
 ///
 /// graphite::graph_schema! {
+///     generated = "generated/org_chart.rs";
 ///     schema OrgChart {
 ///         node Employee;
 ///         node Department(id: ExistingDepartmentId);
@@ -65,101 +70,45 @@ use syn::parse::Parser;
 /// }
 /// ```
 ///
-/// `Employee`/`Department`/`BossEdge` はいずれもこのマクロの外でユーザーが
-/// 宣言した普通の struct への参照であり、このマクロは値の型そのものを一切
-/// 生成しない。ID型を省略したノードとエッジには schema module 内の型付き
-/// 文字列IDを生成し、`(id: 型パス)` がある宣言では既存型を使う。
-/// 生成物はすべて `OrgChart::Graph`
-/// や `OrgChart::Boss` のように、スキーマ module の名前空間に置かれる。
+/// 宣言と同じファイルには
+/// `pub mod OrgChart { include!("generated/org_chart.rs"); }` を置く
+/// (moduleへ付ける属性は `docs/code_generation.md` が定める2行で固定する)。
+/// 生成ファイルはリポジトリルートで `cargo xtask generate` を実行して更新する。
+/// 公開APIの実装はこの通常の Rust ファイルだけに存在する。
 #[proc_macro]
 pub fn graph_schema(input: TokenStream) -> TokenStream {
-    // G4a: ヘッダ (`schema Name {`) 自体が壊れている場合はここで Err になり、
-    // 従来通り全体を諦めて compile_error! だけを返す (回復しない)。
-    let schema_dsl::SchemaParse {
-        schema,
-        errors: parse_errors,
-    } = match schema_dsl::SchemaInput::parse_recovering.parse(input) {
-        Ok(parsed) => parsed,
-        Err(header_err) => return header_err.to_compile_error().into(),
-    };
-    let has_parse_errors = !parse_errors.is_empty();
-
-    // G4a 二次エラー抑制: パースエラーが1件以上あるときは「エッジ端点が
-    // 未知のノード型」というエラーを出さず、その辺を生成対象から
-    // 除外する (壊れたノード宣言をたまたま参照しているだけの可能性が高い)。
-    // パースエラーが0件のときは現行通り validate_edge_endpoints で検査する。
-    let edges = if has_parse_errors {
-        schema_validate::filter_edges_with_known_endpoints(&schema.nodes, schema.edges)
-    } else {
-        schema.edges
-    };
-
-    // 重複ノード名・重複エッジ種別名診断は現行維持: パース回復の有無に
-    // 関わらず常に検査し、見つかった場合はコード生成を行わない
-    // (従来から「validate 失敗時はコード生成なし」という挙動だった)。
-    let mut validate_errors: Vec<syn::Error> = Vec::new();
-    let node_names_are_unique = match schema_validate::validate_unique_node_names(&schema.nodes) {
-        Ok(()) => true,
-        Err(e) => {
-            validate_errors.push(e);
-            false
+    let schema = match graphite_codegen::parse_tracked_schema(input.into()) {
+        Ok(schema) => schema,
+        Err(errors) => {
+            return errors
+                .iter()
+                .map(syn::Error::to_compile_error)
+                .collect::<proc_macro2::TokenStream>()
+                .into();
         }
     };
-    if !has_parse_errors {
-        if let Err(e) = schema_validate::validate_edge_endpoints(&schema.nodes, &edges) {
-            validate_errors.push(e);
-        }
+    let schema_name = schema.schema_name();
+    let [first, second, third, fourth] = schema.fingerprint();
+    quote! {
+        const _: () = {
+            let actual = #schema_name::__GRAPHITE_SCHEMA_FINGERPRINT;
+            if !(actual[0] == #first
+                && actual[1] == #second
+                && actual[2] == #third
+                && actual[3] == #fourth)
+            {
+                panic!("Graphite schema の生成ファイルが古いため、リポジトリルートで cargo xtask generate を実行してください");
+            }
+        };
     }
-    let edge_names_are_unique = match schema_validate::validate_unique_edge_kinds(&edges) {
-        Ok(()) => true,
-        Err(e) => {
-            validate_errors.push(e);
-            false
-        }
-    };
-    if node_names_are_unique && edge_names_are_unique {
-        if let Err(e) = schema_validate::validate_generated_type_names(
-            &schema.schema_name,
-            &schema.nodes,
-            &edges,
-        ) {
-            validate_errors.push(e);
-        }
-    }
-    if let Err(e) = schema_validate::validate_undirected_same_type(&edges) {
-        validate_errors.push(e);
-    }
-    if let Err(e) = schema_validate::validate_edge_roles(&edges) {
-        validate_errors.push(e);
-    }
-    if let Err(e) = schema_validate::validate_each_reference(&edges) {
-        validate_errors.push(e);
-    }
+    .into()
+}
 
-    let error_tokens: TokenStream2 = parse_errors
-        .iter()
-        .chain(validate_errors.iter())
-        .map(syn::Error::to_compile_error)
-        .collect();
-
-    if !validate_errors.is_empty() {
-        // validate 失敗時はコード生成しない (現行維持)。パース回復で蓄積した
-        // エラーがあればそれも併記する。
-        return error_tokens.into();
-    }
-
-    let schema_for_codegen = schema_dsl::SchemaInput {
-        schema_name: schema.schema_name,
-        nodes: schema.nodes,
-        edges,
-    };
-    let generated = schema_codegen::generate(&schema_for_codegen);
-
-    let combined = quote! {
-        #error_tokens
-        #generated
-    };
-    combined.into()
+/// 回復診断のテスト専用であり、利用者向けではないインラインschema展開。
+#[doc(hidden)]
+#[proc_macro]
+pub fn __graph_schema_inline_for_test(input: TokenStream) -> TokenStream {
+    graphite_codegen::expand_inline_for_test(input.into()).into()
 }
 
 /// `graph_schema!` で宣言したスキーマのインスタンスをリテラルに近い記法で

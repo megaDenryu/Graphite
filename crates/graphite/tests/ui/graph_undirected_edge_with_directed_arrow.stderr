@@ -11,9 +11,9 @@ error[E0277]: the trait bound `Friends: DirectedEdgeLiteral<_, _, _>` is not sat
 help: the trait `DirectedEdgeLiteral<_, _, _>` is not implemented for `Friends`
   --> tests/ui/graph_undirected_edge_with_directed_arrow.rs:4:1
    |
- 4 | / graphite::graph_schema! {
+ 4 | / graphite::__graph_schema_inline_for_test! {
  5 | |     schema Social {
  6 | |         node Person;
  7 | |         edge Friends = Person -- Person;
    | |____________________^
-   = note: this error originates in the macro `graphite::graph_schema` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `graphite::__graph_schema_inline_for_test` (in Nightly builds, run with -Z macro-backtrace for more info)

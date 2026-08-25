@@ -12,7 +12,7 @@ Graphite は `../Bullet/docs/rust_graph_extension_sketch.md` /
 ユーザーキー、可変性 = クロージャスコープ builder→凍結、多重度 = 凍結で一括検査
 等) は、いずれも「グラフ固有の新発明を持ち込まず、既存の Rust の型システムと
 所有権にそのまま乗せる」という一貫した態度の産物であり、Graphite の
-`graph_schema!`/`graph!` はその態度をマクロ生成コードとして実装したものである。
+schema宣言と `graph!` はその態度を生成コードとして実装したものである。
 
 同文書はさらに「既存言語 (Rust) の拡張として作れないか」という問いを検討し、
 TypeScript:JavaScript の類推を分解している。TS が成立した条件の一つは
@@ -86,8 +86,9 @@ Rust 的な型安全性そのものを失う。
 文字列によるフィールド名解決等) をマクロ生成コードに持ち込まない。
 
 **Graphite での具体例**: `crates/graphite/tests/orgchart_handwritten.rs`
-(フェーズ2の手書きテンプレート) と `graph_schema!` の生成コードは、
-`cargo expand` で比較すると同形になるように作られている。違反 enum も
+(フェーズ2の手書きテンプレート) と schema から生成した `generated/*.rs` は、
+比較すると同形になるように作られている (第7段階で公開APIを通常の Rust ファイル
+へ移したため、比較に `cargo expand` は要らない)。違反 enum も
 実行時に文字列でエッジ種別を判別するのではなく、コンパイル時に確定した
 専用バリアント (原則1) として展開されるため、`match` はすべて静的に解決される。
 
@@ -105,8 +106,8 @@ Rust 的な型安全性そのものを失う。
 上手くいき、意味論を持ち込んだ瞬間に牙を剥く」ということであり、Graphite の
 `graphite-macros` にもそのままあてはまる。
 
-**Graphite での具体例**: `graph_schema!`/`graph!` はどちらも「脱糖すれば
-手書きの struct 定義・builder メソッド呼び出し列になる」マクロであり、
+**Graphite での具体例**: schema宣言と `graph!` はどちらも「脱糖すれば
+手書きの struct 定義・builder メソッド呼び出し列になる」DSLであり、
 生成コードは実行時に一切マクロ固有のランタイム (リフレクション用メタデータ、
 動的ディスパッチテーブル等) を必要としない。`graph!` が生成する
 `SchemaName::create_named(|b, permit| { ... })` の呼び出し列と、呼び出し箇所

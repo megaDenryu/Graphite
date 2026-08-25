@@ -261,7 +261,7 @@ impl<'a> EdgeInfo<'a> {
     }
 }
 
-pub fn generate(schema: &SchemaInput) -> TokenStream {
+pub fn generate_module_body(schema: &SchemaInput) -> TokenStream {
     let schema_name = &schema.schema_name;
     let graph_ident = graph_type_ident(schema_name);
     let violation_ident = format_ident!("Violation", span = schema_name.span());
@@ -334,25 +334,32 @@ pub fn generate(schema: &SchemaInput) -> TokenStream {
         .map(|e| gen_edge_query_impl(&graph_ident, e));
 
     quote! {
+        #(#default_id_defs)*
+        #(#internal_position_defs)*
+        #(#named_position_defs)*
+        #(#edge_value_struct_defs)*
+        #(#edge_record_defs)*
+        #violation_def
+        #schema_struct_def
+        #schema_impl
+        #(#edge_reference_defs)*
+        #builder_struct_def
+        #insertable_trait_def
+        #node_trait_and_impls
+        #edge_trait_and_impls
+        #builder_impl
+        #(#edge_query_impls)*
+    }
+}
+
+pub fn generate(schema: &SchemaInput) -> TokenStream {
+    let schema_name = &schema.schema_name;
+    let body = generate_module_body(schema);
+    quote! {
         #[allow(non_snake_case)]
         pub mod #schema_name {
             use super::*;
-
-            #(#default_id_defs)*
-            #(#internal_position_defs)*
-            #(#named_position_defs)*
-            #(#edge_value_struct_defs)*
-            #(#edge_record_defs)*
-            #violation_def
-            #schema_struct_def
-            #schema_impl
-            #(#edge_reference_defs)*
-            #builder_struct_def
-            #insertable_trait_def
-            #node_trait_and_impls
-            #edge_trait_and_impls
-            #builder_impl
-            #(#edge_query_impls)*
+            #body
         }
     }
 }

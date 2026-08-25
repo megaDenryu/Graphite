@@ -22,8 +22,21 @@ mod 修飾済みid {
 
     pub struct Person;
 
-    graphite::graph_schema! {
-        schema QualifiedIds {
+    #[allow(non_snake_case, dead_code, private_interfaces)]
+    #[allow(
+        clippy::needless_lifetimes,
+        clippy::wrong_self_convention,
+        clippy::clone_on_copy,
+        clippy::write_literal
+    )]
+    pub mod QualifiedIds {
+        include!("generated/schema_ids_qualified_ids.rs");
+    }
+
+    #[rustfmt::skip]
+graphite::graph_schema! {
+    generated = "generated/schema_ids_qualified_ids.rs";
+    schema QualifiedIds {
             node Person(id: super::KnowsId);
             edge Knows = (knower: Person) -> (known: Person);
         }
@@ -42,7 +55,20 @@ mod 修飾済みid {
     }
 }
 
+#[allow(non_snake_case, dead_code, private_interfaces)]
+#[allow(
+    clippy::needless_lifetimes,
+    clippy::wrong_self_convention,
+    clippy::clone_on_copy,
+    clippy::write_literal
+)]
+pub mod MixedIds {
+    include!("generated/schema_ids_mixed_ids.rs");
+}
+
+#[rustfmt::skip]
 graphite::graph_schema! {
+    generated = "generated/schema_ids_mixed_ids.rs";
     schema MixedIds {
         node ExternalNode(id: ExternalNodeId);
         node AutomaticNode;

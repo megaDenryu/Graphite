@@ -30,8 +30,16 @@ mod schema {
     }
 
     #[rustfmt::skip]
-    graphite::graph_schema! {
-        schema CrossModuleOrg {
+    #[allow(non_snake_case, dead_code, private_interfaces)]
+#[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
+pub mod CrossModuleOrg {
+    include!("generated/graph_cross_module_cross_module_org.rs");
+}
+
+    #[rustfmt::skip]
+graphite::graph_schema! {
+    generated = "generated/graph_cross_module_cross_module_org.rs";
+    schema CrossModuleOrg {
             node Employee(id: EmployeeId);
             node Department(id: DepartmentId);
 

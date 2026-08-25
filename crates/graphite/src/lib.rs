@@ -227,4 +227,6 @@ where
         .map(|graph| (graph, named_positions))
 }
 
+#[doc(hidden)]
+pub use graphite_macros::__graph_schema_inline_for_test;
 pub use graphite_macros::{flow, graph, graph_schema};

@@ -43,6 +43,7 @@ pub struct Team { pub name: String }
 pub struct BossEdge { pub since: i32 }
 
 graphite::graph_schema! {
+    generated = "generated/main_org.rs";
     schema Org {
         node Person;
         node Team;
@@ -50,6 +51,12 @@ graphite::graph_schema! {
         edge BelongsTo = (member: Person) -> (team: Team) where each member: 1;
         edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1;
     }
+}
+
+#[allow(non_snake_case, dead_code, private_interfaces)]
+#[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
+pub mod Org {
+    include!("generated/main_org.rs");
 }
 
 #[rustfmt::skip]
@@ -70,23 +77,26 @@ let boss_edge = Org::Boss::of_subordinate(bob).unwrap();
 let (boss, attrs) = (boss_edge.superior(), boss_edge.payload());
 ```
 
-`graph_schema!` が何を生成するか (newtype キー・builder・辺の第一級型・
+`cargo xtask generate` が何を生成するか (newtype キー・builder・辺の第一級型・
 違反 enum)、`where` 制約ごとにアクセサが何を返すかは下記「使用例」節で
 詳しく説明します。「`edge Kind = ...` とは何を定義しているのか、何ができて
 何ができないのか」を実際のコンパイルエラー付きで1つずつ確認したい場合は、
 まず `examples/hello-graph` を読んでみてください (下記「実践例」節参照)。
 
-## 2 クレート構成
+## 4 クレート構成
 
 ```
 crates/graphite/         # ランタイムクレート。利用者が唯一 depend するクレート
-crates/graphite-macros/  # proc-macro クレート (graph_schema!, graph! を実装する)
+crates/graphite-codegen/ # schemaの構文解析・検証・指紋・Rust生成を担う純粋層
+crates/graphite-macros/  # コンパイル時検証・指紋照合とgraph!/flow!を担うproc-macroクレート
+xtask/                   # 生成ファイルの探索・読み書き・差分検査を担う開発用入口
 ```
 
 proc-macro クレート (`proc-macro = true`) は手続き型マクロ = コンパイラ
 プラグインの一種であり、生成する側 (マクロ) と生成されたコードが依存する側
-(ランタイム型) を同じクレートに置けないという Rust の技術的制約のため 2 分割
-している (serde/serde_derive、diesel、sqlx と同型)。利用者は `graphite` だけ
+(ランタイム型) を同じクレートに置けないという Rust の技術的制約のため分離
+している。マクロと通常ファイルの生成一致は`graphite-codegen`の共有で保証し、
+ファイルI/Oは`xtask`だけが行います。利用者は `graphite` だけ
 に依存し、マクロは `graphite::graph_schema!` / `graphite::graph!` /
 `graphite::flow!` として re-export されたものを使います。
 
@@ -122,6 +132,7 @@ pub struct BossEdge {
 }
 
 graphite::graph_schema! {
+    generated = "generated/org_chart.rs";
     schema OrgChart {
         node Employee;
         node Department;
@@ -131,11 +142,18 @@ graphite::graph_schema! {
         edge Reports = (reporter: Employee) -> (recipient: Employee) where unique pair;
     }
 }
+
+#[allow(non_snake_case, dead_code, private_interfaces)]
+#[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
+pub mod OrgChart {
+    include!("generated/org_chart.rs");
+}
 ```
 
-`graph_schema!` は Rust module を生成するため、モジュール直下に書いてください。
+`graph_schema!` は宣言を検証し、通常のRust生成ファイルとの指紋一致を検査するため、モジュール直下に書いてください。
 参照するノード値型・明示ID型・積み荷型も関数の外に宣言します。関数本体の
-ローカル型は、関数内に生成された module から参照できません。
+ローカル型は生成moduleから参照できません。生成ファイルは、リポジトリルートで`cargo xtask generate`を実行して更新します。
+生成規約の正本は`docs/code_generation.md`です。
 
 ノード宣言 `node 型名;` は「マクロの外で宣言済みの struct をこのノード種別
 として使う」という参照です。フィールド列を書く場所はありません (値の型は
@@ -176,13 +194,13 @@ Graphite の基盤は**多重グラフ**です。辺は独立した要素であ�
 `Employee` と同一視できず照合が破綻します。モジュール修飾したい場合は
 `use` でこのスコープに名前を持ち込んでください。
 
-これで `OrgChart` という Rust module が生成されます。その中にノード・辺種別ごとの
+これで`generated/org_chart.rs`に`OrgChart`のRust module本文が生成されます。その中にノード・辺種別ごとの
 newtype キー (`OrgChart::EmployeeId`/`DepartmentId`/`BelongsToId`/`BossId`/`ReportsId`) と構築用の辺値
 (`OrgChart::Boss`)・完成済みグラフを読む参照型 (`OrgChart::EmployeeRef<'graph>`/`BossRef<'graph>`)・グラフ本体 (`OrgChart::Graph`、フィールドは非公開)・
 builder (`OrgChart::Builder`)・違反 enum (`OrgChart::Violation`) が置かれます。
 ノード値の型 (`Employee`/
 `Department`) とエッジ属性型 (`BossEdge`) はいずれもユーザーが宣言した型を
-そのまま参照するだけで、`graph_schema!` は一切生成しません。ID型は宣言ごとに選べます。`node Employee;` と `edge Boss = ...;` は schema module 内に型付き文字列IDを生成し、`node Employee(id: EmployeeNumber);` と `edge Boss(id: RelationNumber) = ...;` は既存型を使います。
+そのまま参照するだけで、Graphiteは値型を生成しません。ID型は宣言ごとに選べます。`node Employee;` と `edge Boss = ...;` は schema module 内に型付き文字列IDを生成し、`node Employee(id: EmployeeNumber);` と `edge Boss(id: RelationNumber) = ...;` は既存型を使います。
 
 構築用の辺値は**マクロの外でも普通に構築できます**
 (`OrgChart::Boss { subordinate, superior, appointment }`)。端点と積み荷の
@@ -245,7 +263,7 @@ rustc の型推論に任せます。実行時のリフレクション・型判�
 ノードの**読み取り**API は、スキーマ module 内のノードマーカー
 (`OrgChart::Employee::get`/`ids`/`iter`、後述) が提供します。エッジの書き込み側も対称に `{Schema}::{Schema}Edge` トレイト経由の総称
 `b.add(key, value)` を持ちますが、エッジの**読み取り**API (`of`/`get`/
-`between`/`iter`/`ids`/`len`) はマクロが生成した `Kind` 型そのものへの
+`between`/`iter`/`ids`/`len`) は通常のRustファイルに生成した `Kind` 型そのものへの
 固有 impl (`impl Boss { .. }`) として提供されるため、トレイトの `use` は
 不要です (詳しくは次節「アクセサ・アルゴリズムを使う」参照)。
 
@@ -261,8 +279,8 @@ rustc の型推論に任せます。実行時のリフレクション・型判�
 スプライス構文 (`..式`) が使えます (次節「2. `graph!` でインスタンスを組み立てる」
 参照)。
 
-**ノード値の型・エッジ属性型に対する trait 要求**: `graph_schema!`/`graph!`
-の生成コードはこれらの値を builder → 凍結 → アクセサへ move/参照で受け
+**ノード値の型・エッジ属性型に対する trait 要求**: Graphiteの生成コードは
+これらの値を builder → 凍結 → アクセサへ move/参照で受け
 渡すだけなので、`Clone`/`Debug`/`PartialEq` などの trait を一切要求しません
 (自動生成IDには `Debug + Clone + PartialEq + Eq + Hash` を導出します。明示ID型に必要なのは `Clone + Eq + Hash` だけで、`Debug`・`Display`・文字列変換は要求しません。これはID型の話でノード値の型とは別物です。詳細は後述「キーの設計」参照)。
 テストでの比較・表示のために `#[derive(Debug, Clone, PartialEq)]` を
@@ -279,7 +297,7 @@ schema ごとの生成物は `OrgChart`/`ApprovalFlow` のように別々の Rus
 **動的アクセスは型名前空間の関連関数**: v3 にあった
 「ラベルごとに1個のビューを返すメソッド `{label}()`」という間接層は v4 では
 無くなりました。辺の読み取りAPI (`of_<role>`/`get`/`between`/`iter`/`ids`/`len`) は
-`graph_schema!` が生成した辺型への固有 impl として直接生えます
+通常のRustファイルに生成した辺型への固有 impl として直接生えます
 (`OrgChart::Boss::of_subordinate(person)` のように呼びます)。ノードの読み取り API
 (`get`/`get_mut`/`ids`/`iter`) はスキーマ module 内のノードマーカーに生えます
 (`OrgChart::Employee::get(&g, ..)`)。ユーザー struct (`Employee` 等) への
@@ -368,7 +386,7 @@ let g = graphite::graph!(OrgChart {
 `graph!` は `OrgChart::Graph::create_named(|__graphite_b, __graphite_permit| { ... })` と
 呼び出し箇所ローカルの名前付きラッパーへ脱糖します。スキーマの中身
 (どのエッジが存在するか等) は一切知りません。値の型も一切パースせず、
-`graph_schema!` が生成した総称 `insert_named`/`add_named` メソッド
+schema生成コードの総称 `insert_named`/`add_named` メソッド
 (下記) へユーザーの式トークンをそのまま渡すだけです (型推論は rustc に
 任せる。ゼロコスト志向、原則5)。
 
@@ -407,7 +425,7 @@ OrgChart::Graph::create_named(|__graphite_b, __graphite_permit| {
 ラッパーのstruct/implを
 読みやすさのため省略しています。
 
-`insert`/`add` は `graph_schema!` が各スキーマごとに生成する総称メソッドで、
+`insert`/`add` はschema生成コードが各スキーマごとに作る総称メソッドで、
 `{Schema}::{Schema}Node`/`{Schema}::{Schema}Edge` トレイト境界を介して値の型から正しい内部
 ストレージへ振り分けます (詳細は上記「1. `graph_schema!` でスキーマを
 宣言する」節)。`N::Id`/`E::Id` の型は rustc がこの trait 境界から単相化して
@@ -504,7 +522,7 @@ let result: Result<OrgChart::Graph, Vec<OrgChart::Violation>> = OrgChart::Graph:
 `topological_levels`/`critical_path_by`/`reachable_from`/`path`/
 `out_neighbors`/`in_neighbors`/`map_nodes`/`map_nodes_with_key`/
 `filter_nodes`/`filter_nodes_with_key`/`from_edges` などのアルゴリズム・
-ヘルパーはこちらに実装されており、`graph_schema!` が生成する図式グラフ
+ヘルパーはこちらに実装されており、通常のRustファイルに生成する図式グラフ
 とは独立した別 API です (`crates/graphite/src/graph.rs`)。
 
 - `in_neighbors(&K) -> Vec<&K>` — `out_neighbors` と対称 (入ってくる辺の
@@ -526,8 +544,7 @@ let result: Result<OrgChart::Graph, Vec<OrgChart::Violation>> = OrgChart::Graph:
   (フェーズ5で `node: K` (代表ノード1つ) から拡張した破壊的変更)。
 
 導出エッジ (保存されない計算結果、例: 同じ部署の同僚一覧) は `graph_schema!`
-の DSLには含めていません。`graph_schema!` は schema の中身全体を
-`pub mod OrgChart { .. }` へ生成するため、私有ストレージ・索引へは
+の DSLには含めていません。生成した`OrgChart` moduleの私有ストレージ・索引へは
 親moduleからアクセスできませんが、`{Type}::get`/`{Kind}::iter` のような
 公開クエリAPIだけで導出クエリを書けます。
 `impl OrgChart::Graph { pub fn colleagues(&self, ...) -> Vec<&Employee> { ... } }`
@@ -536,7 +553,7 @@ let result: Result<OrgChart::Graph, Vec<OrgChart::Violation>> = OrgChart::Graph:
 
 ### 4. 制約なしエッジの順序保証
 
-ノード表・辺表 (`graph_schema!` が生成する `graphite::KeyedTable<K, V>`) は
+ノード表・辺表 (schema生成コードが使う `graphite::KeyedTable<K, V>`) は
 内部的に `Vec<(K, V)>` (挿入順の本体) + `HashMap<K, usize>` (キー→添字の
 索引) という構成になっており、**`ids()`/`iter()` は挿入順 (`insert` を
 呼んだ順) を保持することを仕様として保証します**
@@ -661,13 +678,14 @@ BelongsTo(..)` の `tanaka_dept` の部分) は**ノード・エッジの種別�
 ```powershell
 cargo build 2> build_errors.txt; Get-Content build_errors.txt -Head 50
 cargo test
+cargo xtask generate --check
 ```
 
 - `crates/graphite/tests/orgchart_handwritten.rs` — フェーズ2で手書きした
-  `OrgChart` (`graph_schema!` が生成すべきコードの目標形。テンプレートとして
+  `OrgChart` (schema生成コードの目標形。テンプレートとして
   残置)
 - `crates/graphite/tests/orgchart_macro.rs` — `graph_schema!` で `OrgChart`
-  を宣言し直した同等テスト、および `graph!` リテラルのテスト
+  を宣言し、通常のRust生成ファイルを読み込む同等テスト、および `graph!` リテラルのテスト
 - `crates/graphite/tests/compile_fail.rs` + `tests/ui/*.rs` —
   [`trybuild`](https://docs.rs/trybuild) によるコンパイルエラー系テスト
   (未宣言ノード型を端点に指定 / 不正な `where each` 指定 / `graph!` で
@@ -685,7 +703,7 @@ cargo test
 
 ## 手書きテンプレートとの差異
 
-`graph_schema!` は基本的に `orgchart_handwritten.rs` と同じ形を生成します
+schema生成コードは基本的に`orgchart_handwritten.rs`と同じ形を生成します
 が、「任意のノード型・エッジ型の組み合わせ」に一般化する過程でいくつか
 手書き版と異なる設計判断をしています。
 

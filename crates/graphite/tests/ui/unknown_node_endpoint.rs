@@ -6,7 +6,7 @@
 // 型解決までは進まない)。
 
 fn main() {
-    graphite::graph_schema! {
+    graphite::__graph_schema_inline_for_test! {
         schema Broken {
             node Employee;
 

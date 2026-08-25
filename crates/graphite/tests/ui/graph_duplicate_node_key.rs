@@ -24,7 +24,7 @@ pub struct Department {
     pub name: String,
 }
 
-graphite::graph_schema! {
+graphite::__graph_schema_inline_for_test! {
     schema OrgChart {
         node Employee;
         node Department;

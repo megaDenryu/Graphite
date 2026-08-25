@@ -25,7 +25,15 @@ pub struct Line {
 }
 
 #[rustfmt::skip]
+#[allow(non_snake_case, dead_code, private_interfaces)]
+#[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
+pub mod Dialogue {
+    include!("generated/keyed_table_insertion_order_dialogue.rs");
+}
+
+#[rustfmt::skip]
 graphite::graph_schema! {
+    generated = "generated/keyed_table_insertion_order_dialogue.rs";
     schema Dialogue {
         node Speaker;
         node Line;

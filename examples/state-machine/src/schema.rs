@@ -50,7 +50,15 @@ pub struct RefundEdge {
 }
 
 #[rustfmt::skip]
+#[allow(non_snake_case, dead_code, private_interfaces)]
+#[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
+pub mod OrderFsm {
+    include!("generated/schema_order_fsm.rs");
+}
+
+#[rustfmt::skip]
 graphite::graph_schema! {
+    generated = "generated/schema_order_fsm.rs";
     schema OrderFsm {
         node OrderState;
 

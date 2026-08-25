@@ -13,7 +13,15 @@ pub struct Person {
 }
 
 #[rustfmt::skip]
+#[allow(non_snake_case, dead_code, private_interfaces)]
+#[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
+pub mod SpliceDemo {
+    include!("generated/graph_splice_splice_demo.rs");
+}
+
+#[rustfmt::skip]
 graphite::graph_schema! {
+    generated = "generated/graph_splice_splice_demo.rs";
     schema SpliceDemo {
         node Person;
 

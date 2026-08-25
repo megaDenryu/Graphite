@@ -100,7 +100,15 @@ pub struct ReviewEdge {
 // 書けません (対称性を型にも及ぼす設計、詳細は §3 の実行例参照)。
 
 #[rustfmt::skip]
+#[allow(non_snake_case, dead_code, private_interfaces)]
+#[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
+pub mod Org {
+    include!("generated/main_org.rs");
+}
+
+#[rustfmt::skip]
 graphite::graph_schema! {
+    generated = "generated/main_org.rs";
     schema Org {
         node Person;
         node Team;

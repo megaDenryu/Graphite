@@ -12,7 +12,20 @@ struct TransactionInfo {
     amount: u64,
 }
 
+#[allow(non_snake_case, dead_code, private_interfaces)]
+#[allow(
+    clippy::needless_lifetimes,
+    clippy::wrong_self_convention,
+    clippy::clone_on_copy,
+    clippy::write_literal
+)]
+pub mod Commerce {
+    include!("generated/edge_roles_commerce.rs");
+}
+
+#[rustfmt::skip]
 graphite::graph_schema! {
+    generated = "generated/edge_roles_commerce.rs";
     schema Commerce {
         node Person;
         node Product;
@@ -22,7 +35,20 @@ graphite::graph_schema! {
     }
 }
 
+#[allow(non_snake_case, dead_code, private_interfaces)]
+#[allow(
+    clippy::needless_lifetimes,
+    clippy::wrong_self_convention,
+    clippy::clone_on_copy,
+    clippy::write_literal
+)]
+pub mod JapaneseRoles {
+    include!("generated/edge_roles_japanese_roles.rs");
+}
+
+#[rustfmt::skip]
 graphite::graph_schema! {
+    generated = "generated/edge_roles_japanese_roles.rs";
     schema JapaneseRoles {
         node Person;
         node Item;

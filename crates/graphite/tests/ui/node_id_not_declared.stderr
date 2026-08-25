@@ -18,11 +18,11 @@ help: you might be missing a type parameter
 error[E0282]: type annotations needed
   --> tests/ui/node_id_not_declared.rs:8:1
    |
- 8 | / graphite::graph_schema! {
+ 8 | / graphite::__graph_schema_inline_for_test! {
  9 | |     schema Missing {
 10 | |         node Person(id: MissingPersonId);
 11 | |     }
 12 | | }
    | |_^ cannot infer type
    |
-   = note: this error originates in the macro `graphite::graph_schema` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `graphite::__graph_schema_inline_for_test` (in Nightly builds, run with -Z macro-backtrace for more info)

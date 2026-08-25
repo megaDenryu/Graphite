@@ -234,6 +234,20 @@ tokenを起点にrename・参照検索できる。日本語識別子も文字列
 rust-analyzer 実機での F12 (go to definition) / rename 再計測は今回実施して
 いない。
 
+## 1.15 通常のRust生成ファイルへの定義移動 (2026-08-26)
+
+schemaに由来する公開APIは、手続き型マクロの展開だけに置かず、`src/generated/`
+または`tests/generated/`の通常のRustファイルへ生成する。利用コードから
+NodeRef・EdgeRefのメソッド、役割getter、探索API、`get`・`iter`・`ids`・
+`between`・`try_between`へ定義移動した場合、生成ファイル内の実装へ着地する
+ことを受理条件とする。生成ファイル先頭の「生成元」から元DSLのファイルと行へ
+戻れる。
+
+`graph!`が作る名前付きラッパーは呼び出し箇所ローカル型なので通常ファイルへ
+事前生成しない。`graph.alice()`の定義情報は左辺`alice`のspanへ結び付ける。
+この例外はschemaに由来する公開APIへ広げない。生成と陳腐化検出の規約は
+`docs/code_generation.md`を参照する。
+
 ## 2. 仕様項目
 
 ### G1: `graph!` ノードキーの let 束縛化 (実装対象)
@@ -346,6 +360,16 @@ speculative expansion する方式) も、仮識別子入りの入力をパー�
 - 検証: 実装後に (a) trybuild でエラー併記+部分生成のスナップショット、
   (b) vscode-lsp-mcp で「schema の 1 宣言を壊した状態でも利用側の別宣言由来の
   診断が出ない」ことを実測する。
+
+**2026-08-26 更新 (schemaの回復展開の担当替え)**: schemaの公開APIを通常の
+Rustファイルへ生成する形へ移したため、`graph_schema!` 自体はコードを展開せず、
+検証と指紋照合だけを行う。壊れた宣言があれば蓄積した診断を全件返し、生成は
+行わない。編集途中でも利用側が生き続ける性質は、生成ファイルが前回の生成内容の
+まま残ることで保たれる。宣言単位の回復展開そのものは
+`graphite_codegen::expand_inline_for_test` に残り、`#[doc(hidden)]` の
+`graphite::__graph_schema_inline_for_test!` を通じて `tests/ui/*.rs` の
+compile-fail テストが検査する。この入口は診断テスト専用であり、利用者向けの
+経路ではない。`graph!` 側の回復は変更していない。
 
 ### G5: `graph!` ↔ `graph_schema!` 同一ファイル制約 (v3 で解消済み)
 

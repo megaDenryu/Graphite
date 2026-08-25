@@ -16,7 +16,7 @@ help: the trait `ExplicitDefaultId` is not implemented for `Person`
 help: this trait has no implementations, consider adding one
   --> tests/ui/explicit_id_requires_at.rs:6:1
    |
- 6 | / graphite::graph_schema! {
+ 6 | / graphite::__graph_schema_inline_for_test! {
  7 | |     schema Explicit {
    | |___________________^
 note: required by a bound in `Explicit::Builder::insert_named`
@@ -24,4 +24,4 @@ note: required by a bound in `Explicit::Builder::insert_named`
    |
  7 |     schema Explicit {
    |            ^^^^^^^^ required by this bound in `Builder::insert_named`
-   = note: this error originates in the macro `graphite::graph_schema` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `graphite::__graph_schema_inline_for_test` (in Nightly builds, run with -Z macro-backtrace for more info)

@@ -59,7 +59,15 @@ pub struct AssignedEdge {
 }
 
 #[rustfmt::skip]
+#[allow(non_snake_case, dead_code, private_interfaces)]
+#[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
+pub mod OrgChart {
+    include!("generated/schema_org_chart.rs");
+}
+
+#[rustfmt::skip]
 graphite::graph_schema! {
+    generated = "generated/schema_org_chart.rs";
     schema OrgChart {
         node Employee;
         node Department;

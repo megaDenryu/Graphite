@@ -31,8 +31,16 @@ mod org_chart {
     }
 
     #[rustfmt::skip]
-    graphite::graph_schema! {
-        schema OrgChart {
+    #[allow(non_snake_case, dead_code, private_interfaces)]
+#[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
+pub mod OrgChart {
+    include!("generated/node_id_shared_across_schemas_org_chart.rs");
+}
+
+    #[rustfmt::skip]
+graphite::graph_schema! {
+    generated = "generated/node_id_shared_across_schemas_org_chart.rs";
+    schema OrgChart {
             node Person(id: PersonId);
             node Department(id: DepartmentId);
 
@@ -80,8 +88,16 @@ mod approval_flow {
     use super::{Person, PersonId};
 
     #[rustfmt::skip]
-    graphite::graph_schema! {
-        schema ApprovalFlow {
+    #[allow(non_snake_case, dead_code, private_interfaces)]
+#[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
+pub mod ApprovalFlow {
+    include!("generated/node_id_shared_across_schemas_approval_flow.rs");
+}
+
+    #[rustfmt::skip]
+graphite::graph_schema! {
+    generated = "generated/node_id_shared_across_schemas_approval_flow.rs";
+    schema ApprovalFlow {
             node Person(id: PersonId);
 
             edge Approves = (approver: Person) -> (approved: Person);

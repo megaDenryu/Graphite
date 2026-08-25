@@ -1,0 +1,929 @@
+// このファイルは Graphite が生成したため手編集しないこと。
+// 生成元: crates/graphite/tests/keyed_table_insertion_order.rs:35
+// 再生成: リポジトリルートで `cargo xtask generate` を実行する。
+
+#[allow(unused_imports)]
+use super::*;
+#[doc(hidden)]
+pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
+    9088289943822195796u64, 9237966871188043349u64, 1486501201801209562u64,
+    7646608545235055806u64,
+];
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct SpeakerId(pub String);
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct LineId(pub String);
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ChoiceId(pub String);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct __SpeakerInternalPosition(usize);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct __LineInternalPosition(usize);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct __ChoiceInternalPosition(usize);
+#[doc(hidden)]
+#[derive(Clone, Copy)]
+pub struct __SpeakerNamedPosition(__SpeakerInternalPosition, u64);
+#[doc(hidden)]
+#[derive(Clone, Copy)]
+pub struct __LineNamedPosition(__LineInternalPosition, u64);
+#[doc(hidden)]
+#[derive(Clone, Copy)]
+pub struct __ChoiceNamedPosition(__ChoiceInternalPosition, u64);
+#[derive(Clone, PartialEq)]
+pub struct Choice {
+    pub speaker: SpeakerId,
+    pub line: LineId,
+}
+impl Choice {
+    pub fn new(from: SpeakerId, to: LineId) -> Self {
+        Self { speaker: from, line: to }
+    }
+}
+impl graphite::DirectedEdgeLiteral<SpeakerId, LineId, ()> for Choice {
+    fn from_graph_literal(from: SpeakerId, to: LineId, (): ()) -> Self {
+        Self::new(from, to)
+    }
+}
+impl std::fmt::Debug for Choice {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple(stringify!(Choice)).field(&self.speaker).field(&self.line).finish()
+    }
+}
+#[allow(dead_code)]
+struct __ChoiceRecord {
+    speaker: __SpeakerInternalPosition,
+    line: __LineInternalPosition,
+}
+#[allow(clippy::enum_variant_names)]
+#[derive(Clone, PartialEq, Eq)]
+pub enum Violation {
+    DuplicateSpeaker(SpeakerId),
+    DuplicateLine(LineId),
+    /// このエッジ種別のキーが重複している。
+    ChoiceDuplicateKey(ChoiceId),
+    /// このエッジが未知の始点キーを参照している。
+    ChoiceUnknownSource { edge: ChoiceId, source: SpeakerId },
+    /// このエッジが未知の終点キーを参照している。
+    ChoiceUnknownTarget { edge: ChoiceId, target: LineId },
+}
+impl std::fmt::Display for Violation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Violation::DuplicateSpeaker(id) => {
+                write!(f, "{}のキーが重複しています: {:?}", "Speaker", id)
+            }
+            Violation::DuplicateLine(id) => {
+                write!(f, "{}のキーが重複しています: {:?}", "Line", id)
+            }
+            Violation::ChoiceDuplicateKey(id) => {
+                write!(f, "{}のキーが重複しています: {:?}", "Choice", id)
+            }
+            Violation::ChoiceUnknownSource { edge, source } => {
+                write!(
+                    f,
+                    "未知のキーが参照されています (辺 `{}` {:?} の始点, {}): {:?}",
+                    "Choice", edge, "Speaker", source
+                )
+            }
+            Violation::ChoiceUnknownTarget { edge, target } => {
+                write!(
+                    f,
+                    "未知のキーが参照されています (辺 `{}` {:?} の終点, {}): {:?}",
+                    "Choice", edge, "Line", target
+                )
+            }
+        }
+    }
+}
+impl std::fmt::Debug for Violation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self, f)
+    }
+}
+impl std::error::Error for Violation {}
+/// 凍結済み図式グラフ。構築後の構造は不変で、ノード値と辺の積み荷だけを
+/// `&mut Graph` を要求する種別APIから更新できる。
+pub struct Graph {
+    __graphite_node_speaker: graphite::KeyedTable<SpeakerId, super::Speaker>,
+    __graphite_node_line: graphite::KeyedTable<LineId, super::Line>,
+    choice: graphite::KeyedTable<ChoiceId, __ChoiceRecord>,
+    /// 位置0キー -> このキーから (有向: 出る / 無向: 接続する) エッジ
+    /// キーの一覧 (凍結時に構築)。
+    choice_from_index: graphite::MultipleRoleIndex<__ChoiceInternalPosition>,
+    /// 位置1キー (終点) -> そこへ入るエッジキーの一覧 (凍結時に
+    /// 構築。終点役割クエリの索引、`docs/reverse_query.md`)。
+    choice_to_index: graphite::MultipleRoleIndex<__ChoiceInternalPosition>,
+    __graphite_choice_by_pair: std::collections::HashMap<
+        (__SpeakerInternalPosition, __LineInternalPosition),
+        Vec<__ChoiceInternalPosition>,
+    >,
+    /// この `Graph` を生んだ構築の構築印。凍結元の `Builder` から
+    /// そのまま引き継ぐ。名前付き位置がこの `Graph` の生成元と一致
+    /// するかを `NamedGraphElement::bind` が照合するのに使う。
+    __graphite_construction_stamp: u64,
+}
+impl Graph {
+    /// builder をクロージャに貸し出し、戻ったら凍結して図式適合
+    /// (端点種別・where 制約) を一括検査する。最初の1件の違反で
+    /// `Err` になる (複数の違反を全件見たい場合は
+    /// [`Self::create_collecting`] を使う)。
+    pub fn create<F>(f: F) -> Result<Self, Violation>
+    where
+        F: for<'b> FnOnce(&'b mut Builder),
+    {
+        let mut builder = Builder::new();
+        f(&mut builder);
+        builder.freeze()
+    }
+    /// `graph!` が名前付き要素の名前付き位置を凍結境界の外へ運ぶための
+    /// 内部構築経路。`Graph` の凍結に成功した場合だけ名前付き位置を返す。
+    /// [`graphite::build_named_graph`] へ薄く委譲するだけで、
+    /// [`graphite::NamedInsertPermit`] はそちらでしか作らない
+    /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
+    #[doc(hidden)]
+    pub fn create_named<F, N>(f: F) -> Result<(Self, N), Violation>
+    where
+        F: for<'b> FnOnce(&'b mut Builder, &'b graphite::NamedInsertPermit) -> N,
+    {
+        graphite::build_named_graph(Builder::new, f)
+    }
+    /// [`Self::create`] の複数違反収集版。builder をクロージャに
+    /// 貸し出し、戻ったら凍結して図式適合を検査する点は `create` と
+    /// 同じだが、最初の1件で打ち切らず全違反を `Vec` に集めて返す。
+    pub fn create_collecting<F>(f: F) -> Result<Self, Vec<Violation>>
+    where
+        F: for<'b> FnOnce(&'b mut Builder),
+    {
+        let mut builder = Builder::new();
+        f(&mut builder);
+        builder.freeze_collecting()
+    }
+}
+/// 完成済みグラフ上の有向辺個体。
+#[derive(Clone, Copy)]
+pub struct ChoiceRef<'graph> {
+    graph: &'graph Graph,
+    internal_position: __ChoiceInternalPosition,
+}
+impl<'graph> ChoiceRef<'graph> {
+    fn record(self) -> &'graph __ChoiceRecord {
+        self.graph
+            .choice
+            .get_at(self.internal_position.0)
+            .expect(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            )
+            .1
+    }
+    pub fn id(self) -> &'graph ChoiceId {
+        self.graph
+            .choice
+            .get_at(self.internal_position.0)
+            .expect(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            )
+            .0
+    }
+    pub fn speaker(self) -> SpeakerRef<'graph> {
+        SpeakerRef {
+            graph: self.graph,
+            internal_position: __SpeakerInternalPosition(self.record().speaker.0),
+        }
+    }
+    pub fn line(self) -> LineRef<'graph> {
+        LineRef {
+            graph: self.graph,
+            internal_position: __LineInternalPosition(self.record().line.0),
+        }
+    }
+    pub fn from(self) -> SpeakerRef<'graph> {
+        self.speaker()
+    }
+    pub fn to(self) -> LineRef<'graph> {
+        self.line()
+    }
+    pub fn from_id(self) -> &'graph SpeakerId {
+        self.from().id()
+    }
+    pub fn to_id(self) -> &'graph LineId {
+        self.to().id()
+    }
+}
+impl<'graph> std::fmt::Debug for ChoiceRef<'graph> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct(stringify!(ChoiceRef))
+            .field("id", &self.id())
+            .finish_non_exhaustive()
+    }
+}
+/// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+pub struct Builder {
+    __graphite_node_speaker: Vec<(SpeakerId, super::Speaker)>,
+    __graphite_node_line: Vec<(LineId, super::Line)>,
+    choice: Vec<(ChoiceId, Choice)>,
+    /// この構築を識別する構築印。`Builder::new()` が発行し、この
+    /// builder から挿入する全ての名前付き位置と、凍結成功後の
+    /// `Graph` へ同じ値を刻む。
+    __graphite_construction_stamp: u64,
+}
+/// 型付き ID を受け取るノード・エッジ共通の挿入トレイト。
+///
+/// `insert_named_with_id` は [`graphite::NamedInsertPermit`] を要求する
+/// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
+/// `insert_with_id` (許可証不要、名前付き位置を返さない) は独立した
+/// 実装を持ち、`insert_named_with_id` を経由しない
+/// (`create` のクロージャから許可証なしで呼べる必要があるため)。
+pub trait DialogueInsertable: Sized {
+    type Id;
+    #[doc(hidden)]
+    type NamedPosition;
+    #[doc(hidden)]
+    fn insert_named_with_id(
+        self,
+        b: &mut Builder,
+        id: Self::Id,
+        permit: &graphite::NamedInsertPermit,
+    ) -> (Self::Id, Self::NamedPosition);
+    fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
+}
+/// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
+/// 実装する。明示ID型には実装せず、文字列変換を要求しない。
+pub trait DialogueDefaultId: DialogueInsertable {
+    #[doc(hidden)]
+    fn insert_named_with_binding(
+        self,
+        b: &mut Builder,
+        binding: String,
+        permit: &graphite::NamedInsertPermit,
+    ) -> (Self::Id, Self::NamedPosition);
+    fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
+}
+/// ノード挿入で使うトレイト境界。読み取りは同じ module 内の
+/// ノードマーカー型が提供する。利用者がこのトレイトのメソッドを
+/// 直接呼ぶことは想定しない。
+pub trait DialogueNode: DialogueInsertable {}
+impl DialogueInsertable for super::Speaker {
+    type Id = SpeakerId;
+    type NamedPosition = __SpeakerNamedPosition;
+    fn insert_named_with_id(
+        self,
+        b: &mut Builder,
+        id: Self::Id,
+        _permit: &graphite::NamedInsertPermit,
+    ) -> (Self::Id, Self::NamedPosition) {
+        let named_position = __SpeakerNamedPosition(
+            __SpeakerInternalPosition(b.__graphite_node_speaker.len()),
+            b.__graphite_construction_stamp,
+        );
+        let returned_id = id.clone();
+        b.speaker(id, self);
+        (returned_id, named_position)
+    }
+    fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id {
+        let returned_id = id.clone();
+        b.speaker(id, self);
+        returned_id
+    }
+}
+impl graphite::NamedGraphElement<Graph> for __SpeakerNamedPosition {
+    type Reference<'graph> = SpeakerRef<'graph>;
+    fn bind<'graph>(&self, graph: &'graph Graph) -> Self::Reference<'graph> {
+        if graph.__graphite_construction_stamp != self.1 {
+            panic!(
+                "名前付き位置が生成元と異なる Graph へ bind されました。名前付き位置は生成元の graph! が返したグラフでのみ有効です"
+            );
+        }
+        SpeakerRef {
+            graph,
+            internal_position: self.0,
+        }
+    }
+}
+impl DialogueDefaultId for super::Speaker {
+    fn insert_named_with_binding(
+        self,
+        b: &mut Builder,
+        binding: String,
+        permit: &graphite::NamedInsertPermit,
+    ) -> (Self::Id, Self::NamedPosition) {
+        DialogueInsertable::insert_named_with_id(self, b, SpeakerId(binding), permit)
+    }
+    fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id {
+        DialogueInsertable::insert_with_id(self, b, SpeakerId(binding))
+    }
+}
+impl DialogueNode for super::Speaker {}
+/// このスキーマにおける `#ty` ノード種別の問い合わせ名前空間。
+pub struct Speaker;
+/// 完成済みグラフ上の `#ty` ノード個体。
+#[derive(Clone, Copy)]
+pub struct SpeakerRef<'graph> {
+    graph: &'graph Graph,
+    internal_position: __SpeakerInternalPosition,
+}
+impl<'graph> SpeakerRef<'graph> {
+    pub fn id(self) -> &'graph SpeakerId {
+        self.graph
+            .__graphite_node_speaker
+            .get_at(self.internal_position.0)
+            .expect(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            )
+            .0
+    }
+    pub fn value(self) -> &'graph super::Speaker {
+        self.graph
+            .__graphite_node_speaker
+            .get_at(self.internal_position.0)
+            .expect(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            )
+            .1
+    }
+    pub fn choice_as_speaker(self) -> impl Iterator<Item = ChoiceRef<'graph>> + 'graph {
+        Choice::of_speaker(self)
+    }
+}
+impl<'graph> std::ops::Deref for SpeakerRef<'graph> {
+    type Target = super::Speaker;
+    fn deref(&self) -> &Self::Target {
+        self.graph
+            .__graphite_node_speaker
+            .get_at(self.internal_position.0)
+            .expect(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            )
+            .1
+    }
+}
+impl<'graph> std::fmt::Debug for SpeakerRef<'graph> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct(stringify!(SpeakerRef))
+            .field("id", &self.id())
+            .finish_non_exhaustive()
+    }
+}
+impl Speaker {
+    pub fn get<'graph>(g: &'graph Graph, id: &SpeakerId) -> Option<SpeakerRef<'graph>> {
+        let internal_position = __SpeakerInternalPosition(
+            g.__graphite_node_speaker.position(id)?,
+        );
+        Some(SpeakerRef {
+            graph: g,
+            internal_position,
+        })
+    }
+    pub fn get_mut<'graph>(
+        g: &'graph mut Graph,
+        id: &SpeakerId,
+    ) -> Option<&'graph mut super::Speaker> {
+        g.__graphite_node_speaker.get_mut(id)
+    }
+    pub fn ids<'graph>(g: &'graph Graph) -> impl Iterator<Item = &'graph SpeakerId> {
+        g.__graphite_node_speaker.ids()
+    }
+    pub fn iter<'graph>(
+        g: &'graph Graph,
+    ) -> impl Iterator<Item = SpeakerRef<'graph>> + 'graph {
+        g.__graphite_node_speaker
+            .positions()
+            .map(move |position| SpeakerRef {
+                graph: g,
+                internal_position: __SpeakerInternalPosition(position),
+            })
+    }
+}
+impl DialogueInsertable for super::Line {
+    type Id = LineId;
+    type NamedPosition = __LineNamedPosition;
+    fn insert_named_with_id(
+        self,
+        b: &mut Builder,
+        id: Self::Id,
+        _permit: &graphite::NamedInsertPermit,
+    ) -> (Self::Id, Self::NamedPosition) {
+        let named_position = __LineNamedPosition(
+            __LineInternalPosition(b.__graphite_node_line.len()),
+            b.__graphite_construction_stamp,
+        );
+        let returned_id = id.clone();
+        b.line(id, self);
+        (returned_id, named_position)
+    }
+    fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id {
+        let returned_id = id.clone();
+        b.line(id, self);
+        returned_id
+    }
+}
+impl graphite::NamedGraphElement<Graph> for __LineNamedPosition {
+    type Reference<'graph> = LineRef<'graph>;
+    fn bind<'graph>(&self, graph: &'graph Graph) -> Self::Reference<'graph> {
+        if graph.__graphite_construction_stamp != self.1 {
+            panic!(
+                "名前付き位置が生成元と異なる Graph へ bind されました。名前付き位置は生成元の graph! が返したグラフでのみ有効です"
+            );
+        }
+        LineRef {
+            graph,
+            internal_position: self.0,
+        }
+    }
+}
+impl DialogueDefaultId for super::Line {
+    fn insert_named_with_binding(
+        self,
+        b: &mut Builder,
+        binding: String,
+        permit: &graphite::NamedInsertPermit,
+    ) -> (Self::Id, Self::NamedPosition) {
+        DialogueInsertable::insert_named_with_id(self, b, LineId(binding), permit)
+    }
+    fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id {
+        DialogueInsertable::insert_with_id(self, b, LineId(binding))
+    }
+}
+impl DialogueNode for super::Line {}
+/// このスキーマにおける `#ty` ノード種別の問い合わせ名前空間。
+pub struct Line;
+/// 完成済みグラフ上の `#ty` ノード個体。
+#[derive(Clone, Copy)]
+pub struct LineRef<'graph> {
+    graph: &'graph Graph,
+    internal_position: __LineInternalPosition,
+}
+impl<'graph> LineRef<'graph> {
+    pub fn id(self) -> &'graph LineId {
+        self.graph
+            .__graphite_node_line
+            .get_at(self.internal_position.0)
+            .expect(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            )
+            .0
+    }
+    pub fn value(self) -> &'graph super::Line {
+        self.graph
+            .__graphite_node_line
+            .get_at(self.internal_position.0)
+            .expect(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            )
+            .1
+    }
+    pub fn choice_as_line(self) -> impl Iterator<Item = ChoiceRef<'graph>> + 'graph {
+        Choice::of_line(self)
+    }
+}
+impl<'graph> std::ops::Deref for LineRef<'graph> {
+    type Target = super::Line;
+    fn deref(&self) -> &Self::Target {
+        self.graph
+            .__graphite_node_line
+            .get_at(self.internal_position.0)
+            .expect(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            )
+            .1
+    }
+}
+impl<'graph> std::fmt::Debug for LineRef<'graph> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct(stringify!(LineRef))
+            .field("id", &self.id())
+            .finish_non_exhaustive()
+    }
+}
+impl Line {
+    pub fn get<'graph>(g: &'graph Graph, id: &LineId) -> Option<LineRef<'graph>> {
+        let internal_position = __LineInternalPosition(
+            g.__graphite_node_line.position(id)?,
+        );
+        Some(LineRef {
+            graph: g,
+            internal_position,
+        })
+    }
+    pub fn get_mut<'graph>(
+        g: &'graph mut Graph,
+        id: &LineId,
+    ) -> Option<&'graph mut super::Line> {
+        g.__graphite_node_line.get_mut(id)
+    }
+    pub fn ids<'graph>(g: &'graph Graph) -> impl Iterator<Item = &'graph LineId> {
+        g.__graphite_node_line.ids()
+    }
+    pub fn iter<'graph>(
+        g: &'graph Graph,
+    ) -> impl Iterator<Item = LineRef<'graph>> + 'graph {
+        g.__graphite_node_line
+            .positions()
+            .map(move |position| LineRef {
+                graph: g,
+                internal_position: __LineInternalPosition(position),
+            })
+    }
+}
+/// `graph!` の `add` 経由のエッジ挿入で使うトレイト境界。利用者が
+/// この trait のメソッドを直接呼ぶことは想定しない
+/// (`{Builder}::add` 経由で使う)。
+pub trait DialogueEdge: DialogueInsertable {}
+impl DialogueInsertable for Choice {
+    type Id = ChoiceId;
+    type NamedPosition = __ChoiceNamedPosition;
+    fn insert_named_with_id(
+        self,
+        b: &mut Builder,
+        id: Self::Id,
+        _permit: &graphite::NamedInsertPermit,
+    ) -> (Self::Id, Self::NamedPosition) {
+        let named_position = __ChoiceNamedPosition(
+            __ChoiceInternalPosition(b.choice.len()),
+            b.__graphite_construction_stamp,
+        );
+        let returned_id = id.clone();
+        b.choice(id, self);
+        (returned_id, named_position)
+    }
+    fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id {
+        let returned_id = id.clone();
+        b.choice(id, self);
+        returned_id
+    }
+}
+impl graphite::NamedGraphElement<Graph> for __ChoiceNamedPosition {
+    type Reference<'graph> = ChoiceRef<'graph>;
+    fn bind<'graph>(&self, graph: &'graph Graph) -> Self::Reference<'graph> {
+        if graph.__graphite_construction_stamp != self.1 {
+            panic!(
+                "名前付き位置が生成元と異なる Graph へ bind されました。名前付き位置は生成元の graph! が返したグラフでのみ有効です"
+            );
+        }
+        ChoiceRef {
+            graph,
+            internal_position: self.0,
+        }
+    }
+}
+impl DialogueDefaultId for Choice {
+    fn insert_named_with_binding(
+        self,
+        b: &mut Builder,
+        binding: String,
+        permit: &graphite::NamedInsertPermit,
+    ) -> (Self::Id, Self::NamedPosition) {
+        DialogueInsertable::insert_named_with_id(self, b, ChoiceId(binding), permit)
+    }
+    fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id {
+        DialogueInsertable::insert_with_id(self, b, ChoiceId(binding))
+    }
+}
+impl DialogueEdge for Choice {}
+impl Builder {
+    fn new() -> Self {
+        Self {
+            __graphite_node_speaker: Vec::new(),
+            __graphite_node_line: Vec::new(),
+            choice: Vec::new(),
+            __graphite_construction_stamp: graphite::次の構築印を発行する(),
+        }
+    }
+    pub fn speaker(&mut self, id: SpeakerId, value: super::Speaker) -> &mut Self {
+        self.__graphite_node_speaker.push((id, value));
+        self
+    }
+    pub fn line(&mut self, id: LineId, value: super::Line) -> &mut Self {
+        self.__graphite_node_line.push((id, value));
+        self
+    }
+    pub fn choice(&mut self, id: ChoiceId, value: Choice) -> &mut Self {
+        self.choice.push((id, value));
+        self
+    }
+    /// 型名付きメソッド (`b.#accessor(id, value)` 群、上記
+    /// `#node_methods`) の総称版。`graph!` の左辺名付きノード項は
+    /// 下記 `insert_named` (名前付き位置を返す許可証付き経路) へ
+    /// 脱糖するため、このメソッド自体は `graph!` を経由しない。
+    /// 値の型を手書きで組み立てる場合 (プログラム的構築など) に使う。
+    /// `graph!` はノード項の値の型を一切パースしないため
+    /// (`key = 式` の「式」でしかない)、値の型 (`N: #node_trait_ident`)
+    /// から正しい内部ストレージへの振り分けを rustc の型推論任せに
+    /// する点は `insert_named` と共通。命名判断・trait の形は
+    /// `gen_node_trait_and_impls` のドキュメントコメント参照。
+    pub fn insert<N>(&mut self, key: impl Into<String>, value: N) -> N::Id
+    where
+        N: DialogueNode + DialogueDefaultId,
+    {
+        value.insert_with_binding(self, key.into())
+    }
+    /// `graph!` が公開IDと名前付き要素の内部位置を同時に受け取る経路。
+    /// [`graphite::NamedInsertPermit`] を要求する
+    /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
+    #[doc(hidden)]
+    pub fn insert_named<N>(
+        &mut self,
+        key: impl Into<String>,
+        value: N,
+        permit: &graphite::NamedInsertPermit,
+    ) -> (N::Id, N::NamedPosition)
+    where
+        N: DialogueNode + DialogueDefaultId,
+    {
+        value.insert_named_with_binding(self, key.into(), permit)
+    }
+    /// 明示ID型と既定ID型のどちらにも使える、ID指定ノード挿入の
+    /// 手書き用API。`graph!` の `@ ID式` を書いたノード項は下記
+    /// `insert_named_with_id` へ脱糖するため、このメソッド自体は
+    /// `graph!` を経由しない。
+    pub fn insert_with_id<N: DialogueNode>(&mut self, id: N::Id, value: N) -> N::Id {
+        value.insert_with_id(self, id)
+    }
+    /// `graph!` の `@ ID式` 付きノードを名前付き位置と共に挿入する経路。
+    /// [`graphite::NamedInsertPermit`] を要求する
+    /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
+    #[doc(hidden)]
+    pub fn insert_named_with_id<N: DialogueNode>(
+        &mut self,
+        id: N::Id,
+        value: N,
+        permit: &graphite::NamedInsertPermit,
+    ) -> (N::Id, N::NamedPosition) {
+        value.insert_named_with_id(self, id, permit)
+    }
+    /// `insert` のエッジ版。`graph!` の辺行 `key = Kind(from -> to)`
+    /// は名前付きフィールドの辺値型を関連コンストラクタで構築したあと、
+    /// 下記 `add_named` へ脱糖する (`docs/schema_v4.md` §2/§3.2)。
+    /// このメソッド自体は値の型から内部ストレージへ振り分ける総称
+    /// ディスパッチを提供する手書き用APIで、`graph!` を直接経由しない。
+    pub fn add<E>(&mut self, key: impl Into<String>, value: E) -> E::Id
+    where
+        E: DialogueEdge + DialogueDefaultId,
+    {
+        value.insert_with_binding(self, key.into())
+    }
+    /// `graph!` が公開IDと名前付き辺の内部位置を同時に受け取る経路。
+    /// [`graphite::NamedInsertPermit`] を要求する
+    /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
+    #[doc(hidden)]
+    pub fn add_named<E>(
+        &mut self,
+        key: impl Into<String>,
+        value: E,
+        permit: &graphite::NamedInsertPermit,
+    ) -> (E::Id, E::NamedPosition)
+    where
+        E: DialogueEdge + DialogueDefaultId,
+    {
+        value.insert_named_with_binding(self, key.into(), permit)
+    }
+    /// 明示ID型と既定ID型のどちらにも使える、ID指定エッジ挿入の
+    /// 手書き用API。`graph!` の `@ ID式` を書いたエッジ項は下記
+    /// `add_named_with_id` へ脱糖するため、このメソッド自体は
+    /// `graph!` を経由しない。
+    pub fn add_with_id<E: DialogueEdge>(&mut self, id: E::Id, value: E) -> E::Id {
+        value.insert_with_id(self, id)
+    }
+    /// `graph!` の `@ ID式` 付き辺を名前付き位置と共に挿入する経路。
+    /// [`graphite::NamedInsertPermit`] を要求する
+    /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
+    #[doc(hidden)]
+    pub fn add_named_with_id<E: DialogueEdge>(
+        &mut self,
+        id: E::Id,
+        value: E,
+        permit: &graphite::NamedInsertPermit,
+    ) -> (E::Id, E::NamedPosition) {
+        value.insert_named_with_id(self, id, permit)
+    }
+    /// `insert`/`add` のイテレータ版 (`docs/bulk_construction.md`、
+    /// `docs/graph_splice.md` §2)。実行時データからの構築で for
+    /// ループが構築コードに残るのを避けるため、要素単位 API の反復に
+    /// 完全に一致する意味論 (挿入順保持・検証は凍結時) をまとめて
+    /// 提供する。ノード用・エッジ用の呼び分けが要らない単一の総称
+    /// メソッドに統一している (v4 破壊的変更、旧 `extend_nodes`/
+    /// `extend_edges` は廃止): 値の型が既定IDを生成できれば
+    /// ノードでもエッジでもよい (どちらになるかは rustc の
+    /// 型推論任せ)。`graph!` のスプライス項 (`..式`) もこのメソッドへ
+    /// 脱糖する。`insert`/`add` と同じ理由 (トレイトが schema ごとに
+    /// 名前が異なる) で、graphite ランタイム側の共通機構ではなく
+    /// ここに生成する。
+    pub fn extend<K, T>(&mut self, items: impl IntoIterator<Item = (K, T)>) -> Vec<T::Id>
+    where
+        K: Into<String>,
+        T: DialogueDefaultId,
+    {
+        items.into_iter().map(|(k, v)| v.insert_with_binding(self, k.into())).collect()
+    }
+    /// 検証ロジックの実体。最初の1件で打ち切らず全違反を `Vec` に
+    /// 集めて返す。`freeze()` (単一エラー版) はこちらに委譲し先頭の1件を
+    /// 取り出すだけの薄いラッパーにすることで、検証ロジックが二重実装に
+    /// ならないようにしている。
+    fn freeze_collecting(self) -> Result<Graph, Vec<Violation>> {
+        let mut __violations: Vec<Violation> = Vec::new();
+        let __graphite_construction_stamp = self.__graphite_construction_stamp;
+        let mut __graphite_node_speaker: graphite::KeyedTable<_, _> = graphite::KeyedTable::new();
+        for (id, value) in self.__graphite_node_speaker {
+            if !__graphite_node_speaker.insert(id.clone(), value) {
+                __violations.push(Violation::DuplicateSpeaker(id));
+            }
+        }
+        let mut __graphite_node_line: graphite::KeyedTable<_, _> = graphite::KeyedTable::new();
+        for (id, value) in self.__graphite_node_line {
+            if !__graphite_node_line.insert(id.clone(), value) {
+                __violations.push(Violation::DuplicateLine(id));
+            }
+        }
+        let mut __graphite_choice: graphite::KeyedTable<_, _> = graphite::KeyedTable::new();
+        let mut __seen_edge_ids = std::collections::HashSet::new();
+        let mut choice_from_index: std::collections::HashMap<_, Vec<_>> = std::collections::HashMap::new();
+        let mut choice_to_index: std::collections::HashMap<_, Vec<_>> = std::collections::HashMap::new();
+        let mut __graphite_choice_by_pair: std::collections::HashMap<
+            (__SpeakerInternalPosition, __LineInternalPosition),
+            Vec<__ChoiceInternalPosition>,
+        > = std::collections::HashMap::new();
+        for (id, value) in self.choice {
+            if !__seen_edge_ids.insert(id.clone()) {
+                __violations.push(Violation::ChoiceDuplicateKey(id));
+                continue;
+            }
+            let Choice { speaker: from, line: to } = value;
+            let from_position = __graphite_node_speaker
+                .position(&from)
+                .map(__SpeakerInternalPosition);
+            let to_position = __graphite_node_line
+                .position(&to)
+                .map(__LineInternalPosition);
+            if from_position.is_none() {
+                __violations
+                    .push(Violation::ChoiceUnknownSource {
+                        edge: id.clone(),
+                        source: from.clone(),
+                    });
+            }
+            if to_position.is_none() {
+                __violations
+                    .push(Violation::ChoiceUnknownTarget {
+                        edge: id.clone(),
+                        target: to.clone(),
+                    });
+            }
+            if let (Some(from_position), Some(to_position)) = (
+                from_position,
+                to_position,
+            ) {
+                let internal_edge_position = __ChoiceInternalPosition(
+                    __graphite_choice.len(),
+                );
+                __graphite_choice_by_pair
+                    .entry((from_position, to_position))
+                    .or_default()
+                    .push(internal_edge_position);
+                choice_from_index
+                    .entry(from_position)
+                    .or_default()
+                    .push(internal_edge_position);
+                choice_to_index
+                    .entry(to_position)
+                    .or_default()
+                    .push(internal_edge_position);
+                let inserted = __graphite_choice
+                    .insert(
+                        id,
+                        __ChoiceRecord {
+                            speaker: from_position,
+                            line: to_position,
+                        },
+                    );
+                debug_assert!(inserted, "重複辺IDは挿入前に除外済み");
+            }
+        }
+        if !__violations.is_empty() {
+            return Err(__violations);
+        }
+        let choice_from_index = graphite::MultipleRoleIndex::from_buckets(
+            (0..__graphite_node_speaker.len())
+                .map(|position| {
+                    choice_from_index
+                        .remove(&__SpeakerInternalPosition(position))
+                        .unwrap_or_default()
+                })
+                .collect(),
+        );
+        let choice_to_index = graphite::MultipleRoleIndex::from_buckets(
+            (0..__graphite_node_line.len())
+                .map(|position| {
+                    choice_to_index
+                        .remove(&__LineInternalPosition(position))
+                        .unwrap_or_default()
+                })
+                .collect(),
+        );
+        Ok(Graph {
+            __graphite_node_speaker,
+            __graphite_node_line,
+            choice: __graphite_choice,
+            choice_from_index,
+            choice_to_index,
+            __graphite_choice_by_pair,
+            __graphite_construction_stamp,
+        })
+    }
+    /// 最初の1件の違反で `Err` になる版。実装は
+    /// `freeze_collecting` に委譲する。
+    fn freeze(self) -> Result<Graph, Violation> {
+        self.freeze_collecting().map_err(|mut violations| violations.remove(0))
+    }
+}
+/// [`graphite::build_named_graph`] が `#schema_name`/`#violation_ident`
+/// の具体型を知らずに凍結を呼べるようにするための橋渡し。
+/// `freeze_into_graph` は既存の私有 `freeze()` (上記) へそのまま委譲する。
+impl graphite::FreezableBuilder for Builder {
+    type Graph = Graph;
+    type Violation = Violation;
+    fn freeze_into_graph(self) -> Result<Self::Graph, Self::Violation> {
+        self.freeze()
+    }
+}
+impl Choice {
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
+    pub fn of_speaker<'g>(
+        node: SpeakerRef<'g>,
+    ) -> impl Iterator<Item = ChoiceRef<'g>> + 'g {
+        let positions = node.graph.choice_from_index.get(node.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| ChoiceRef {
+                graph: node.graph,
+                internal_position,
+            })
+    }
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
+    pub fn of_line<'g>(node: LineRef<'g>) -> impl Iterator<Item = ChoiceRef<'g>> + 'g {
+        let positions = node.graph.choice_to_index.get(node.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| ChoiceRef {
+                graph: node.graph,
+                internal_position,
+            })
+    }
+    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    pub fn try_between<'g>(
+        a: SpeakerRef<'g>,
+        b: LineRef<'g>,
+    ) -> Result<impl Iterator<Item = ChoiceRef<'g>> + 'g, graphite::GraphMismatch> {
+        if a.graph.__graphite_construction_stamp != b.graph.__graphite_construction_stamp
+        {
+            return Err(graphite::GraphMismatch);
+        }
+        let positions = a
+            .graph
+            .__graphite_choice_by_pair
+            .get(&(a.internal_position, b.internal_position))
+            .map(Vec::as_slice)
+            .unwrap_or(&[]);
+        Ok(
+            positions
+                .iter()
+                .copied()
+                .map(move |internal_position| ChoiceRef {
+                    graph: a.graph,
+                    internal_position,
+                }),
+        )
+    }
+    /// # Panics
+    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    pub fn between<'g>(
+        a: SpeakerRef<'g>,
+        b: LineRef<'g>,
+    ) -> impl Iterator<Item = ChoiceRef<'g>> + 'g {
+        Self::try_between(a, b)
+            .unwrap_or_else(|error| panic!("{}::between: {error}", stringify!(Choice)))
+    }
+    pub fn get<'g>(g: &'g Graph, id: &ChoiceId) -> Option<ChoiceRef<'g>> {
+        Some(ChoiceRef {
+            graph: g,
+            internal_position: __ChoiceInternalPosition(g.choice.position(id)?),
+        })
+    }
+    pub fn iter<'g>(g: &'g Graph) -> impl Iterator<Item = ChoiceRef<'g>> + 'g {
+        g.choice
+            .positions()
+            .map(move |position| ChoiceRef {
+                graph: g,
+                internal_position: __ChoiceInternalPosition(position),
+            })
+    }
+    pub fn ids(g: &Graph) -> impl Iterator<Item = &ChoiceId> {
+        g.choice.ids()
+    }
+    pub fn len(g: &Graph) -> usize {
+        g.choice.len()
+    }
+}

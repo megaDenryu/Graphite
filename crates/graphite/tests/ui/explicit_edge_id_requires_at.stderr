@@ -13,7 +13,7 @@ error[E0277]: the trait bound `Knows: ExplicitEdgeDefaultId` is not satisfied
 help: the trait `ExplicitEdgeDefaultId` is not implemented for `Knows`
   --> tests/ui/explicit_edge_id_requires_at.rs:6:1
    |
- 6 | / graphite::graph_schema! {
+ 6 | / graphite::__graph_schema_inline_for_test! {
  7 | |     schema ExplicitEdge {
  8 | |         node Person;
  9 | |         edge Knows(id: ExternalEdgeId) = (knower: Person) -> (known: Person);
@@ -21,7 +21,7 @@ help: the trait `ExplicitEdgeDefaultId` is not implemented for `Knows`
 help: the trait `ExplicitEdgeDefaultId` is implemented for `Person`
   --> tests/ui/explicit_edge_id_requires_at.rs:6:1
    |
- 6 | / graphite::graph_schema! {
+ 6 | / graphite::__graph_schema_inline_for_test! {
  7 | |     schema ExplicitEdge {
  8 | |         node Person;
    | |___________________^
@@ -30,4 +30,4 @@ note: required by a bound in `ExplicitEdge::Builder::add_named`
    |
  7 |     schema ExplicitEdge {
    |            ^^^^^^^^^^^^ required by this bound in `Builder::add_named`
-   = note: this error originates in the macro `graphite::graph_schema` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `graphite::__graph_schema_inline_for_test` (in Nightly builds, run with -Z macro-backtrace for more info)

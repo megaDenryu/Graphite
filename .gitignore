@@ -2,3 +2,4 @@
 examples/*/target
 build_errors.txt
 .vscode/settings.json
+*.rs.graphite-tmp

@@ -1,7 +1,7 @@
 #[derive(Clone)]
 struct Person;
 
-graphite::graph_schema! {
+graphite::__graph_schema_inline_for_test! {
     schema World {
         node Person;
     }

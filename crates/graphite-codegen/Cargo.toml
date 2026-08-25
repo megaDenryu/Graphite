@@ -1,0 +1,12 @@
+[package]
+name = "graphite-codegen"
+version = "0.1.0"
+edition = "2021"
+description = "Graphite schema DSL の構文解析・検証・Rustコード生成を担う純粋層"
+
+[dependencies]
+syn = { workspace = true }
+quote = { workspace = true }
+proc-macro2 = { workspace = true }
+prettyplease = { workspace = true }
+

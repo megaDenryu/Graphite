@@ -1,0 +1,960 @@
+// このファイルは Graphite が生成したため手編集しないこと。
+// 生成元: crates/graphite/tests/f64_attrs.rs:37
+// 再生成: リポジトリルートで `cargo xtask generate` を実行する。
+
+#[allow(unused_imports)]
+use super::*;
+#[doc(hidden)]
+pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
+    13394813750615600574u64, 13893820313095183225u64, 15063528064486495760u64,
+    6465027637605961660u64,
+];
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct SensorId(pub String);
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ReadingId(pub String);
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct MeasuredId(pub String);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct __SensorInternalPosition(usize);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct __ReadingInternalPosition(usize);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct __MeasuredInternalPosition(usize);
+#[doc(hidden)]
+#[derive(Clone, Copy)]
+pub struct __SensorNamedPosition(__SensorInternalPosition, u64);
+#[doc(hidden)]
+#[derive(Clone, Copy)]
+pub struct __ReadingNamedPosition(__ReadingInternalPosition, u64);
+#[doc(hidden)]
+#[derive(Clone, Copy)]
+pub struct __MeasuredNamedPosition(__MeasuredInternalPosition, u64);
+#[derive(Clone, PartialEq)]
+pub struct Measured {
+    pub sensor: SensorId,
+    pub reading: ReadingId,
+    pub measurement: MeasuredEdge,
+}
+impl Measured {
+    pub fn new(from: SensorId, to: ReadingId, payload: MeasuredEdge) -> Self {
+        Self {
+            sensor: from,
+            reading: to,
+            measurement: payload,
+        }
+    }
+    pub fn payload(&self) -> &MeasuredEdge {
+        &self.measurement
+    }
+}
+impl graphite::DirectedEdgeLiteral<SensorId, ReadingId, MeasuredEdge> for Measured {
+    fn from_graph_literal(from: SensorId, to: ReadingId, payload: MeasuredEdge) -> Self {
+        Self::new(from, to, payload)
+    }
+}
+impl std::fmt::Debug for Measured {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(stringify!(Measured))
+    }
+}
+#[allow(dead_code)]
+struct __MeasuredRecord {
+    sensor: __SensorInternalPosition,
+    reading: __ReadingInternalPosition,
+    measurement: MeasuredEdge,
+}
+#[allow(clippy::enum_variant_names)]
+#[derive(Clone, PartialEq, Eq)]
+pub enum Violation {
+    DuplicateSensor(SensorId),
+    DuplicateReading(ReadingId),
+    /// このエッジ種別のキーが重複している。
+    MeasuredDuplicateKey(MeasuredId),
+    /// このエッジが未知の始点キーを参照している。
+    MeasuredUnknownSource { edge: MeasuredId, source: SensorId },
+    /// このエッジが未知の終点キーを参照している。
+    MeasuredUnknownTarget { edge: MeasuredId, target: ReadingId },
+}
+impl std::fmt::Display for Violation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Violation::DuplicateSensor(id) => {
+                write!(f, "{}のキーが重複しています: {:?}", "Sensor", id)
+            }
+            Violation::DuplicateReading(id) => {
+                write!(f, "{}のキーが重複しています: {:?}", "Reading", id)
+            }
+            Violation::MeasuredDuplicateKey(id) => {
+                write!(f, "{}のキーが重複しています: {:?}", "Measured", id)
+            }
+            Violation::MeasuredUnknownSource { edge, source } => {
+                write!(
+                    f,
+                    "未知のキーが参照されています (辺 `{}` {:?} の始点, {}): {:?}",
+                    "Measured", edge, "Sensor", source
+                )
+            }
+            Violation::MeasuredUnknownTarget { edge, target } => {
+                write!(
+                    f,
+                    "未知のキーが参照されています (辺 `{}` {:?} の終点, {}): {:?}",
+                    "Measured", edge, "Reading", target
+                )
+            }
+        }
+    }
+}
+impl std::fmt::Debug for Violation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self, f)
+    }
+}
+impl std::error::Error for Violation {}
+/// 凍結済み図式グラフ。構築後の構造は不変で、ノード値と辺の積み荷だけを
+/// `&mut Graph` を要求する種別APIから更新できる。
+pub struct Graph {
+    __graphite_node_sensor: graphite::KeyedTable<SensorId, super::Sensor>,
+    __graphite_node_reading: graphite::KeyedTable<ReadingId, super::Reading>,
+    measured: graphite::KeyedTable<MeasuredId, __MeasuredRecord>,
+    /// 位置0キー -> このキーから (有向: 出る / 無向: 接続する) エッジ
+    /// キーの一覧 (凍結時に構築)。
+    measured_from_index: graphite::MultipleRoleIndex<__MeasuredInternalPosition>,
+    /// 位置1キー (終点) -> そこへ入るエッジキーの一覧 (凍結時に
+    /// 構築。終点役割クエリの索引、`docs/reverse_query.md`)。
+    measured_to_index: graphite::MultipleRoleIndex<__MeasuredInternalPosition>,
+    __graphite_measured_by_pair: std::collections::HashMap<
+        (__SensorInternalPosition, __ReadingInternalPosition),
+        Vec<__MeasuredInternalPosition>,
+    >,
+    /// この `Graph` を生んだ構築の構築印。凍結元の `Builder` から
+    /// そのまま引き継ぐ。名前付き位置がこの `Graph` の生成元と一致
+    /// するかを `NamedGraphElement::bind` が照合するのに使う。
+    __graphite_construction_stamp: u64,
+}
+impl Graph {
+    /// builder をクロージャに貸し出し、戻ったら凍結して図式適合
+    /// (端点種別・where 制約) を一括検査する。最初の1件の違反で
+    /// `Err` になる (複数の違反を全件見たい場合は
+    /// [`Self::create_collecting`] を使う)。
+    pub fn create<F>(f: F) -> Result<Self, Violation>
+    where
+        F: for<'b> FnOnce(&'b mut Builder),
+    {
+        let mut builder = Builder::new();
+        f(&mut builder);
+        builder.freeze()
+    }
+    /// `graph!` が名前付き要素の名前付き位置を凍結境界の外へ運ぶための
+    /// 内部構築経路。`Graph` の凍結に成功した場合だけ名前付き位置を返す。
+    /// [`graphite::build_named_graph`] へ薄く委譲するだけで、
+    /// [`graphite::NamedInsertPermit`] はそちらでしか作らない
+    /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
+    #[doc(hidden)]
+    pub fn create_named<F, N>(f: F) -> Result<(Self, N), Violation>
+    where
+        F: for<'b> FnOnce(&'b mut Builder, &'b graphite::NamedInsertPermit) -> N,
+    {
+        graphite::build_named_graph(Builder::new, f)
+    }
+    /// [`Self::create`] の複数違反収集版。builder をクロージャに
+    /// 貸し出し、戻ったら凍結して図式適合を検査する点は `create` と
+    /// 同じだが、最初の1件で打ち切らず全違反を `Vec` に集めて返す。
+    pub fn create_collecting<F>(f: F) -> Result<Self, Vec<Violation>>
+    where
+        F: for<'b> FnOnce(&'b mut Builder),
+    {
+        let mut builder = Builder::new();
+        f(&mut builder);
+        builder.freeze_collecting()
+    }
+}
+/// 完成済みグラフ上の有向辺個体。
+#[derive(Clone, Copy)]
+pub struct MeasuredRef<'graph> {
+    graph: &'graph Graph,
+    internal_position: __MeasuredInternalPosition,
+}
+impl<'graph> MeasuredRef<'graph> {
+    fn record(self) -> &'graph __MeasuredRecord {
+        self.graph
+            .measured
+            .get_at(self.internal_position.0)
+            .expect(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            )
+            .1
+    }
+    pub fn id(self) -> &'graph MeasuredId {
+        self.graph
+            .measured
+            .get_at(self.internal_position.0)
+            .expect(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            )
+            .0
+    }
+    pub fn sensor(self) -> SensorRef<'graph> {
+        SensorRef {
+            graph: self.graph,
+            internal_position: __SensorInternalPosition(self.record().sensor.0),
+        }
+    }
+    pub fn reading(self) -> ReadingRef<'graph> {
+        ReadingRef {
+            graph: self.graph,
+            internal_position: __ReadingInternalPosition(self.record().reading.0),
+        }
+    }
+    pub fn from(self) -> SensorRef<'graph> {
+        self.sensor()
+    }
+    pub fn to(self) -> ReadingRef<'graph> {
+        self.reading()
+    }
+    pub fn from_id(self) -> &'graph SensorId {
+        self.from().id()
+    }
+    pub fn to_id(self) -> &'graph ReadingId {
+        self.to().id()
+    }
+    pub fn measurement(self) -> &'graph MeasuredEdge {
+        &self.record().measurement
+    }
+    pub fn payload(self) -> &'graph MeasuredEdge {
+        &self.record().measurement
+    }
+}
+impl<'graph> std::fmt::Debug for MeasuredRef<'graph> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct(stringify!(MeasuredRef))
+            .field("id", &self.id())
+            .finish_non_exhaustive()
+    }
+}
+/// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+pub struct Builder {
+    __graphite_node_sensor: Vec<(SensorId, super::Sensor)>,
+    __graphite_node_reading: Vec<(ReadingId, super::Reading)>,
+    measured: Vec<(MeasuredId, Measured)>,
+    /// この構築を識別する構築印。`Builder::new()` が発行し、この
+    /// builder から挿入する全ての名前付き位置と、凍結成功後の
+    /// `Graph` へ同じ値を刻む。
+    __graphite_construction_stamp: u64,
+}
+/// 型付き ID を受け取るノード・エッジ共通の挿入トレイト。
+///
+/// `insert_named_with_id` は [`graphite::NamedInsertPermit`] を要求する
+/// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
+/// `insert_with_id` (許可証不要、名前付き位置を返さない) は独立した
+/// 実装を持ち、`insert_named_with_id` を経由しない
+/// (`create` のクロージャから許可証なしで呼べる必要があるため)。
+pub trait MeasurementInsertable: Sized {
+    type Id;
+    #[doc(hidden)]
+    type NamedPosition;
+    #[doc(hidden)]
+    fn insert_named_with_id(
+        self,
+        b: &mut Builder,
+        id: Self::Id,
+        permit: &graphite::NamedInsertPermit,
+    ) -> (Self::Id, Self::NamedPosition);
+    fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
+}
+/// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
+/// 実装する。明示ID型には実装せず、文字列変換を要求しない。
+pub trait MeasurementDefaultId: MeasurementInsertable {
+    #[doc(hidden)]
+    fn insert_named_with_binding(
+        self,
+        b: &mut Builder,
+        binding: String,
+        permit: &graphite::NamedInsertPermit,
+    ) -> (Self::Id, Self::NamedPosition);
+    fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
+}
+/// ノード挿入で使うトレイト境界。読み取りは同じ module 内の
+/// ノードマーカー型が提供する。利用者がこのトレイトのメソッドを
+/// 直接呼ぶことは想定しない。
+pub trait MeasurementNode: MeasurementInsertable {}
+impl MeasurementInsertable for super::Sensor {
+    type Id = SensorId;
+    type NamedPosition = __SensorNamedPosition;
+    fn insert_named_with_id(
+        self,
+        b: &mut Builder,
+        id: Self::Id,
+        _permit: &graphite::NamedInsertPermit,
+    ) -> (Self::Id, Self::NamedPosition) {
+        let named_position = __SensorNamedPosition(
+            __SensorInternalPosition(b.__graphite_node_sensor.len()),
+            b.__graphite_construction_stamp,
+        );
+        let returned_id = id.clone();
+        b.sensor(id, self);
+        (returned_id, named_position)
+    }
+    fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id {
+        let returned_id = id.clone();
+        b.sensor(id, self);
+        returned_id
+    }
+}
+impl graphite::NamedGraphElement<Graph> for __SensorNamedPosition {
+    type Reference<'graph> = SensorRef<'graph>;
+    fn bind<'graph>(&self, graph: &'graph Graph) -> Self::Reference<'graph> {
+        if graph.__graphite_construction_stamp != self.1 {
+            panic!(
+                "名前付き位置が生成元と異なる Graph へ bind されました。名前付き位置は生成元の graph! が返したグラフでのみ有効です"
+            );
+        }
+        SensorRef {
+            graph,
+            internal_position: self.0,
+        }
+    }
+}
+impl MeasurementDefaultId for super::Sensor {
+    fn insert_named_with_binding(
+        self,
+        b: &mut Builder,
+        binding: String,
+        permit: &graphite::NamedInsertPermit,
+    ) -> (Self::Id, Self::NamedPosition) {
+        MeasurementInsertable::insert_named_with_id(self, b, SensorId(binding), permit)
+    }
+    fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id {
+        MeasurementInsertable::insert_with_id(self, b, SensorId(binding))
+    }
+}
+impl MeasurementNode for super::Sensor {}
+/// このスキーマにおける `#ty` ノード種別の問い合わせ名前空間。
+pub struct Sensor;
+/// 完成済みグラフ上の `#ty` ノード個体。
+#[derive(Clone, Copy)]
+pub struct SensorRef<'graph> {
+    graph: &'graph Graph,
+    internal_position: __SensorInternalPosition,
+}
+impl<'graph> SensorRef<'graph> {
+    pub fn id(self) -> &'graph SensorId {
+        self.graph
+            .__graphite_node_sensor
+            .get_at(self.internal_position.0)
+            .expect(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            )
+            .0
+    }
+    pub fn value(self) -> &'graph super::Sensor {
+        self.graph
+            .__graphite_node_sensor
+            .get_at(self.internal_position.0)
+            .expect(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            )
+            .1
+    }
+    pub fn measured_as_sensor(
+        self,
+    ) -> impl Iterator<Item = MeasuredRef<'graph>> + 'graph {
+        Measured::of_sensor(self)
+    }
+}
+impl<'graph> std::ops::Deref for SensorRef<'graph> {
+    type Target = super::Sensor;
+    fn deref(&self) -> &Self::Target {
+        self.graph
+            .__graphite_node_sensor
+            .get_at(self.internal_position.0)
+            .expect(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            )
+            .1
+    }
+}
+impl<'graph> std::fmt::Debug for SensorRef<'graph> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct(stringify!(SensorRef))
+            .field("id", &self.id())
+            .finish_non_exhaustive()
+    }
+}
+impl Sensor {
+    pub fn get<'graph>(g: &'graph Graph, id: &SensorId) -> Option<SensorRef<'graph>> {
+        let internal_position = __SensorInternalPosition(
+            g.__graphite_node_sensor.position(id)?,
+        );
+        Some(SensorRef {
+            graph: g,
+            internal_position,
+        })
+    }
+    pub fn get_mut<'graph>(
+        g: &'graph mut Graph,
+        id: &SensorId,
+    ) -> Option<&'graph mut super::Sensor> {
+        g.__graphite_node_sensor.get_mut(id)
+    }
+    pub fn ids<'graph>(g: &'graph Graph) -> impl Iterator<Item = &'graph SensorId> {
+        g.__graphite_node_sensor.ids()
+    }
+    pub fn iter<'graph>(
+        g: &'graph Graph,
+    ) -> impl Iterator<Item = SensorRef<'graph>> + 'graph {
+        g.__graphite_node_sensor
+            .positions()
+            .map(move |position| SensorRef {
+                graph: g,
+                internal_position: __SensorInternalPosition(position),
+            })
+    }
+}
+impl MeasurementInsertable for super::Reading {
+    type Id = ReadingId;
+    type NamedPosition = __ReadingNamedPosition;
+    fn insert_named_with_id(
+        self,
+        b: &mut Builder,
+        id: Self::Id,
+        _permit: &graphite::NamedInsertPermit,
+    ) -> (Self::Id, Self::NamedPosition) {
+        let named_position = __ReadingNamedPosition(
+            __ReadingInternalPosition(b.__graphite_node_reading.len()),
+            b.__graphite_construction_stamp,
+        );
+        let returned_id = id.clone();
+        b.reading(id, self);
+        (returned_id, named_position)
+    }
+    fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id {
+        let returned_id = id.clone();
+        b.reading(id, self);
+        returned_id
+    }
+}
+impl graphite::NamedGraphElement<Graph> for __ReadingNamedPosition {
+    type Reference<'graph> = ReadingRef<'graph>;
+    fn bind<'graph>(&self, graph: &'graph Graph) -> Self::Reference<'graph> {
+        if graph.__graphite_construction_stamp != self.1 {
+            panic!(
+                "名前付き位置が生成元と異なる Graph へ bind されました。名前付き位置は生成元の graph! が返したグラフでのみ有効です"
+            );
+        }
+        ReadingRef {
+            graph,
+            internal_position: self.0,
+        }
+    }
+}
+impl MeasurementDefaultId for super::Reading {
+    fn insert_named_with_binding(
+        self,
+        b: &mut Builder,
+        binding: String,
+        permit: &graphite::NamedInsertPermit,
+    ) -> (Self::Id, Self::NamedPosition) {
+        MeasurementInsertable::insert_named_with_id(self, b, ReadingId(binding), permit)
+    }
+    fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id {
+        MeasurementInsertable::insert_with_id(self, b, ReadingId(binding))
+    }
+}
+impl MeasurementNode for super::Reading {}
+/// このスキーマにおける `#ty` ノード種別の問い合わせ名前空間。
+pub struct Reading;
+/// 完成済みグラフ上の `#ty` ノード個体。
+#[derive(Clone, Copy)]
+pub struct ReadingRef<'graph> {
+    graph: &'graph Graph,
+    internal_position: __ReadingInternalPosition,
+}
+impl<'graph> ReadingRef<'graph> {
+    pub fn id(self) -> &'graph ReadingId {
+        self.graph
+            .__graphite_node_reading
+            .get_at(self.internal_position.0)
+            .expect(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            )
+            .0
+    }
+    pub fn value(self) -> &'graph super::Reading {
+        self.graph
+            .__graphite_node_reading
+            .get_at(self.internal_position.0)
+            .expect(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            )
+            .1
+    }
+    pub fn measured_as_reading(
+        self,
+    ) -> impl Iterator<Item = MeasuredRef<'graph>> + 'graph {
+        Measured::of_reading(self)
+    }
+}
+impl<'graph> std::ops::Deref for ReadingRef<'graph> {
+    type Target = super::Reading;
+    fn deref(&self) -> &Self::Target {
+        self.graph
+            .__graphite_node_reading
+            .get_at(self.internal_position.0)
+            .expect(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            )
+            .1
+    }
+}
+impl<'graph> std::fmt::Debug for ReadingRef<'graph> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct(stringify!(ReadingRef))
+            .field("id", &self.id())
+            .finish_non_exhaustive()
+    }
+}
+impl Reading {
+    pub fn get<'graph>(g: &'graph Graph, id: &ReadingId) -> Option<ReadingRef<'graph>> {
+        let internal_position = __ReadingInternalPosition(
+            g.__graphite_node_reading.position(id)?,
+        );
+        Some(ReadingRef {
+            graph: g,
+            internal_position,
+        })
+    }
+    pub fn get_mut<'graph>(
+        g: &'graph mut Graph,
+        id: &ReadingId,
+    ) -> Option<&'graph mut super::Reading> {
+        g.__graphite_node_reading.get_mut(id)
+    }
+    pub fn ids<'graph>(g: &'graph Graph) -> impl Iterator<Item = &'graph ReadingId> {
+        g.__graphite_node_reading.ids()
+    }
+    pub fn iter<'graph>(
+        g: &'graph Graph,
+    ) -> impl Iterator<Item = ReadingRef<'graph>> + 'graph {
+        g.__graphite_node_reading
+            .positions()
+            .map(move |position| ReadingRef {
+                graph: g,
+                internal_position: __ReadingInternalPosition(position),
+            })
+    }
+}
+/// `graph!` の `add` 経由のエッジ挿入で使うトレイト境界。利用者が
+/// この trait のメソッドを直接呼ぶことは想定しない
+/// (`{Builder}::add` 経由で使う)。
+pub trait MeasurementEdge: MeasurementInsertable {}
+impl MeasurementInsertable for Measured {
+    type Id = MeasuredId;
+    type NamedPosition = __MeasuredNamedPosition;
+    fn insert_named_with_id(
+        self,
+        b: &mut Builder,
+        id: Self::Id,
+        _permit: &graphite::NamedInsertPermit,
+    ) -> (Self::Id, Self::NamedPosition) {
+        let named_position = __MeasuredNamedPosition(
+            __MeasuredInternalPosition(b.measured.len()),
+            b.__graphite_construction_stamp,
+        );
+        let returned_id = id.clone();
+        b.measured(id, self);
+        (returned_id, named_position)
+    }
+    fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id {
+        let returned_id = id.clone();
+        b.measured(id, self);
+        returned_id
+    }
+}
+impl graphite::NamedGraphElement<Graph> for __MeasuredNamedPosition {
+    type Reference<'graph> = MeasuredRef<'graph>;
+    fn bind<'graph>(&self, graph: &'graph Graph) -> Self::Reference<'graph> {
+        if graph.__graphite_construction_stamp != self.1 {
+            panic!(
+                "名前付き位置が生成元と異なる Graph へ bind されました。名前付き位置は生成元の graph! が返したグラフでのみ有効です"
+            );
+        }
+        MeasuredRef {
+            graph,
+            internal_position: self.0,
+        }
+    }
+}
+impl MeasurementDefaultId for Measured {
+    fn insert_named_with_binding(
+        self,
+        b: &mut Builder,
+        binding: String,
+        permit: &graphite::NamedInsertPermit,
+    ) -> (Self::Id, Self::NamedPosition) {
+        MeasurementInsertable::insert_named_with_id(self, b, MeasuredId(binding), permit)
+    }
+    fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id {
+        MeasurementInsertable::insert_with_id(self, b, MeasuredId(binding))
+    }
+}
+impl MeasurementEdge for Measured {}
+impl Builder {
+    fn new() -> Self {
+        Self {
+            __graphite_node_sensor: Vec::new(),
+            __graphite_node_reading: Vec::new(),
+            measured: Vec::new(),
+            __graphite_construction_stamp: graphite::次の構築印を発行する(),
+        }
+    }
+    pub fn sensor(&mut self, id: SensorId, value: super::Sensor) -> &mut Self {
+        self.__graphite_node_sensor.push((id, value));
+        self
+    }
+    pub fn reading(&mut self, id: ReadingId, value: super::Reading) -> &mut Self {
+        self.__graphite_node_reading.push((id, value));
+        self
+    }
+    pub fn measured(&mut self, id: MeasuredId, value: Measured) -> &mut Self {
+        self.measured.push((id, value));
+        self
+    }
+    /// 型名付きメソッド (`b.#accessor(id, value)` 群、上記
+    /// `#node_methods`) の総称版。`graph!` の左辺名付きノード項は
+    /// 下記 `insert_named` (名前付き位置を返す許可証付き経路) へ
+    /// 脱糖するため、このメソッド自体は `graph!` を経由しない。
+    /// 値の型を手書きで組み立てる場合 (プログラム的構築など) に使う。
+    /// `graph!` はノード項の値の型を一切パースしないため
+    /// (`key = 式` の「式」でしかない)、値の型 (`N: #node_trait_ident`)
+    /// から正しい内部ストレージへの振り分けを rustc の型推論任せに
+    /// する点は `insert_named` と共通。命名判断・trait の形は
+    /// `gen_node_trait_and_impls` のドキュメントコメント参照。
+    pub fn insert<N>(&mut self, key: impl Into<String>, value: N) -> N::Id
+    where
+        N: MeasurementNode + MeasurementDefaultId,
+    {
+        value.insert_with_binding(self, key.into())
+    }
+    /// `graph!` が公開IDと名前付き要素の内部位置を同時に受け取る経路。
+    /// [`graphite::NamedInsertPermit`] を要求する
+    /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
+    #[doc(hidden)]
+    pub fn insert_named<N>(
+        &mut self,
+        key: impl Into<String>,
+        value: N,
+        permit: &graphite::NamedInsertPermit,
+    ) -> (N::Id, N::NamedPosition)
+    where
+        N: MeasurementNode + MeasurementDefaultId,
+    {
+        value.insert_named_with_binding(self, key.into(), permit)
+    }
+    /// 明示ID型と既定ID型のどちらにも使える、ID指定ノード挿入の
+    /// 手書き用API。`graph!` の `@ ID式` を書いたノード項は下記
+    /// `insert_named_with_id` へ脱糖するため、このメソッド自体は
+    /// `graph!` を経由しない。
+    pub fn insert_with_id<N: MeasurementNode>(&mut self, id: N::Id, value: N) -> N::Id {
+        value.insert_with_id(self, id)
+    }
+    /// `graph!` の `@ ID式` 付きノードを名前付き位置と共に挿入する経路。
+    /// [`graphite::NamedInsertPermit`] を要求する
+    /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
+    #[doc(hidden)]
+    pub fn insert_named_with_id<N: MeasurementNode>(
+        &mut self,
+        id: N::Id,
+        value: N,
+        permit: &graphite::NamedInsertPermit,
+    ) -> (N::Id, N::NamedPosition) {
+        value.insert_named_with_id(self, id, permit)
+    }
+    /// `insert` のエッジ版。`graph!` の辺行 `key = Kind(from -> to)`
+    /// は名前付きフィールドの辺値型を関連コンストラクタで構築したあと、
+    /// 下記 `add_named` へ脱糖する (`docs/schema_v4.md` §2/§3.2)。
+    /// このメソッド自体は値の型から内部ストレージへ振り分ける総称
+    /// ディスパッチを提供する手書き用APIで、`graph!` を直接経由しない。
+    pub fn add<E>(&mut self, key: impl Into<String>, value: E) -> E::Id
+    where
+        E: MeasurementEdge + MeasurementDefaultId,
+    {
+        value.insert_with_binding(self, key.into())
+    }
+    /// `graph!` が公開IDと名前付き辺の内部位置を同時に受け取る経路。
+    /// [`graphite::NamedInsertPermit`] を要求する
+    /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
+    #[doc(hidden)]
+    pub fn add_named<E>(
+        &mut self,
+        key: impl Into<String>,
+        value: E,
+        permit: &graphite::NamedInsertPermit,
+    ) -> (E::Id, E::NamedPosition)
+    where
+        E: MeasurementEdge + MeasurementDefaultId,
+    {
+        value.insert_named_with_binding(self, key.into(), permit)
+    }
+    /// 明示ID型と既定ID型のどちらにも使える、ID指定エッジ挿入の
+    /// 手書き用API。`graph!` の `@ ID式` を書いたエッジ項は下記
+    /// `add_named_with_id` へ脱糖するため、このメソッド自体は
+    /// `graph!` を経由しない。
+    pub fn add_with_id<E: MeasurementEdge>(&mut self, id: E::Id, value: E) -> E::Id {
+        value.insert_with_id(self, id)
+    }
+    /// `graph!` の `@ ID式` 付き辺を名前付き位置と共に挿入する経路。
+    /// [`graphite::NamedInsertPermit`] を要求する
+    /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
+    #[doc(hidden)]
+    pub fn add_named_with_id<E: MeasurementEdge>(
+        &mut self,
+        id: E::Id,
+        value: E,
+        permit: &graphite::NamedInsertPermit,
+    ) -> (E::Id, E::NamedPosition) {
+        value.insert_named_with_id(self, id, permit)
+    }
+    /// `insert`/`add` のイテレータ版 (`docs/bulk_construction.md`、
+    /// `docs/graph_splice.md` §2)。実行時データからの構築で for
+    /// ループが構築コードに残るのを避けるため、要素単位 API の反復に
+    /// 完全に一致する意味論 (挿入順保持・検証は凍結時) をまとめて
+    /// 提供する。ノード用・エッジ用の呼び分けが要らない単一の総称
+    /// メソッドに統一している (v4 破壊的変更、旧 `extend_nodes`/
+    /// `extend_edges` は廃止): 値の型が既定IDを生成できれば
+    /// ノードでもエッジでもよい (どちらになるかは rustc の
+    /// 型推論任せ)。`graph!` のスプライス項 (`..式`) もこのメソッドへ
+    /// 脱糖する。`insert`/`add` と同じ理由 (トレイトが schema ごとに
+    /// 名前が異なる) で、graphite ランタイム側の共通機構ではなく
+    /// ここに生成する。
+    pub fn extend<K, T>(&mut self, items: impl IntoIterator<Item = (K, T)>) -> Vec<T::Id>
+    where
+        K: Into<String>,
+        T: MeasurementDefaultId,
+    {
+        items.into_iter().map(|(k, v)| v.insert_with_binding(self, k.into())).collect()
+    }
+    /// 検証ロジックの実体。最初の1件で打ち切らず全違反を `Vec` に
+    /// 集めて返す。`freeze()` (単一エラー版) はこちらに委譲し先頭の1件を
+    /// 取り出すだけの薄いラッパーにすることで、検証ロジックが二重実装に
+    /// ならないようにしている。
+    fn freeze_collecting(self) -> Result<Graph, Vec<Violation>> {
+        let mut __violations: Vec<Violation> = Vec::new();
+        let __graphite_construction_stamp = self.__graphite_construction_stamp;
+        let mut __graphite_node_sensor: graphite::KeyedTable<_, _> = graphite::KeyedTable::new();
+        for (id, value) in self.__graphite_node_sensor {
+            if !__graphite_node_sensor.insert(id.clone(), value) {
+                __violations.push(Violation::DuplicateSensor(id));
+            }
+        }
+        let mut __graphite_node_reading: graphite::KeyedTable<_, _> = graphite::KeyedTable::new();
+        for (id, value) in self.__graphite_node_reading {
+            if !__graphite_node_reading.insert(id.clone(), value) {
+                __violations.push(Violation::DuplicateReading(id));
+            }
+        }
+        let mut __graphite_measured: graphite::KeyedTable<_, _> = graphite::KeyedTable::new();
+        let mut __seen_edge_ids = std::collections::HashSet::new();
+        let mut measured_from_index: std::collections::HashMap<_, Vec<_>> = std::collections::HashMap::new();
+        let mut measured_to_index: std::collections::HashMap<_, Vec<_>> = std::collections::HashMap::new();
+        let mut __graphite_measured_by_pair: std::collections::HashMap<
+            (__SensorInternalPosition, __ReadingInternalPosition),
+            Vec<__MeasuredInternalPosition>,
+        > = std::collections::HashMap::new();
+        for (id, value) in self.measured {
+            if !__seen_edge_ids.insert(id.clone()) {
+                __violations.push(Violation::MeasuredDuplicateKey(id));
+                continue;
+            }
+            let Measured { sensor: from, reading: to, measurement } = value;
+            let from_position = __graphite_node_sensor
+                .position(&from)
+                .map(__SensorInternalPosition);
+            let to_position = __graphite_node_reading
+                .position(&to)
+                .map(__ReadingInternalPosition);
+            if from_position.is_none() {
+                __violations
+                    .push(Violation::MeasuredUnknownSource {
+                        edge: id.clone(),
+                        source: from.clone(),
+                    });
+            }
+            if to_position.is_none() {
+                __violations
+                    .push(Violation::MeasuredUnknownTarget {
+                        edge: id.clone(),
+                        target: to.clone(),
+                    });
+            }
+            if let (Some(from_position), Some(to_position)) = (
+                from_position,
+                to_position,
+            ) {
+                let internal_edge_position = __MeasuredInternalPosition(
+                    __graphite_measured.len(),
+                );
+                __graphite_measured_by_pair
+                    .entry((from_position, to_position))
+                    .or_default()
+                    .push(internal_edge_position);
+                measured_from_index
+                    .entry(from_position)
+                    .or_default()
+                    .push(internal_edge_position);
+                measured_to_index
+                    .entry(to_position)
+                    .or_default()
+                    .push(internal_edge_position);
+                let inserted = __graphite_measured
+                    .insert(
+                        id,
+                        __MeasuredRecord {
+                            sensor: from_position,
+                            reading: to_position,
+                            measurement,
+                        },
+                    );
+                debug_assert!(inserted, "重複辺IDは挿入前に除外済み");
+            }
+        }
+        if !__violations.is_empty() {
+            return Err(__violations);
+        }
+        let measured_from_index = graphite::MultipleRoleIndex::from_buckets(
+            (0..__graphite_node_sensor.len())
+                .map(|position| {
+                    measured_from_index
+                        .remove(&__SensorInternalPosition(position))
+                        .unwrap_or_default()
+                })
+                .collect(),
+        );
+        let measured_to_index = graphite::MultipleRoleIndex::from_buckets(
+            (0..__graphite_node_reading.len())
+                .map(|position| {
+                    measured_to_index
+                        .remove(&__ReadingInternalPosition(position))
+                        .unwrap_or_default()
+                })
+                .collect(),
+        );
+        Ok(Graph {
+            __graphite_node_sensor,
+            __graphite_node_reading,
+            measured: __graphite_measured,
+            measured_from_index,
+            measured_to_index,
+            __graphite_measured_by_pair,
+            __graphite_construction_stamp,
+        })
+    }
+    /// 最初の1件の違反で `Err` になる版。実装は
+    /// `freeze_collecting` に委譲する。
+    fn freeze(self) -> Result<Graph, Violation> {
+        self.freeze_collecting().map_err(|mut violations| violations.remove(0))
+    }
+}
+/// [`graphite::build_named_graph`] が `#schema_name`/`#violation_ident`
+/// の具体型を知らずに凍結を呼べるようにするための橋渡し。
+/// `freeze_into_graph` は既存の私有 `freeze()` (上記) へそのまま委譲する。
+impl graphite::FreezableBuilder for Builder {
+    type Graph = Graph;
+    type Violation = Violation;
+    fn freeze_into_graph(self) -> Result<Self::Graph, Self::Violation> {
+        self.freeze()
+    }
+}
+impl Measured {
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
+    pub fn of_sensor<'g>(
+        node: SensorRef<'g>,
+    ) -> impl Iterator<Item = MeasuredRef<'g>> + 'g {
+        let positions = node.graph.measured_from_index.get(node.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| MeasuredRef {
+                graph: node.graph,
+                internal_position,
+            })
+    }
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
+    pub fn of_reading<'g>(
+        node: ReadingRef<'g>,
+    ) -> impl Iterator<Item = MeasuredRef<'g>> + 'g {
+        let positions = node.graph.measured_to_index.get(node.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| MeasuredRef {
+                graph: node.graph,
+                internal_position,
+            })
+    }
+    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    pub fn try_between<'g>(
+        a: SensorRef<'g>,
+        b: ReadingRef<'g>,
+    ) -> Result<impl Iterator<Item = MeasuredRef<'g>> + 'g, graphite::GraphMismatch> {
+        if a.graph.__graphite_construction_stamp != b.graph.__graphite_construction_stamp
+        {
+            return Err(graphite::GraphMismatch);
+        }
+        let positions = a
+            .graph
+            .__graphite_measured_by_pair
+            .get(&(a.internal_position, b.internal_position))
+            .map(Vec::as_slice)
+            .unwrap_or(&[]);
+        Ok(
+            positions
+                .iter()
+                .copied()
+                .map(move |internal_position| MeasuredRef {
+                    graph: a.graph,
+                    internal_position,
+                }),
+        )
+    }
+    /// # Panics
+    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    pub fn between<'g>(
+        a: SensorRef<'g>,
+        b: ReadingRef<'g>,
+    ) -> impl Iterator<Item = MeasuredRef<'g>> + 'g {
+        Self::try_between(a, b)
+            .unwrap_or_else(|error| panic!("{}::between: {error}", stringify!(Measured)))
+    }
+    pub fn get<'g>(g: &'g Graph, id: &MeasuredId) -> Option<MeasuredRef<'g>> {
+        Some(MeasuredRef {
+            graph: g,
+            internal_position: __MeasuredInternalPosition(g.measured.position(id)?),
+        })
+    }
+    /// 辺の構造を保ったまま積み荷だけを可変借用する。
+    pub fn payload_mut<'g>(
+        g: &'g mut Graph,
+        id: &MeasuredId,
+    ) -> Option<&'g mut MeasuredEdge> {
+        g.measured
+            .get_mut(id)
+            .map(|record: &mut __MeasuredRecord| &mut record.measurement)
+    }
+    pub fn iter<'g>(g: &'g Graph) -> impl Iterator<Item = MeasuredRef<'g>> + 'g {
+        g.measured
+            .positions()
+            .map(move |position| MeasuredRef {
+                graph: g,
+                internal_position: __MeasuredInternalPosition(position),
+            })
+    }
+    pub fn ids(g: &Graph) -> impl Iterator<Item = &MeasuredId> {
+        g.measured.ids()
+    }
+    pub fn len(g: &Graph) -> usize {
+        g.measured.len()
+    }
+}

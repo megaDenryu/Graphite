@@ -13,7 +13,20 @@ pub struct PurchaseInfo {
     pub amount: u32,
 }
 
+#[allow(non_snake_case, dead_code, private_interfaces)]
+#[allow(
+    clippy::needless_lifetimes,
+    clippy::wrong_self_convention,
+    clippy::clone_on_copy,
+    clippy::write_literal
+)]
+pub mod NamedWorld {
+    include!("generated/named_graph_named_world.rs");
+}
+
+#[rustfmt::skip]
 graphite::graph_schema! {
+    generated = "generated/named_graph_named_world.rs";
     schema NamedWorld {
         node Person;
         node Item;

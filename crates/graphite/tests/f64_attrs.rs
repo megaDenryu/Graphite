@@ -27,7 +27,15 @@ pub struct MeasuredEdge {
 }
 
 #[rustfmt::skip]
+#[allow(non_snake_case, dead_code, private_interfaces)]
+#[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
+pub mod Measurement {
+    include!("generated/f64_attrs_measurement.rs");
+}
+
+#[rustfmt::skip]
 graphite::graph_schema! {
+    generated = "generated/f64_attrs_measurement.rs";
     schema Measurement {
         node Sensor;
         node Reading;
