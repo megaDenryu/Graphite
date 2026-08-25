@@ -84,9 +84,9 @@ mod tests {
         })
         .expect("制約なし辺種別なので必ず構築に成功する");
 
-        let of_texts: Vec<String> = Choice::of(&g, &speaker_id())
-            .into_iter()
-            .map(|line| line.text.clone())
+        let speaker = Dialogue::Speaker::get(&g, &speaker_id()).unwrap();
+        let of_texts: Vec<String> = Choice::of_speaker(speaker)
+            .map(|edge| edge.line().text.clone())
             .collect();
         assert_eq!(of_texts, expected_texts(N));
 
@@ -97,8 +97,7 @@ mod tests {
         let ids_only: Vec<String> = Choice::ids(&g).map(|id| id.0.clone()).collect();
         assert_eq!(ids_only, expected_ids);
 
-        let between_texts: Vec<String> = Choice::between(&g, &speaker_id(), &line_id(3))
-            .into_iter()
+        let between_texts: Vec<String> = Choice::between(speaker, Dialogue::Line::get(&g, &line_id(3)).unwrap())
             .map(|edge| edge.line().id().0.clone())
             .collect();
         assert_eq!(between_texts, vec!["l3".to_string()]);
@@ -126,9 +125,8 @@ mod tests {
         })
         .expect("制約なし辺種別なので必ず構築に成功する");
 
-        let of_texts: Vec<String> = Choice::of(&g, &SpeakerId("s".to_string()))
-            .into_iter()
-            .map(|line| line.text.clone())
+        let of_texts: Vec<String> = g.s().choice_as_speaker()
+            .map(|edge| edge.line().text.clone())
             .collect();
         assert_eq!(of_texts, expected_texts(6));
 

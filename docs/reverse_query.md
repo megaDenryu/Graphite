@@ -1,43 +1,35 @@
-# 逆引きクエリ — {Kind}::sources_of (Fudaba #5)
+# 役割ベースの逆引きクエリ (Fudaba #5)
 
-2026-07-18 オーケストレータ決定 (ユーザーから全面委任)。
-
-## 判断の根拠
-
-#5 の暫定結論は「手書きループが苦痛だった実例が 3 つ溜まったら再訪」だった。
-実例が既に 3 つある:
-
-1. org-analyzer の相互 Boss 検出 (全走査して逆向きを探す)
-2. reactive-cells の `Engine::eval_formula` (対象セルを**終点**とする辺をその都度
-   絞り込み = 終点側検索を走査で代用)
-3. v4.1 の入次数 each 検証 (freeze 内で終点索引を一時構築している — 索引の需要が
-   実装内にも既にある)
-
-→ 採用基準を満たしたので実装する。
-
-## 仕様
-
-有向辺の各 Kind に終点側クエリを 1 つ生成する:
+有向辺は始点・終点という固定語彙ではなく、スキーマに書いた役割名を両側で対称に使う。
 
 ```rust
-Boss::sources_of(&g, &alice);   // alice を終点とする Boss 辺の始点側
+let alice = OrgChart::Employee::get(&graph, &alice_id).unwrap();
+let as_subordinate = Boss::of_subordinate(alice); // Option<BossRef<'_>>
+let as_superior = Boss::of_superior(alice);       // impl Iterator<Item = BossRef<'_>>
+
+// 同じクエリを NodeRef からも機械的な名前で開始できる。
+alice.boss_as_subordinate();
+alice.boss_as_superior();
 ```
 
-- 戻り型は **to 側の each 制約が決める** (of が from 側 each で決まるのと対称):
-  役割名つきで `each superior: 0..1` なら `Option<(EmployeeRef<'graph>, &BossEdge)>`、
-  制約なしなら `Vec<..>`。積み荷なしは相手ノードのみ
-- 相手は `NodeRef` で返す (of と同じ解決規則)。キーは `NodeRef::id()` で取得する
-  (参照: `docs/schema_v4.md` §3.1)
-- **無向辺には生成しない** (`of` が既に対称なので同じもの)
-- 実装: freeze 時に終点索引 (`{accessor}_to_index: HashMap<ToPosition, Vec<KindPosition>>`)
-  を**構造体フィールドとして永続化** (グラフは凍結後不変なので一度構築すれば
-  済む。メモリは O(E))。v4.1 で一時構築していた入次数検証もこの索引を使う形に
-  統合してよい
-- 挿入順保持: `sources_of` の Vec も格納順を保持 (既存仕様の延長)
-- スパン規約: 生成 fn ident は Kind トークンのスパン (v4.1 と同じ)
+戻り値は相手ノードではなく常に `EdgeRef` である。相手端点は
+`edge.superior()` / `edge.subordinate()`、積み荷は `edge.payload()` から辿る。
+役割ごとの `each` 制約が戻り型を決める。
 
-## 実証 (完了条件)
+- `each role: 1`: `EdgeRef`
+- `each role: 0..1`: `Option<EdgeRef>`
+- その他または制約なし: `impl Iterator<Item = EdgeRef>`
 
-reactive-cells の `eval_formula` の走査絞り込みを `sources_of` に置き換え、
-コードが縮むことを示す。org-analyzer の相互検出も自然に短くなるなら書き換える
-(不自然なら現状維持で可)。既存テスト全通過 + sources_of の新規テスト。
+無向辺は役割を捏造せず `incident(NodeRef)` を提供し、`EdgeRef::endpoints()` で
+両端を読む。
+
+## 索引・計算量・確保
+
+凍結時に役割ごとの索引と端点対索引を O(V + E) 時間・O(V + E) メモリで構築する。
+完成後の役割クエリと `between` の検索はハッシュ索引により平均 O(1)、結果の走査は
+O(k) である。複数件の役割索引は辺位置を連続列と範囲で保持し、問い合わせ時に
+`Vec` を生成せず借用 iterator を返す。結果順は辺の挿入順を保持する。
+
+`between(a, b)` は両参照が同じ `Graph instance` 由来であることを検査する。
+非パニック版 `try_between(a, b) -> Result<_, graphite::GraphMismatch>` も提供する。
+有向辺の対は順序付き、無向辺の対は順序なしである。

@@ -63,8 +63,11 @@ let g = graphite::graph!(Org {
     bob_boss  = Boss(bob -[BossEdge { since: 2021 }]-> alice),
 })?;
 
-let team: &Team = Org::BelongsTo::of(&g, &Org::PersonId("alice".to_string()));
-let (boss, attrs) = Org::Boss::of(&g, &Org::PersonId("bob".to_string())).unwrap(); // (&Person, &BossEdge)
+let alice = Org::Person::get(&g, &Org::PersonId("alice".to_string())).unwrap();
+let bob = Org::Person::get(&g, &Org::PersonId("bob".to_string())).unwrap();
+let team = Org::BelongsTo::of_member(alice).team();
+let boss_edge = Org::Boss::of_subordinate(bob).unwrap();
+let (boss, attrs) = (boss_edge.superior(), boss_edge.payload());
 ```
 
 `graph_schema!` が何を生成するか (newtype キー・builder・辺の第一級型・
@@ -275,36 +278,33 @@ schema ごとの生成物は `OrgChart`/`ApprovalFlow` のように別々の Rus
 
 **動的アクセスは型名前空間の関連関数**: v3 にあった
 「ラベルごとに1個のビューを返すメソッド `{label}()`」という間接層は v4 では
-無くなりました。辺の読み取りAPI (`of`/`get`/`between`/`iter`/`ids`/`len`) は
+無くなりました。辺の読み取りAPI (`of_<role>`/`get`/`between`/`iter`/`ids`/`len`) は
 `graph_schema!` が生成した辺型への固有 impl として直接生えます
-(`OrgChart::Boss::of(&g, ..)` のように呼びます)。ノードの読み取り API
+(`OrgChart::Boss::of_subordinate(person)` のように呼びます)。ノードの読み取り API
 (`get`/`get_mut`/`ids`/`iter`) はスキーマ module 内のノードマーカーに生えます
 (`OrgChart::Employee::get(&g, ..)`)。ユーザー struct (`Employee` 等) への
 固有 impl は追加しないため、複数 schema が同じ値型を共有できます。
 ここで廃止したのはschema由来のビューAPIであり、`graph!` 左辺名から呼び出し箇所
 ごとに生成される `graph.alice()` のような名前付き静的アクセサとは別物です。
 
-- **`Kind::of(&g, &SrcId)`** — そのエッジ種別の自然な戻り値。
-  **`where` 制約が戻り型を決めます**:
+- **`Kind::of_<role>(NodeRef)`** — 指定した役割で接続する辺を検索します。
+  **その役割の `where each` 制約が戻り型を決めます**。NodeRefにも
+  `<kind>_as_<role>()` という同じ検索が生成されます。
 
-  | 制約             | `of` の戻り値                                              |
-  |------------------|-------------------------------------------------------------|
-  | `each X: 1`      | `TRef<'graph>` (属性付きは `(TRef<'graph>, &Attrs)`)。未知キーはパニック (非パニック版 `get_of` あり) |
-  | `each X: 0..1`   | `Option<TRef<'graph>>` (属性付きは `Option<(TRef<'graph>, &Attrs)>`) |
-  | 制約なし          | `Vec<TRef<'graph>>` (属性付きは `Vec<(TRef<'graph>, &Attrs)>`) |
+  | 制約             | 戻り値 |
+  |------------------|--------|
+  | `each X: 1`      | `KindRef<'graph>` |
+  | `each X: 0..1`   | `Option<KindRef<'graph>>` |
+  | 制約なし          | `impl Iterator<Item = KindRef<'graph>>` |
 
-  `each X: 1` の `of` は未知キーを渡すとパニックします (`Vec` の `v[i]` と
-  同じ「呼び出し規約違反」の扱い。非パニック版 `get_of` も対で提供されます)。
-- **`Kind::sources_of(&g, &ToId)`** — `of` の逆方向 (終点側から始点側を検索する
-  逆引きクエリ)。戻り値は **終点側の `each` 制約** (役割名がある場合はその
-  役割の制約) が `of` と対称に決めます (制約なしなら `Vec<TRef<'graph>>`、属性付きは
-  `Vec<(TRef<'graph>, &Attrs)>`)。無向辺には生成されません (`of` が既に対称なので不要。
-  詳細: `docs/reverse_query.md`)。
+  戻り値は常に辺参照なので、相手端点・積み荷・辺IDを失いません。複数件は
+  問い合わせ時の `Vec` 確保なしで挿入順に走査できます。
 - **`Kind::get(&g, &{Kind}Id)`** — 辺そのものをキー (`{Kind}Id`) で1本検索
   します。見つかれば `Some(KindRef<'graph>)` を返します。
-- **`Kind::between(&g, &SrcId, &DstId)`** — (始点, 終点) の対で検索します。
+- **`Kind::between(a, b)`** — 2つのNodeRefの対で検索します。
   `where unique pair` が付いていれば `Option<KindRef<'graph>>`、無ければ平行辺を
-  許すため `Vec<KindRef<'graph>>` を返します。
+  許すためiteratorを返します。異なるGraph由来を `Result` で扱う
+  `try_between(a, b)` もあります。有向は順序付き、無向は順序なしです。
 - **`Kind::iter(&g)`** — 表全体を `KindRef<'graph>` で走査します。`match`
   パターンでのグラフクエリの代替として使えます。
 - **`Kind::ids(&g)`/`Kind::len(&g)`** — 全キー列挙 / 本数。
@@ -467,12 +467,10 @@ let g = graphite::graph!(OrgChart {
 ### 3. アクセサ・アルゴリズムを使う
 
 ```rust
-let dept = OrgChart::BelongsTo::of(&g, &OrgChart::EmployeeId("tanaka".to_string())); // DepartmentRef (each 1)
-let (boss, attrs) = OrgChart::Boss::of(&g, &OrgChart::EmployeeId("tanaka".to_string())).unwrap(); // Option<(EmployeeRef, &BossEdge)>
-let reports = OrgChart::Reports::of(&g, &OrgChart::EmployeeId("tanaka".to_string())); // Vec<EmployeeRef> (制約なし)
-
-// get_of: each 1 の非パニック版。未知キーは None に落ちる。
-let dept_opt = OrgChart::BelongsTo::get_of(&g, &OrgChart::EmployeeId("no-such-id".to_string())); // None
+let tanaka = OrgChart::Employee::get(&g, &OrgChart::EmployeeId("tanaka".to_string())).unwrap();
+let dept_edge = OrgChart::BelongsTo::of_employee(tanaka); // BelongsToRef (each employee: 1)
+let boss_edge = OrgChart::Boss::of_subordinate(tanaka);   // Option<BossRef>
+let reports = OrgChart::Reports::of_reporter(tanaka);     // iterator<Item = ReportsRef>
 
 // iter(): match パターンの代替。イテレータチェーンでクエリを書く。
 // 例: 相互に上司であるペア (A の boss が B かつ B の boss が A) を検出する。
@@ -543,7 +541,7 @@ let result: Result<OrgChart::Graph, Vec<OrgChart::Violation>> = OrgChart::Graph:
 索引) という構成になっており、**`ids()`/`iter()` は挿入順 (`insert` を
 呼んだ順) を保持することを仕様として保証します**
 (`crates/graphite/src/keyed_table.rs` 参照)。これにより、制約なしエッジ
-(`where` 節を省略した種別) の `Kind::of`/`between`/`iter` が返す `Vec` も、
+(`where` 節を省略した種別) の役割クエリ/`between`/`iter` が返すiteratorも、
 同一始点キーに対する複数終点の相対順序が構築時の追加順 (builder の呼び出し
 順。`graph!` の場合はソース中の記述順) をそのまま保持します。分岐ノベルの
 選択肢表示順のように、順序そのものが意味を持つ場面で安心して依存できます

@@ -82,6 +82,29 @@ pub fn construction_stamp_field_ident(span: proc_macro2::Span) -> Ident {
     Ident::new("__graphite_construction_stamp", span)
 }
 
+/// ノード型名から非公開ストレージ名を機械的に導出する。
+pub fn node_storage_ident(source: &Ident) -> Ident {
+    format_ident!("__graphite_node_{}", to_snake_case(&source.to_string()), span = source.span())
+}
+
+/// 辺種別名と役割名から `edge_as_role` 形式のNodeRefメソッド名を導出する。
+pub fn traversal_method_ident(kind: &Ident, role: &Ident) -> Ident {
+    Ident::new(
+        &format!("{}_as_{}", to_snake_case(&kind.to_string()), role),
+        role.span(),
+    )
+}
+
+/// 役割名から辺種別側の `of_role` メソッド名を導出する。
+pub fn role_query_method_ident(role: &Ident) -> Ident {
+    Ident::new(&format!("of_{role}"), role.span())
+}
+
+/// 辺種別名から非公開の対索引フィールド名を導出する。
+pub fn pair_index_field_ident(kind: &Ident) -> Ident {
+    format_ident!("__graphite_{}_by_pair", to_snake_case(&kind.to_string()), span = kind.span())
+}
+
 /// `PascalCase` / `camelCase` の識別子を `snake_case` に変換する。
 ///
 /// 例: `Employee` -> `employee`, `OrgChart` -> `org_chart`。
@@ -106,13 +129,6 @@ pub fn to_snake_case(ident: &str) -> String {
 
 /// ノード型の内部ストレージ用フィールド名 (複数形) を導出する。
 ///
-/// 英語の不規則複数形には対応しない素朴な "s" 付与だが、この名前は
-/// 生成コード内部にのみ現れる非公開フィールド名であり利用者からは
-/// 見えないため、機能上の問題にはならない (詳細は README の未決事項欄)。
-pub fn plural_field_name(type_name: &str) -> String {
-    format!("{}s", to_snake_case(type_name))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -125,9 +141,11 @@ mod tests {
     }
 
     #[test]
-    fn 複数形フィールド名を導出できる() {
-        assert_eq!(plural_field_name("Employee"), "employees");
-        assert_eq!(plural_field_name("Department"), "departments");
+    fn 探索名を機械的に導出できる() {
+        let kind = Ident::new("関係", proc_macro2::Span::call_site());
+        let role = Ident::new("始点", proc_macro2::Span::call_site());
+        assert_eq!(traversal_method_ident(&kind, &role).to_string(), "関係_as_始点");
+        assert_eq!(role_query_method_ident(&role).to_string(), "of_始点");
     }
 
     #[test]

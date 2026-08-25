@@ -229,7 +229,7 @@ fn main() {
 //
 // v3 の比喩は「ラベルはリレーショナルDBの表名、辺はその1行」でしたが、
 // v4 ではさらに一歩進み、**辺という「行」自体が独立したキーを持つ実体**
-// になりました。`Boss::of(&g, &bob)` は公開IDを `PersonPosition` へ一度変換し、
+// になりました。`Boss::of_subordinate(bob_ref)` はNodeRef内の位置から、
 // 位置索引から `BossPosition` を取得して `BossRef` を返します。`BossRef` の
 // `superior()` は記録済みの端点位置から `PersonRef` を直接組み立てます。
 
@@ -275,8 +275,8 @@ fn section3() {
     チームノードを1件読む(&g);
     personidの作り方とgraphのキーの対応を確認する(&g);
 
-    // --- エッジを辿る (Kind::of/get/between) ---
-    println!("\n--- エッジを辿る (Kind::of/get/between) ---");
+    // --- エッジを辿る (Kind::of_<role>/get/between) ---
+    println!("\n--- エッジを辿る (Kind::of_<role>/get/between) ---");
     each_1のofは直接参照を返す(&g);
     each_0か1のofはoptionを返す(&g);
     unique_pairのbetweenはoptionを返す(&g);
@@ -453,38 +453,32 @@ fn personidの作り方とgraphのキーの対応を確認する(g: &Org::Graph)
     );
 }
 
-// --- エッジを辿る (Kind::of/get/between) ---
+// --- エッジを辿る (Kind::of_<role>/get/between) ---
 
-// やりたいこと: `each member: 1` のエッジは `of` がノード参照を返す
-// (未知キーはパニックする契約。非パニック版は `get_of`)。
+// やりたいこと: `each member: 1` の役割クエリは辺参照を直接返す。
 fn each_1のofは直接参照を返す(g: &Org::Graph) {
-    let team: Org::TeamRef<'_> = BelongsTo::of(g, &PersonId("alice".to_string()));
-    println!("(each 1) BelongsTo::of(&g, &alice) = {}", team.name);
+    let alice = Org::Person::get(g, &PersonId("alice".to_string())).unwrap();
+    let membership: Org::BelongsToRef<'_> = BelongsTo::of_member(alice);
+    println!("(each 1) BelongsTo::of_member(alice) = {}", membership.team().name);
 
-    let safe: Option<Org::TeamRef<'_>> = BelongsTo::get_of(g, &PersonId("alice".to_string()));
-    println!(
-        "(each 1) BelongsTo::get_of(&g, &alice) = {:?}",
-        safe.map(|t| t.value().name.as_str())
-    );
-    let unknown: Option<Org::TeamRef<'_>> = BelongsTo::get_of(g, &PersonId("dave".to_string()));
-    println!("(each 1) BelongsTo::get_of(&g, &dave) = {unknown:?}");
+    let unknown = Org::Person::get(g, &PersonId("dave".to_string()));
+    println!("Person::get(&g, &dave) = {unknown:?}");
 }
 
-// やりたいこと: `each subordinate: 0..1` のエッジは `of` が `Option` を返す。
-// 積み荷ありなので `Option<(NodeRef, &Attrs)>` になり、積み荷へは
-// フィールドアクセスで辿れる (`attrs.since`)。
+// やりたいこと: `each subordinate: 0..1` の役割クエリは `Option<EdgeRef>` を返す。
 fn each_0か1のofはoptionを返す(g: &Org::Graph) {
-    let boss: Option<(Org::PersonRef<'_>, &BossEdge)> = Boss::of(g, &PersonId("bob".to_string()));
-    if let Some((boss_person, attrs)) = boss {
+    let bob = Org::Person::get(g, &PersonId("bob".to_string())).unwrap();
+    let boss: Option<Org::BossRef<'_>> = Boss::of_subordinate(bob);
+    if let Some(edge) = boss {
         println!(
-            "(each 0..1) Boss::of(&g, &bob) = {} (就任年: {})",
-            boss_person.name, attrs.since
+            "(each 0..1) Boss::of_subordinate(bob) = {} (就任年: {})",
+            edge.superior().name, edge.payload().since
         );
     }
-    let no_boss: Option<(Org::PersonRef<'_>, &BossEdge)> =
-        Boss::of(g, &PersonId("alice".to_string()));
+    let alice = Org::Person::get(g, &PersonId("alice".to_string())).unwrap();
+    let no_boss = Boss::of_subordinate(alice);
     println!(
-        "(each 0..1) Boss::of(&g, &alice) で値が無い = {}",
+        "(each 0..1) Boss::of_subordinate(alice) で値が無い = {}",
         no_boss.is_none()
     );
 }
@@ -492,35 +486,27 @@ fn each_0か1のofはoptionを返す(g: &Org::Graph) {
 // やりたいこと: `unique pair` のエッジは `between` が `Option` を返す
 // (同じ対に2本目を張れないので「あるかないか」で十分)。
 fn unique_pairのbetweenはoptionを返す(g: &Org::Graph) {
-    let r: Option<Org::ReportsRef<'_>> = Reports::between(
-        g,
-        &PersonId("alice".to_string()),
-        &PersonId("bob".to_string()),
-    );
+    let alice = Org::Person::get(g, &PersonId("alice".to_string())).unwrap();
+    let bob = Org::Person::get(g, &PersonId("bob".to_string())).unwrap();
+    let r: Option<Org::ReportsRef<'_>> = Reports::between(alice, bob);
     println!(
-        "(unique pair) Reports::between(&g, &alice, &bob) = {}",
+        "(unique pair) Reports::between(alice, bob) = {}",
         r.is_some()
     );
-    let none = Reports::between(
-        g,
-        &PersonId("bob".to_string()),
-        &PersonId("alice".to_string()),
-    );
+    let none = Reports::between(bob, alice);
     println!(
-        "(unique pair) Reports::between(&g, &bob, &alice) = {} (逆向きは無い)",
+        "(unique pair) Reports::between(bob, alice) = {} (逆向きは無い)",
         none.is_some()
     );
 }
 
-// やりたいこと: 制約なしのエッジは `of` が `Vec` を返す (平行辺を許すため)。
-// 積み荷ありなので `Vec<(NodeRef, &Attrs)>`。
+// やりたいこと: 制約なしの役割クエリは `EdgeRef` の iterator を返す。
 fn 制約なしのofはvecを返す(g: &Org::Graph) {
-    let reviewers: Vec<(Org::PersonRef<'_>, &ReviewEdge)> =
-        ReviewedBy::of(g, &PersonId("bob".to_string()));
-    for (reviewer, attrs) in &reviewers {
+    let bob = Org::Person::get(g, &PersonId("bob".to_string())).unwrap();
+    for edge in ReviewedBy::of_reviewee(bob) {
         println!(
-            "(制約なし) ReviewedBy::of(&g, &bob) に {} ({}年度) が含まれる",
-            reviewer.name, attrs.year
+            "(制約なし) ReviewedBy::of_reviewee(bob) に {} ({}年度) が含まれる",
+            edge.reviewer().name, edge.payload().year
         );
     }
 }
@@ -540,23 +526,24 @@ fn 無向辺のendpointsアクセサで両端を読む(g: &Org::Graph) {
     );
 }
 
-// やりたいこと: `of`/`between` はどちらの位置に置かれても対称に辿れる。
+// やりたいこと: `incident`/`between` はどちらの位置に置かれても対称に辿れる。
 // `unique pair` の同値判定も順序を無視する (`alice -- bob` と `bob -- alice`
 // は同じ対)。
 fn 無向辺のofとbetweenは対称に辿れる(g: &Org::Graph) {
-    let alice = PersonId("alice".to_string());
-    let bob = PersonId("bob".to_string());
+    let alice = Org::Person::get(g, &PersonId("alice".to_string())).unwrap();
+    let bob = Org::Person::get(g, &PersonId("bob".to_string())).unwrap();
 
-    let friends_of_bob: Vec<Org::PersonRef<'_>> = Friends::of(g, &bob);
-    for friend in &friends_of_bob {
+    for edge in Friends::incident(bob) {
+        let (a, b) = edge.endpoints();
+        let friend = if a.id() == bob.id() { b } else { a };
         println!(
-            "(無向) Friends::of(&g, &bob) に {} が含まれる (aliceが位置0でも辿れる)",
+            "(無向) Friends::incident(bob) に {} が含まれる (aliceが位置0でも辿れる)",
             friend.name
         );
     }
 
-    let forward: Option<Org::FriendsRef<'_>> = Friends::between(g, &alice, &bob);
-    let backward: Option<Org::FriendsRef<'_>> = Friends::between(g, &bob, &alice);
+    let forward: Option<Org::FriendsRef<'_>> = Friends::between(alice, bob);
+    let backward: Option<Org::FriendsRef<'_>> = Friends::between(bob, alice);
     println!(
         "(無向) between(alice, bob) = {:?} / between(bob, alice) = {:?} (順序を無視して同じ辺)",
         forward.map(|edge| edge.id()),
@@ -1026,35 +1013,37 @@ mod tests {
     #[test]
     fn each_1のofは参照そのものを返す() {
         let g = build();
-        let team = BelongsTo::of(&g, &PersonId("alice".to_string()));
-        assert_eq!(team.name, "Engineering");
+        let alice = Org::Person::get(&g, &PersonId("alice".to_string())).unwrap();
+        let edge = BelongsTo::of_member(alice);
+        assert_eq!(edge.team().name, "Engineering");
     }
 
     #[test]
     fn each_0か1のofはoptionのタプルを返し積み荷フィールドへアクセスできる() {
         let g = build();
-        let (boss, attrs) =
-            Boss::of(&g, &PersonId("bob".to_string())).expect("bobの上司はaliceのはず");
-        assert_eq!(boss.name, "Alice");
-        assert_eq!(attrs.since, 2021);
-        assert!(Boss::of(&g, &PersonId("alice".to_string())).is_none());
+        let bob = Org::Person::get(&g, &PersonId("bob".to_string())).unwrap();
+        let edge = Boss::of_subordinate(bob).expect("bobの上司はaliceのはず");
+        assert_eq!(edge.superior().name, "Alice");
+        assert_eq!(edge.payload().since, 2021);
+        let alice = Org::Person::get(&g, &PersonId("alice".to_string())).unwrap();
+        assert!(Boss::of_subordinate(alice).is_none());
     }
 
     #[test]
     fn 制約なしのofはvecを返す() {
         let g = build();
-        let mut names: Vec<&str> = ReviewedBy::of(&g, &PersonId("bob".to_string()))
-            .into_iter()
-            .map(|(p, _)| p.value().name.as_str())
+        let bob = Org::Person::get(&g, &PersonId("bob".to_string())).unwrap();
+        let mut names: Vec<String> = ReviewedBy::of_reviewee(bob)
+            .map(|edge| edge.reviewer().name.clone())
             .collect();
         names.sort();
-        assert_eq!(names, vec!["Alice", "Carol"]);
+        assert_eq!(names, vec!["Alice".to_string(), "Carol".to_string()]);
     }
 
     #[test]
     fn each_1のget_ofは未知キーでnoneを返す() {
         let g = build();
-        assert!(BelongsTo::get_of(&g, &PersonId("dave".to_string())).is_none());
+        assert!(Org::Person::get(&g, &PersonId("dave".to_string())).is_none());
     }
 
     #[test]
@@ -1083,31 +1072,24 @@ mod tests {
     #[test]
     fn reports_betweenはunique_pairなのでoptionを返す() {
         let g = build();
-        assert!(Reports::between(
-            &g,
-            &PersonId("alice".to_string()),
-            &PersonId("bob".to_string())
-        )
-        .is_some());
-        assert!(Reports::between(
-            &g,
-            &PersonId("bob".to_string()),
-            &PersonId("alice".to_string())
-        )
-        .is_none());
+        let alice = Org::Person::get(&g, &PersonId("alice".to_string())).unwrap();
+        let bob = Org::Person::get(&g, &PersonId("bob".to_string())).unwrap();
+        assert!(Reports::between(alice, bob).is_some());
+        assert!(Reports::between(bob, alice).is_none());
     }
 
     #[test]
     fn review_のofは制約なしでvecのタプルを返す() {
         let g = build();
-        let reviewers = ReviewedBy::of(&g, &PersonId("bob".to_string()));
+        let bob = Org::Person::get(&g, &PersonId("bob".to_string())).unwrap();
+        let reviewers: Vec<_> = ReviewedBy::of_reviewee(bob).collect();
         assert_eq!(reviewers.len(), 2);
         assert!(reviewers
             .iter()
-            .any(|(p, a)| p.name == "Alice" && a.year == 2023));
+            .any(|edge| edge.reviewer().name == "Alice" && edge.payload().year == 2023));
         assert!(reviewers
             .iter()
-            .any(|(p, a)| p.name == "Carol" && a.year == 2024));
+            .any(|edge| edge.reviewer().name == "Carol" && edge.payload().year == 2024));
     }
 
     #[test]

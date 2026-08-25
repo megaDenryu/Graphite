@@ -76,7 +76,8 @@ pub fn play(
 
         narrate(&format!("[{}] {}", scene.speaker, scene.text));
 
-        if let Some(ending) = Finale::of(schema, &current) {
+        if let Some(finale) = Finale::of_scene(scene) {
+            let ending = finale.ending();
             narrate(&format!("=== {} ===", ending.title));
             narrate(&ending.epilogue);
             return PlayOutcome {

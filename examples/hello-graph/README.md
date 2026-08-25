@@ -56,7 +56,7 @@ cargo run
 | 既定ID newtype | `{Node}Id` / `{Kind}Id` | `pub struct PersonId(pub String);` / `pub struct BossId(pub String);` |
 | 名前付きフィールドの構造体本体 | スキーマの役割名 | `pub struct Boss { pub subordinate: PersonId, pub superior: PersonId, pub appointment: BossEdge }` |
 | 読み取り方法 | 端点はスキーマの役割名、積み荷は `payload()` | `boss.subordinate` / `boss.superior` / `Boss::payload` |
-| クエリ関連関数 (固有 impl) | `of`/`get`/`between`/`iter`/`ids`/`len` | `Boss::of(&g, &id)` 等 |
+| クエリ関連関数 (固有 impl) | `of_<role>`/`get`/`between`/`iter`/`ids`/`len` | `Boss::of_subordinate(person)` 等 |
 | 違反 enum のバリアント | `{Kind}DuplicateKey`/`{Kind}UnknownSource`/`{Kind}UnknownTarget`/`{Kind}{Role}EachViolation`/`{Kind}UniquePairViolation` | `Violation::BossSubordinateEachViolation { .. }` |
 
 `of`/`between` の戻り型は宣言した `where` 制約が決めます (これだけ覚えれば
@@ -105,17 +105,17 @@ IDによる動的検索は**型名前空間の関連関数**です (ノードは
 | チームノードを1件読む | `Team::get(&g, &TeamId("eng".to_string()))` | `Option<TeamRef<'_>>` |
 | `PersonId` を手で組み立てる (`graph!` のキーと同一視) | `PersonId("alice".to_string())` | `PersonId` |
 
-### エッジを辿る (Kind::of/get/between)
+### エッジを辿る (Kind::of_<role>/get/between)
 
 | やりたいこと | 書き方 | 戻り値の型 |
 |---|---|---|
-| `each member: 1` を辿る (パニック版) | `BelongsTo::of(&g, &id)` | `TeamRef<'_>` |
-| `each member: 1` を安全に辿る | `BelongsTo::get_of(&g, &id)` | `Option<TeamRef<'_>>` |
-| `each subordinate: 0..1` +積み荷ありを辿る | `Boss::of(&g, &id)` | `Option<(PersonRef<'_>, &BossEdge)>` |
-| `unique pair` を対で検索する | `Reports::between(&g, &from, &to)` | `Option<ReportsRef<'_>>` |
-| 制約なしを辿る | `ReviewedBy::of(&g, &id)` (for ループで受ける) | `Vec<(PersonRef<'_>, &ReviewEdge)>` |
+| `each member: 1` を辿る | `BelongsTo::of_member(person)` | `BelongsToRef<'_>` |
+| NodeRefから同じ辺を辿る | `person.belongs_to_as_member()` | `BelongsToRef<'_>` |
+| `each subordinate: 0..1` +積み荷ありを辿る | `Boss::of_subordinate(person)` | `Option<BossRef<'_>>` |
+| `unique pair` を対で検索する | `Reports::between(from, to)` | `Option<ReportsRef<'_>>` |
+| 制約なしを辿る | `ReviewedBy::of_reviewee(person)` | `impl Iterator<Item = ReviewedByRef<'_>>` |
 | キーで辺1本を検索する | `BelongsTo::get(&g, &BelongsToId("bt1".to_string()))` | `Option<BelongsToRef<'_>>` |
-| 無向辺 (`--`) の両端を読む/対称に辿る (v4.1) | `Friends::get(&g,&id).endpoints()` / `Friends::of(&g, &id)` (どちらの位置でも対称) | `(PersonRef<'_>, PersonRef<'_>)` / `Vec<PersonRef<'_>>` |
+| 無向辺 (`--`) の両端を読む/対称に辿る | `Friends::get(&g,&id).endpoints()` / `Friends::incident(person)` | `(PersonRef<'_>, PersonRef<'_>)` / iterator |
 
 ### 一覧する (iter/ids/len)
 
@@ -160,9 +160,9 @@ IDによる動的検索は**型名前空間の関連関数**です (ノードは
 
 | やりたいこと | できる? | 方法 / 実際に出るエラー |
 |---|---|---|
-| `Boss` エッジの相手ノードを取得する | できる | `Boss::of(&g, &id)` (`src/main.rs` §3) |
-| `Boss` エッジの積み荷 (`since`) を読む | できる | `Boss::of(&g, &id)` が返す `(PersonRef, &BossEdge)` の2番目、または `edge.payload().since` |
-| 未知キーで安全に問い合わせる | できる | `BelongsTo::get_of(&g, &id)` (`Option` で返る) |
+| `Boss` エッジの相手ノードを取得する | できる | `Boss::of_subordinate(person).map(|edge| edge.superior())` |
+| `Boss` エッジの積み荷 (`since`) を読む | できる | `edge.payload().since` |
+| 未知キーで安全に問い合わせる | できる | `Person::get(&g, &id)` (`Option` で返る) |
 | キーで辺1本を検索する | できる | `BelongsTo::get(&g, &edge_id)` |
 | 全エッジをイテレータで走査する | できる | `Boss::iter(&g)` (`BossRef<'_>`) |
 | `Boss` を積み荷のように (`Boss.since`) 読む | **できない** | `error[E0609]: no field \`since\` on type \`fn(PersonId, PersonId, BossEdge) -> Boss {Boss}\`` (§4.1) |

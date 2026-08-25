@@ -26,16 +26,10 @@
 //! `docs/modeling_guide.md` §5 の適用で解消している (`README.md`
 //! 「モデリングガイド§5の適用例」節参照)。
 //!
-//! この「終点で絞り込む」操作は `{Kind}::sources_of` (`docs/reverse_query.md`)
-//! の主要な適用先だが、実際に使えるのは**本数だけが要る**
-//! [`Self::validate_formula_wiring`] だけ ([`Feeds`]/[`Lhs`]/[`Rhs`] は
-//! いずれも積み荷なし・終点側 each 制約なしなので `sources_of(g,
-//! id).len()` がそのまま従来の `.filter(..).count()` を置き換える)。
-//! [`Engine::eval_formula`] が呼ぶ [`Self::feeds_into`]/[`Self::lhs_value`]/
-//! [`Self::rhs_value`] は**相手セルの `CellId`** (可変な値ストア
-//! `self.values` へ引くための鍵) が要るため `sources_of` (相手をノード値
-//! `&Cell` でだけ返す設計、キー版は最小方針により生やさない) の対象外
-//! — 各関数のコメントに詳細を記す。
+//! この「終点で絞り込む」操作には役割クエリ
+//! (`Feeds::of_dependent` / `Lhs::of_operation` / `Rhs::of_operation`) を使う。
+//! 戻り値は `EdgeRef` のiteratorなので、本数は `.count()`、相手セルのキーは
+//! `edge.dependency().id()` / `edge.operand().id()` から追加検索なしで得られる。
 
 use std::collections::{HashMap, HashSet};
 
@@ -147,7 +141,7 @@ impl Engine {
     ///
     /// 本数だけが要件で相手セルの値は不要なので、`{Kind}::iter` を毎回
     /// 全走査して `.filter(.. edge.dependent == cell_id ..)` する代わりに
-    /// `{Kind}::sources_of(graph, cell_id).len()` (`docs/reverse_query.md`)
+    /// `{Kind}::of_<role>(cell).count()`
     /// を使う。freeze 時に構築済みの終点索引を引くだけの O(1) 償却になる。
     fn validate_formula_wiring(graph: &Sheet::Graph) {
         for cell in Sheet::Cell::iter(graph) {
@@ -155,7 +149,7 @@ impl Engine {
             match cell.formula {
                 Formula::Input => {}
                 Formula::Mul | Formula::Sum => {
-                    let count = Feeds::sources_of(graph, cell_id).len();
+                    let count = Feeds::of_dependent(cell).count();
                     assert!(
                         count >= 1,
                         "{cell_id:?}: {:?}セルには演算対象を表すFeedsエッジが1本以上必要です (実際: {count}本)",
@@ -163,8 +157,8 @@ impl Engine {
                     );
                 }
                 Formula::Sub => {
-                    let lhs_count = Lhs::sources_of(graph, cell_id).len();
-                    let rhs_count = Rhs::sources_of(graph, cell_id).len();
+                    let lhs_count = Lhs::of_operation(cell).count();
+                    let rhs_count = Rhs::of_operation(cell).count();
                     assert_eq!(
                         lhs_count, 1,
                         "{cell_id:?}: Subセルには被減数を表すLhsエッジがちょうど1本必要です (実際: {lhs_count}本)"
@@ -269,16 +263,16 @@ impl Engine {
     /// `cell_id` を終点とする `Feeds` エッジの起点セルの値を、挿入順
     /// (`docs/schema_v4.md` §3.2 の順序保証) で列挙する。
     ///
-    /// `{Kind}::sources_of` は相手側のNodeRefを返す。NodeRefの `id()` から
+    /// `Feeds::of_dependent` は辺参照を返す。起点NodeRefの `id()` から
     /// 現在値ストアのキーを直接得られるため、辺表の全走査は不要である。
     fn feeds_into<'a>(&'a self, cell_id: &'a CellId) -> impl Iterator<Item = f64> + 'a {
-        Feeds::sources_of(&self.graph, cell_id)
-            .into_iter()
-            .map(move |dependency| self.value(dependency.id()))
+        let cell = Sheet::Cell::get(&self.graph, cell_id)
+            .expect("評価対象セルはグラフに存在するはず");
+        Feeds::of_dependent(cell).map(move |edge| self.value(edge.dependency().id()))
     }
 
     /// `cell_id` を終点とする `Lhs` エッジの起点セルの値 (被減数)。
-    /// `sources_of` を使わない理由は [`Self::feeds_into`] と同じ (相手の
+    /// 役割クエリを使う理由は [`Self::feeds_into`] と同じ (相手の
     /// `CellId` が要る)。
     ///
     /// # Panics
@@ -286,25 +280,27 @@ impl Engine {
     /// が `Engine::new` の時点で検査済みなので、ここに到達した時点で
     /// 見つからなければ実装の不整合 (バグ) である。
     fn lhs_value(&self, cell_id: &CellId) -> f64 {
-        let operand = Lhs::sources_of(&self.graph, cell_id)
-            .into_iter()
+        let cell = Sheet::Cell::get(&self.graph, cell_id)
+            .expect("評価対象セルはグラフに存在するはず");
+        let operand = Lhs::of_operation(cell)
             .next()
             .expect("validate_formula_wiringで存在を検査済みのはず");
-        self.value(operand.id())
+        self.value(operand.operand().id())
     }
 
     /// `cell_id` を終点とする `Rhs` エッジの起点セルの値 (減数)。
-    /// `sources_of` を使わない理由は [`Self::feeds_into`] と同じ。
+    /// 役割クエリを使う理由は [`Self::feeds_into`] と同じ。
     ///
     /// # Panics
     /// [`Self::lhs_value`] と同様、`Engine::new` の検査済み前提が破れて
     /// いる場合のみパニックする (実装の不整合)。
     fn rhs_value(&self, cell_id: &CellId) -> f64 {
-        let operand = Rhs::sources_of(&self.graph, cell_id)
-            .into_iter()
+        let cell = Sheet::Cell::get(&self.graph, cell_id)
+            .expect("評価対象セルはグラフに存在するはず");
+        let operand = Rhs::of_operation(cell)
             .next()
             .expect("validate_formula_wiringで存在を検査済みのはず");
-        self.value(operand.id())
+        self.value(operand.operand().id())
     }
 }
 

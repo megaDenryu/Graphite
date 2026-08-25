@@ -1,5 +1,0 @@
-error: 役割名 `payload_mut` は生成される辺APIと衝突します。別の役割名を指定してください
- --> tests/ui/edge_ref_role_api_collision.rs:7:41
-  |
-7 |         edge Knows = (knower: Person) -[payload_mut: Details]-> (known: Person);
-  |                                         ^^^^^^^^^^^

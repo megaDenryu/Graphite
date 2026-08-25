@@ -272,19 +272,16 @@ Graphiteには可変な削除APIが存在せず、「新しいノード集合と
 
 ### 3. 型付きアクセサによる誤り耐性
 
-`BelongsTo::of(&g, &emp_id)` は `DepartmentRef<'graph>` を、`Boss::of(&g, &emp_id)` は
-`Option<(EmployeeRef<'graph>, &BossEdge)>` を、`Assigned::of(&g, &emp_id)` は
-`Vec<(ProjectRef<'graph>, &AssignedEdge)>` を返す — `where each` 制約がそのまま戻り値
-の型 (直接返却 / `Option` / `Vec`) に反映されている。生HashMap実装で
+`BelongsTo::of_employee(employee)` は `BelongsToRef<'graph>` を、
+`Boss::of_subordinate(employee)` は `Option<BossRef<'graph>>` を、
+`Assigned::of_employee(employee)` は辺参照のiteratorを返す — `where each` 制約が
+そのまま戻り値の型 (直接返却 / `Option` / iterator) に反映されている。生HashMap実装で
 `HashMap<EmployeeId, Vec<DepartmentId>>` のように多重度を型で表現し忘れると、
 「本当は1つのはずの部署が複数入っている」バグを型システムが教えてくれない。
 
-`BelongsTo::get_of()` (非パニック版) と `BelongsTo::of()` (パニック版) の
-対も、「このグラフが発行したキーだけを渡す」という呼び出し規約と、「外部
-入力かもしれないキーを安全に検査する」という用途を型シグネチャで自然に
-書き分けられる (`main.rs` の `chain`/`reorg` サブコマンドで未知キー入力を
-扱う箇所は `get_of`、内部で確実に存在するキーを使う箇所は `of`、と使い分けて
-いる)。アクセサの操作語彙 (`of`/`get_of`/`get`/`between`/`iter`/`ids`/`len`)
+外部入力のキーは `Employee::get()` で安全にNodeRefへ変換し、その後の役割クエリは
+生成元Graphを保持するNodeRefだけを受け取る。アクセサの操作語彙
+(`of_<role>`/`get`/`between`/`iter`/`ids`/`len`)
 は `Kind` によらず共通なので、覚えることは増えない (`docs/schema_v4.md`
 §3.2 参照)。
 

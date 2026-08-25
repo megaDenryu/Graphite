@@ -4,7 +4,7 @@
 //! による到達不能/行き止まり検出」の4カテゴリを一通り確認する。
 
 use state_machine::fsm::{self, Event, TransitionError};
-use state_machine::schema::{Cancel, Deliver, OrderStateId, Pay, Refund, Ship, Submit};
+use state_machine::schema::{Cancel, Deliver, OrderFsm, OrderStateId, Pay, Refund, Ship, Submit};
 use state_machine::validate;
 
 fn id(s: &str) -> OrderStateId {
@@ -193,11 +193,12 @@ fn 出口を書き忘れた状態を埋め込んだ変種は行き止まりと�
 fn 終端状態集合に含まれる状態は正規fsmでは出て行く辺を持たない() {
     let g = fsm::build();
     for terminal in fsm::terminal_states() {
-        assert!(Submit::of(&g, &terminal).is_none());
-        assert!(Pay::of(&g, &terminal).is_none());
-        assert!(Ship::of(&g, &terminal).is_none());
-        assert!(Deliver::of(&g, &terminal).is_none());
-        assert!(Cancel::of(&g, &terminal).is_none());
-        assert!(Refund::of(&g, &terminal).is_none());
+        let terminal = OrderFsm::OrderState::get(&g, &terminal).unwrap();
+        assert!(Submit::of_before(terminal).is_none());
+        assert!(Pay::of_before(terminal).is_none());
+        assert!(Ship::of_before(terminal).is_none());
+        assert!(Deliver::of_before(terminal).is_none());
+        assert!(Cancel::of_before(terminal).is_none());
+        assert!(Refund::of_before(terminal).is_none());
     }
 }

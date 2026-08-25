@@ -53,7 +53,7 @@ w1 = Wire(n1 -[Cable { ohm: 5 }]- n2),
 - 無向辺には役割名が無いため `each` は使えない。利用可能な制約は
   順序無視の対へ適用する `unique pair` のみ。
 - クエリ (型名前空間、有向と同じ語彙):
-  - `Friends::of(&g, &x)` — x に接続する相手側を挿入順の `Vec` で返す
+  - `Friends::incident(x)` — x に接続する辺参照を挿入順のiteratorで返す
   - `Friends::between(&g, &a, &b)` — 対称
   - `get`/`iter`/`ids`/`len` は有向と同じ
 - 構築用の辺値は、非公開の順序なし対

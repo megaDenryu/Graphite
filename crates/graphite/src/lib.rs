@@ -19,11 +19,101 @@ mod keyed_table;
 mod unordered_pair;
 
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::{fmt, ops::Range};
 
 pub use compute::{ComputeGraph, ComputeGraphBuilder, ComputeGraphError};
 pub use graph::{CycleError, Graph, GraphBuilder, GraphError};
 pub use keyed_table::KeyedTable;
 pub use unordered_pair::UnorderedPair;
+
+/// 異なる `Graph` から得た参照を1つの検索へ渡したことを表す。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct GraphMismatch;
+
+impl fmt::Display for GraphMismatch {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("異なる Graph instance の参照は組み合わせられません。同じ graph! または同じ Graph instance から得た参照だけを渡してください")
+    }
+}
+
+impl std::error::Error for GraphMismatch {}
+
+/// 多重度制約のない役割索引を、役割ごとの範囲と連続した辺位置列で保持する。
+#[doc(hidden)]
+pub struct MultipleRoleIndex<P> {
+    ranges: Vec<Range<usize>>,
+    positions: Vec<P>,
+}
+
+#[doc(hidden)]
+pub struct ExactlyOneRoleIndex<P>(Vec<P>);
+
+impl<P> ExactlyOneRoleIndex<P> {
+    #[doc(hidden)]
+    pub fn from_buckets(buckets: Vec<Vec<P>>) -> Self {
+        Self(
+            buckets
+                .into_iter()
+                .map(|mut bucket| {
+                    assert_eq!(bucket.len(), 1, "多重度1の役割索引には各ノードの辺位置が1つ必要です");
+                    bucket.pop().expect("長さを検査済みです")
+                })
+                .collect(),
+        )
+    }
+
+    #[doc(hidden)]
+    pub fn get(&self, position: usize) -> &P {
+        &self.0[position]
+    }
+}
+
+#[doc(hidden)]
+pub struct OptionalRoleIndex<P>(Vec<Option<P>>);
+
+impl<P> OptionalRoleIndex<P> {
+    #[doc(hidden)]
+    pub fn from_buckets(buckets: Vec<Vec<P>>) -> Self {
+        Self(
+            buckets
+                .into_iter()
+                .map(|mut bucket| {
+                    assert!(bucket.len() <= 1, "多重度0..1の役割索引には辺位置を高々1つだけ格納できます");
+                    bucket.pop()
+                })
+                .collect(),
+        )
+    }
+
+    #[doc(hidden)]
+    pub fn get(&self, position: usize) -> Option<&P> {
+        self.0.get(position).and_then(Option::as_ref)
+    }
+}
+
+impl<P> MultipleRoleIndex<P> {
+    #[doc(hidden)]
+    pub fn from_buckets(buckets: Vec<Vec<P>>) -> Self {
+        let mut positions = Vec::with_capacity(buckets.iter().map(Vec::len).sum());
+        let ranges = buckets
+            .into_iter()
+            .map(|bucket| {
+                let start = positions.len();
+                positions.extend(bucket);
+                start..positions.len()
+            })
+            .collect();
+        Self { ranges, positions }
+    }
+
+    #[doc(hidden)]
+    pub fn get(&self, position: usize) -> &[P] {
+        self.ranges
+            .get(position)
+            .map(|range| &self.positions[range.clone()])
+            .unwrap_or(&[])
+    }
+}
 
 /// `graph!` が有向の柄から辺値を構築するための内部契約。
 #[doc(hidden)]

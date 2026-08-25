@@ -1,5 +1,0 @@
-error: 役割名 `from` は生成される辺APIと衝突します。別の役割名を指定してください
- --> tests/ui/edge_role_api_collision.rs:6:23
-  |
-6 |         edge Knows = (from: Person) -> (known: Person);
-  |                       ^^^^

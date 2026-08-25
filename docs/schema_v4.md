@@ -151,13 +151,13 @@ let p: Option<Org::PersonRef<'_>> = Org::Person::get(&g, &alice_id);
 Org::Person::ids(&g);  Org::Person::iter(&g);   // &PersonId / PersonRef<'_>
 Org::Person::get_mut(&mut g, &alice_id);        // Option<&mut Person>
 
-// 辺 — 種別型 (マクロ生成) への固有 impl
-Org::Boss::of(&g, &bob);               // 走査: where の制約が戻り型を決める
-                                        //   each:1 → (PersonRef<'_>, &BossEdge)
-                                        //   each:0..1 → Option<..>
-                                        //   その他の範囲・制約なし → Vec<..>
+// 辺 — NodeRef と役割名で検索し、常に EdgeRef を返す
+let bob = Org::Person::get(&g, &bob_id).unwrap();
+Org::Boss::of_subordinate(bob);         // each subordinate:0..1 → Option<BossRef<'_>>
+bob.boss_as_subordinate();              // 同じ検索の NodeRef 版
 Org::Boss::get(&g, &boss_id);          // キーで辺 1 本: Option<BossRef<'_>>
-Org::Boss::between(&g, &bob, &alice);  // 対で検索: unique pair → Option、他 → Vec
+Org::Boss::between(bob, alice);         // unique pair → Option、他 → iterator
+Org::Boss::try_between(bob, alice);     // 異なるGraphなら GraphMismatch
 Org::Boss::iter(&g);                   // BossRef<'_>
 Org::Boss::ids(&g);  Org::Boss::len(&g);
 Org::Boss::payload_mut(&mut g, &boss_id); // Option<&mut BossEdge>
@@ -167,7 +167,11 @@ g.alice();
 g.b_boss();
 ```
 
-有向の `EdgeRef` は `from()` / `to()` と `from_id()` / `to_id()` に加え、スキーマの役割名による取得メソッドを持つ。無向の `EdgeRef` は方向を捏造せず、`endpoints()` で2つの `NodeRef` を返し、`from` / `to` は持たない。辺値の端点IDは構築の入力であり、完成後の端点は変更できない。ノード値と辺の積み荷だけを `get_mut` / `payload_mut` で変更できる。
+有向の `EdgeRef` はスキーマの役割名による取得メソッドだけを持つ。自己型辺でも
+`subordinate()` / `superior()` のように両役割が曖昧にならない。無向の `EdgeRef` は
+方向を捏造せず、`endpoints()` で2つの `NodeRef` を返し、`from` / `to` は持たない。
+辺値の端点IDは構築の入力であり、完成後の端点は変更できない。ノード値と辺の
+積み荷だけを `get_mut` / `payload_mut` で変更できる。
 
 - 旧ビュー API (`g.boss().of(..)`、EdgeOne 等 6 型) は**全廃**。
   ランタイムの共通機構は「キー付き要素表」に対するジェネリクスとして
@@ -176,10 +180,10 @@ g.b_boss();
   `b.add(key, edge_value)` (辺版の総称)。
 - **順序保証 (仕様):** `KeyedTable` (`crates/graphite/src/keyed_table.rs`)
   の `ids`/`iter` は挿入順 (`insert` を呼んだ順) を保持する。これにより
-  制約なし辺の `{Kind}::of`/`iter`/`between` (Vec を返す各所) は格納順
+  制約なし辺の役割クエリ/`iter`/`between` (iterator を返す各所) は格納順
   (構築時の追加順) を保持する — 旧フェーズ5 項目 i で仕様化された
   「正式な順序保証」の言語の約束であり、実装の副産物ではなく仕様として
-  扱う (同一始点からの平行辺が複数ある場合でも、`of()` はリテラル/builder
+  扱う (同じ役割の平行辺が複数ある場合でも、役割クエリはリテラル/builder
   での記述順どおりに返る)。
 
 ### 3.3 検証 (凍結時)

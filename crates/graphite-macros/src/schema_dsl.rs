@@ -99,8 +99,8 @@ fn drain_rest(content: ParseStream) {
 /// 内部ストレージの複数形フィールド名を明示指定する `node 型名(複数形);`
 /// 構文はかつて存在したが、v4 でストレージ名が内部専用 (利用者から不可視)
 /// になり明示する意義が消えたため廃止した (`docs/graph_splice.md` §3)。
-/// 検出・移行診断は行わない。内部フィールド名は常に素朴な `+ "s"`
-/// (`crate::naming::plural_field_name`) で生成する。
+/// 検出・移行診断は行わない。内部フィールド名はノード名から機械的な
+/// 私有名として生成する。
 pub struct NodeDecl {
     pub name: Ident,
     /// 既存の公開 ID 型。`None` の場合は schema module 内に `{name}Id`

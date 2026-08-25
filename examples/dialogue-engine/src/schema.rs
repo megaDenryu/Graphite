@@ -126,13 +126,17 @@ impl DialogueGraph::Graph {
 
     /// このシーンに finale (エンディングへの到達) があるか。
     pub fn is_finale_scene(&self, id: &SceneId) -> bool {
-        DialogueGraph::Finale::of(self, id).is_some()
+        DialogueGraph::Scene::get(self, id)
+            .and_then(DialogueGraph::Finale::of_scene)
+            .is_some()
     }
 
     /// このシーンに選択肢が 0 本、かつ finale も無いか (= デッドエンド)。
     pub fn is_dead_end(&self, id: &SceneId) -> bool {
-        DialogueGraph::Choice::of(self, id).is_empty()
-            && DialogueGraph::Finale::of(self, id).is_none()
+        DialogueGraph::Scene::get(self, id).is_none_or(|scene| {
+            DialogueGraph::Choice::of_scene(scene).next().is_none()
+                && DialogueGraph::Finale::of_scene(scene).is_none()
+        })
     }
 }
 

@@ -151,22 +151,7 @@ mod tests {
     #[test]
     fn belongs_toのofはeach1なので参照そのものを返す() {
         let g = build_healthy_chart();
-        let d: OrgChart::DepartmentRef<'_> = BelongsTo::of(&g, &emp("田中"));
-        assert_eq!(d.name, "営業");
-    }
-
-    #[test]
-    #[should_panic(expected = "BelongsTo::of")]
-    fn belongs_toのofは未知キーでパニックする() {
-        let g = build_healthy_chart();
-        let _ = BelongsTo::of(&g, &emp("存在しない社員"));
-    }
-
-    #[test]
-    fn belongs_toのget_ofは未知キーでnoneを返す() {
-        let g = build_healthy_chart();
-        assert!(BelongsTo::get_of(&g, &emp("存在しない社員")).is_none());
-        let d = BelongsTo::get_of(&g, &emp("田中")).expect("田中は営業部に所属しているはず");
+        let d = BelongsTo::of_employee(OrgChart::Employee::get(&g, &emp("田中")).unwrap()).department();
         assert_eq!(d.name, "営業");
     }
 
@@ -174,12 +159,14 @@ mod tests {
     fn bossのofはeach0か1なのでoptionを返す() {
         let g = build_healthy_chart();
 
-        let b: Option<(OrgChart::EmployeeRef<'_>, &BossEdge)> = Boss::of(&g, &emp("佐藤"));
-        let (boss_emp, attrs) = b.expect("佐藤の上司は田中のはず");
+        let b = Boss::of_subordinate(OrgChart::Employee::get(&g, &emp("佐藤")).unwrap());
+        let edge = b.expect("佐藤の上司は田中のはず");
+        let boss_emp = edge.superior();
+        let attrs = edge.payload();
         assert_eq!(boss_emp.name, "田中");
         assert_eq!(attrs.since, 2020);
 
-        let no_boss: Option<(OrgChart::EmployeeRef<'_>, &BossEdge)> = Boss::of(&g, &emp("田中"));
+        let no_boss = Boss::of_subordinate(OrgChart::Employee::get(&g, &emp("田中")).unwrap());
         assert!(no_boss.is_none());
     }
 
@@ -187,11 +174,11 @@ mod tests {
     fn reportsのofは制約なしなのでvecを返す() {
         let g = build_healthy_chart();
 
-        let subordinates: Vec<OrgChart::EmployeeRef<'_>> = Reports::of(&g, &emp("田中"));
+        let subordinates: Vec<_> = Reports::of_reporter(OrgChart::Employee::get(&g, &emp("田中")).unwrap()).map(|edge| edge.recipient()).collect();
         assert_eq!(subordinates.len(), 1);
         assert_eq!(subordinates[0].name, "佐藤");
 
-        let none: Vec<OrgChart::EmployeeRef<'_>> = Reports::of(&g, &emp("佐藤"));
+        let none: Vec<_> = Reports::of_reporter(OrgChart::Employee::get(&g, &emp("佐藤")).unwrap()).collect();
         assert!(none.is_empty());
     }
 
@@ -355,9 +342,9 @@ mod tests {
     #[test]
     fn reportsのbetweenはunique_pairなのでoptionを返す() {
         let g = build_healthy_chart();
-        let r = Reports::between(&g, &emp("田中"), &emp("佐藤"));
+        let r = Reports::between(OrgChart::Employee::get(&g, &emp("田中")).unwrap(), OrgChart::Employee::get(&g, &emp("佐藤")).unwrap());
         assert!(r.is_some());
-        assert!(Reports::between(&g, &emp("佐藤"), &emp("田中")).is_none());
+        assert!(Reports::between(OrgChart::Employee::get(&g, &emp("佐藤")).unwrap(), OrgChart::Employee::get(&g, &emp("田中")).unwrap()).is_none());
     }
 
     #[test]
@@ -649,8 +636,7 @@ mod tests {
         // `of` は常に始点側 (`leader`) キーで検索する (入次数制約は `of` の
         // 戻り型には影響しない、`docs/edge_endpoints_v4_1.md` §1)。始点側は
         // 無制約なので `Vec` を返す。
-        let departments_led_by_tanaka: Vec<OrgChart::DepartmentRef<'_>> =
-            Leads::of(&g, &emp("田中"));
+        let departments_led_by_tanaka: Vec<_> = Leads::of_leader(OrgChart::Employee::get(&g, &emp("田中")).unwrap()).map(|edge| edge.department()).collect();
         assert_eq!(departments_led_by_tanaka.len(), 1);
         assert_eq!(departments_led_by_tanaka[0].name, "営業");
 
@@ -926,12 +912,13 @@ mod graph_literal_tests {
             "営業"
         );
 
-        let d: OrgChart::DepartmentRef<'_> = BelongsTo::of(&g, &EmployeeId("tanaka".to_string()));
+        let d = g.tanaka().belongs_to_as_employee().department();
         assert_eq!(d.name, "営業");
 
         // Boss(部下 -> 上司) の方向規約により、tanaka の上司は sato。
-        let (boss_emp, attrs) = Boss::of(&g, &EmployeeId("tanaka".to_string()))
-            .expect("田中の上司は佐藤のはず");
+        let edge = g.tanaka().boss_as_subordinate().expect("田中の上司は佐藤のはず");
+        let boss_emp = edge.superior();
+        let attrs = edge.payload();
         assert_eq!(boss_emp.name, "佐藤");
         assert_eq!(attrs.since, 2020);
     }
@@ -972,7 +959,7 @@ mod graph_literal_tests {
             OrgChart::Employee::get(&g, &EmployeeId("b".to_string())).unwrap().name,
             "B社員"
         );
-        let d: OrgChart::DepartmentRef<'_> = BelongsTo::of(&g, &EmployeeId("b".to_string()));
+        let d = g.b().belongs_to_as_employee().department();
         assert_eq!(d.name, "営業");
     }
 
@@ -993,11 +980,12 @@ mod graph_literal_tests {
         })
         .expect("エッジをノード宣言より先に書いても構築できるはず");
 
-        let d: OrgChart::DepartmentRef<'_> = BelongsTo::of(&g, &EmployeeId("tanaka".to_string()));
+        let d = g.tanaka().belongs_to_as_employee().department();
         assert_eq!(d.name, "営業");
 
-        let (boss_emp, attrs) = Boss::of(&g, &EmployeeId("tanaka".to_string()))
-            .expect("田中の上司は佐藤のはず");
+        let edge = g.tanaka().boss_as_subordinate().expect("田中の上司は佐藤のはず");
+        let boss_emp = edge.superior();
+        let attrs = edge.payload();
         assert_eq!(boss_emp.name, "佐藤");
         assert_eq!(attrs.since, 2020);
     }
@@ -1025,8 +1013,9 @@ mod graph_literal_tests {
             OrgChart::Employee::get(&g, &EmployeeId("tanaka".to_string())).unwrap().name,
             "田中"
         );
-        let (boss_emp, attrs) = Boss::of(&g, &EmployeeId("sato".to_string()))
-            .expect("佐藤の上司は田中のはず");
+        let edge = g.sato().boss_as_subordinate().expect("佐藤の上司は田中のはず");
+        let boss_emp = edge.superior();
+        let attrs = edge.payload();
         assert_eq!(boss_emp.name, "田中");
         assert_eq!(attrs.since, 2021);
     }
@@ -1041,7 +1030,7 @@ mod graph_literal_tests {
         })
         .expect("手動構築でも成功するはず");
 
-        let d: OrgChart::DepartmentRef<'_> = BelongsTo::of(&g, &EmployeeId("tanaka".to_string()));
+        let d = BelongsTo::of_employee(OrgChart::Employee::get(&g, &EmployeeId("tanaka".to_string())).unwrap()).department();
         assert_eq!(d.name, "営業");
     }
 }

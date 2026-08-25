@@ -90,9 +90,10 @@ test_core consumes target/core.rlib
         assert_eq!(BuildPipeline::Task::ids(&g).count(), 2);
         assert_eq!(BuildPipeline::Artifact::ids(&g).count(), 1);
 
-        let produced = Produces::of(&g, &TaskId("build_core".to_string()));
+        let task = BuildPipeline::Task::get(&g, &TaskId("build_core".to_string())).unwrap();
+        let produced: Vec<_> = Produces::of_task(task).collect();
         assert_eq!(produced.len(), 1);
-        assert_eq!(produced[0].path, "target/core.rlib");
+        assert_eq!(produced[0].artifact().path, "target/core.rlib");
     }
 
     #[test]

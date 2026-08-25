@@ -137,19 +137,19 @@ fn collect_declared_keys(items: &[GraphItem]) -> syn::Result<(HashSet<String>, H
     Ok((all_keys, node_keys))
 }
 
-/// `has_parse_errors`: G4b (`docs/ide_support_spec.md` 参照)。呼び出し元
-/// (`lib.rs`) が項目単位の回復パースで1件以上のパースエラーを蓄積していた
-/// 場合に `true` を渡す。このとき「エッジ端点が未宣言」という検証エラーは
-/// 出さず、その辺を生成対象から除外する (壊れた項目由来の二次
-/// 噴出を避けるため)。`false` (パースエラー0件) のときは現行通り `Err` で
-/// 全体を中断する。なお `collect_declared_keys` の重複キー診断は
-/// `has_parse_errors` に関わらず常にハード失敗のまま (現行維持)。
-pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<TokenStream> {
-    let schema_name = &input.schema_name;
-    let graph_ident = graph_type_ident(schema_name);
+struct GeneratedItems {
+    node_calls: Vec<TokenStream>,
+    rest_calls: Vec<TokenStream>,
+    named_keys: Vec<Ident>,
+    named_positions: Vec<Ident>,
+}
 
-    let (_all_keys, node_keys) = collect_declared_keys(&input.items)?;
-
+fn generate_items(
+    input: &GraphInput,
+    schema_name: &Ident,
+    node_keys: &HashSet<String>,
+    has_parse_errors: bool,
+) -> syn::Result<GeneratedItems> {
     // 項目G1 (`docs/graph_splice.md` §1 で拡張): 「全ノード → (全エッジ +
     // 全スプライスを記述順)」の2段に並べ替えるため、生成するトークン列を
     // 別々の Vec に集めておき、最後に結合する。`rest_calls` はエッジと
@@ -282,6 +282,34 @@ pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<Token
             }
         }
     }
+
+    Ok(GeneratedItems {
+        node_calls,
+        rest_calls,
+        named_keys,
+        named_positions,
+    })
+}
+
+/// `has_parse_errors`: G4b (`docs/ide_support_spec.md` 参照)。呼び出し元
+/// (`lib.rs`) が項目単位の回復パースで1件以上のパースエラーを蓄積していた
+/// 場合に `true` を渡す。このとき「エッジ端点が未宣言」という検証エラーは
+/// 出さず、その辺を生成対象から除外する (壊れた項目由来の二次
+/// 噴出を避けるため)。`false` (パースエラー0件) のときは現行通り `Err` で
+/// 全体を中断する。なお `collect_declared_keys` の重複キー診断は
+/// `has_parse_errors` に関わらず常にハード失敗のまま (現行維持)。
+pub fn generate(input: &GraphInput, has_parse_errors: bool) -> syn::Result<TokenStream> {
+    let schema_name = &input.schema_name;
+    let graph_ident = graph_type_ident(schema_name);
+
+    let (_all_keys, node_keys) = collect_declared_keys(&input.items)?;
+
+    let GeneratedItems {
+        node_calls,
+        rest_calls,
+        named_keys,
+        named_positions,
+    } = generate_items(input, schema_name, &node_keys, has_parse_errors)?;
 
     let wrapper_ident = named_graph_wrapper_ident(schema_name);
     let wrapper_parameters: Vec<Ident> = named_keys

@@ -132,92 +132,63 @@ mod tests {
     }
 
     #[test]
-    fn 制約なしかつ積み荷ありはvecで積み荷付きで返り挿入順を保持する() {
+    fn 制約なしかつ積み荷ありはiteratorで辺を返り挿入順を保持する() {
         let g = build();
-        let sources = Unconstrained::sources_of(&g, &nb("b1"));
+        let sources: Vec<_> = Unconstrained::of_target(RevQuery::NodeB::get(&g, &nb("b1")).unwrap()).collect();
         assert_eq!(sources.len(), 2);
         // 挿入順 (u1: a2, u2: a1) を保持する — ノード宣言順 (a1, a2, ...) では
         // ない。
-        assert_eq!(sources[0].0.name, "a2");
-        assert_eq!(sources[0].1.w, 20);
-        assert_eq!(sources[1].0.name, "a1");
-        assert_eq!(sources[1].1.w, 10);
-    }
-
-    #[test]
-    fn 制約なしかつ積み荷ありは未知キーで空vecを返す() {
-        let g = build();
-        assert!(Unconstrained::sources_of(&g, &nb("存在しないb")).is_empty());
+        assert_eq!(sources[0].source().name, "a2");
+        assert_eq!(sources[0].payload().w, 20);
+        assert_eq!(sources[1].source().name, "a1");
+        assert_eq!(sources[1].payload().w, 10);
     }
 
     #[test]
     fn 制約なしかつ積み荷なしはvecでノード値のみ返す() {
         let g = build();
-        let sources: Vec<RevQuery::NodeARef<'_>> =
-            UnconstrainedNoPayload::sources_of(&g, &nb("b1"));
+        let sources: Vec<_> = UnconstrainedNoPayload::of_target(RevQuery::NodeB::get(&g, &nb("b1")).unwrap()).collect();
         assert_eq!(sources.len(), 1);
-        assert_eq!(sources[0].name, "a3");
+        assert_eq!(sources[0].source().name, "a3");
 
-        assert!(UnconstrainedNoPayload::sources_of(&g, &nb("b2")).is_empty());
+        assert!(UnconstrainedNoPayload::of_target(RevQuery::NodeB::get(&g, &nb("b2")).unwrap()).next().is_none());
     }
 
     #[test]
     fn 終点側0か1制約かつ積み荷なしはoptionを返す() {
         let g = build();
 
-        let m: Option<RevQuery::NodeARef<'_>> = AtMostOne::sources_of(&g, &nb("b1"));
-        assert_eq!(m.expect("b1の代表はa1のはず").name, "a1");
+        let m = AtMostOne::of_dst(RevQuery::NodeB::get(&g, &nb("b1")).unwrap());
+        assert_eq!(m.expect("b1の代表はa1のはず").src().name, "a1");
 
-        let none: Option<RevQuery::NodeARef<'_>> = AtMostOne::sources_of(&g, &nb("b2"));
+        let none = AtMostOne::of_dst(RevQuery::NodeB::get(&g, &nb("b2")).unwrap());
         assert!(none.is_none(), "b2には代表がいないはず");
-    }
-
-    #[test]
-    fn 終点側0か1制約は未知キーでnoneを返す() {
-        let g = build();
-        assert!(AtMostOne::sources_of(&g, &nb("存在しないb")).is_none());
     }
 
     #[test]
     fn 終点側ちょうど1制約かつ積み荷ありは直接参照を返す() {
         let g = build();
 
-        let (source, weight) = ExactlyOne::sources_of(&g, &nb("b1"));
-        assert_eq!(source.name, "a1");
-        assert_eq!(weight.w, 100);
+        let edge = ExactlyOne::of_dst(RevQuery::NodeB::get(&g, &nb("b1")).unwrap());
+        assert_eq!(edge.src().name, "a1");
+        assert_eq!(edge.payload().w, 100);
 
-        let (source2, weight2) = ExactlyOne::sources_of(&g, &nb("b2"));
-        assert_eq!(source2.name, "a2");
-        assert_eq!(weight2.w, 200);
-    }
-
-    #[test]
-    #[should_panic(expected = "ExactlyOne::sources_of")]
-    fn 終点側ちょうど1制約は未知キーでパニックする() {
-        let g = build();
-        let _ = ExactlyOne::sources_of(&g, &nb("存在しないb"));
-    }
-
-    #[test]
-    fn 終点側ちょうど1制約のget_sources_ofは未知キーでnoneを返す() {
-        let g = build();
-        assert!(ExactlyOne::get_sources_of(&g, &nb("存在しないb")).is_none());
-        let (source, weight) = ExactlyOne::get_sources_of(&g, &nb("b1")).expect("b1は存在するはず");
-        assert_eq!(source.name, "a1");
-        assert_eq!(weight.w, 100);
+        let edge2 = ExactlyOne::of_dst(RevQuery::NodeB::get(&g, &nb("b2")).unwrap());
+        assert_eq!(edge2.src().name, "a2");
+        assert_eq!(edge2.payload().w, 200);
     }
 
     #[test]
     fn sources_ofは相手側から見た関係でありofとは非対称() {
-        // Unconstrained::of(&g, &a1) は a1 を始点とする辺の終点側 (b1) を
+        // Unconstrained::of_source(a1) は a1 を始点とする辺 (終点側は b1) を
         // 返す。sources_of(&g, &b1) はその逆で a1 を含む始点側の一覧を返す
         // (自分自身が相手にとってのsources_ofに現れることを確認する)。
         let g = build();
-        let targets: Vec<(RevQuery::NodeBRef<'_>, &Weight)> = Unconstrained::of(&g, &na("a1"));
+        let targets: Vec<_> = Unconstrained::of_source(RevQuery::NodeA::get(&g, &na("a1")).unwrap()).collect();
         assert_eq!(targets.len(), 1);
-        assert_eq!(targets[0].0.name, "b1");
+        assert_eq!(targets[0].target().name, "b1");
 
-        let sources = Unconstrained::sources_of(&g, &nb("b1"));
-        assert!(sources.iter().any(|(src, _)| src.name == "a1"));
+        let sources = Unconstrained::of_target(RevQuery::NodeB::get(&g, &nb("b1")).unwrap());
+        assert!(sources.into_iter().any(|edge| edge.source().name == "a1"));
     }
 }

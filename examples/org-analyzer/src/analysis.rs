@@ -65,7 +65,7 @@ pub fn summarize(org: &OrgChart::Graph) -> SummaryReport {
     let total_employees = OrgChart::Employee::ids(org).count();
 
     // 部署別人数: 部署を終点とする BelongsTo エッジの本数。`docs/reverse_query.md`
-    // の `sources_of` (of の対称、終点で引いて始点側を返す) を使うと、
+    // の役割クエリ `of_department` を使うと、
     // 全エッジを走査して HashMap に集計する前段が不要になる (freeze 時に
     // 構築済みの終点索引を `id` ごとに引くだけで済む)。
     let mut dept_counts: Vec<DeptCount> = OrgChart::Department::ids(org)
@@ -75,7 +75,10 @@ pub fn summarize(org: &OrgChart::Graph) -> SummaryReport {
                 .expect("Department::idsから得たキーは必ず存在する")
                 .name
                 .clone(),
-            count: BelongsTo::sources_of(org, id).len(),
+            count: BelongsTo::of_department(
+                OrgChart::Department::get(org, id).expect("列挙した部署は存在する"),
+            )
+            .count(),
         })
         .collect();
     dept_counts.sort_by(|a, b| a.department.cmp(&b.department));
@@ -95,7 +98,7 @@ pub fn summarize(org: &OrgChart::Graph) -> SummaryReport {
     grade_counts.sort_by_key(|g| g.grade);
 
     // span of control: 社員 (boss) を終点とする Boss エッジの本数 =
-    // 直属部下数。`Boss::sources_of` (`docs/reverse_query.md`) で直接引く
+    // 直属部下数。`Boss::of_superior` で直接引く
     // (`direct_reports` を全エッジから事前に集計する HashMap は不要になる)。
     let managers: Vec<EmployeeId> = OrgChart::Employee::ids(org)
         .filter(|id| OrgChart::Employee::get(org, id).unwrap().grade >= MANAGER_GRADE_THRESHOLD)
@@ -107,7 +110,10 @@ pub fn summarize(org: &OrgChart::Graph) -> SummaryReport {
     let mut zero_report_managers: Vec<(EmployeeId, String, String)> = Vec::new();
     let mut sum: usize = 0;
     for id in &managers {
-        let count = Boss::sources_of(org, id).len();
+        let count = Boss::of_superior(
+            OrgChart::Employee::get(org, id).expect("列挙した社員は存在する"),
+        )
+        .count();
         sum += count;
         let emp = OrgChart::Employee::get(org, id).unwrap();
         if count > max {
@@ -125,12 +131,15 @@ pub fn summarize(org: &OrgChart::Graph) -> SummaryReport {
         sum as f64 / managers.len() as f64
     };
 
-    // プロジェクト別アサイン人数。同じ理由で `Assigned::sources_of` を使う。
+    // プロジェクト別アサイン人数。同じ理由で `Assigned::of_project` を使う。
     let mut project_assignments: Vec<ProjectAssignmentCount> = OrgChart::Project::ids(org)
         .map(|id| ProjectAssignmentCount {
             project: id.clone(),
             name: OrgChart::Project::get(org, id).unwrap().name.clone(),
-            count: Assigned::sources_of(org, id).len(),
+            count: Assigned::of_project(
+                OrgChart::Project::get(org, id).expect("列挙したプロジェクトは存在する"),
+            )
+            .count(),
         })
         .collect();
     project_assignments.sort_by(|a, b| a.project.cmp(&b.project));
@@ -364,12 +373,16 @@ fn detect_cross_department_bosses(org: &OrgChart::Graph) -> Vec<CrossDepartmentB
 /// 誰もアサインされていないプロジェクト。
 ///
 /// 「このプロジェクトを終点とする Assigned エッジが1本もない」を判定するには
-/// 「全エッジから staffed 集合を事前に作る」必要はなく、`Assigned::sources_of`
-/// (`docs/reverse_query.md`) をプロジェクトごとに直接引いて空かどうかを見れば
+/// 「全エッジから staffed 集合を事前に作る」必要はなく、`Assigned::of_project`
+/// をプロジェクトごとに直接引いて空かどうかを見れば
 /// 十分 (freeze 時に構築済みの終点索引を引くだけ)。
 fn detect_unstaffed_projects(org: &OrgChart::Graph) -> Vec<ProjectId> {
     let mut result: Vec<ProjectId> = OrgChart::Project::ids(org)
-        .filter(|p| Assigned::sources_of(org, p).is_empty())
+        .filter(|p| {
+            Assigned::of_project(OrgChart::Project::get(org, p).unwrap())
+                .next()
+                .is_none()
+        })
         .cloned()
         .collect();
     result.sort();
@@ -377,10 +390,14 @@ fn detect_unstaffed_projects(org: &OrgChart::Graph) -> Vec<ProjectId> {
 }
 
 /// どの部署からもスポンサーされていないプロジェクト。同じ理由で
-/// `Sponsors::sources_of` を使う。
+/// `Sponsors::of_project` を使う。
 fn detect_sponsorless_projects(org: &OrgChart::Graph) -> Vec<ProjectId> {
     let mut result: Vec<ProjectId> = OrgChart::Project::ids(org)
-        .filter(|p| Sponsors::sources_of(org, p).is_empty())
+        .filter(|p| {
+            Sponsors::of_project(OrgChart::Project::get(org, p).unwrap())
+                .next()
+                .is_none()
+        })
         .cloned()
         .collect();
     result.sort();

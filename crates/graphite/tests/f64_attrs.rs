@@ -59,8 +59,10 @@ fn f64をエッジ属性とノードフィールドに持つスキーマがコ�
     })
     .expect("f64 フィールドを含むスキーマも正常に構築できるはず");
 
-    let readings = Measurement::Measured::of(&g, &SensorId("s1".to_string()));
+    let readings: Vec<_> = Measurement::Measured::of_sensor(
+        Measurement::Sensor::get(&g, &SensorId("s1".to_string())).unwrap(),
+    ).collect();
     assert_eq!(readings.len(), 1);
-    assert_eq!(readings[0].0.value, 23.5);
-    assert_eq!(readings[0].1.confidence, 0.95);
+    assert_eq!(readings[0].reading().value, 23.5);
+    assert_eq!(readings[0].payload().confidence, 0.95);
 }

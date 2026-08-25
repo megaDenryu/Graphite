@@ -140,7 +140,11 @@ fn chainはトップ層まで辿ると停止する() {
     let top_id = OrgChart::Employee::ids(&generated.chart)
         .find(|id| {
             let emp = OrgChart::Employee::get(&generated.chart, id).unwrap();
-            emp.grade == 5 && Boss::of(&generated.chart, id).is_none()
+            emp.grade == 5
+                && Boss::of_subordinate(
+                    OrgChart::Employee::get(&generated.chart, id).unwrap(),
+                )
+                .is_none()
         })
         .cloned();
 
@@ -181,7 +185,8 @@ fn reorgは廃止部署の全社員を他部署へ再配置する() {
             assert!(OrgChart::Department::get(new_org, &target).is_none());
             // 再配置された社員は新部署に所属している
             for (emp_id, new_dept) in &report.reassigned {
-                let actual = BelongsTo::get_of(new_org, emp_id);
+                let actual = OrgChart::Employee::get(new_org, emp_id)
+                    .map(|employee| BelongsTo::of_employee(employee).department());
                 assert_eq!(
                     actual.map(|d| d.name.clone()),
                     OrgChart::Department::get(new_org, new_dept).map(|d| d.name.clone())

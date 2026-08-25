@@ -143,6 +143,9 @@ fn 組織図で得たキーを承認フローのクエリにそのまま渡せ�
     assert_eq!(sato_in_org.name, "佐藤");
 
     // 承認フロー自体の意味論も一応確認しておく: 佐藤 -> 田中 の承認関係。
-    let approves_target = approval_flow::ApprovalFlow::Approves::of(&flow, sato_id_in_flow);
-    assert_eq!(approves_target.first().unwrap().name, "田中");
+    let sato_ref = approval_flow::ApprovalFlow::Person::get(&flow, sato_id_in_flow).unwrap();
+    let approves_target = approval_flow::ApprovalFlow::Approves::of_approver(sato_ref)
+        .next()
+        .unwrap();
+    assert_eq!(approves_target.approved().name, "田中");
 }
