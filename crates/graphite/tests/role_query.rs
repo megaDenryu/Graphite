@@ -1,14 +1,16 @@
-//! `{Kind}::sources_of` (`docs/reverse_query.md`) の統合テスト。
+//! 終点側の役割クエリ (`Kind::of_<role>`、`docs/reverse_query.md`) の統合テスト。
 //!
 //! `orgchart_macro.rs` の既存スキーマは目的が違う (v4/v4.1 の実証) ので、
-//! `sources_of` 専用の最小スキーマをこのファイルに用意する。カバーする
+//! 役割クエリ専用の最小スキーマをこのファイルに用意する。カバーする
 //! 組み合わせ (積み荷の有無 × 終点側 each 制約):
 //!
-//! - `Unconstrained`  : 積み荷あり、終点側制約なし → `Vec<(NodeARef, &Weight)>`
-//! - `UnconstrainedNoPayload` : 積み荷なし、終点側制約なし → `Vec<NodeARef>`
-//! - `AtMostOne`      : 積み荷なし、`each dst: 0..1` → `Option<NodeARef>`
-//! - `ExactlyOne`     : 積み荷あり、`each dst: 1` → 直接参照 (パニック +
-//!   非パニック版 `get_sources_of`)
+//! - `Unconstrained`  : 積み荷あり、終点側制約なし → `impl Iterator<Item = UnconstrainedRef>`
+//! - `UnconstrainedNoPayload` : 積み荷なし、終点側制約なし → `impl Iterator<Item = UnconstrainedNoPayloadRef>`
+//! - `AtMostOne`      : 積み荷なし、`each dst: 0..1` → `Option<AtMostOneRef>`
+//! - `ExactlyOne`     : 積み荷あり、`each dst: 1` → `ExactlyOneRef` (直接参照)
+//!
+//! いずれの戻り値も相手ノードではなく `EdgeRef` である。相手端点は
+//! `edge.source()`、積み荷は `edge.payload()` から辿る。
 //!
 //! いずれも役割名つき有向辺 (`docs/edge_endpoints_v4_1.md` §1) でなければ
 //! 終点側の each は書けないため、終点側制約のある2種は役割名 (`src`/`dst`)
@@ -146,7 +148,7 @@ mod tests {
     }
 
     #[test]
-    fn 制約なしかつ積み荷なしはvecでノード値のみ返す() {
+    fn 制約なしかつ積み荷なしはiteratorで辺を返す() {
         let g = build();
         let sources: Vec<_> =
             UnconstrainedNoPayload::of_target(RevQuery::NodeB::get(&g, &nb("b1")).unwrap())
@@ -186,10 +188,11 @@ mod tests {
     }
 
     #[test]
-    fn sources_ofは相手側から見た関係でありofとは非対称() {
+    fn of_targetは相手側から見た関係でありof_sourceとは非対称() {
         // Unconstrained::of_source(a1) は a1 を始点とする辺 (終点側は b1) を
-        // 返す。sources_of(&g, &b1) はその逆で a1 を含む始点側の一覧を返す
-        // (自分自身が相手にとってのsources_ofに現れることを確認する)。
+        // 返す。Unconstrained::of_target(b1) はその逆で a1 を含む始点側の
+        // 一覧を返す (自分自身が相手にとっての of_target に現れることを
+        // 確認する)。
         let g = build();
         let targets: Vec<_> =
             Unconstrained::of_source(RevQuery::NodeA::get(&g, &na("a1")).unwrap()).collect();
