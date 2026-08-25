@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    17433344059809225167u64, 12717927844930783120u64, 4673788066204504741u64,
-    16075631939720401905u64,
+    15576410435691497766u64, 16132268887550492475u64, 2320979953979017628u64,
+    16241473871998632032u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SceneId(pub String);
@@ -599,7 +599,7 @@ impl DialogueGraphDefaultId for super::Scene {
     }
 }
 impl DialogueGraphNode for super::Scene {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `Scene` ノード個体。
 #[derive(Clone, Copy)]
 pub struct SceneRef<'graph> {
     graph: &'graph Graph,
@@ -679,6 +679,7 @@ impl<'graph> SceneRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::choice_try_between`] を使う。
     pub fn choice_between(
         self,
         other: SceneRef<'graph>,
@@ -732,6 +733,7 @@ impl<'graph> SceneRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::finale_try_between`] を使う。
     pub fn finale_between(
         self,
         other: EndingRef<'graph>,
@@ -814,7 +816,7 @@ impl DialogueGraphDefaultId for super::Ending {
     }
 }
 impl DialogueGraphNode for super::Ending {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `Ending` ノード個体。
 #[derive(Clone, Copy)]
 pub struct EndingRef<'graph> {
     graph: &'graph Graph,

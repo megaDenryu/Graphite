@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    9679269966857011566u64, 245596974385210351u64, 6756990841367221828u64,
-    5467987076053389568u64,
+    12963486527544898402u64, 14105697897529115437u64, 10476055547082950308u64,
+    17392680166970779096u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ServiceId(pub String);
@@ -395,7 +395,7 @@ impl OrchestrationDefaultId for super::Service {
     }
 }
 impl OrchestrationNode for super::Service {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `Service` ノード個体。
 #[derive(Clone, Copy)]
 pub struct ServiceRef<'graph> {
     graph: &'graph Graph,
@@ -473,6 +473,7 @@ impl<'graph> ServiceRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::depends_on_try_between`] を使う。
     pub fn depends_on_between(
         self,
         other: ServiceRef<'graph>,

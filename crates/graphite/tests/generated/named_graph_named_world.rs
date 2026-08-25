@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    7014688817851710678u64, 7182845523462353093u64, 14272421789563037468u64,
-    15269043232332924272u64,
+    16365571547883664465u64, 15175445535188761492u64, 1465279730016539763u64,
+    11324109865854208759u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PersonId(pub String);
@@ -592,7 +592,7 @@ impl NamedWorldDefaultId for super::Person {
     }
 }
 impl NamedWorldNode for super::Person {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `Person` ノード個体。
 #[derive(Clone, Copy)]
 pub struct PersonRef<'graph> {
     graph: &'graph Graph,
@@ -662,6 +662,7 @@ impl<'graph> PersonRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::purchase_try_between`] を使う。
     pub fn purchase_between(
         self,
         other: ItemRef<'graph>,
@@ -729,6 +730,7 @@ impl<'graph> PersonRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::knows_try_between`] を使う。
     pub fn knows_between(
         self,
         other: PersonRef<'graph>,
@@ -811,7 +813,7 @@ impl NamedWorldDefaultId for super::Item {
     }
 }
 impl NamedWorldNode for super::Item {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `Item` ノード個体。
 #[derive(Clone, Copy)]
 pub struct ItemRef<'graph> {
     graph: &'graph Graph,

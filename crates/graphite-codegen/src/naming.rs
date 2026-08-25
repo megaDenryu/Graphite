@@ -97,7 +97,7 @@ pub fn node_storage_ident(source: &Ident) -> Ident {
 /// 種別APIとは、ある種別に属する個体の全体を対象にする読み取り・可変操作
 /// (`by_id` / `value_mut` / `payload_mut` / `ids` / `iter` / `len` /
 /// `between` / `try_between`) のことである。接尾辞は固定の英語であり、
-/// 自然言語の複数形・省略形は生成しない (`edge2s()` のような暗黙の複数形を
+/// 自然言語の複数形・省略形は生成しない (`bosses()` のような暗黙の複数形を
 /// 作らない、という issue #9 の決定)。日本語スキーマでも同じ機械的連結で
 /// `人物_by_id` / `購入_try_between` になる。
 pub fn kind_api_method_ident(accessor: &Ident, suffix: &str) -> Ident {

@@ -142,7 +142,7 @@ rust-analyzer での実測 (2026-07-15、`orgchart_macro.rs` の
 
 ## 1.9 スキーマ v4 実装後の再計測 (2026-07-17)
 
-v4 (`docs/schema_v4.md`: 辺の第一級化・where 制約・型名前空間アクセス) 実装後、
+v4 (`docs/schema_v4.md`: 辺の第一級化・where 制約・Graph中心の種別API) 実装後、
 `crates/graphite/tests/orgchart_macro.rs` で実測:
 
 | 操作 | 結果 |
@@ -213,8 +213,10 @@ issue #9 で `Graph` へ移した種別API (`{type}_by_id`/`{type}_value_mut`/
 `{kind}_ids`/`{kind}_iter`/`{kind}_len`) と、`NodeRef` へ移した
 `{kind}_between`/`{kind}_try_between` にも同じ規約を適用する。名前は
 `naming.rs` の `kind_api_method_ident(accessor, suffix)` が組み立て、
-`accessor` がノード型トークンまたは辺種別トークンのスパンを引き継ぐため、
-接頭辞の由来となる宣言トークンへ着地する。
+`accessor` がノード型トークンまたは辺種別トークンのスパンを引き継ぐ。
+§1.15 以降、公開APIは通常のRustファイルであり、定義ジャンプは生成ファイルの
+実装行へ着地する。スパン継承は展開経路が残る場合の保険として維持する
+(実測は §1.15 参照)。
 
 **検証範囲**: rust-analyzer 実機での F12 (go to definition) 再計測は
 今回実施していない。代わりに、対象メソッドをわざと誤った引数数で呼び出し
@@ -255,6 +257,21 @@ NodeRef・EdgeRefのメソッド、役割アクセサ、`Graph`の種別API
 事前生成しない。`graph.alice()`の定義情報は左辺`alice`のスパンへ結び付ける。
 この例外はschemaに由来する公開APIへ広げない。生成と陳腐化検出の規約は
 `docs/code_generation.md`を参照する。
+
+**実測記録 (2026-08-26 レビュー)**: 対象メソッドをわざと誤った引数数で
+呼び出して`E0061`を発生させ、rustcが出す「note: method defined here」の
+着地行を`crates/graphite/tests/generated/traversal_api_traversal.rs`で確認した。
+いずれも生成ファイルの実装行そのものへ着地し、schema宣言トークンへは戻らない。
+
+| メソッド | 着地行 (`traversal_api_traversal.rs`) |
+|---|---|
+| `person_by_id` | 362 |
+| `person_value_mut` | 375 |
+| `person_len` | 394 |
+| `purchase_iter` | 450 |
+| `purchase_as_buyer` | 937 |
+| `関係_try_between` | 1084 |
+| `関係_between` | 1109 |
 
 ## 2. 仕様項目
 

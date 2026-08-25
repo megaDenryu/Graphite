@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    14332876518310637601u64, 15810524189499834642u64, 15057025609040039107u64,
-    12526324669261298615u64,
+    5158826358953526096u64, 12814791441181756059u64, 3952586561887536974u64,
+    3785230863908204042u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PersonId(pub String);
@@ -907,7 +907,7 @@ impl TraversalDefaultId for super::Person {
     }
 }
 impl TraversalNode for super::Person {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `Person` ノード個体。
 #[derive(Clone, Copy)]
 pub struct PersonRef<'graph> {
     graph: &'graph Graph,
@@ -977,6 +977,7 @@ impl<'graph> PersonRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::purchase_try_between`] を使う。
     pub fn purchase_between(
         self,
         other: ProductRef<'graph>,
@@ -1043,6 +1044,7 @@ impl<'graph> PersonRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::mentor_try_between`] を使う。
     pub fn mentor_between(
         self,
         other: PersonRef<'graph>,
@@ -1103,6 +1105,7 @@ impl<'graph> PersonRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::関係_try_between`] を使う。
     pub fn 関係_between(self, other: PersonRef<'graph>) -> Option<関係Ref<'graph>> {
         self.関係_try_between(other)
             .unwrap_or_else(|error| {
@@ -1152,6 +1155,7 @@ impl<'graph> PersonRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::friends_try_between`] を使う。
     pub fn friends_between(
         self,
         other: PersonRef<'graph>,
@@ -1234,7 +1238,7 @@ impl TraversalDefaultId for super::Product {
     }
 }
 impl TraversalNode for super::Product {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `Product` ノード個体。
 #[derive(Clone, Copy)]
 pub struct ProductRef<'graph> {
     graph: &'graph Graph,

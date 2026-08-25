@@ -1,4 +1,4 @@
-# スキーマ v4 — 辺の第一級化: 全要素キー・where 制約・型名前空間アクセス
+# スキーマ v4 — 辺の第一級化: 全要素キー・where 制約・Graph中心の種別API
 
 2026-07-16 のユーザー決定。v3 (edge_syntax_v3.md / graph_literal_v3.md /
 edge_view_api.md) を置き換える大改訂。設計議論の経緯は
@@ -101,12 +101,12 @@ let lead_ref = g.lead();   // AssignedRef<'_>
   スキーマ宣言と柄の向きが一致しなければコンパイルエラーになる。
 - 旧形 (`-[label]->` 中置形・無名辺) は完全廃止。検出・移行診断なし (既定方針)。
 
-## 3. 生成物とアクセス API (型名前空間)
+## 3. 生成物とアクセス API (Graph中心)
 
 ### 3.1 生成される型
 
 `schema Org` は`generated/org.rs`に通常のRustコードとしてmodule本文を生成する。以下の
-生成物は `Org::Graph`、`Org::Builder`、`Org::Violation`、`Org::Person`、
+生成物は `Org::Graph`、`Org::Builder`、`Org::Violation`、`Org::PersonRef`、
 `Org::Boss` のように、この module 内へ配置される。グラフ本体のストレージと
 索引フィールドは module 外へ公開しない。
 
@@ -229,8 +229,8 @@ g.b_boss();
 - crates/graphite-macros: schema_dsl (where 節)・instance_dsl (全行 名前=値)・
   codegen 全面
 - 全テスト・trybuild (stderr 再採取)・examples 7 本・README・hello-graph
-  (§2/§2.5/§3/§4 を v4 の概念 — 全要素キー・where・型名前空間 — で書き直し、
-  エラー引用は実採取)
+  (§2/§2.5/§3/§4 を v4 の概念 — 全要素キー・where 制約・Graph中心の種別API —
+  で書き直し、エラー引用は実採取)
 - docs/edge_syntax_v3.md / graph_literal_v3.md / edge_view_api.md の冒頭に
   「v4 (本ファイル) で置換済み」の注記
 

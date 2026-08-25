@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    3115233277866046296u64, 2490247119215213773u64, 13734065989183925534u64,
-    1030526911642677578u64,
+    900535588977314297u64, 10025815632899494994u64, 3978227918310232855u64,
+    17422406721872420835u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CellId(pub String);
@@ -714,7 +714,7 @@ impl SheetDefaultId for super::Cell {
     }
 }
 impl SheetNode for super::Cell {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `Cell` ノード個体。
 #[derive(Clone, Copy)]
 pub struct CellRef<'graph> {
     graph: &'graph Graph,
@@ -788,6 +788,7 @@ impl<'graph> CellRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::feeds_try_between`] を使う。
     pub fn feeds_between(self, other: CellRef<'graph>) -> Option<FeedsRef<'graph>> {
         self.feeds_try_between(other)
             .unwrap_or_else(|error| {
@@ -843,6 +844,7 @@ impl<'graph> CellRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::lhs_try_between`] を使う。
     pub fn lhs_between(self, other: CellRef<'graph>) -> Option<LhsRef<'graph>> {
         self.lhs_try_between(other)
             .unwrap_or_else(|error| {
@@ -898,6 +900,7 @@ impl<'graph> CellRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::rhs_try_between`] を使う。
     pub fn rhs_between(self, other: CellRef<'graph>) -> Option<RhsRef<'graph>> {
         self.rhs_try_between(other)
             .unwrap_or_else(|error| {

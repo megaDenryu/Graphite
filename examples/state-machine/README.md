@@ -208,7 +208,7 @@ pub fn step(
 }
 ```
 
-現在の `{Kind}::iter` は完成済みグラフに束縛された `{Kind}Ref<'graph>` を返す。
+現在の `g.{kind}_iter()` は完成済みグラフに束縛された `{Kind}Ref<'graph>` を返す。
 `step` は役割名メソッドの `before()` / `after()` が返す `OrderStateRef<'graph>` からIDを取得する (`docs/schema_v4.md` §3.2)。
 `where each before: 0..1` により
 一致する辺は高々1本しか無いので `find` で十分。遷移規則そのものは一切

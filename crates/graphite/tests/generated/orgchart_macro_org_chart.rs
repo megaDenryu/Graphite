@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    17496415133964542393u64, 12939844835672735136u64, 1319406869581759439u64,
-    11134250565130418931u64,
+    4558132019842478282u64, 16331139487830490599u64, 15229236525753837372u64,
+    12527598907802142544u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EmployeeId(pub String);
@@ -960,7 +960,7 @@ impl OrgChartDefaultId for super::Employee {
     }
 }
 impl OrgChartNode for super::Employee {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `Employee` ノード個体。
 #[derive(Clone, Copy)]
 pub struct EmployeeRef<'graph> {
     graph: &'graph Graph,
@@ -1026,6 +1026,7 @@ impl<'graph> EmployeeRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::belongs_to_try_between`] を使う。
     pub fn belongs_to_between(
         self,
         other: DepartmentRef<'graph>,
@@ -1092,6 +1093,7 @@ impl<'graph> EmployeeRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::boss_try_between`] を使う。
     pub fn boss_between(
         self,
         other: EmployeeRef<'graph>,
@@ -1156,6 +1158,7 @@ impl<'graph> EmployeeRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::reports_try_between`] を使う。
     pub fn reports_between(
         self,
         other: EmployeeRef<'graph>,
@@ -1211,6 +1214,7 @@ impl<'graph> EmployeeRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::leads_try_between`] を使う。
     pub fn leads_between(
         self,
         other: DepartmentRef<'graph>,
@@ -1293,7 +1297,7 @@ impl OrgChartDefaultId for super::Department {
     }
 }
 impl OrgChartNode for super::Department {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `Department` ノード個体。
 #[derive(Clone, Copy)]
 pub struct DepartmentRef<'graph> {
     graph: &'graph Graph,

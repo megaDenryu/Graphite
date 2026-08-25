@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    16892280805405953341u64, 11808001825183673254u64, 1973734618575458827u64,
-    933310614959920543u64,
+    772187613640358017u64, 5791212919389419086u64, 13278178931347237179u64,
+    11780834687502823471u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WidgetId(pub String);
@@ -219,7 +219,7 @@ impl WidgetGraphDefaultId for super::Widget {
     }
 }
 impl WidgetGraphNode for super::Widget {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `Widget` ノード個体。
 #[derive(Clone, Copy)]
 pub struct WidgetRef<'graph> {
     graph: &'graph Graph,

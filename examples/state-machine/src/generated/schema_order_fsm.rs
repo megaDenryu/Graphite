@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    218792525893396261u64, 4823367581536909100u64, 6877944885232161011u64,
-    74159034745372911u64,
+    8077720975647279685u64, 10349681031644358612u64, 2357723704607321779u64,
+    2288492895631324263u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct OrderStateId(pub String);
@@ -1241,7 +1241,7 @@ impl OrderFsmDefaultId for super::OrderState {
     }
 }
 impl OrderFsmNode for super::OrderState {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `OrderState` ノード個体。
 #[derive(Clone, Copy)]
 pub struct OrderStateRef<'graph> {
     graph: &'graph Graph,
@@ -1320,6 +1320,7 @@ impl<'graph> OrderStateRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::submit_try_between`] を使う。
     pub fn submit_between(
         self,
         other: OrderStateRef<'graph>,
@@ -1383,6 +1384,7 @@ impl<'graph> OrderStateRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::pay_try_between`] を使う。
     pub fn pay_between(
         self,
         other: OrderStateRef<'graph>,
@@ -1448,6 +1450,7 @@ impl<'graph> OrderStateRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::ship_try_between`] を使う。
     pub fn ship_between(
         self,
         other: OrderStateRef<'graph>,
@@ -1514,6 +1517,7 @@ impl<'graph> OrderStateRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::deliver_try_between`] を使う。
     pub fn deliver_between(
         self,
         other: OrderStateRef<'graph>,
@@ -1580,6 +1584,7 @@ impl<'graph> OrderStateRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::cancel_try_between`] を使う。
     pub fn cancel_between(
         self,
         other: OrderStateRef<'graph>,
@@ -1646,6 +1651,7 @@ impl<'graph> OrderStateRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::refund_try_between`] を使う。
     pub fn refund_between(
         self,
         other: OrderStateRef<'graph>,

@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    12127010907779013950u64, 14253177010410501191u64, 4427438665710676576u64,
-    7764351407189966700u64,
+    9949157197593136899u64, 17277882240220269642u64, 7494320311245050445u64,
+    1819973354159921009u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConsumesId(pub String);
@@ -579,7 +579,7 @@ impl graphite::NamedGraphElement<Graph> for __TaskNamedPosition {
     }
 }
 impl BuildPipelineNode for super::Task {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `Task` ノード個体。
 #[derive(Clone, Copy)]
 pub struct TaskRef<'graph> {
     graph: &'graph Graph,
@@ -641,6 +641,7 @@ impl<'graph> TaskRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::produces_try_between`] を使う。
     pub fn produces_between(
         self,
         other: ArtifactRef<'graph>,
@@ -689,6 +690,7 @@ impl<'graph> TaskRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::consumes_try_between`] を使う。
     pub fn consumes_between(
         self,
         other: ArtifactRef<'graph>,
@@ -756,7 +758,7 @@ impl graphite::NamedGraphElement<Graph> for __ArtifactNamedPosition {
     }
 }
 impl BuildPipelineNode for super::Artifact {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `Artifact` ノード個体。
 #[derive(Clone, Copy)]
 pub struct ArtifactRef<'graph> {
     graph: &'graph Graph,

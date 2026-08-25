@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    6994015586152050991u64, 14098323391945764966u64, 13720077830303789297u64,
-    479820566704610949u64,
+    7080744363143753534u64, 18360790322841842985u64, 11792040018776990496u64,
+    14386133371908335916u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PersonId(pub String);
@@ -435,7 +435,7 @@ impl JapaneseRolesDefaultId for super::Person {
     }
 }
 impl JapaneseRolesNode for super::Person {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `Person` ノード個体。
 #[derive(Clone, Copy)]
 pub struct PersonRef<'graph> {
     graph: &'graph Graph,
@@ -501,6 +501,7 @@ impl<'graph> PersonRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::ownership_try_between`] を使う。
     pub fn ownership_between(
         self,
         other: ItemRef<'graph>,
@@ -584,7 +585,7 @@ impl JapaneseRolesDefaultId for super::Item {
     }
 }
 impl JapaneseRolesNode for super::Item {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `Item` ノード個体。
 #[derive(Clone, Copy)]
 pub struct ItemRef<'graph> {
     graph: &'graph Graph,

@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    12987367537200975726u64, 7845968990354384509u64, 336999901808702200u64,
-    11540689986323353388u64,
+    17542234398368549947u64, 341964947844280418u64, 10837003832768916705u64,
+    11723621408936719253u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NodeAId(pub String);
@@ -979,7 +979,7 @@ impl RevQueryDefaultId for super::NodeA {
     }
 }
 impl RevQueryNode for super::NodeA {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `NodeA` ノード個体。
 #[derive(Clone, Copy)]
 pub struct NodeARef<'graph> {
     graph: &'graph Graph,
@@ -1052,6 +1052,7 @@ impl<'graph> NodeARef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::unconstrained_try_between`] を使う。
     pub fn unconstrained_between(
         self,
         other: NodeBRef<'graph>,
@@ -1112,6 +1113,7 @@ impl<'graph> NodeARef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::unconstrained_no_payload_try_between`] を使う。
     pub fn unconstrained_no_payload_between(
         self,
         other: NodeBRef<'graph>,
@@ -1169,6 +1171,7 @@ impl<'graph> NodeARef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::at_most_one_try_between`] を使う。
     pub fn at_most_one_between(
         self,
         other: NodeBRef<'graph>,
@@ -1226,6 +1229,7 @@ impl<'graph> NodeARef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::exactly_one_try_between`] を使う。
     pub fn exactly_one_between(
         self,
         other: NodeBRef<'graph>,
@@ -1309,7 +1313,7 @@ impl RevQueryDefaultId for super::NodeB {
     }
 }
 impl RevQueryNode for super::NodeB {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `NodeB` ノード個体。
 #[derive(Clone, Copy)]
 pub struct NodeBRef<'graph> {
     graph: &'graph Graph,

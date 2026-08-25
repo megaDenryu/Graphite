@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    13388828035039336394u64, 9267011499379554095u64, 18043866843965230568u64,
-    8694632547052950180u64,
+    13686732016689520731u64, 16944886351369204004u64, 2602217545259792517u64,
+    14231722115986558529u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EmployeeId(pub String);
@@ -1028,7 +1028,7 @@ impl OrgChartDefaultId for super::Employee {
     }
 }
 impl OrgChartNode for super::Employee {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `Employee` ノード個体。
 #[derive(Clone, Copy)]
 pub struct EmployeeRef<'graph> {
     graph: &'graph Graph,
@@ -1094,6 +1094,7 @@ impl<'graph> EmployeeRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::belongs_to_try_between`] を使う。
     pub fn belongs_to_between(
         self,
         other: DepartmentRef<'graph>,
@@ -1160,6 +1161,7 @@ impl<'graph> EmployeeRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::boss_try_between`] を使う。
     pub fn boss_between(
         self,
         other: EmployeeRef<'graph>,
@@ -1216,6 +1218,7 @@ impl<'graph> EmployeeRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::assigned_try_between`] を使う。
     pub fn assigned_between(
         self,
         other: ProjectRef<'graph>,
@@ -1299,7 +1302,7 @@ impl OrgChartDefaultId for super::Department {
     }
 }
 impl OrgChartNode for super::Department {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `Department` ノード個体。
 #[derive(Clone, Copy)]
 pub struct DepartmentRef<'graph> {
     graph: &'graph Graph,
@@ -1380,6 +1383,7 @@ impl<'graph> DepartmentRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::sponsors_try_between`] を使う。
     pub fn sponsors_between(
         self,
         other: ProjectRef<'graph>,
@@ -1463,7 +1467,7 @@ impl OrgChartDefaultId for super::Project {
     }
 }
 impl OrgChartNode for super::Project {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `Project` ノード個体。
 #[derive(Clone, Copy)]
 pub struct ProjectRef<'graph> {
     graph: &'graph Graph,

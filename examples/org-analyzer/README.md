@@ -127,9 +127,9 @@ cargo run -- chain E003 --seed 7 --inject-anomalies
 [警告] 循環を検出したため打ち切りました (社員 E003 まで戻っています)
 ```
 
-`Boss::of` (`where each subordinate: 0..1`) は `Option<(EmployeeRef<'graph>, &BossEdge)>` を
-返し、上司のIDは `EmployeeRef::id()` から取得できる。`management_chain` は1回の走査で
-`EmployeeId -> (EmployeeId, since)` の索引を作ってから辿っている。訪問済み集合を
+`g.boss_iter()` が返す `BossRef<'graph>` から役割名アクセサ (`subordinate()`/`superior()`) で
+両端の `EmployeeRef<'graph>` を、`payload()` で `&BossEdge` を取得できる。`management_chain` は
+1回の走査で `EmployeeId -> (EmployeeId, since)` の索引を作ってから辿っている。訪問済み集合を
 持ちながら辿ることで、途中で循環に入った場合も無限ループせず検出・打ち切りできる。
 
 存在しない社員キーを渡すとエラー終了する:

@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    14748953094325769172u64, 12685835378228650395u64, 11558121362020793874u64,
-    13762779732426612886u64,
+    16152464743423347124u64, 3249656247282457885u64, 2839359920824675450u64,
+    17483255156366094638u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SpeakerId(pub String);
@@ -418,7 +418,7 @@ impl DialogueDefaultId for super::Speaker {
     }
 }
 impl DialogueNode for super::Speaker {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `Speaker` ノード個体。
 #[derive(Clone, Copy)]
 pub struct SpeakerRef<'graph> {
     graph: &'graph Graph,
@@ -486,6 +486,7 @@ impl<'graph> SpeakerRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::choice_try_between`] を使う。
     pub fn choice_between(
         self,
         other: LineRef<'graph>,
@@ -568,7 +569,7 @@ impl DialogueDefaultId for super::Line {
     }
 }
 impl DialogueNode for super::Line {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `Line` ノード個体。
 #[derive(Clone, Copy)]
 pub struct LineRef<'graph> {
     graph: &'graph Graph,

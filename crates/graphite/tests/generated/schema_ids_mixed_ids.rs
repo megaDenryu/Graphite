@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    17450035408185466709u64, 15545461505368515572u64, 8147265102798465751u64,
-    9400441706214570235u64,
+    6594279542377511707u64, 16211424664041282784u64, 6918611577999156765u64,
+    13645528033597775313u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AutomaticNodeId(pub String);
@@ -953,7 +953,7 @@ impl graphite::NamedGraphElement<Graph> for __ExternalNodeNamedPosition {
     }
 }
 impl MixedIdsNode for super::ExternalNode {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `ExternalNode` ノード個体。
 #[derive(Clone, Copy)]
 pub struct ExternalNodeRef<'graph> {
     graph: &'graph Graph,
@@ -1033,6 +1033,7 @@ impl<'graph> ExternalNodeRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::external_link_try_between`] を使う。
     pub fn external_link_between(
         self,
         other: ExternalNodeRef<'graph>,
@@ -1103,6 +1104,7 @@ impl<'graph> ExternalNodeRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::external_incoming_try_between`] を使う。
     pub fn external_incoming_between(
         self,
         other: ExternalNodeRef<'graph>,
@@ -1164,6 +1166,7 @@ impl<'graph> ExternalNodeRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::external_friend_try_between`] を使う。
     pub fn external_friend_between(
         self,
         other: ExternalNodeRef<'graph>,
@@ -1250,7 +1253,7 @@ impl MixedIdsDefaultId for super::AutomaticNode {
     }
 }
 impl MixedIdsNode for super::AutomaticNode {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `AutomaticNode` ノード個体。
 #[derive(Clone, Copy)]
 pub struct AutomaticNodeRef<'graph> {
     graph: &'graph Graph,
@@ -1337,6 +1340,7 @@ impl<'graph> AutomaticNodeRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::automatic_link_try_between`] を使う。
     pub fn automatic_link_between(
         self,
         other: AutomaticNodeRef<'graph>,
@@ -1407,7 +1411,7 @@ impl graphite::NamedGraphElement<Graph> for __BooleanNodeNamedPosition {
     }
 }
 impl MixedIdsNode for super::BooleanNode {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `BooleanNode` ノード個体。
 #[derive(Clone, Copy)]
 pub struct BooleanNodeRef<'graph> {
     graph: &'graph Graph,

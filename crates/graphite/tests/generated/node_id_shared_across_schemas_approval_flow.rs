@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    15081436115925564042u64, 16148735133537865287u64, 8232687317961150268u64,
-    11324778935394544976u64,
+    6308567370089460257u64, 5173088805208341000u64, 8616692633079374079u64,
+    7298378442942801739u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ApprovesId(pub String);
@@ -362,7 +362,7 @@ impl graphite::NamedGraphElement<Graph> for __PersonNamedPosition {
     }
 }
 impl ApprovalFlowNode for super::Person {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `Person` ノード個体。
 #[derive(Clone, Copy)]
 pub struct PersonRef<'graph> {
     graph: &'graph Graph,
@@ -446,6 +446,7 @@ impl<'graph> PersonRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::approves_try_between`] を使う。
     pub fn approves_between(
         self,
         other: PersonRef<'graph>,

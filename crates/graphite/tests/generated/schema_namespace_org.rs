@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    6559151336851643104u64, 13902411923815029185u64, 2577170527415977166u64,
-    15666666748329540162u64,
+    12531012938404758637u64, 15048561036302710632u64, 17394755560079780219u64,
+    8401713100989404967u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PersonId(pub String);
@@ -377,7 +377,7 @@ impl OrgDefaultId for super::Person {
     }
 }
 impl OrgNode for super::Person {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `Person` ノード個体。
 #[derive(Clone, Copy)]
 pub struct PersonRef<'graph> {
     graph: &'graph Graph,
@@ -461,6 +461,7 @@ impl<'graph> PersonRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::relation_try_between`] を使う。
     pub fn relation_between(
         self,
         other: PersonRef<'graph>,

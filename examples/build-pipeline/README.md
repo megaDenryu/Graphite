@@ -210,7 +210,7 @@ task <名前>: <コマンド...> (<秒数>s)      タスク定義
   ことになる。ここでは `analysis.rs` の `validate`/`task_dependency_graph`
   がこれをそのまま使い、artifactごとの producer/consumer 集合を
   `HashMap<&ArtifactId, Vec<&TaskId>>` へ畳み込むだけで済んでいる。
-- **`{Node}::ids(&g)` による全件列挙**: `plan`/`critical-path` は
+- **`g.task_ids()` による全件列挙**: `plan`/`critical-path` は
   「全タスク」を起点にした波・経路の計算が要る。`g.task_ids()` が無ければ、
   ノード用 `HashMap` のキー列挙を毎回 `.keys()` で取り出したうえで、それが
   「タスクのキーである」という前提をコメントで祈るしかない。

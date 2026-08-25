@@ -98,8 +98,9 @@ impl Ord for EndingId {
 
 impl DialogueGraph::Graph {
     /// あるシーンから出ている選択肢一覧を `(行き先キー, 選択肢ラベル)` で返す。
-    /// `Choice::of` は行き先の `Scene` 値 (キーではない) を返すため使えず、
-    /// 生の辺 (キー付き) を走査する `choice_iter` をフィルタして使う。
+    /// `choice_as_scene()` は `SceneRef` を要求する (`SceneId` から呼ぶには
+    /// `scene_by_id` の追加の検索が要る) ため、ここでは生の辺 (キー付き) を
+    /// 走査する `choice_iter` をフィルタして使う。
     pub fn scene_choices(&self, id: &SceneId) -> Vec<(SceneId, String)> {
         self.choice_iter()
             .filter(|edge| edge.scene().id() == id)

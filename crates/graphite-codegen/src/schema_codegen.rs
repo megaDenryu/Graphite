@@ -704,6 +704,8 @@ fn gen_between_traversal_methods(edge: &EdgeInfo<'_>) -> TokenStream {
     };
     let try_between_doc =
         format!("{pair_order_description}端点対を平均 O(1)、追加確保なしで検索する。");
+    let between_avoid_panic_doc =
+        format!("パニックを避けたい場合は対の [`Self::{try_between}`] を使う。");
     quote! {
         #[doc = #try_between_doc]
         pub fn #try_between(self, other: #other_reference<'graph>)
@@ -715,6 +717,7 @@ fn gen_between_traversal_methods(edge: &EdgeInfo<'_>) -> TokenStream {
 
         /// # Panics
         /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+        #[doc = #between_avoid_panic_doc]
         pub fn #between(self, other: #other_reference<'graph>) -> #between_result {
             self.#try_between(other).unwrap_or_else(|error| {
                 panic!("{}::{}: {error}", stringify!(#node_reference), stringify!(#between))
@@ -897,13 +900,14 @@ fn gen_node_trait_and_impls(
         } else {
             quote! {}
         };
+        let reference_doc = format!("完成済みグラフ上の `{ty}` ノード個体。");
         quote! {
             #common_impl
 
             #default_id_impl
             impl #node_trait_ident for super::#ty {}
 
-            /// 完成済みグラフ上の `#ty` ノード個体。
+            #[doc = #reference_doc]
             #[derive(Clone, Copy)]
             pub struct #reference<'graph> {
                 graph: &'graph #graph_ident,
@@ -2499,8 +2503,8 @@ fn finalize_role_index(
 /// 位置0/1索引 (`{accessor}_index`) は「その位置0キーに (有向の from_index
 /// と同じ形で) 接続するエッジキーの一覧」だが、無向のため対称に構築する:
 /// 位置0・位置1のどちらにも (自己ループなら1回だけ) 積む。これにより
-/// - `of`/`between` はどちらの位置に置かれてもこの索引から検索できる。
-/// - 格納順 (挿入順) は `KeyedTable::iter()` の走査順そのままなので、索引の
+/// - `{kind}_incident`/`{kind}_between` はどちらの位置に置かれてもこの索引から検索できる。
+/// - 格納順 (挿入順) は `KeyedTable` の `iter()` の走査順そのままなので、索引の
 ///   `push` もその順で行われ、`docs/edge_endpoints_v4_1.md` §2 の
 ///   「挿入順保持」がそのまま満たされる。
 fn gen_undirected_edge_freeze_block(violation_ident: &Ident, edge: &EdgeInfo<'_>) -> TokenStream {

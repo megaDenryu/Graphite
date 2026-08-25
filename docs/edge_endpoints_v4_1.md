@@ -52,16 +52,16 @@ w1 = Wire(n1 -[Cable { ohm: 5 }]- n2),
 - 自己ループ (`Friends(a -- a)`) は許可する。
 - 無向辺には役割名が無いため `each` は使えない。利用可能な制約は
   順序無視の対へ適用する `unique pair` のみ。
-- クエリ (型名前空間、有向と同じ語彙):
+- クエリ (`Graph` の種別メソッドと `NodeRef` 探索、有向と同じ語彙):
   - `x.friends_incident()` — x に接続する辺参照を挿入順のiteratorで返す
   - `a.friends_between(b)` — 対称。非パニック版 `a.friends_try_between(b)` も提供する
-  - `get`/`iter`/`ids`/`len` は有向と同じ
+  - `by_id`/`iter`/`ids`/`len` は有向と同じ
 - 構築用の辺値は、非公開の順序なし対
   `endpoints: graphite::UnorderedPair<PersonId>` を保持する。
   完成済みの辺参照は公開アクセサ
   `endpoints() -> (PersonRef<'graph>, PersonRef<'graph>)` で両端を読む。IDが必要なら各参照の `id()` を使う。
-- 格納: 実装の自由 (正規化 or 両方向索引) だが、`iter`/`of` の**挿入順保持**の
-  仕様 (schema_v4 §3.2) は無向でも維持すること。
+- 格納: 実装の自由 (正規化 or 両方向索引) だが、`iter`/`incident`/`between` の
+  **挿入順保持**の仕様 (schema_v4 §3.2) は無向でも維持すること。
 
 ## 3. 実装ノート
 

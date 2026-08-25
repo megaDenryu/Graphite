@@ -123,7 +123,7 @@ impl 生成名衝突助言 {
     }
 }
 
-/// schema module の型名前空間へ生成する名前が互いに衝突しないことを検査する。
+/// schema module 内に生成する型名が互いに衝突しないことを検査する。
 /// 既定IDと同名の既存IDを使う意図がある場合は `(id: K)` の明示指定を
 /// 必須にし、Graphite が暗黙に既存型を拾う余地を残さない。
 pub fn validate_generated_type_names(
@@ -167,9 +167,9 @@ pub fn validate_generated_type_names(
         Ok(())
     };
 
-    // ノード名そのものは schema module へ型として生成しなくなったが、
-    // `{name}Id`/`{name}Ref` と `Graph` の種別メソッド名の由来なので、
-    // 名前の重複はここで弾き続ける (登録を外すと `node Graph;` のような
+    // ノード名は schema module 内で型としては生成されないが、
+    // `{name}Id`/`{name}Ref` と `Graph` の種別メソッド名の由来であるため、
+    // 名前の重複はここで検査する (登録を外すと `node Graph;` のような
     // 宣言が検査を通ってしまう)。
     for node in nodes {
         register(

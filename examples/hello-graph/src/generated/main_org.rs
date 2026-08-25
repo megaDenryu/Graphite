@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    9340954894555935705u64, 11648637220364741248u64, 4000754114026083887u64,
-    8409951757279878363u64,
+    14965913013609465623u64, 6985284584444560744u64, 1301905824960078217u64,
+    16690826205119618933u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PersonId(pub String);
@@ -1107,7 +1107,7 @@ impl OrgDefaultId for super::Person {
     }
 }
 impl OrgNode for super::Person {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `Person` ノード個体。
 #[derive(Clone, Copy)]
 pub struct PersonRef<'graph> {
     graph: &'graph Graph,
@@ -1173,6 +1173,7 @@ impl<'graph> PersonRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::belongs_to_try_between`] を使う。
     pub fn belongs_to_between(
         self,
         other: TeamRef<'graph>,
@@ -1239,6 +1240,7 @@ impl<'graph> PersonRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::boss_try_between`] を使う。
     pub fn boss_between(
         self,
         other: PersonRef<'graph>,
@@ -1303,6 +1305,7 @@ impl<'graph> PersonRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::reports_try_between`] を使う。
     pub fn reports_between(
         self,
         other: PersonRef<'graph>,
@@ -1373,6 +1376,7 @@ impl<'graph> PersonRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::reviewed_by_try_between`] を使う。
     pub fn reviewed_by_between(
         self,
         other: PersonRef<'graph>,
@@ -1426,6 +1430,7 @@ impl<'graph> PersonRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::friends_try_between`] を使う。
     pub fn friends_between(
         self,
         other: PersonRef<'graph>,
@@ -1508,7 +1513,7 @@ impl OrgDefaultId for super::Team {
     }
 }
 impl OrgNode for super::Team {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `Team` ノード個体。
 #[derive(Clone, Copy)]
 pub struct TeamRef<'graph> {
     graph: &'graph Graph,

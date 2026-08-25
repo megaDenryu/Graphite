@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    11053334003841281534u64, 2870147594097588827u64, 8892075560329733148u64,
-    6617647361068835208u64,
+    1434057833280709609u64, 4946213559923595200u64, 12478178480738096407u64,
+    1812859155835967955u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BelongsToId(pub String);
@@ -606,7 +606,7 @@ impl graphite::NamedGraphElement<Graph> for __EmployeeNamedPosition {
     }
 }
 impl CrossModuleOrgNode for super::Employee {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `Employee` ノード個体。
 #[derive(Clone, Copy)]
 pub struct EmployeeRef<'graph> {
     graph: &'graph Graph,
@@ -672,6 +672,7 @@ impl<'graph> EmployeeRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::belongs_to_try_between`] を使う。
     pub fn belongs_to_between(
         self,
         other: DepartmentRef<'graph>,
@@ -738,6 +739,7 @@ impl<'graph> EmployeeRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::boss_try_between`] を使う。
     pub fn boss_between(
         self,
         other: EmployeeRef<'graph>,
@@ -805,7 +807,7 @@ impl graphite::NamedGraphElement<Graph> for __DepartmentNamedPosition {
     }
 }
 impl CrossModuleOrgNode for super::Department {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `Department` ノード個体。
 #[derive(Clone, Copy)]
 pub struct DepartmentRef<'graph> {
     graph: &'graph Graph,

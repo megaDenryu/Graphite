@@ -61,11 +61,11 @@ cargo run
 
 `{kind}_as_<role>`/`{kind}_between` の戻り型は宣言した `where` 制約が決めます (これだけ覚えれば
 全 Kind に応用できます)。戻り値は相手ノードではなく常に `KindRef<'graph>`
-(積み荷は `edge.payload()` から辿る)。`of_<role>` は問い合わせた役割自身の
+(積み荷は `edge.payload()` から辿る)。`{kind}_as_<role>` は問い合わせた役割自身の
 `each` 制約で決まり、`between` は `unique pair` 制約の有無で決まる (2つは
 独立した軸なので分けて示す):
 
-| 役割の `each` 制約 | `of_<role>` の戻り値 | `iter()` の要素 |
+| 役割の `each` 制約 | `{kind}_as_<role>` の戻り値 | `iter()` の要素 |
 |---|---|---|
 | `each X: 1` | `KindRef<'graph>` | `KindRef<'graph>` |
 | `each X: 0..1` | `Option<KindRef<'graph>>` | 同上 |
@@ -87,8 +87,9 @@ cargo run
 `src/main.rs` §3 の各関数が、それぞれ生成APIの1つずつに対応しています。
 「やりたいこと」列の順は `main.rs` の呼び出し順 (構築 → ノードを読む →
 エッジを辿る → 一覧する → 検証エラーを受ける) と同じです。v4 では
-IDによる動的検索は**型名前空間の関連関数**です (ノードは `{Schema}Node`
-トレイト経由、辺は各 `Kind` への固有 impl)。一方、`graph!` 左辺名は
+IDによる動的検索は**`Graph` に生えた種別APIのメソッド**です
+(`g.person_by_id(&id)` のようなノード種別のメソッド、`g.boss_by_id(&id)`
+のような辺種別のメソッド)。一方、`graph!` 左辺名は
 `g.alice()` / `g.bob_boss()` のような呼び出しsite固有の静的アクセサになります。
 
 ### 構築

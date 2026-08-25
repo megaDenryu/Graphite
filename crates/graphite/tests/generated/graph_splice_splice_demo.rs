@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    1276499687370243420u64, 16294433578501702505u64, 15519055006714778390u64,
-    4005426738158430570u64,
+    1820976906001237835u64, 12162768216132939228u64, 4734404305336888081u64,
+    12620087637847035941u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PersonId(pub String);
@@ -369,7 +369,7 @@ impl SpliceDemoDefaultId for super::Person {
     }
 }
 impl SpliceDemoNode for super::Person {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `Person` ノード個体。
 #[derive(Clone, Copy)]
 pub struct PersonRef<'graph> {
     graph: &'graph Graph,
@@ -449,6 +449,7 @@ impl<'graph> PersonRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::knows_try_between`] を使う。
     pub fn knows_between(
         self,
         other: PersonRef<'graph>,

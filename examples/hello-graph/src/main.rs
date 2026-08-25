@@ -247,14 +247,16 @@ fn main() {
 // カテゴリ順: 構築 → ノードを読む → エッジを辿る → 一覧する →
 // 検証エラーを受ける。
 //
-// v4 (`docs/schema_v4.md` §3.2) の動的検索は型名前空間の関連関数です。
-// これとは別に、graph! の左辺名は呼び出しsite固有の `g.alice()` のような
-// 静的アクセサになります:
-// - ノード: schema module 内のマーカー型 (`g.person_by_id(&id)` 等)。
-// - エッジ: 各 `Kind` への固有 impl (`Boss::of`/`get`/`between`/`iter`/
-//   `ids`/`len`)。`of`/`between` の戻り型は宣言した `where` 制約が決めます
-//   (`each 1` → 直接参照、`each 0..1` → `Option`、制約なし → `Vec`、
-//   `unique pair` → `between` が `Option`)。
+// v4 (`docs/schema_v4.md` §3.2) の動的検索は `Graph` に生えた種別APIの
+// メソッドです。これとは別に、graph! の左辺名は呼び出しsite固有の
+// `g.alice()` のような静的アクセサになります:
+// - ノード: `Graph` の種別メソッド (`g.person_by_id(&id)`/`person_iter`/
+//   `person_ids`/`person_len` 等)。
+// - エッジ: `Graph` の種別メソッド (`g.boss_by_id`/`boss_iter`/`boss_ids`/
+//   `boss_len`) と `NodeRef` の役割探索メソッド (`bob.boss_as_subordinate()`/
+//   `alice.boss_between(bob)`)。役割探索/`between` の戻り型は宣言した
+//   `where` 制約が決めます (`each 1` → 直接参照、`each 0..1` → `Option`、
+//   制約なし → イテレータ、`unique pair` → `between` が `Option`)。
 // - 名前付き静的アクセス: `g.alice()` / `g.bob_boss()`。内部位置から直接
 //   NodeRef/EdgeRefを作り、公開IDのhash lookupを行いません。
 //

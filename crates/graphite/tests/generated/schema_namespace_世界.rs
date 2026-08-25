@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    863340994171538843u64, 13204507255257412100u64, 15247931454451678909u64,
-    18422726212679644937u64,
+    9156596586866346416u64, 3950938485648491691u64, 16988137032841692410u64,
+    6649135267297515478u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct 人物Id(pub String);
@@ -391,7 +391,7 @@ impl 世界DefaultId for super::人物 {
     }
 }
 impl 世界Node for super::人物 {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `人物` ノード個体。
 #[derive(Clone, Copy)]
 pub struct 人物Ref<'graph> {
     graph: &'graph Graph,
@@ -471,6 +471,7 @@ impl<'graph> 人物Ref<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::関係_try_between`] を使う。
     pub fn 関係_between(
         self,
         other: 人物Ref<'graph>,

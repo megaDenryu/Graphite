@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    12632895261805948653u64, 6304695671758245164u64, 14417632608825189843u64,
-    16703500581326239111u64,
+    15289014130281119947u64, 16971638733274367124u64, 12707517132191397445u64,
+    15945856875330319041u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SensorId(pub String);
@@ -447,7 +447,7 @@ impl MeasurementDefaultId for super::Sensor {
     }
 }
 impl MeasurementNode for super::Sensor {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `Sensor` ノード個体。
 #[derive(Clone, Copy)]
 pub struct SensorRef<'graph> {
     graph: &'graph Graph,
@@ -517,6 +517,7 @@ impl<'graph> SensorRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::measured_try_between`] を使う。
     pub fn measured_between(
         self,
         other: ReadingRef<'graph>,
@@ -600,7 +601,7 @@ impl MeasurementDefaultId for super::Reading {
     }
 }
 impl MeasurementNode for super::Reading {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `Reading` ノード個体。
 #[derive(Clone, Copy)]
 pub struct ReadingRef<'graph> {
     graph: &'graph Graph,

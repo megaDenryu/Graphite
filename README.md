@@ -295,16 +295,16 @@ schema ごとの生成物は `OrgChart`/`ApprovalFlow` のように別々の Rus
 問い合わせ先はどちらの `Graph` の `person_by_id(..)` を呼ぶかで一意に
 決まります。
 
-**種別APIの主語は `Graph`、探索の主語は `Ref`**: v3 にあった
-「ラベルごとに1個のビューを返すメソッド `{label}()`」という間接層は v4 では
-無くなりました。完成済みの `Graph` が個体と索引の所有者なので、公開IDからの
-検索と種別全体への操作は `Graph` のメソッドとして生えます
-(`graph.boss_by_id(&id)`、`graph.boss_iter()`)。一度 `NodeRef`/`EdgeRef` を
-得た後の関係の探索は、その参照が親 `Graph` と内部位置を保持しているので参照
-自身のメソッドで辿ります (`person.boss_as_subordinate()`)。親 `Graph` を
-引数で渡し直す形は作りません。
-ここで廃止したのはschema由来のビューAPIであり、`graph!` 左辺名から呼び出し箇所
-ごとに生成される `graph.alice()` のような名前付き静的アクセサとは別物です。
+**種別APIの主語は `Graph`、探索の主語は `Ref`**: 種別APIとは、ある種別に属する
+個体の全体を対象にする読み取り・可変操作 (`graph.boss_by_id`・`graph.boss_iter`
+等) のことである (`docs/schema_v4.md` §3.2 と同文)。完成済みの `Graph` が
+個体と索引の所有者なので、公開IDからの検索と種別全体への操作は `Graph` の
+メソッドとして生えます (`graph.boss_by_id(&id)`、`graph.boss_iter()`)。一度
+`NodeRef`/`EdgeRef` を得た後の関係の探索は、その参照が親 `Graph` と内部位置を
+保持しているので参照自身のメソッドで辿ります (`person.boss_as_subordinate()`)。
+親 `Graph` を引数で渡し直す形は作りません。種別APIは、`graph!` 左辺名から
+呼び出し箇所ごとに生成される `graph.alice()` のような名前付き静的アクセサとは
+別物です。
 
 種別APIの名前はすべて `{種別名}_{固定接尾辞}` の機械的連結です。同じ種別の
 操作が同じ接頭辞で並ぶため、補完で `graph.boss` と打てば辺 `Boss` に対する

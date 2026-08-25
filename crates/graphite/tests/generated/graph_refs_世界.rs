@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    6641979153040618895u64, 11433541783532651904u64, 16961896691741900389u64,
-    13784167539940343161u64,
+    14637078645383022200u64, 10063920923431953523u64, 6169098792487586614u64,
+    15291606485530135714u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct 人物Id(pub String);
@@ -597,7 +597,7 @@ impl 世界DefaultId for super::人物 {
     }
 }
 impl 世界Node for super::人物 {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `人物` ノード個体。
 #[derive(Clone, Copy)]
 pub struct 人物Ref<'graph> {
     graph: &'graph Graph,
@@ -661,6 +661,7 @@ impl<'graph> 人物Ref<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::購入_try_between`] を使う。
     pub fn 購入_between(self, other: 商品Ref<'graph>) -> Option<購入Ref<'graph>> {
         self.購入_try_between(other)
             .unwrap_or_else(|error| {
@@ -710,6 +711,7 @@ impl<'graph> 人物Ref<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::友人_try_between`] を使う。
     pub fn 友人_between(self, other: 人物Ref<'graph>) -> Option<友人Ref<'graph>> {
         self.友人_try_between(other)
             .unwrap_or_else(|error| {
@@ -789,7 +791,7 @@ impl 世界DefaultId for super::商品 {
     }
 }
 impl 世界Node for super::商品 {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `商品` ノード個体。
 #[derive(Clone, Copy)]
 pub struct 商品Ref<'graph> {
     graph: &'graph Graph,

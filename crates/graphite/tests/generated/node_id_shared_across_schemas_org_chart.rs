@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    16554371195739363266u64, 5328632291448082485u64, 16681056906304280304u64,
-    17113066763430263492u64,
+    3668238228908410353u64, 13886270573807226670u64, 6963959328335998099u64,
+    14661490518765070263u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BelongsToId(pub String);
@@ -423,7 +423,7 @@ impl graphite::NamedGraphElement<Graph> for __PersonNamedPosition {
     }
 }
 impl OrgChartNode for super::Person {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `Person` ノード個体。
 #[derive(Clone, Copy)]
 pub struct PersonRef<'graph> {
     graph: &'graph Graph,
@@ -490,6 +490,7 @@ impl<'graph> PersonRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::belongs_to_try_between`] を使う。
     pub fn belongs_to_between(
         self,
         other: DepartmentRef<'graph>,
@@ -558,7 +559,7 @@ impl graphite::NamedGraphElement<Graph> for __DepartmentNamedPosition {
     }
 }
 impl OrgChartNode for super::Department {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `Department` ノード個体。
 #[derive(Clone, Copy)]
 pub struct DepartmentRef<'graph> {
     graph: &'graph Graph,

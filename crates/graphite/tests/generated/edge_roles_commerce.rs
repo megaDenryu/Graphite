@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    18185047683776102950u64, 1408585714477553027u64, 10428056709229095856u64,
-    460572462759998436u64,
+    2989501799219349444u64, 7255621562707497463u64, 5755820933598649166u64,
+    8070068216230268690u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PersonId(pub String);
@@ -648,7 +648,7 @@ impl CommerceDefaultId for super::Person {
     }
 }
 impl CommerceNode for super::Person {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `Person` ノード個体。
 #[derive(Clone, Copy)]
 pub struct PersonRef<'graph> {
     graph: &'graph Graph,
@@ -712,6 +712,7 @@ impl<'graph> PersonRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::purchase_try_between`] を使う。
     pub fn purchase_between(
         self,
         other: ProductRef<'graph>,
@@ -769,6 +770,7 @@ impl<'graph> PersonRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    ///パニックを避けたい場合は対の [`Self::subscription_try_between`] を使う。
     pub fn subscription_between(
         self,
         other: ProductRef<'graph>,
@@ -852,7 +854,7 @@ impl CommerceDefaultId for super::Product {
     }
 }
 impl CommerceNode for super::Product {}
-/// 完成済みグラフ上の `#ty` ノード個体。
+///完成済みグラフ上の `Product` ノード個体。
 #[derive(Clone, Copy)]
 pub struct ProductRef<'graph> {
     graph: &'graph Graph,
