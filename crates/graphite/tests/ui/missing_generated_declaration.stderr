@@ -1,0 +1,5 @@
+error: 追跡可能な生成先が指定されていません。最初の行に `generated = "...";` を書いてください
+ --> tests/ui/missing_generated_declaration.rs:7:5
+  |
+7 |     schema Missing {
+  |     ^^^^^^

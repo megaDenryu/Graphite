@@ -8,7 +8,7 @@ pub struct Product;
 pub struct Item;
 
 #[derive(Clone, PartialEq)]
-struct TransactionInfo {
+pub struct TransactionInfo {
     amount: u64,
 }
 

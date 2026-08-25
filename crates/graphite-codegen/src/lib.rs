@@ -3,6 +3,8 @@
 //! ファイル探索と読み書きは `xtask`、コンパイル時の入口は
 //! `graphite-macros` が担当する。このクレートはどちらも行わない。
 
+mod declaration_site;
+mod generated_path;
 pub mod naming;
 mod schema_codegen;
 mod schema_dsl;
@@ -12,6 +14,9 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::parse::Parser;
 use syn::{Ident, LitStr, Token};
+
+pub use declaration_site::DeclarationSite;
+pub use generated_path::validate_generated_relative_path;
 
 /// 追跡対象の schema 宣言を検証して生成に使える形へしたもの。
 pub struct TrackedSchema {
@@ -37,11 +42,7 @@ impl TrackedSchema {
     }
 
     /// schema module の通常の Rust ソース本文を生成する。
-    pub fn render_module_source(
-        &self,
-        source_path: &str,
-        source_line: usize,
-    ) -> syn::Result<String> {
+    pub fn render_module_source(&self, site: &DeclarationSite) -> syn::Result<String> {
         let body = schema_codegen::generate_module_body(&self.schema);
         let fingerprint = self.fingerprint;
         let generated: syn::File = syn::parse2(quote! {
@@ -58,9 +59,10 @@ impl TrackedSchema {
         let formatted = prettyplease::unparse(&generated);
         // 再生成コマンドの実行場所は絶対パスで書かない。ここに機械固有のパスを
         // 埋めると、別の作業環境で生成した内容が一致せず `--check` が落ちる。
+        let site = site.display();
         Ok(format!(
             "// このファイルは Graphite が生成したため手編集しないこと。\n\
-             // 生成元: {source_path}:{source_line}\n\
+             // 生成元: {site}\n\
              // 再生成: リポジトリルートで `cargo xtask generate` を実行する。\n\n\
              {formatted}"
         ))
@@ -78,7 +80,7 @@ impl syn::parse::Parse for TrackedInput {
         if key != "generated" {
             return Err(syn::Error::new_spanned(
                 key,
-                "追跡可能な生成先を `generated = \"...\";` で指定してください",
+                "追跡可能な生成先が指定されていません。最初の行に `generated = \"...\";` を書いてください",
             ));
         }
         input.parse::<Token![=]>()?;
@@ -95,6 +97,12 @@ impl syn::parse::Parse for TrackedInput {
 /// 追跡形式の `graph_schema!` 入力を解析・検証する。
 pub fn parse_tracked_schema(input: TokenStream) -> Result<TrackedSchema, Vec<syn::Error>> {
     let tracked = syn::parse2::<TrackedInput>(input).map_err(|error| vec![error])?;
+    if let Err(reason) = validate_generated_relative_path(&tracked.generated_path.value()) {
+        return Err(vec![syn::Error::new_spanned(
+            &tracked.generated_path,
+            reason,
+        )]);
+    }
     let parsed = schema_dsl::SchemaInput::parse_recovering
         .parse2(tracked.schema_tokens.clone())
         .map_err(|error| vec![error])?;
@@ -106,6 +114,11 @@ pub fn parse_tracked_schema(input: TokenStream) -> Result<TrackedSchema, Vec<syn
         #generated
     })
     .map_err(|error| vec![error])?;
+    // 指紋は prettyplease が整形した後のテキストをハッシュするため、整形結果の
+    // 揺れ (prettyplease の版差) がそのまま指紋の揺れになる。ルート
+    // Cargo.toml で prettyplease を厳密ピン止め (`=0.2.37`) してこの依存を
+    // 抑えているが、将来的には整形前のトークン列を正規化してハッシュする
+    // 方式へ移行し、フォーマッタの版に依存しない指紋にすべきである。
     let fingerprint = fingerprint(
         &tracked.generated_path.value(),
         &prettyplease::unparse(&normalized),
@@ -262,11 +275,9 @@ mod tests {
         let second = parse_tracked_schema(input).unwrap();
         // 固定値は生成物の意図しない変化を検出するための錨である。生成器を
         // 意図して変えたときは `cargo xtask generate` の差分と併せて更新する。
-        let rendered = first.render_module_source("tests/schema.rs", 10).unwrap();
-        assert_eq!(
-            rendered,
-            second.render_module_source("tests/schema.rs", 10).unwrap()
-        );
+        let site = DeclarationSite::new("tests/schema.rs".to_string(), 10);
+        let rendered = first.render_module_source(&site).unwrap();
+        assert_eq!(rendered, second.render_module_source(&site).unwrap());
         assert_eq!(
             fnv1a(rendered.as_bytes(), 0xcbf29ce484222325),
             16028462957885294

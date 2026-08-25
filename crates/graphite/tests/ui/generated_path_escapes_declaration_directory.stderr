@@ -1,0 +1,5 @@
+error: 生成先は `generated/<名前>.rs` の形式で指定してください (実際: `../evil.rs`)
+ --> tests/ui/generated_path_escapes_declaration_directory.rs:8:17
+  |
+8 |     generated = "../evil.rs";
+  |                 ^^^^^^^^^^^^

@@ -1,0 +1,7 @@
+# 生成器 (graphite-codegen) は改行を常にLFで書く。core.autocrlf=trueの環境で
+# 新規クローンすると、checkoutでLFがCRLFへ変換され、`cargo xtask generate
+# --check` の生バイト比較が全生成ファイルを「古い」と誤検出する
+# (crlf化された作業ツリー内容 != 生成器が返すLF内容)。この誤検出はコード側の
+# 挙動ではなく改行変換そのものが原因なので、`eol=lf` でcheckout時の変換自体を
+# 止めて解決する。
+* text=auto eol=lf

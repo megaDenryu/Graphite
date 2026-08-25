@@ -95,7 +95,7 @@ xtask/                   # 生成ファイルの探索・読み書き・差分�
 proc-macro クレート (`proc-macro = true`) は手続き型マクロ = コンパイラ
 プラグインの一種であり、生成する側 (マクロ) と生成されたコードが依存する側
 (ランタイム型) を同じクレートに置けないという Rust の技術的制約のため分離
-している。マクロと通常ファイルの生成一致は`graphite-codegen`の共有で保証し、
+している。マクロが生成する内容と通常ファイルの内容が一致することは`graphite-codegen`の共有で保証し、
 ファイルI/Oは`xtask`だけが行います。利用者は `graphite` だけ
 に依存し、マクロは `graphite::graph_schema!` / `graphite::graph!` /
 `graphite::flow!` として re-export されたものを使います。

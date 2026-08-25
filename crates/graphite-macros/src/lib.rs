@@ -11,7 +11,7 @@
 //! `crates/graphite/tests/orgchart_handwritten.rs` (フェーズ2の手書き
 //! テンプレート) に準拠する。
 //!
-//! schema の公開APIは第7段階で通常の Rust ファイルへ移した。`graph_schema!`
+//! schema の公開APIは通常の Rust ファイルとして生成する。`graph_schema!`
 //! は宣言を検証して生成ファイルの指紋と照合するだけで、型と実装を展開しない
 //! (規約は `docs/code_generation.md`)。構文解析・検証・生成は
 //! `graphite-codegen` にあり、ファイルの読み書きは `xtask` が行う。

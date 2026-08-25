@@ -1,34 +1,36 @@
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::fs;
-use std::path::PathBuf;
 
+use crate::generated_target_path::GeneratedTargetPath;
+use crate::io_context::with_path_context;
 use crate::repository_root::RepositoryRoot;
 
 /// 全schema宣言から集めた「生成先とその期待内容」の一覧。
 ///
 /// 生成先が重複していれば、書き出す前に検出する。
+#[derive(Default)]
 pub struct GenerationPlan {
-    expected: BTreeMap<PathBuf, String>,
+    expected: BTreeMap<GeneratedTargetPath, String>,
 }
 
 impl GenerationPlan {
     pub fn new() -> Self {
-        Self {
-            expected: BTreeMap::new(),
-        }
+        Self::default()
     }
 
     pub fn add(
         &mut self,
         root: &RepositoryRoot,
-        target: PathBuf,
+        target: GeneratedTargetPath,
         content: String,
     ) -> Result<(), Box<dyn Error>> {
-        if self.expected.insert(target.clone(), content).is_some() {
-            return Err(
-                format!("生成先が重複しています: {}", root.relative_display(&target)).into(),
-            );
+        let display = root.relative_display(target.as_path());
+        if self.expected.insert(target, content).is_some() {
+            return Err(format!(
+                "生成先が重複しています: {display}\n各宣言の generated パスを別の名前にしてください。"
+            )
+            .into());
         }
         Ok(())
     }
@@ -36,45 +38,123 @@ impl GenerationPlan {
     /// 作業ツリーと異なる生成先を書き換え、書き換えた分を表示する。
     pub fn write_stale_files(&self, root: &RepositoryRoot) -> Result<(), Box<dyn Error>> {
         for (target, content) in self.stale_files() {
+            let target = target.as_path();
             if let Some(parent) = target.parent() {
-                fs::create_dir_all(parent)?;
+                with_path_context(fs::create_dir_all(parent), &root.relative_display(parent))?;
             }
             // 生成の途中で落ちても半端な内容を残さないよう、一時ファイルを
-            // 作ってから置き換える。
+            // 作ってから置き換える。`fs::rename` は Windows でも既存の
+            // 置き換え先ファイルをアトミックに上書きできるため、事前の
+            // `remove_file` は不要であり、削除と作成の間に別プロセスが
+            // 割り込む窓を作るだけむしろ危険である。
             let temporary = target.with_extension("rs.graphite-tmp");
-            fs::write(&temporary, content)?;
-            if target.exists() {
-                fs::remove_file(target)?;
-            }
-            fs::rename(&temporary, target)?;
+            with_path_context(
+                fs::write(&temporary, content),
+                &root.relative_display(&temporary),
+            )?;
+            with_path_context(
+                fs::rename(&temporary, target),
+                &format!(
+                    "{} -> {}",
+                    root.relative_display(&temporary),
+                    root.relative_display(target)
+                ),
+            )?;
             println!("生成: {}", root.relative_display(target));
         }
         Ok(())
     }
 
     /// 作業ツリーが期待内容と一致するかを検査し、一致しなければエラーにする。
+    ///
+    /// 期待に対して古い/存在しないファイルに加えて、`generated/` 配下に
+    /// 実在するのに期待集合に無いファイル (schema宣言の削除・移動で
+    /// 取り残された孤児) も検出する。孤児は自動削除せず、一覧をエラーで
+    /// 報告するだけにとどめる (手編集されていないと機械的には断定できない
+    /// ため)。
     pub fn verify(&self, root: &RepositoryRoot) -> Result<(), Box<dyn Error>> {
+        let mut sections = Vec::new();
+
         let stale = self.stale_files();
-        if stale.is_empty() {
+        if !stale.is_empty() {
+            let paths = stale
+                .iter()
+                .map(|(target, _)| root.relative_display(target.as_path()))
+                .collect::<Vec<_>>()
+                .join("\n");
+            sections.push(format!(
+                "生成ファイルが古いか存在しません。リポジトリルートで `cargo xtask generate` を実行してください:\n{paths}"
+            ));
+        }
+
+        let orphans = self.orphan_files(root)?;
+        if !orphans.is_empty() {
+            let paths = orphans
+                .iter()
+                .map(|target| root.relative_display(target.as_path()))
+                .collect::<Vec<_>>()
+                .join("\n");
+            sections.push(format!(
+                "宣言の無い生成ファイルが残っています(schemaの削除・移動で取り残された可能性があります。内容を確認して手動で削除してください):\n{paths}"
+            ));
+        }
+
+        if sections.is_empty() {
             return Ok(());
         }
-        let paths = stale
-            .iter()
-            .map(|(target, _)| root.relative_display(target))
-            .collect::<Vec<_>>()
-            .join("\n");
-        Err(format!(
-            "生成ファイルが古いか存在しません。リポジトリルートで `cargo xtask generate` を実行してください:\n{paths}"
-        )
-        .into())
+        Err(sections.join("\n\n").into())
     }
 
-    fn stale_files(&self) -> Vec<(&PathBuf, &String)> {
+    fn stale_files(&self) -> Vec<(&GeneratedTargetPath, &String)> {
         self.expected
             .iter()
             .filter(|(target, content)| {
-                fs::read_to_string(target).ok().as_deref() != Some(content.as_str())
+                fs::read_to_string(target.as_path()).ok().as_deref() != Some(content.as_str())
             })
             .collect()
+    }
+
+    fn orphan_files(
+        &self,
+        root: &RepositoryRoot,
+    ) -> Result<Vec<GeneratedTargetPath>, Box<dyn Error>> {
+        Ok(root
+            .existing_generated_files()?
+            .into_iter()
+            .filter(|path| !self.expected.contains_key(path))
+            .collect())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    fn target(path: &str) -> GeneratedTargetPath {
+        GeneratedTargetPath::new(PathBuf::from(path))
+    }
+
+    #[test]
+    fn 同じ生成先を2回追加すると重複エラーになる() {
+        let root = RepositoryRoot::for_tests(PathBuf::from("/repo"));
+        let mut plan = GenerationPlan::new();
+        plan.add(&root, target("/repo/generated/a.rs"), "one".to_string())
+            .unwrap();
+        let error = plan
+            .add(&root, target("/repo/generated/a.rs"), "two".to_string())
+            .unwrap_err();
+        assert!(error.to_string().contains("生成先が重複しています"));
+    }
+
+    #[test]
+    fn 異なる生成先は両方追加できる() {
+        let root = RepositoryRoot::for_tests(PathBuf::from("/repo"));
+        let mut plan = GenerationPlan::new();
+        plan.add(&root, target("/repo/generated/a.rs"), "one".to_string())
+            .unwrap();
+        plan.add(&root, target("/repo/generated/b.rs"), "two".to_string())
+            .unwrap();
+        assert_eq!(plan.expected.len(), 2);
     }
 }

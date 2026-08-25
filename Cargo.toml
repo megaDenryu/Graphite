@@ -12,4 +12,8 @@ petgraph = "0.6"
 syn = { version = "2", features = ["full", "visit"] }
 quote = "1"
 proc-macro2 = { version = "1", features = ["span-locations"] }
-prettyplease = "0.2"
+# examples/ 配下は独立したCargo.lockを持ち、生成ファイルの指紋は
+# prettyplease の整形結果をハッシュするため、版がずれると
+# `cargo xtask generate` を実行しても直らない指紋エラーになる (詳細:
+# graphite-codegen/src/lib.rs の fingerprint 計算箇所のコメント)。厳密ピン止めで揃える。
+prettyplease = "=0.2.37"

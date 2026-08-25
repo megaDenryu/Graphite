@@ -1,13 +1,15 @@
 use std::error::Error;
-use std::ffi::OsStr;
 use std::fs;
-use std::path::{Component, Path, PathBuf};
+use std::path::PathBuf;
 
+use graphite_codegen::DeclarationSite;
 use proc_macro2::TokenStream;
 use syn::spanned::Spanned;
 use syn::visit::{self, Visit};
 
+use crate::generated_target_path::GeneratedTargetPath;
 use crate::generation_plan::GenerationPlan;
+use crate::io_context::with_path_context;
 use crate::repository_root::RepositoryRoot;
 
 /// schema宣言を含みうる、生成元のRustファイル。
@@ -21,46 +23,66 @@ impl SchemaSourceFile {
     }
 
     /// このファイルの schema宣言を読み、生成すべき内容を計画へ積む。
+    ///
+    /// このファイル自体がRustとして解析できない場合 (走査対象を workspace
+    /// 全体へ広げたことで、schemaと無関係な壊れたファイルも対象に入りうる)
+    /// は、全体を止めずに警告を表示してこのファイルの処理だけを飛ばす。
+    /// 読み取り失敗と、schema宣言を含むファイルの検証エラーはこれまで通り
+    /// 全体を止める。
     pub fn collect_into(
         &self,
         root: &RepositoryRoot,
         plan: &mut GenerationPlan,
     ) -> Result<(), Box<dyn Error>> {
-        let source = fs::read_to_string(&self.path)?;
+        let display_path = root.relative_display(&self.path);
+        let source = with_path_context(fs::read_to_string(&self.path), &display_path)?;
+        let parsed_file = match syn::parse_file(&source) {
+            Ok(parsed_file) => parsed_file,
+            Err(error) => {
+                eprintln!(
+                    "警告: {display_path} をRustとして解析できないため、schema探索から除外しました: {error}"
+                );
+                return Ok(());
+            }
+        };
         let mut collector = SchemaMacroCollector::default();
-        collector.visit_file(&syn::parse_file(&source)?);
+        collector.visit_file(&parsed_file);
         for invocation in collector.invocations {
             let schema = graphite_codegen::parse_tracked_schema(invocation.tokens)
-                .map_err(|errors| self.format_errors(errors))?;
-            let target = self.generated_target(Path::new(&schema.generated_path().value()))?;
-            let content =
-                schema.render_module_source(&root.relative_display(&self.path), invocation.line)?;
+                .map_err(|errors| self.format_errors(root, errors))?;
+            let target = self.generated_target(root, &schema.generated_path().value())?;
+            let site = DeclarationSite::new(display_path.clone(), invocation.line);
+            let content = schema
+                .render_module_source(&site)
+                .map_err(|error| self.format_errors(root, vec![error]))?;
             plan.add(root, target, content)?;
         }
         Ok(())
     }
 
     /// 宣言元から見た相対指定を検査し、生成先の絶対パスへ変換する。
-    fn generated_target(&self, relative: &Path) -> Result<PathBuf, Box<dyn Error>> {
-        let mut components = relative.components();
-        if components.next() != Some(Component::Normal(OsStr::new("generated")))
-            || components.any(|component| !matches!(component, Component::Normal(_)))
-            || relative.extension() != Some(OsStr::new("rs"))
-        {
-            return Err(format!(
-                "{} の生成先は `generated/<名前>.rs` の形式で指定してください",
-                self.path.display()
-            )
-            .into());
-        }
-        Ok(self
+    ///
+    /// 形式検査そのものは `graphite_codegen::validate_generated_relative_path`
+    /// (コンパイル時の `graph_schema!` 展開と共有する唯一の判定) に委ねる。
+    /// ここで改めて検査するのは、この関数がファイルシステムへの書き込み先を
+    /// 決める境界であり、呼び出し経路によらずこの境界自身でも安全側に倒す
+    /// ためである。
+    fn generated_target(
+        &self,
+        root: &RepositoryRoot,
+        relative: &str,
+    ) -> Result<GeneratedTargetPath, Box<dyn Error>> {
+        graphite_codegen::validate_generated_relative_path(relative)
+            .map_err(|reason| format!("{}: {reason}", root.relative_display(&self.path)))?;
+        let target = self
             .path
             .parent()
             .expect("Rustファイルには親ディレクトリがある")
-            .join(relative))
+            .join(relative);
+        Ok(GeneratedTargetPath::new(target))
     }
 
-    fn format_errors(&self, errors: Vec<syn::Error>) -> String {
+    fn format_errors(&self, root: &RepositoryRoot, errors: Vec<syn::Error>) -> String {
         let details = errors
             .iter()
             .map(ToString::to_string)
@@ -68,7 +90,7 @@ impl SchemaSourceFile {
             .join("\n");
         format!(
             "{} のschemaを生成できません:\n{details}",
-            self.path.display()
+            root.relative_display(&self.path)
         )
     }
 }
@@ -98,5 +120,53 @@ impl<'ast> Visit<'ast> for SchemaMacroCollector {
             });
         }
         visit::visit_macro(self, node);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    fn root_at(path: &Path) -> RepositoryRoot {
+        RepositoryRoot::for_tests(path.to_path_buf())
+    }
+
+    #[test]
+    fn generatedディレクトリ配下の相対パスを受理する() {
+        let root = root_at(Path::new("/repo"));
+        let source = SchemaSourceFile::new(PathBuf::from("/repo/crates/graphite/tests/x.rs"));
+        let target = source
+            .generated_target(&root, "generated/world.rs")
+            .unwrap();
+        assert_eq!(
+            target.as_path(),
+            Path::new("/repo/crates/graphite/tests/generated/world.rs")
+        );
+    }
+
+    #[test]
+    fn 絶対パスを拒否する() {
+        let root = root_at(Path::new("/repo"));
+        let source = SchemaSourceFile::new(PathBuf::from("/repo/crates/graphite/tests/x.rs"));
+        assert!(source.generated_target(&root, "/etc/evil.rs").is_err());
+    }
+
+    #[test]
+    fn 上位ディレクトリへの脱出を拒否する() {
+        let root = root_at(Path::new("/repo"));
+        let source = SchemaSourceFile::new(PathBuf::from("/repo/crates/graphite/tests/x.rs"));
+        assert!(source
+            .generated_target(&root, "generated/../../evil.rs")
+            .is_err());
+    }
+
+    #[test]
+    fn 拡張子がrs以外なら拒否する() {
+        let root = root_at(Path::new("/repo"));
+        let source = SchemaSourceFile::new(PathBuf::from("/repo/crates/graphite/tests/x.rs"));
+        assert!(source
+            .generated_target(&root, "generated/world.txt")
+            .is_err());
     }
 }

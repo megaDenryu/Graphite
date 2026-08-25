@@ -234,17 +234,17 @@ tokenを起点にrename・参照検索できる。日本語識別子も文字列
 rust-analyzer 実機での F12 (go to definition) / rename 再計測は今回実施して
 いない。
 
-## 1.15 通常のRust生成ファイルへの定義移動 (2026-08-26)
+## 1.15 通常のRust生成ファイルへの定義ジャンプ (2026-08-26)
 
 schemaに由来する公開APIは、手続き型マクロの展開だけに置かず、`src/generated/`
 または`tests/generated/`の通常のRustファイルへ生成する。利用コードから
-NodeRef・EdgeRefのメソッド、役割getter、探索API、`get`・`iter`・`ids`・
-`between`・`try_between`へ定義移動した場合、生成ファイル内の実装へ着地する
+NodeRef・EdgeRefのメソッド、役割アクセサ、探索API、`get`・`iter`・`ids`・
+`between`・`try_between`へ定義ジャンプした場合、生成ファイル内の実装へ着地する
 ことを受理条件とする。生成ファイル先頭の「生成元」から元DSLのファイルと行へ
 戻れる。
 
 `graph!`が作る名前付きラッパーは呼び出し箇所ローカル型なので通常ファイルへ
-事前生成しない。`graph.alice()`の定義情報は左辺`alice`のspanへ結び付ける。
+事前生成しない。`graph.alice()`の定義情報は左辺`alice`のスパンへ結び付ける。
 この例外はschemaに由来する公開APIへ広げない。生成と陳腐化検出の規約は
 `docs/code_generation.md`を参照する。
 
