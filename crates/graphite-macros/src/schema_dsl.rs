@@ -182,6 +182,30 @@ impl EachSpec {
     }
 }
 
+/// 役割の `each` 制約を、生成コードの分岐に使う多重度3値へ分類したもの。
+/// `schema_codegen.rs` の役割クエリ生成 (戻り型・索引の実装・doc コメント) は
+/// すべてこの3値だけで分岐する。
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum RoleCardinality {
+    /// `each X: 1` — ちょうど1本。
+    Exact,
+    /// `each X: 0..1` — 高々1本。
+    Optional,
+    /// それ以外の範囲、または制約なし。
+    Multiple,
+}
+
+impl RoleCardinality {
+    /// 役割の `each` 制約 (無ければ `None`) を多重度3値へ分類する。
+    pub fn classify(spec: Option<EachSpec>) -> Self {
+        match spec {
+            Some(spec) if spec.is_exactly_one() => Self::Exact,
+            Some(spec) if spec.is_zero_or_one() => Self::Optional,
+            _ => Self::Multiple,
+        }
+    }
+}
+
 const EACH_HELP: &str = "`each <役割名>: N`、`N..M`、`N..*` のいずれかで指定してください";
 
 fn parse_each_spec(input: ParseStream) -> syn::Result<EachSpec> {

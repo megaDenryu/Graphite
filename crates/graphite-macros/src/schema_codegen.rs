@@ -62,9 +62,8 @@
 //!
 //! 実装は凍結時に構築・永続化する終点索引 `{accessor}_to_index`
 //! (`NodePosition -> EdgePosition/Option/連続範囲`、`gen_schema_struct`/`gen_directed_edge_freeze_block`
-//! 参照) を検索するだけなので O(1) 償却。この索引は v4.1 で入次数 each 検証
-//! のためだけに一時構築していたものを構造体フィールドとして格上げ・統合した
-//! もの (`docs/reverse_query.md` 実装ノート)。
+//! 参照) を検索するだけなので O(1)。この索引は入次数 each 検証にも使う
+//! (参照: `docs/reverse_query.md`)。
 
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, ToTokens};
@@ -72,11 +71,13 @@ use syn::{Ident, Path};
 
 use crate::naming::{
     construction_stamp_field_ident, each_violation_ident, edge_record_ident, edge_storage_ident,
-    generated_id_ident, graph_type_ident, internal_position_ident, named_position_ident,
-    node_storage_ident, pair_index_field_ident, reference_ident, role_query_method_ident,
-    to_snake_case, traversal_method_ident,
+    generated_id_ident, graph_type_ident, incident_method_ident, internal_position_ident,
+    named_position_ident, node_storage_ident, pair_index_field_ident, reference_ident,
+    role_query_method_ident, to_snake_case, traversal_method_ident,
 };
-use crate::schema_dsl::{EachSpec, EdgeDecl, EdgePayload, EdgeShape, NodeDecl, SchemaInput};
+use crate::schema_dsl::{
+    EachSpec, EdgeDecl, EdgePayload, EdgeShape, NodeDecl, RoleCardinality, SchemaInput,
+};
 use crate::schema_validate::{self, EachSide};
 
 /// 宣言を省略した既定生成ID、または明示された既存ID型を表す。
@@ -122,7 +123,7 @@ struct NodeInfo {
     type_ident: Ident,
     /// スキーマ内限定で既定生成するID、または `(id: 型パス)` で指定された既存型。
     id_ty: PublicIdType,
-    /// 内部ストレージの複数形フィールド名 (`persons`)。
+    /// 内部ストレージのフィールド名 (`__graphite_node_person`)。
     field_ident: Ident,
     /// builder のノード追加メソッド名 = 単数形 snake_case (`person`)。
     accessor_ident: Ident,
@@ -551,14 +552,14 @@ fn gen_node_traversal_methods(node: &NodeInfo, edges: &[EdgeInfo<'_>]) -> Vec<To
                         let query = role_query_method_ident(role);
                         let kind = edge.kind;
                         let edge_reference = edge.reference_ident();
-                        match edge.each_for(side).map(|each| each.spec) {
-                            Some(spec) if spec.is_exactly_one() => quote! {
+                        match RoleCardinality::classify(edge.each_for(side).map(|each| each.spec)) {
+                            RoleCardinality::Exact => quote! {
                                 pub fn #method(self) -> #edge_reference<'graph> { #kind::#query(self) }
                             },
-                            Some(spec) if spec.is_zero_or_one() => quote! {
+                            RoleCardinality::Optional => quote! {
                                 pub fn #method(self) -> Option<#edge_reference<'graph>> { #kind::#query(self) }
                             },
-                            _ => quote! {
+                            RoleCardinality::Multiple => quote! {
                                 pub fn #method(self) -> impl Iterator<Item = #edge_reference<'graph>> + 'graph {
                                     #kind::#query(self)
                                 }
@@ -568,10 +569,7 @@ fn gen_node_traversal_methods(node: &NodeInfo, edges: &[EdgeInfo<'_>]) -> Vec<To
                     .collect::<Vec<_>>()
             }
             EdgeInfoShape::Undirected { .. } if edge.from_node.type_ident == *node_type => {
-                let method = Ident::new(
-                    &format!("{}_incident", to_snake_case(&edge.kind.to_string())),
-                    edge.kind.span(),
-                );
+                let method = incident_method_ident(edge.kind);
                 let kind = edge.kind;
                 let edge_reference = edge.reference_ident();
                 vec![quote! {
@@ -2220,12 +2218,10 @@ fn finalize_role_index(
     node_field: &Ident,
     node_position: &Ident,
 ) -> TokenStream {
-    let constructor = match edge.each_for(side).map(|each| each.spec) {
-        Some(spec) if spec.is_exactly_one() => {
-            quote! { graphite::ExactlyOneRoleIndex::from_buckets }
-        }
-        Some(spec) if spec.is_zero_or_one() => quote! { graphite::OptionalRoleIndex::from_buckets },
-        _ => quote! { graphite::MultipleRoleIndex::from_buckets },
+    let constructor = match RoleCardinality::classify(edge.each_for(side).map(|each| each.spec)) {
+        RoleCardinality::Exact => quote! { graphite::ExactlyOneRoleIndex::from_buckets },
+        RoleCardinality::Optional => quote! { graphite::OptionalRoleIndex::from_buckets },
+        RoleCardinality::Multiple => quote! { graphite::MultipleRoleIndex::from_buckets },
     };
     quote! {
         let #index = #constructor(
@@ -2380,8 +2376,9 @@ fn gen_freeze_body(
     });
 
     // 制約違反をすべて収集し終えてから、役割索引を公開クエリ向けの
-    // cardinality 別表現へ確定する。違反のある未完成索引を exact/optional
-    // 表現へ変換すると内部アサートになり、利用者向け Violation を返せない。
+    // 多重度別表現へ確定する。違反のある未完成索引を ExactlyOneRoleIndex/
+    // OptionalRoleIndex 表現へ変換すると内部アサートになり、利用者向け
+    // Violation を返せない。
     let edge_index_finalizers = edges.iter().flat_map(|edge| match &edge.shape {
         EdgeInfoShape::Directed { .. } => vec![
             finalize_role_index(
@@ -2486,14 +2483,10 @@ fn gen_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream 
 }
 
 fn role_index_type(edge: &EdgeInfo<'_>, side: EachSide, edge_position: &Ident) -> TokenStream {
-    match edge.each_for(side).map(|each| each.spec) {
-        Some(spec) if spec.is_exactly_one() => {
-            quote! { graphite::ExactlyOneRoleIndex<#edge_position> }
-        }
-        Some(spec) if spec.is_zero_or_one() => {
-            quote! { graphite::OptionalRoleIndex<#edge_position> }
-        }
-        _ => quote! { graphite::MultipleRoleIndex<#edge_position> },
+    match RoleCardinality::classify(edge.each_for(side).map(|each| each.spec)) {
+        RoleCardinality::Exact => quote! { graphite::ExactlyOneRoleIndex<#edge_position> },
+        RoleCardinality::Optional => quote! { graphite::OptionalRoleIndex<#edge_position> },
+        RoleCardinality::Multiple => quote! { graphite::MultipleRoleIndex<#edge_position> },
     }
 }
 
@@ -2504,9 +2497,9 @@ fn gen_role_query_method(edge: &EdgeInfo<'_>, role: &Ident, side: EachSide) -> T
         EachSide::Source => (edge.from_node.reference_ident(), &edge.index_field_ident),
         EachSide::Target => (edge.to_node.reference_ident(), &edge.to_index_field_ident),
     };
-    match edge.each_for(side).map(|each| each.spec) {
-        Some(spec) if spec.is_exactly_one() => quote! {
-            /// この役割に接続する唯一の辺を平均 O(1)、追加確保なしで返す。
+    match RoleCardinality::classify(edge.each_for(side).map(|each| each.spec)) {
+        RoleCardinality::Exact => quote! {
+            /// この役割に接続する唯一の辺を O(1)、追加確保なしで返す。
             pub fn #method<'g>(node: #node_reference<'g>) -> #edge_reference<'g> {
                 #edge_reference {
                     graph: node.graph,
@@ -2514,15 +2507,15 @@ fn gen_role_query_method(edge: &EdgeInfo<'_>, role: &Ident, side: EachSide) -> T
                 }
             }
         },
-        Some(spec) if spec.is_zero_or_one() => quote! {
-            /// この役割に接続する高々1本の辺を平均 O(1)、追加確保なしで返す。
+        RoleCardinality::Optional => quote! {
+            /// この役割に接続する高々1本の辺を O(1)、追加確保なしで返す。
             pub fn #method<'g>(node: #node_reference<'g>) -> Option<#edge_reference<'g>> {
                 node.graph.#index.get(node.internal_position.0).copied()
                     .map(|internal_position| #edge_reference { graph: node.graph, internal_position })
             }
         },
-        _ => quote! {
-            /// この役割に接続する辺を平均 O(1) で引き、挿入順に走査する。
+        RoleCardinality::Multiple => quote! {
+            /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
             /// 問い合わせ時に結果 `Vec` を確保しない。
             pub fn #method<'g>(node: #node_reference<'g>) -> impl Iterator<Item = #edge_reference<'g>> + 'g {
                 let positions = node.graph.#index.get(node.internal_position.0);
@@ -2535,24 +2528,47 @@ fn gen_role_query_method(edge: &EdgeInfo<'_>, role: &Ident, side: EachSide) -> T
     }
 }
 
-fn gen_directed_role_query_impl(
+/// `try_between`/`between`/`get`/`payload_mut`/`iter`/`ids`/`len` の生成に
+/// 要る、有向/無向で異なる部分だけの束。有向は端点対索引のキーが
+/// `(位置, 位置)` のタプル、無向は `UnorderedPair::new(位置, 位置)` になる
+/// (`gen_directed_edge_freeze_block`/`gen_undirected_edge_freeze_block` が
+/// 積む索引のキー型に合わせる)。
+struct EdgeQueryPairSpec {
+    /// `try_between`/`between` の `a` 引数の参照型。
+    a_reference: Ident,
+    /// `try_between`/`between` の `b` 引数の参照型 (有向は終点側、無向は
+    /// 始点側と同じ型)。
+    b_reference: Ident,
+    /// 端点対索引 (`{accessor}_by_pair`) を検索するキー式。
+    pair_key: TokenStream,
+    /// `try_between` の doc コメントに書く対の種類 (`順序付き`/`順序なし`)。
+    pair_order_description: &'static str,
+}
+
+/// エッジ種別1つ分の `{Kind}` 固有 impl のうち、有向/無向で共通する部分
+/// (`try_between`/`between`/`get`/`payload_mut`/`iter`/`ids`/`len`) を生成する。
+/// 役割クエリ (`of_<role>`) と無向の `incident` は有向/無向で形が異なるため
+/// 呼び出し元がそれぞれ生成し、この関数が返すトークン列と並べて
+/// `impl #kind { .. }` に埋め込む。
+fn gen_edge_query_common_impl(
     schema_name: &Ident,
     edge: &EdgeInfo<'_>,
-    from_role: &Ident,
-    to_role: &Ident,
     payload: Option<&EdgePayload>,
+    pair_spec: EdgeQueryPairSpec,
 ) -> TokenStream {
+    let EdgeQueryPairSpec {
+        a_reference,
+        b_reference,
+        pair_key,
+        pair_order_description,
+    } = pair_spec;
     let kind = edge.kind;
     let accessor = &edge.accessor_ident;
     let id_ty = &edge.id_ty;
     let edge_reference = edge.reference_ident();
     let edge_position = edge.internal_position_ident();
-    let from_reference = edge.from_node.reference_ident();
-    let to_reference = edge.to_node.reference_ident();
     let stamp = construction_stamp_field_ident(kind.span());
     let pair_index = pair_index_field_ident(kind);
-    let from_query = gen_role_query_method(edge, from_role, EachSide::Source);
-    let to_query = gen_role_query_method(edge, to_role, EachSide::Target);
     let payload_mut = gen_edge_payload_mut_method(schema_name, edge, payload, kind.span());
     let between_result = if edge.unique_pair {
         quote! { Option<#edge_reference<'g>> }
@@ -2561,46 +2577,73 @@ fn gen_directed_role_query_impl(
     };
     let between_body = if edge.unique_pair {
         quote! {
-            let found = a.graph.#pair_index.get(&(a.internal_position, b.internal_position)).copied();
+            let found = a.graph.#pair_index.get(&#pair_key).copied();
             Ok(found.map(|internal_position| #edge_reference { graph: a.graph, internal_position }))
         }
     } else {
         quote! {
-            let positions = a.graph.#pair_index.get(&(a.internal_position, b.internal_position))
+            let positions = a.graph.#pair_index.get(&#pair_key)
                 .map(Vec::as_slice).unwrap_or(&[]);
             Ok(positions.iter().copied().map(move |internal_position| #edge_reference { graph: a.graph, internal_position }))
         }
     };
+    let try_between_doc =
+        format!("{pair_order_description}端点対を平均 O(1)、追加確保なしで検索する。");
+    quote! {
+        #[doc = #try_between_doc]
+        pub fn try_between<'g>(a: #a_reference<'g>, b: #b_reference<'g>)
+            -> Result<#between_result, graphite::GraphMismatch>
+        {
+            if a.graph.#stamp != b.graph.#stamp { return Err(graphite::GraphMismatch); }
+            #between_body
+        }
+
+        /// # Panics
+        /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+        pub fn between<'g>(a: #a_reference<'g>, b: #b_reference<'g>) -> #between_result {
+            Self::try_between(a, b).unwrap_or_else(|error| panic!("{}::between: {error}", stringify!(#kind)))
+        }
+
+        pub fn get<'g>(g: &'g #schema_name, id: &#id_ty) -> Option<#edge_reference<'g>> {
+            Some(#edge_reference { graph: g, internal_position: #edge_position(g.#accessor.position(id)?) })
+        }
+
+        #payload_mut
+
+        pub fn iter<'g>(g: &'g #schema_name) -> impl Iterator<Item = #edge_reference<'g>> + 'g {
+            g.#accessor.positions().map(move |position| #edge_reference { graph: g, internal_position: #edge_position(position) })
+        }
+        pub fn ids(g: &#schema_name) -> impl Iterator<Item = &#id_ty> { g.#accessor.ids() }
+        pub fn len(g: &#schema_name) -> usize { g.#accessor.len() }
+    }
+}
+
+fn gen_directed_role_query_impl(
+    schema_name: &Ident,
+    edge: &EdgeInfo<'_>,
+    from_role: &Ident,
+    to_role: &Ident,
+    payload: Option<&EdgePayload>,
+) -> TokenStream {
+    let kind = edge.kind;
+    let from_query = gen_role_query_method(edge, from_role, EachSide::Source);
+    let to_query = gen_role_query_method(edge, to_role, EachSide::Target);
+    let common = gen_edge_query_common_impl(
+        schema_name,
+        edge,
+        payload,
+        EdgeQueryPairSpec {
+            a_reference: edge.from_node.reference_ident(),
+            b_reference: edge.to_node.reference_ident(),
+            pair_key: quote! { (a.internal_position, b.internal_position) },
+            pair_order_description: "順序付き",
+        },
+    );
     quote! {
         impl #kind {
             #from_query
             #to_query
-
-            /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
-            pub fn try_between<'g>(a: #from_reference<'g>, b: #to_reference<'g>)
-                -> Result<#between_result, graphite::GraphMismatch>
-            {
-                if a.graph.#stamp != b.graph.#stamp { return Err(graphite::GraphMismatch); }
-                #between_body
-            }
-
-            /// # Panics
-            /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-            pub fn between<'g>(a: #from_reference<'g>, b: #to_reference<'g>) -> #between_result {
-                Self::try_between(a, b).unwrap_or_else(|error| panic!("{}::between: {error}", stringify!(#kind)))
-            }
-
-            pub fn get<'g>(g: &'g #schema_name, id: &#id_ty) -> Option<#edge_reference<'g>> {
-                Some(#edge_reference { graph: g, internal_position: #edge_position(g.#accessor.position(id)?) })
-            }
-
-            #payload_mut
-
-            pub fn iter<'g>(g: &'g #schema_name) -> impl Iterator<Item = #edge_reference<'g>> + 'g {
-                g.#accessor.positions().map(move |position| #edge_reference { graph: g, internal_position: #edge_position(position) })
-            }
-            pub fn ids(g: &#schema_name) -> impl Iterator<Item = &#id_ty> { g.#accessor.ids() }
-            pub fn len(g: &#schema_name) -> usize { g.#accessor.len() }
+            #common
         }
     }
 }
@@ -2611,62 +2654,31 @@ fn gen_undirected_incident_query_impl(
     payload: Option<&EdgePayload>,
 ) -> TokenStream {
     let kind = edge.kind;
-    let accessor = &edge.accessor_ident;
     let index = &edge.index_field_ident;
-    let id_ty = &edge.id_ty;
     let edge_reference = edge.reference_ident();
-    let edge_position = edge.internal_position_ident();
     let node_reference = edge.from_node.reference_ident();
-    let stamp = construction_stamp_field_ident(kind.span());
-    let pair_index = pair_index_field_ident(kind);
-    let payload_mut = gen_edge_payload_mut_method(schema_name, edge, payload, kind.span());
-    let between_result = if edge.unique_pair {
-        quote! { Option<#edge_reference<'g>> }
-    } else {
-        quote! { impl Iterator<Item = #edge_reference<'g>> + 'g }
-    };
-    let between_body = if edge.unique_pair {
-        quote! {
-            let found = a.graph.#pair_index
-                .get(&graphite::UnorderedPair::new(a.internal_position, b.internal_position)).copied();
-            Ok(found.map(|internal_position| #edge_reference { graph: a.graph, internal_position }))
-        }
-    } else {
-        quote! {
-            let positions = a.graph.#pair_index
-                .get(&graphite::UnorderedPair::new(a.internal_position, b.internal_position))
-                .map(Vec::as_slice).unwrap_or(&[]);
-            Ok(positions.iter().copied().map(move |internal_position| #edge_reference { graph: a.graph, internal_position }))
+    let incident = quote! {
+        /// 接続辺を O(1) で参照し、追加確保なしで挿入順に走査する。
+        pub fn incident<'g>(node: #node_reference<'g>) -> impl Iterator<Item = #edge_reference<'g>> + 'g {
+            let positions = node.graph.#index.get(node.internal_position.0);
+            positions.iter().copied().map(move |internal_position| #edge_reference { graph: node.graph, internal_position })
         }
     };
+    let common = gen_edge_query_common_impl(
+        schema_name,
+        edge,
+        payload,
+        EdgeQueryPairSpec {
+            a_reference: node_reference.clone(),
+            b_reference: node_reference,
+            pair_key: quote! { graphite::UnorderedPair::new(a.internal_position, b.internal_position) },
+            pair_order_description: "順序なし",
+        },
+    );
     quote! {
         impl #kind {
-            /// 接続辺を平均 O(1) で引き、追加確保なしで挿入順に走査する。
-            pub fn incident<'g>(node: #node_reference<'g>) -> impl Iterator<Item = #edge_reference<'g>> + 'g {
-                let positions = node.graph.#index.get(node.internal_position.0);
-                positions.iter().copied().map(move |internal_position| #edge_reference { graph: node.graph, internal_position })
-            }
-            /// 順序なし端点対を平均 O(1)、追加確保なしで検索する。
-            pub fn try_between<'g>(a: #node_reference<'g>, b: #node_reference<'g>)
-                -> Result<#between_result, graphite::GraphMismatch>
-            {
-                if a.graph.#stamp != b.graph.#stamp { return Err(graphite::GraphMismatch); }
-                #between_body
-            }
-            /// # Panics
-            /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-            pub fn between<'g>(a: #node_reference<'g>, b: #node_reference<'g>) -> #between_result {
-                Self::try_between(a, b).unwrap_or_else(|error| panic!("{}::between: {error}", stringify!(#kind)))
-            }
-            pub fn get<'g>(g: &'g #schema_name, id: &#id_ty) -> Option<#edge_reference<'g>> {
-                Some(#edge_reference { graph: g, internal_position: #edge_position(g.#accessor.position(id)?) })
-            }
-            #payload_mut
-            pub fn iter<'g>(g: &'g #schema_name) -> impl Iterator<Item = #edge_reference<'g>> + 'g {
-                g.#accessor.positions().map(move |position| #edge_reference { graph: g, internal_position: #edge_position(position) })
-            }
-            pub fn ids(g: &#schema_name) -> impl Iterator<Item = &#id_ty> { g.#accessor.ids() }
-            pub fn len(g: &#schema_name) -> usize { g.#accessor.len() }
+            #incident
+            #common
         }
     }
 }

@@ -32,7 +32,7 @@ pub struct GraphMismatch;
 
 impl fmt::Display for GraphMismatch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("異なる Graph instance の参照は組み合わせられません。同じ graph! または同じ Graph instance から得た参照だけを渡してください")
+        f.write_str("異なる Graph の値から得た参照は組み合わせられません。同じ graph! または同じ Graph の値から得た参照だけを渡してください")
     }
 }
 

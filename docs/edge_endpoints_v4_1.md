@@ -44,7 +44,7 @@ w1 = Wire(n1 -[Cable { ohm: 5 }]- n2),
 意味論:
 
 - 端点は**順序なし対** {a, b}。`Friends(alice -- bob)` と `Friends(bob -- alice)`
-  は同じ辺を意味し、`unique pair` の同値判定・`between(&g, a, b)` は順序を無視する。
+  は同じ辺を意味し、`unique pair` の同値判定・`between(a, b)` は順序を無視する。
 - **両端は同じノード型でなければならない** (対称性は型にも及ぶ。異型を繋ぎたい
   対称関係は v1 では対象外 — 有向で書くかノード昇格。検証エラーで案内)。
 - **役割名は書けない** (役割の区別がある時点で対称ではない — その場合は
@@ -54,7 +54,7 @@ w1 = Wire(n1 -[Cable { ohm: 5 }]- n2),
   順序無視の対へ適用する `unique pair` のみ。
 - クエリ (型名前空間、有向と同じ語彙):
   - `Friends::incident(x)` — x に接続する辺参照を挿入順のiteratorで返す
-  - `Friends::between(&g, &a, &b)` — 対称
+  - `Friends::between(a, b)` — 対称。非パニック版 `try_between(a, b)` も提供する
   - `get`/`iter`/`ids`/`len` は有向と同じ
 - 構築用の辺値は、非公開の順序なし対
   `endpoints: graphite::UnorderedPair<PersonId>` を保持する。

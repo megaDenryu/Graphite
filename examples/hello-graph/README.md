@@ -59,16 +59,22 @@ cargo run
 | クエリ関連関数 (固有 impl) | `of_<role>`/`get`/`between`/`iter`/`ids`/`len` | `Boss::of_subordinate(person)` 等 |
 | 違反 enum のバリアント | `{Kind}DuplicateKey`/`{Kind}UnknownSource`/`{Kind}UnknownTarget`/`{Kind}{Role}EachViolation`/`{Kind}UniquePairViolation` | `Violation::BossSubordinateEachViolation { .. }` |
 
-`of`/`between` の戻り型は宣言した `where` 制約が決めます (これだけ覚えれば
-全 Kind に応用できます):
+`of_<role>`/`between` の戻り型は宣言した `where` 制約が決めます (これだけ覚えれば
+全 Kind に応用できます)。戻り値は相手ノードではなく常に `KindRef<'graph>`
+(積み荷は `edge.payload()` から辿る)。`of_<role>` は問い合わせた役割自身の
+`each` 制約で決まり、`between` は `unique pair` 制約の有無で決まる (2つは
+独立した軸なので分けて示す):
 
-| 制約 | `of` の戻り値 | `between` の戻り値 | `iter()` の要素 |
-|---|---|---|---|
-| `each X: 1` | `TRef<'graph>` (積み荷つきは `(TRef<'graph>, &Attrs)`)。未知キーはパニック (非パニック版 `get_of`) | `Vec<KindRef<'graph>>` | `KindRef<'graph>` |
-| `each X: 0..1` | `Option<TRef<'graph>>` (積み荷つきは `Option<(TRef<'graph>, &Attrs)>`) | `Vec<KindRef<'graph>>` | 同上 |
-| `each X: N` / `N..M` / `N..*` のその他の範囲 | `Vec<TRef<'graph>>` (積み荷つきは `Vec<(TRef<'graph>, &Attrs)>`) | `Vec<KindRef<'graph>>` | 同上 |
-| `unique pair` | `Vec<TRef<'graph>>` (積み荷つきは `Vec<(TRef<'graph>, &Attrs)>`) | `Option<KindRef<'graph>>` (対で高々1本のため) | 同上 |
-| 制約なし | `Vec<TRef<'graph>>` (積み荷つきは `Vec<(TRef<'graph>, &Attrs)>`) | `Vec<KindRef<'graph>>` | 同上 |
+| 役割の `each` 制約 | `of_<role>` の戻り値 | `iter()` の要素 |
+|---|---|---|
+| `each X: 1` | `KindRef<'graph>` | `KindRef<'graph>` |
+| `each X: 0..1` | `Option<KindRef<'graph>>` | 同上 |
+| `each X: N` / `N..M` / `N..*` のその他の範囲、または制約なし | `impl Iterator<Item = KindRef<'graph>>` | 同上 |
+
+| `unique pair` の有無 | `between` の戻り値 |
+|---|---|
+| あり | `Option<KindRef<'graph>>` (対で高々1本のため) |
+| なし | `impl Iterator<Item = KindRef<'graph>>` |
 
 構築時の `Boss` と完成後の `BossRef` の違いは `src/main.rs` §2.5 で説明しています。
 `Boss` は端点IDと積み荷を持つ名前付きフィールドの構造体です。freeze は端点IDを非公開位置へ変換し、完成済みグラフは `graphite::KeyedTable<BossId, BossRecord>` を保持します。利用者は `BossRef<'graph>` を通して完成済み記録を読みます。`graph!` の

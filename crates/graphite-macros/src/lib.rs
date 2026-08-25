@@ -164,7 +164,7 @@ pub fn graph_schema(input: TokenStream) -> TokenStream {
 
 /// `graph_schema!` で宣言したスキーマのインスタンスをリテラルに近い記法で
 /// 組み立てる。`SchemaName::Graph::create_named(|b| { ... })` と、左辺名の
-/// 静的アクセサを持つ呼び出しsiteローカルwrapperへ脱糖する。
+/// 静的アクセサを持つ呼び出し箇所ローカルラッパーへ脱糖する。
 ///
 /// ```text
 /// let g = graphite::graph!(OrgChart {

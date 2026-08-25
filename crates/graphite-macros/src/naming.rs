@@ -28,22 +28,22 @@ pub fn internal_position_ident(source: &Ident) -> Ident {
     format_ident!("__{}InternalPosition", source, span = source.span())
 }
 
-/// ノード型名・辺種別名から `graph!` の名前付き要素が保持する位置handle型名を導出する。
+/// ノード型名・辺種別名から `graph!` の名前付き要素が保持する位置型名を導出する。
 pub fn named_position_ident(source: &Ident) -> Ident {
     format_ident!("__{}NamedPosition", source, span = source.span())
 }
 
-/// `graph!` の左辺名からローカルwrapperの位置フィールド名を導出する。
+/// `graph!` の左辺名からローカルラッパーの位置フィールド名を導出する。
 pub fn named_binding_position_ident(source: &Ident) -> Ident {
     format_ident!("__graphite_named_{}", source, span = source.span())
 }
 
-/// 呼び出しsiteに生成する名前付きグラフwrapperのローカル型名。
+/// 呼び出し箇所に生成する名前付きグラフラッパーのローカル型名。
 pub fn named_graph_wrapper_ident(source: &Ident) -> Ident {
     format_ident!("__Graphite{}NamedGraph", source, span = source.span())
 }
 
-/// 名前付きグラフwrapperの型付き位置handle用の型引数名。
+/// 名前付きグラフラッパーの型付き位置型用の型引数名。
 pub fn named_wrapper_parameter_ident(index: usize, source: &Ident) -> Ident {
     format_ident!("__GraphiteNamedPosition{}", index, span = source.span())
 }
@@ -104,6 +104,14 @@ pub fn role_query_method_ident(role: &Ident) -> Ident {
     Ident::new(&format!("of_{role}"), role.span())
 }
 
+/// 辺種別名から無向辺の NodeRef が持つ接続クエリメソッド名を導出する。
+pub fn incident_method_ident(kind: &Ident) -> Ident {
+    Ident::new(
+        &format!("{}_incident", to_snake_case(&kind.to_string())),
+        kind.span(),
+    )
+}
+
 /// 辺種別名から非公開の対索引フィールド名を導出する。
 pub fn pair_index_field_ident(kind: &Ident) -> Ident {
     format_ident!(
@@ -135,8 +143,6 @@ pub fn to_snake_case(ident: &str) -> String {
     result
 }
 
-/// ノード型の内部ストレージ用フィールド名 (複数形) を導出する。
-///
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -157,6 +163,12 @@ mod tests {
             "関係_as_始点"
         );
         assert_eq!(role_query_method_ident(&role).to_string(), "of_始点");
+    }
+
+    #[test]
+    fn 無向辺の接続クエリメソッド名を導出できる() {
+        let kind = Ident::new("Friends", proc_macro2::Span::call_site());
+        assert_eq!(incident_method_ident(&kind).to_string(), "friends_incident");
     }
 
     #[test]

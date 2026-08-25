@@ -122,7 +122,7 @@ fn betweenは生成元graphを検査し非panic版も提供する() {
     let bob_other = Traversal::Person::get(&second, &person("bob")).unwrap();
 
     let error = 関係::try_between(alice, bob_other).unwrap_err();
-    assert!(error.to_string().contains("同じ Graph instance"));
+    assert!(error.to_string().contains("同じ Graph の値"));
     assert!(std::panic::catch_unwind(|| 関係::between(alice, bob_other)).is_err());
     assert!(Friends::try_between(alice, bob_other).is_err());
 }

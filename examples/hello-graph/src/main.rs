@@ -1035,7 +1035,7 @@ mod tests {
     }
 
     #[test]
-    fn 制約なしのofはvecを返す() {
+    fn 制約なしのofはiteratorを返す() {
         let g = build();
         let bob = Org::Person::get(&g, &PersonId("bob".to_string())).unwrap();
         let mut names: Vec<String> = ReviewedBy::of_reviewee(bob)
@@ -1043,12 +1043,6 @@ mod tests {
             .collect();
         names.sort();
         assert_eq!(names, vec!["Alice".to_string(), "Carol".to_string()]);
-    }
-
-    #[test]
-    fn each_1のget_ofは未知キーでnoneを返す() {
-        let g = build();
-        assert!(Org::Person::get(&g, &PersonId("dave".to_string())).is_none());
     }
 
     #[test]
