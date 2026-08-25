@@ -88,10 +88,10 @@ pub fn print_anomalies(org: &OrgChart::Graph, report: &AnomalyReport) {
         println!("  なし");
     } else {
         for (a, b) in &report.mutual_boss_pairs {
-            let name_a = OrgChart::Employee::get(org, a)
+            let name_a = org.employee_by_id(a)
                 .map(|e| e.value().name.as_str())
                 .unwrap_or("?");
-            let name_b = OrgChart::Employee::get(org, b)
+            let name_b = org.employee_by_id(b)
                 .map(|e| e.value().name.as_str())
                 .unwrap_or("?");
             println!("  {} ({}) <-> {} ({})", name_a, a.0, name_b, b.0);
@@ -106,7 +106,7 @@ pub fn print_anomalies(org: &OrgChart::Graph, report: &AnomalyReport) {
             let names: Vec<String> = cycle
                 .iter()
                 .map(|id| {
-                    let name = OrgChart::Employee::get(org, id)
+                    let name = org.employee_by_id(id)
                         .map(|e| e.value().name.as_str())
                         .unwrap_or("?");
                     format!("{}({})", name, id.0)
@@ -146,7 +146,7 @@ fn print_project_list(org: &OrgChart::Graph, ids: &[crate::schema::ProjectId]) {
         return;
     }
     for id in ids {
-        let name = OrgChart::Project::get(org, id)
+        let name = org.project_by_id(id)
             .map(|p| p.value().name.as_str())
             .unwrap_or("?");
         println!("  {} ({})", name, id.0);
@@ -163,10 +163,10 @@ pub fn print_reorg(org: &OrgChart::Graph, report: &ReorgReport) {
 
     println!("--- 再配置先 (社員キー順、ラウンドロビン) ---");
     for (emp_id, new_dept) in report.reassigned.iter().take(10) {
-        let name = OrgChart::Employee::get(org, emp_id)
+        let name = org.employee_by_id(emp_id)
             .map(|e| e.value().name.as_str())
             .unwrap_or("?");
-        let dept_name = OrgChart::Department::get(org, new_dept)
+        let dept_name = org.department_by_id(new_dept)
             .map(|d| d.value().name.as_str())
             .unwrap_or("?");
         println!(
@@ -184,9 +184,9 @@ pub fn print_reorg(org: &OrgChart::Graph, report: &ReorgReport) {
             println!("[OK] 再構築に成功しました (freeze検証をパス)");
             println!(
                 "  新組織: 社員{}人 / 部署{}人 / プロジェクト{}件",
-                OrgChart::Employee::ids(new_org).count(),
-                OrgChart::Department::ids(new_org).count(),
-                OrgChart::Project::ids(new_org).count()
+                new_org.employee_ids().count(),
+                new_org.department_ids().count(),
+                new_org.project_ids().count()
             );
         }
         ReorgOutcome::Violated(violation) => {

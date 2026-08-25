@@ -18,13 +18,17 @@
 //! }
 //! pub struct PersonRef<'graph> { /* &Graph + private position */ }
 //! pub struct BossRef<'graph> { /* &Graph + private position */ }
-//! impl Boss {
-//!     pub fn of_subordinate(node: PersonRef<'_>) -> Option<BossRef<'_>> { .. }
-//!     pub fn of_superior(node: PersonRef<'_>) -> impl Iterator<Item = BossRef<'_>> { .. }
-//!     pub fn get(g: &Graph, id: &BossId) -> Option<BossRef<'_>> { .. }
+//! impl<'graph> PersonRef<'graph> {
+//!     pub fn boss_as_subordinate(self) -> Option<BossRef<'graph>> { .. }
+//!     pub fn boss_as_superior(self) -> impl Iterator<Item = BossRef<'graph>> { .. }
+//!     pub fn boss_between(self, other: PersonRef<'graph>) -> .. { .. }
 //! }
-//! pub struct Person; // ノード読み取り用マーカー
 //! pub struct Graph { .. }
+//! impl Graph {
+//!     pub fn person_by_id(&self, id: &PersonId) -> Option<PersonRef<'_>> { .. }
+//!     pub fn boss_by_id(&self, id: &BossId) -> Option<BossRef<'_>> { .. }
+//!     pub fn boss_iter(&self) -> impl Iterator<Item = BossRef<'_>> { .. }
+//! }
 //! pub struct Builder { .. }
 //! pub enum Violation { .. }
 //! }
@@ -36,28 +40,32 @@
 //! 構築用の有向辺値 (`(subordinate: Employee) -> (superior: Employee)`) は役割名の
 //! 公開IDフィールドを保持する。完成済みの `EdgeRef` は役割名のメソッドで `NodeRef` を返す。
 //! 無向辺 (`Person -- Person`) は
-//! `.endpoints() -> (PersonRef<'_>, PersonRef<'_>)` を生やし、`incident`/`between` は
-//! どちらの位置に置かれても対称に検索できる。内部の凍結処理 (`freeze()`) と検索処理は
-//! 名前付きフィールドを直接使う。
+//! `.endpoints() -> (PersonRef<'_>, PersonRef<'_>)` を生やし、`{kind}_incident` と
+//! `{kind}_between` はどちらの位置に置かれても対称に検索できる。内部の凍結処理
+//! (`freeze()`) と検索処理は名前付きフィールドを直接使う。
 //!
-//! 辺はスキーマ module 内の生成型なので固有 impl で読み取り API を生やす。
+//! 個体と索引を所有するのは完成済みの `Graph` なので、公開IDからの検索と種別
+//! 全体への操作は `Graph` のメソッドとして生やす (`graph.person_by_id(&id)`、
+//! `graph.boss_iter()`)。`Graph` を外から引数で渡す型名前空間の関連関数
+//! (`Org::Person::get(&graph, &id)`) は作らない (issue #9)。一度 `NodeRef` を
+//! 得た後の関係の探索は、その参照が親 `Graph` と内部位置を保持しているため
+//! `NodeRef` 自身のメソッド (`person.boss_as_subordinate()`) で辿る。
 //! ノード値型はユーザーが module 外に宣言し、複数 schema 間で共有できる。
-//! ユーザー型への固有 impl は追加せず、`Org::Person::get` のようにスキーマ
-//! module 内のノードマーカーへ読み取り API を生成する。
+//! ユーザー型への固有 impl は追加しない。
 //! ID 型を省略した `node Person;` は schema module 内に `PersonId(String)` を
 //! 生成する。既存型を使う場合は `node Person(id: ExistingId);` と明示する。
 //!
-//! where 制約 → 役割クエリの戻り型の対応表 (`docs/schema_v4.md` §3.2):
-//! - `each X: 1`    -> `of_X(NodeRef)` は `EdgeRef`
-//! - `each X: 0..1` -> `of_X(NodeRef)` は `Option<EdgeRef>`
+//! where 制約 → 役割探索メソッドの戻り型の対応表 (`docs/schema_v4.md` §3.2):
+//! - `each X: 1`    -> `node.{kind}_as_X()` は `EdgeRef`
+//! - `each X: 0..1` -> `node.{kind}_as_X()` は `Option<EdgeRef>`
 //! - その他の範囲または制約なし -> iterator
-//! - `unique pair`  -> `between` は `Option`、それ以外は iterator
+//! - `unique pair`  -> `a.{kind}_between(b)` は `Option`、それ以外は iterator
 //!
 //! 判定する制約は問い合わせた役割そのものの `each`。無向辺は役割名を
-//! 持たないため `incident(NodeRef)` を生成し、常に iterator を返す。
+//! 持たないため `node.{kind}_incident()` を生成し、常に iterator を返す。
 //!
 //! 有向辺の両側は役割名を使う対称なAPIになる。たとえば
-//! `Boss::of_subordinate(person)` と `Boss::of_superior(person)` はどちらも
+//! `person.boss_as_subordinate()` と `person.boss_as_superior()` はどちらも
 //! `EdgeRef` を返し、相手端点や積み荷はその参照から辿る。
 //!
 //! 実装は凍結時に構築・永続化する終点索引 `{accessor}_to_index`
@@ -72,8 +80,8 @@ use syn::{Ident, Path};
 use crate::naming::{
     construction_stamp_field_ident, each_violation_ident, edge_record_ident, edge_storage_ident,
     generated_id_ident, graph_type_ident, incident_method_ident, internal_position_ident,
-    named_position_ident, node_storage_ident, pair_index_field_ident, reference_ident,
-    role_query_method_ident, to_snake_case, traversal_method_ident,
+    kind_api_method_ident, named_position_ident, node_storage_ident, pair_index_field_ident,
+    reference_ident, to_snake_case, traversal_method_ident,
 };
 use crate::schema_dsl::{
     EachSpec, EdgeDecl, EdgePayload, EdgeShape, NodeDecl, RoleCardinality, SchemaInput,
@@ -295,7 +303,13 @@ pub fn generate_module_body(schema: &SchemaInput) -> TokenStream {
     let edge_reference_defs = gen_edge_reference_types(&graph_ident, &edge_infos);
     let violation_def = gen_violation_enum(&violation_ident, &node_infos, &edge_infos);
     let schema_struct_def = gen_schema_struct(&graph_ident, &node_infos, &edge_infos);
-    let schema_impl = gen_schema_impl(&graph_ident, &violation_ident, &builder_ident);
+    let schema_impl = gen_schema_impl(
+        &graph_ident,
+        &violation_ident,
+        &builder_ident,
+        &node_infos,
+        &edge_infos,
+    );
     let builder_struct_def = gen_builder_struct(&builder_ident, &node_infos, &edge_infos);
     let builder_impl = gen_builder_impl(
         &builder_ident,
@@ -329,10 +343,6 @@ pub fn generate_module_body(schema: &SchemaInput) -> TokenStream {
         &graph_ident,
         &edge_infos,
     );
-    let edge_query_impls = edge_infos
-        .iter()
-        .map(|e| gen_edge_query_impl(&graph_ident, e));
-
     quote! {
         #(#default_id_defs)*
         #(#internal_position_defs)*
@@ -348,7 +358,6 @@ pub fn generate_module_body(schema: &SchemaInput) -> TokenStream {
         #node_trait_and_impls
         #edge_trait_and_impls
         #builder_impl
-        #(#edge_query_impls)*
     }
 }
 
@@ -473,6 +482,12 @@ fn gen_insertable_traits(
     quote! {
         /// 型付き ID を受け取るノード・エッジ共通の挿入トレイト。
         ///
+        /// 署名が `insert_with_id(self, b, id)` と、挿入される値を receiver に
+        /// して `Builder` を引数で受ける向きなのは、`graph!` がノード項の値の
+        /// 型を解析せず、正しい内部ストレージへの振り分けを値の型の trait
+        /// ディスパッチに頼るためである。利用者向けの公開入口は
+        /// `Builder::insert`/`Builder::add` の側にある。
+        ///
         /// `insert_named_with_id` は [`graphite::NamedInsertPermit`] を要求する
         /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
         /// `insert_with_id` (許可証不要、名前付き位置を返さない) は独立した
@@ -510,85 +525,204 @@ fn gen_insertable_traits(
     }
 }
 
-/// v4 (`docs/schema_v4.md` §3.2) が要求する「ノード挿入用トレイト」
-/// とその各ノード型への impl を生成する。
+/// 1つのノード種別の `NodeRef` へ生やす辺関連メソッドをすべて生成する。
 ///
-/// ## 背景: なぜこのトレイトが必要か
+/// `NodeRef` は親 `Graph` と内部位置を保持する Graph 束縛の参照なので、
+/// 一度取得した後の関係の探索は親 `Graph` を再注入せずこの参照自身から辿る
+/// (issue #9)。生成するのは次の3種類である。
 ///
-/// `graph!` はノード項を `key = 式` と書かせ、値の型をマクロが一切パース
-/// しない (式の型は rustc の型推論に委ねる、という設計上の決定)。その結果
-/// `graph!` はもはや「どのビルダーメソッドを呼ぶべきか」を型名から逆引き
-/// できないため、値の型さえ分かれば正しい内部ストレージへ振り分けられる
-/// **総称メソッド**が要る。この trait 境界を介した単相化がそれを実現する
-/// (実行時のリフレクション・型判別・`dyn` ディスパッチは一切無い。
-/// `docs/design_principles.md` 原則5: ゼロコスト志向)。
+/// - 有向辺の役割探索 `{kind}_as_{役割}()`
+/// - 無向辺の接続探索 `{kind}_incident()`
+/// - 端点対検索 `{kind}_between(other)` / `{kind}_try_between(other)`
 ///
-/// ## 読み取り側 (`get`/`ids`/`iter`)
-///
-/// ノード型 (`Person` 等) はユーザーが `graph_schema!` の外で宣言する型で
-/// あり、複数 schema 間で共有されうる。ユーザー struct へ固有 impl を
-/// 追加すると schema 間で同名メソッドが衝突するため、読み取り API は
-/// `Org::Person::get(&g, &id)` のように生成したノードマーカーへ置く。
-///
-/// ## `{Schema}Insertable` と `{Schema}DefaultId`
-///
-/// 型付き挿入と関連型 `Id` は `{Schema}Insertable` に置く。文字列の束縛名から
-/// IDを作る操作は自動生成IDだけが実装する `{Schema}DefaultId` に置く。
-/// `{Schema}Node` はノード専用の型境界を保つマーカートレイトである。
-///
-/// ## 命名判断 (`docs/design_principles.md` 原則3: std 命名規約準拠)
-///
-/// - **内部 trait 名は `{Schema}Node` とした**。生成 module に移した後も
-///   `node Node;` や `edge Edge = ..;` と生成基盤名が衝突する可能性を増やさず、
-///   コンパイラ診断から所属 schema を判別できる名前を維持する。
-/// - **メソッド名は `insert_with_id`/`get`/`ids`/`iter`**。`get`/`ids`/`iter` は
-///   `docs/schema_v4.md` §3.2 のイメージ通り (std の `HashMap::get`/
-///   `HashMap::keys`/`HashMap::iter` に倣った命名)。
+/// 端点対検索は位置0側 (有向辺は始点側、無向辺は唯一の端点型) の `NodeRef`
+/// にだけ生やす。両端が同じノード型の辺でも、生成を位置0側の一致だけで
+/// 判定するため1回しか生成されない。
 fn gen_node_traversal_methods(node: &NodeInfo, edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
     let node_type = &node.type_ident;
     edges
         .iter()
-        .flat_map(|edge| match &edge.shape {
-            EdgeInfoShape::Directed { from_role, to_role, .. } => {
-                [(edge.from_node.type_ident == *node_type, from_role, EachSide::Source),
-                 (edge.to_node.type_ident == *node_type, to_role, EachSide::Target)]
-                    .into_iter()
-                    .filter(|(matches, _, _)| *matches)
-                    .map(|(_, role, side)| {
-                        let method = traversal_method_ident(edge.kind, role);
-                        let query = role_query_method_ident(role);
-                        let kind = edge.kind;
-                        let edge_reference = edge.reference_ident();
-                        match RoleCardinality::classify(edge.each_for(side).map(|each| each.spec)) {
-                            RoleCardinality::Exact => quote! {
-                                pub fn #method(self) -> #edge_reference<'graph> { #kind::#query(self) }
-                            },
-                            RoleCardinality::Optional => quote! {
-                                pub fn #method(self) -> Option<#edge_reference<'graph>> { #kind::#query(self) }
-                            },
-                            RoleCardinality::Multiple => quote! {
-                                pub fn #method(self) -> impl Iterator<Item = #edge_reference<'graph>> + 'graph {
-                                    #kind::#query(self)
-                                }
-                            },
-                        }
-                    })
-                    .collect::<Vec<_>>()
-            }
-            EdgeInfoShape::Undirected { .. } if edge.from_node.type_ident == *node_type => {
-                let method = incident_method_ident(edge.kind);
-                let kind = edge.kind;
-                let edge_reference = edge.reference_ident();
-                vec![quote! {
-                    pub fn #method(self) -> impl Iterator<Item = #edge_reference<'graph>> + 'graph {
-                        #kind::incident(self)
+        .flat_map(|edge| {
+            let mut methods = Vec::new();
+            match &edge.shape {
+                EdgeInfoShape::Directed {
+                    from_role, to_role, ..
+                } => {
+                    if edge.from_node.type_ident == *node_type {
+                        methods.push(gen_role_traversal_method(edge, from_role, EachSide::Source));
                     }
-                }]
+                    if edge.to_node.type_ident == *node_type {
+                        methods.push(gen_role_traversal_method(edge, to_role, EachSide::Target));
+                    }
+                }
+                EdgeInfoShape::Undirected { .. } => {
+                    if edge.from_node.type_ident == *node_type {
+                        methods.push(gen_incident_traversal_method(edge));
+                    }
+                }
             }
-            _ => Vec::new(),
+            if edge.from_node.type_ident == *node_type {
+                methods.push(gen_between_traversal_methods(edge));
+            }
+            methods
         })
         .collect()
 }
+
+/// 有向辺の役割探索メソッド `{kind}_as_{役割}()` を1つ生成する。
+///
+/// 凍結時に構築済みの役割索引を内部位置で引くだけなので O(1)、追加確保なし。
+/// 戻り型は問い合わせた役割そのものの `each` 制約で決まる
+/// (`docs/schema_v4.md` §3.2)。
+fn gen_role_traversal_method(edge: &EdgeInfo<'_>, role: &Ident, side: EachSide) -> TokenStream {
+    let method = traversal_method_ident(edge.kind, role);
+    let edge_reference = edge.reference_ident();
+    let index = match side {
+        EachSide::Source => &edge.index_field_ident,
+        EachSide::Target => &edge.to_index_field_ident,
+    };
+    match RoleCardinality::classify(edge.each_for(side).map(|each| each.spec)) {
+        RoleCardinality::Exact => quote! {
+            /// この役割に接続する唯一の辺を O(1)、追加確保なしで返す。
+            pub fn #method(self) -> #edge_reference<'graph> {
+                #edge_reference {
+                    graph: self.graph,
+                    internal_position: *self.graph.#index.get(self.internal_position.0),
+                }
+            }
+        },
+        RoleCardinality::Optional => quote! {
+            /// この役割に接続する高々1本の辺を O(1)、追加確保なしで返す。
+            pub fn #method(self) -> Option<#edge_reference<'graph>> {
+                self.graph.#index.get(self.internal_position.0).copied()
+                    .map(|internal_position| #edge_reference { graph: self.graph, internal_position })
+            }
+        },
+        RoleCardinality::Multiple => quote! {
+            /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+            /// 問い合わせ時に結果 `Vec` を確保しない。
+            pub fn #method(self) -> impl Iterator<Item = #edge_reference<'graph>> + 'graph {
+                let positions = self.graph.#index.get(self.internal_position.0);
+                positions.iter().copied().map(move |internal_position| #edge_reference {
+                    graph: self.graph,
+                    internal_position,
+                })
+            }
+        },
+    }
+}
+
+/// 無向辺の接続探索メソッド `{kind}_incident()` を生成する。
+fn gen_incident_traversal_method(edge: &EdgeInfo<'_>) -> TokenStream {
+    let method = incident_method_ident(edge.kind);
+    let edge_reference = edge.reference_ident();
+    let index = &edge.index_field_ident;
+    quote! {
+        /// 接続辺を O(1) で参照し、追加確保なしで挿入順に走査する。
+        pub fn #method(self) -> impl Iterator<Item = #edge_reference<'graph>> + 'graph {
+            let positions = self.graph.#index.get(self.internal_position.0);
+            positions.iter().copied().map(move |internal_position| #edge_reference {
+                graph: self.graph,
+                internal_position,
+            })
+        }
+    }
+}
+
+/// 端点対検索 (`{kind}_between` / `{kind}_try_between`) の生成で、有向辺と
+/// 無向辺で異なる部分だけを束ねる。有向辺は端点対索引のキーが
+/// `(位置, 位置)` のタプル、無向辺は `UnorderedPair::new(位置, 位置)` になる
+/// (`gen_directed_edge_freeze_block`/`gen_undirected_edge_freeze_block` が
+/// 積む索引のキー型に合わせる)。
+struct EdgeQueryPairSpec {
+    /// 相手側端点の参照型 (有向辺は終点側、無向辺は位置0側と同じ型)。
+    other_reference: Ident,
+    /// 端点対索引 (`{accessor}_by_pair`) を検索するキー式。
+    pair_key: TokenStream,
+    /// `try_between` の doc コメントに書く対の種類 (`順序付き`/`順序なし`)。
+    pair_order_description: &'static str,
+}
+
+impl EdgeQueryPairSpec {
+    fn from_edge(edge: &EdgeInfo<'_>) -> Self {
+        match &edge.shape {
+            EdgeInfoShape::Directed { .. } => EdgeQueryPairSpec {
+                other_reference: edge.to_node.reference_ident(),
+                pair_key: quote! { (self.internal_position, other.internal_position) },
+                pair_order_description: "順序付き",
+            },
+            EdgeInfoShape::Undirected { .. } => EdgeQueryPairSpec {
+                other_reference: edge.from_node.reference_ident(),
+                pair_key: quote! {
+                    graphite::UnorderedPair::new(self.internal_position, other.internal_position)
+                },
+                pair_order_description: "順序なし",
+            },
+        }
+    }
+}
+
+/// 位置0側 `NodeRef` へ端点対検索 `{kind}_try_between` / `{kind}_between` を
+/// 生成する。
+///
+/// `try_between` は2つの参照が同じ `Graph` から得られたかを構築印で照合し、
+/// 異なれば [`graphite::GraphMismatch`] を返す。照合は受け手と相手の2者だけを
+/// 突き合わせる (一方が有効なら他方も同じ `Graph` に属することが決まるため、
+/// 3者目の照合は要らない)。
+fn gen_between_traversal_methods(edge: &EdgeInfo<'_>) -> TokenStream {
+    let EdgeQueryPairSpec {
+        other_reference,
+        pair_key,
+        pair_order_description,
+    } = EdgeQueryPairSpec::from_edge(edge);
+    let accessor = &edge.accessor_ident;
+    let try_between = kind_api_method_ident(accessor, "try_between");
+    let between = kind_api_method_ident(accessor, "between");
+    let node_reference = edge.from_node.reference_ident();
+    let edge_reference = edge.reference_ident();
+    let stamp = construction_stamp_field_ident(edge.kind.span());
+    let pair_index = pair_index_field_ident(edge.kind);
+    let between_result = if edge.unique_pair {
+        quote! { Option<#edge_reference<'graph>> }
+    } else {
+        quote! { impl Iterator<Item = #edge_reference<'graph>> + 'graph }
+    };
+    let between_body = if edge.unique_pair {
+        quote! {
+            let found = self.graph.#pair_index.get(&#pair_key).copied();
+            Ok(found.map(|internal_position| #edge_reference { graph: self.graph, internal_position }))
+        }
+    } else {
+        quote! {
+            let positions = self.graph.#pair_index.get(&#pair_key)
+                .map(Vec::as_slice).unwrap_or(&[]);
+            Ok(positions.iter().copied().map(move |internal_position| #edge_reference {
+                graph: self.graph,
+                internal_position,
+            }))
+        }
+    };
+    let try_between_doc =
+        format!("{pair_order_description}端点対を平均 O(1)、追加確保なしで検索する。");
+    quote! {
+        #[doc = #try_between_doc]
+        pub fn #try_between(self, other: #other_reference<'graph>)
+            -> Result<#between_result, graphite::GraphMismatch>
+        {
+            if self.graph.#stamp != other.graph.#stamp { return Err(graphite::GraphMismatch); }
+            #between_body
+        }
+
+        /// # Panics
+        /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+        pub fn #between(self, other: #other_reference<'graph>) -> #between_result {
+            self.#try_between(other).unwrap_or_else(|error| {
+                panic!("{}::{}: {error}", stringify!(#node_reference), stringify!(#between))
+            })
+        }
+    }
+}
+
 /// ノードと辺に共通する名前付き挿入・名前付き位置の束縛実装を生成する。
 struct InsertableNamedSpec<'a> {
     insertable_trait_ident: &'a Ident,
@@ -659,6 +793,41 @@ fn gen_insertable_and_named_impl(spec: InsertableNamedSpec<'_>) -> TokenStream {
         }
     }
 }
+
+/// v4 (`docs/schema_v4.md` §3.2) が要求する「ノード挿入用トレイト」
+/// とその各ノード型への impl、およびノード種別ごとの `NodeRef` 型を生成する。
+///
+/// ## 背景: なぜこのトレイトが必要か
+///
+/// `graph!` はノード項を `key = 式` と書かせ、値の型をマクロが一切パース
+/// しない (式の型は rustc の型推論に委ねる、という設計上の決定)。その結果
+/// `graph!` はもはや「どのビルダーメソッドを呼ぶべきか」を型名から逆引き
+/// できないため、値の型さえ分かれば正しい内部ストレージへ振り分けられる
+/// **総称メソッド**が要る。この trait 境界を介した単相化がそれを実現する
+/// (実行時のリフレクション・型判別・`dyn` ディスパッチは一切無い。
+/// `docs/design_principles.md` 原則5: ゼロコスト志向)。
+///
+/// ## 読み取り側をここへ置かない理由
+///
+/// 公開IDからの検索と種別全体への操作 (`{node}_by_id`/`{node}_ids`/
+/// `{node}_iter`/`{node}_len`/`{node}_value_mut`) は、個体と索引を所有する
+/// `Graph` のメソッドとして `gen_schema_impl` が生成する。ノード型
+/// (`Person` 等) はユーザーが `graph_schema!` の外で宣言する型であり複数
+/// schema 間で共有されうるため、ユーザー struct への固有 impl は追加しない。
+/// schema module 内にノード名の空 struct (読み取り用マーカー) も置かない
+/// (issue #9: `Graph` を外から引数で渡す型名前空間を作らない)。
+///
+/// ## `{Schema}Insertable` と `{Schema}DefaultId`
+///
+/// 型付き挿入と関連型 `Id` は `{Schema}Insertable` に置く。文字列の束縛名から
+/// IDを作る操作は自動生成IDだけが実装する `{Schema}DefaultId` に置く。
+/// `{Schema}Node` はノード専用の型境界を保つマーカートレイトである。
+///
+/// ## 命名判断 (`docs/design_principles.md` 原則3: std 命名規約準拠)
+///
+/// **内部 trait 名は `{Schema}Node` とした**。生成 module に移した後も
+/// `node Node;` や `edge Edge = ..;` と生成基盤名が衝突する可能性を増やさず、
+/// コンパイラ診断から所属 schema を判別できる名前を維持する。
 fn gen_node_trait_and_impls(
     node_trait_ident: &Ident,
     insertable_trait_ident: &Ident,
@@ -684,10 +853,6 @@ fn gen_node_trait_and_impls(
         // 単一の由来トークンを持たない schema 全体のインフラなので call_site
         // のままでよい (指示どおり、impl 側だけに適用する)。
         let span = ty.span();
-        let get_ident = Ident::new("get", span);
-        let get_mut_ident = Ident::new("get_mut", span);
-        let ids_ident = Ident::new("ids", span);
-        let iter_ident = Ident::new("iter", span);
         let node_ref_id_ident = Ident::new("id", span);
         let node_ref_value_ident = Ident::new("value", span);
         let node_debug_impl = gen_reference_debug_impl(&reference, n.id_ty.is_generated());
@@ -738,9 +903,6 @@ fn gen_node_trait_and_impls(
             #default_id_impl
             impl #node_trait_ident for super::#ty {}
 
-            /// このスキーマにおける `#ty` ノード種別の問い合わせ名前空間。
-            pub struct #ty;
-
             /// 完成済みグラフ上の `#ty` ノード個体。
             #[derive(Clone, Copy)]
             pub struct #reference<'graph> {
@@ -778,39 +940,12 @@ fn gen_node_trait_and_impls(
             }
 
             #node_debug_impl
-
-            impl #ty {
-                pub fn #get_ident<'graph>(g: &'graph #graph_ident, id: &#id_ty) -> Option<#reference<'graph>> {
-                    let internal_position = #internal_position(g.#field.position(id)?);
-                    Some(#reference { graph: g, internal_position })
-                }
-
-                pub fn #get_mut_ident<'graph>(
-                    g: &'graph mut #graph_ident,
-                    id: &#id_ty,
-                ) -> Option<&'graph mut super::#ty> {
-                    g.#field.get_mut(id)
-                }
-
-                pub fn #ids_ident<'graph>(g: &'graph #graph_ident) -> impl Iterator<Item = &'graph #id_ty> {
-                    g.#field.ids()
-                }
-
-                pub fn #iter_ident<'graph>(
-                    g: &'graph #graph_ident,
-                ) -> impl Iterator<Item = #reference<'graph>> + 'graph {
-                    g.#field.positions().map(move |position| #reference {
-                        graph: g,
-                        internal_position: #internal_position(position),
-                    })
-                }
-            }
         }
     });
 
     quote! {
-        /// ノード挿入で使うトレイト境界。読み取りは同じ module 内の
-        /// ノードマーカー型が提供する。利用者がこのトレイトのメソッドを
+        /// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと
+        /// `NodeRef` のメソッドが提供する。利用者がこのトレイトのメソッドを
         /// 直接呼ぶことは想定しない。
         pub trait #node_trait_ident: #insertable_trait_ident {}
 
@@ -821,9 +956,11 @@ fn gen_node_trait_and_impls(
 /// エッジ挿入用トレイト (書き込み側専用)。`graph!` の辺行
 /// `key = Kind(from -> to)` は名前付きフィールドの辺値型を関連コンストラクタで
 /// 構築したあと、この trait 境界を介した総称 `{Builder}::add` に脱糖する
-/// (`docs/schema_v4.md` §2/§3.2)。読み取り側 (`of`/`get`/`between`/`iter`/
-/// `ids`/`len`) は各エッジ種別型 (`Kind`) への固有 impl で提供するため、
-/// このトレイトには含めない (`gen_edge_query_impl` 参照)。
+/// (`docs/schema_v4.md` §2/§3.2)。読み取り側は `Graph` の種別メソッド
+/// (`{kind}_by_id`/`{kind}_iter`/`{kind}_ids`/`{kind}_len`、`gen_schema_impl`
+/// 参照) と `NodeRef` のメソッド (`{kind}_as_{役割}`/`{kind}_incident`/
+/// `{kind}_between`、`gen_node_traversal_methods` 参照) が提供するため、
+/// このトレイトには含めない。
 ///
 /// 型付き挿入と関連型 `Id` は `{Schema}Insertable` に集約する。このトレイトは
 /// エッジ専用の型境界を保つマーカーになる。
@@ -1758,16 +1895,41 @@ fn gen_schema_struct(
     }
 }
 
-/// スキーマ struct 本体の impl。IDによる動的読み取りは型名前空間の関連関数、
-/// `graph!` 左辺名の静的読み取りは呼び出し箇所のラッパーへ生成するため、素の
-/// `Graph` には個別アクセサを生やさない。ここには構築経路だけを置く。
+/// スキーマ struct 本体の impl。構築経路 (`create` 系) と、種別APIを置く。
+///
+/// 種別APIとは、ある種別に属する個体の全体を対象にする読み取り・可変操作の
+/// ことである。完成済みの `Graph` が個体と索引を所有するため、これらは
+/// `Graph` のメソッドになる (issue #9: `Org::Person::get(&graph, &id)` の
+/// ように所有者を外から引数で渡す型名前空間は作らない)。名前は
+/// `{accessor}_{固定接尾辞}` の機械的連結で、`{種別名}_` で始まるため補完に
+/// 種別ごとの操作が並ぶ (`kind_api_method_ident` 参照)。
+///
+/// - ノード種別: `{node}_by_id` / `{node}_value_mut` / `{node}_ids` /
+///   `{node}_iter` / `{node}_len`
+/// - 辺種別: `{kind}_by_id` / `{kind}_payload_mut` (積み荷がある場合のみ) /
+///   `{kind}_ids` / `{kind}_iter` / `{kind}_len`
+///
+/// 可変APIの主語は `&mut Graph` だけである。`NodeRef`/`EdgeRef` は共有借用の
+/// ハンドルなのでそこから可変借用は作れず、引数も公開IDのままにする
+/// (可変借用中は `Ref` を生かせないため内部位置をキーにできない)。
+///
+/// `graph!` 左辺名の静的読み取りは呼び出し箇所のラッパーへ生成するため
+/// ここには含まれない。一度 `Ref` を得た後の関係の探索は `NodeRef`/`EdgeRef`
+/// 自身のメソッドが担う。
 fn gen_schema_impl(
     schema_name: &Ident,
     violation_ident: &Ident,
     builder_ident: &Ident,
+    nodes: &[NodeInfo],
+    edges: &[EdgeInfo<'_>],
 ) -> TokenStream {
+    let node_kind_apis = nodes.iter().map(gen_node_kind_api_methods);
+    let edge_kind_apis = edges.iter().map(gen_edge_kind_api_methods);
     quote! {
         impl #schema_name {
+            #(#node_kind_apis)*
+            #(#edge_kind_apis)*
+
             /// builder をクロージャに貸し出し、戻ったら凍結して図式適合
             /// (端点種別・where 制約) を一括検査する。最初の1件の違反で
             /// `Err` になる (複数の違反を全件見たい場合は
@@ -1805,6 +1967,98 @@ fn gen_schema_impl(
                 f(&mut builder);
                 builder.freeze_collecting()
             }
+        }
+    }
+}
+
+/// ノード種別1つ分の種別API (`Graph` のメソッド) を生成する。
+///
+/// IDE 支援 (`docs/ide_support_spec.md` §1.9, G3 ポリシー) のため、生成する
+/// メソッド名にはノード型そのもののトークンのスパンを持たせる
+/// (`accessor_ident` がノード型トークンのスパンを引き継いでいる)。
+fn gen_node_kind_api_methods(node: &NodeInfo) -> TokenStream {
+    let ty = &node.type_ident;
+    let id_ty = &node.id_ty;
+    let field = &node.field_ident;
+    let accessor = &node.accessor_ident;
+    let reference = node.reference_ident();
+    let internal_position = node.internal_position_ident();
+    let by_id = kind_api_method_ident(accessor, "by_id");
+    let value_mut = kind_api_method_ident(accessor, "value_mut");
+    let ids = kind_api_method_ident(accessor, "ids");
+    let iter = kind_api_method_ident(accessor, "iter");
+    let len = kind_api_method_ident(accessor, "len");
+    quote! {
+        /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+        pub fn #by_id<'graph>(&'graph self, id: &#id_ty) -> Option<#reference<'graph>> {
+            let internal_position = #internal_position(self.#field.position(id)?);
+            Some(#reference { graph: self, internal_position })
+        }
+
+        /// グラフの構造を保ったままノード値だけを可変借用する。
+        pub fn #value_mut(&mut self, id: &#id_ty) -> Option<&mut super::#ty> {
+            self.#field.get_mut(id)
+        }
+
+        /// この種別のノードの公開IDを挿入順に走査する。
+        pub fn #ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph #id_ty> {
+            self.#field.ids()
+        }
+
+        /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+        pub fn #iter<'graph>(&'graph self) -> impl Iterator<Item = #reference<'graph>> + 'graph {
+            self.#field.positions().map(move |position| #reference {
+                graph: self,
+                internal_position: #internal_position(position),
+            })
+        }
+
+        /// この種別のノードの件数を返す。
+        pub fn #len(&self) -> usize {
+            self.#field.len()
+        }
+    }
+}
+
+/// 辺種別1つ分の種別API (`Graph` のメソッド) を生成する。
+/// `{kind}_payload_mut` は積み荷を持つ辺種別にだけ生やす。
+fn gen_edge_kind_api_methods(edge: &EdgeInfo<'_>) -> TokenStream {
+    let id_ty = &edge.id_ty;
+    let accessor = &edge.accessor_ident;
+    let reference = edge.reference_ident();
+    let internal_position = edge.internal_position_ident();
+    let by_id = kind_api_method_ident(accessor, "by_id");
+    let ids = kind_api_method_ident(accessor, "ids");
+    let iter = kind_api_method_ident(accessor, "iter");
+    let len = kind_api_method_ident(accessor, "len");
+    let payload_mut = gen_edge_payload_mut_method(edge);
+    quote! {
+        /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+        pub fn #by_id<'graph>(&'graph self, id: &#id_ty) -> Option<#reference<'graph>> {
+            Some(#reference {
+                graph: self,
+                internal_position: #internal_position(self.#accessor.position(id)?),
+            })
+        }
+
+        #payload_mut
+
+        /// この種別の辺の公開IDを挿入順に走査する。
+        pub fn #ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph #id_ty> {
+            self.#accessor.ids()
+        }
+
+        /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+        pub fn #iter<'graph>(&'graph self) -> impl Iterator<Item = #reference<'graph>> + 'graph {
+            self.#accessor.positions().map(move |position| #reference {
+                graph: self,
+                internal_position: #internal_position(position),
+            })
+        }
+
+        /// この種別の辺の件数を返す。
+        pub fn #len(&self) -> usize {
+            self.#accessor.len()
         }
     }
 }
@@ -2474,21 +2728,6 @@ fn gen_freeze_body(
     }
 }
 
-/// エッジ種別1つ分の読み取りAPI (`Kind` への固有 impl) を生成する。
-/// 有向/無向で実装が大きく異なるためここで分岐する。
-fn gen_edge_query_impl(schema_name: &Ident, edge: &EdgeInfo<'_>) -> TokenStream {
-    match &edge.shape {
-        EdgeInfoShape::Directed {
-            from_role,
-            to_role,
-            payload,
-        } => gen_directed_role_query_impl(schema_name, edge, from_role, to_role, payload.as_ref()),
-        EdgeInfoShape::Undirected { payload } => {
-            gen_undirected_incident_query_impl(schema_name, edge, payload.as_ref())
-        }
-    }
-}
-
 fn role_index_type(edge: &EdgeInfo<'_>, side: EachSide, edge_position: &Ident) -> TokenStream {
     match RoleCardinality::classify(edge.each_for(side).map(|each| each.spec)) {
         RoleCardinality::Exact => quote! { graphite::ExactlyOneRoleIndex<#edge_position> },
@@ -2497,209 +2736,13 @@ fn role_index_type(edge: &EdgeInfo<'_>, side: EachSide, edge_position: &Ident) -
     }
 }
 
-fn gen_role_query_method(edge: &EdgeInfo<'_>, role: &Ident, side: EachSide) -> TokenStream {
-    let method = role_query_method_ident(role);
-    let edge_reference = edge.reference_ident();
-    let (node_reference, index) = match side {
-        EachSide::Source => (edge.from_node.reference_ident(), &edge.index_field_ident),
-        EachSide::Target => (edge.to_node.reference_ident(), &edge.to_index_field_ident),
-    };
-    match RoleCardinality::classify(edge.each_for(side).map(|each| each.spec)) {
-        RoleCardinality::Exact => quote! {
-            /// この役割に接続する唯一の辺を O(1)、追加確保なしで返す。
-            pub fn #method<'g>(node: #node_reference<'g>) -> #edge_reference<'g> {
-                #edge_reference {
-                    graph: node.graph,
-                    internal_position: *node.graph.#index.get(node.internal_position.0),
-                }
-            }
-        },
-        RoleCardinality::Optional => quote! {
-            /// この役割に接続する高々1本の辺を O(1)、追加確保なしで返す。
-            pub fn #method<'g>(node: #node_reference<'g>) -> Option<#edge_reference<'g>> {
-                node.graph.#index.get(node.internal_position.0).copied()
-                    .map(|internal_position| #edge_reference { graph: node.graph, internal_position })
-            }
-        },
-        RoleCardinality::Multiple => quote! {
-            /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
-            /// 問い合わせ時に結果 `Vec` を確保しない。
-            pub fn #method<'g>(node: #node_reference<'g>) -> impl Iterator<Item = #edge_reference<'g>> + 'g {
-                let positions = node.graph.#index.get(node.internal_position.0);
-                positions.iter().copied().map(move |internal_position| #edge_reference {
-                    graph: node.graph,
-                    internal_position,
-                })
-            }
-        },
-    }
-}
-
-/// `try_between`/`between`/`get`/`payload_mut`/`iter`/`ids`/`len` の生成に
-/// 要る、有向/無向で異なる部分だけの束。有向は端点対索引のキーが
-/// `(位置, 位置)` のタプル、無向は `UnorderedPair::new(位置, 位置)` になる
-/// (`gen_directed_edge_freeze_block`/`gen_undirected_edge_freeze_block` が
-/// 積む索引のキー型に合わせる)。
-struct EdgeQueryPairSpec {
-    /// `try_between`/`between` の `a` 引数の参照型。
-    a_reference: Ident,
-    /// `try_between`/`between` の `b` 引数の参照型 (有向は終点側、無向は
-    /// 始点側と同じ型)。
-    b_reference: Ident,
-    /// 端点対索引 (`{accessor}_by_pair`) を検索するキー式。
-    pair_key: TokenStream,
-    /// `try_between` の doc コメントに書く対の種類 (`順序付き`/`順序なし`)。
-    pair_order_description: &'static str,
-}
-
-/// エッジ種別1つ分の `{Kind}` 固有 impl のうち、有向/無向で共通する部分
-/// (`try_between`/`between`/`get`/`payload_mut`/`iter`/`ids`/`len`) を生成する。
-/// 役割クエリ (`of_<role>`) と無向の `incident` は有向/無向で形が異なるため
-/// 呼び出し元がそれぞれ生成し、この関数が返すトークン列と並べて
-/// `impl #kind { .. }` に埋め込む。
-fn gen_edge_query_common_impl(
-    schema_name: &Ident,
-    edge: &EdgeInfo<'_>,
-    payload: Option<&EdgePayload>,
-    pair_spec: EdgeQueryPairSpec,
-) -> TokenStream {
-    let EdgeQueryPairSpec {
-        a_reference,
-        b_reference,
-        pair_key,
-        pair_order_description,
-    } = pair_spec;
-    let kind = edge.kind;
-    let accessor = &edge.accessor_ident;
-    let id_ty = &edge.id_ty;
-    let edge_reference = edge.reference_ident();
-    let edge_position = edge.internal_position_ident();
-    let stamp = construction_stamp_field_ident(kind.span());
-    let pair_index = pair_index_field_ident(kind);
-    let payload_mut = gen_edge_payload_mut_method(schema_name, edge, payload, kind.span());
-    let between_result = if edge.unique_pair {
-        quote! { Option<#edge_reference<'g>> }
-    } else {
-        quote! { impl Iterator<Item = #edge_reference<'g>> + 'g }
-    };
-    let between_body = if edge.unique_pair {
-        quote! {
-            let found = a.graph.#pair_index.get(&#pair_key).copied();
-            Ok(found.map(|internal_position| #edge_reference { graph: a.graph, internal_position }))
-        }
-    } else {
-        quote! {
-            let positions = a.graph.#pair_index.get(&#pair_key)
-                .map(Vec::as_slice).unwrap_or(&[]);
-            Ok(positions.iter().copied().map(move |internal_position| #edge_reference { graph: a.graph, internal_position }))
-        }
-    };
-    let try_between_doc =
-        format!("{pair_order_description}端点対を平均 O(1)、追加確保なしで検索する。");
-    quote! {
-        #[doc = #try_between_doc]
-        pub fn try_between<'g>(a: #a_reference<'g>, b: #b_reference<'g>)
-            -> Result<#between_result, graphite::GraphMismatch>
-        {
-            if a.graph.#stamp != b.graph.#stamp { return Err(graphite::GraphMismatch); }
-            #between_body
-        }
-
-        /// # Panics
-        /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-        pub fn between<'g>(a: #a_reference<'g>, b: #b_reference<'g>) -> #between_result {
-            Self::try_between(a, b).unwrap_or_else(|error| panic!("{}::between: {error}", stringify!(#kind)))
-        }
-
-        pub fn get<'g>(g: &'g #schema_name, id: &#id_ty) -> Option<#edge_reference<'g>> {
-            Some(#edge_reference { graph: g, internal_position: #edge_position(g.#accessor.position(id)?) })
-        }
-
-        #payload_mut
-
-        pub fn iter<'g>(g: &'g #schema_name) -> impl Iterator<Item = #edge_reference<'g>> + 'g {
-            g.#accessor.positions().map(move |position| #edge_reference { graph: g, internal_position: #edge_position(position) })
-        }
-        pub fn ids(g: &#schema_name) -> impl Iterator<Item = &#id_ty> { g.#accessor.ids() }
-        pub fn len(g: &#schema_name) -> usize { g.#accessor.len() }
-    }
-}
-
-fn gen_directed_role_query_impl(
-    schema_name: &Ident,
-    edge: &EdgeInfo<'_>,
-    from_role: &Ident,
-    to_role: &Ident,
-    payload: Option<&EdgePayload>,
-) -> TokenStream {
-    let kind = edge.kind;
-    let from_query = gen_role_query_method(edge, from_role, EachSide::Source);
-    let to_query = gen_role_query_method(edge, to_role, EachSide::Target);
-    let common = gen_edge_query_common_impl(
-        schema_name,
-        edge,
-        payload,
-        EdgeQueryPairSpec {
-            a_reference: edge.from_node.reference_ident(),
-            b_reference: edge.to_node.reference_ident(),
-            pair_key: quote! { (a.internal_position, b.internal_position) },
-            pair_order_description: "順序付き",
-        },
-    );
-    quote! {
-        impl #kind {
-            #from_query
-            #to_query
-            #common
-        }
-    }
-}
-
-fn gen_undirected_incident_query_impl(
-    schema_name: &Ident,
-    edge: &EdgeInfo<'_>,
-    payload: Option<&EdgePayload>,
-) -> TokenStream {
-    let kind = edge.kind;
-    let index = &edge.index_field_ident;
-    let edge_reference = edge.reference_ident();
-    let node_reference = edge.from_node.reference_ident();
-    let incident = quote! {
-        /// 接続辺を O(1) で参照し、追加確保なしで挿入順に走査する。
-        pub fn incident<'g>(node: #node_reference<'g>) -> impl Iterator<Item = #edge_reference<'g>> + 'g {
-            let positions = node.graph.#index.get(node.internal_position.0);
-            positions.iter().copied().map(move |internal_position| #edge_reference { graph: node.graph, internal_position })
-        }
-    };
-    let common = gen_edge_query_common_impl(
-        schema_name,
-        edge,
-        payload,
-        EdgeQueryPairSpec {
-            a_reference: node_reference.clone(),
-            b_reference: node_reference,
-            pair_key: quote! { graphite::UnorderedPair::new(a.internal_position, b.internal_position) },
-            pair_order_description: "順序なし",
-        },
-    );
-    quote! {
-        impl #kind {
-            #incident
-            #common
-        }
-    }
-}
-
-/// 辺の構造を保ったまま積み荷だけを可変借用する `payload_mut` を生成する
-/// (積み荷が無ければ空)。有向/無向で生成コードが同一なため
-/// 有向・無向の役割クエリ生成から共有する。
-fn gen_edge_payload_mut_method(
-    schema_name: &Ident,
-    edge: &EdgeInfo<'_>,
-    payload: Option<&EdgePayload>,
-    kind_span: proc_macro2::Span,
-) -> TokenStream {
-    let Some(payload) = payload else {
+/// 辺の構造を保ったまま積み荷だけを可変借用する `{kind}_payload_mut` を
+/// `Graph` のメソッドとして生成する (積み荷が無ければ空)。
+///
+/// 主語は `&mut Graph` である。`EdgeRef` は共有借用のハンドルなのでそこから
+/// 可変借用は作れず、引数も公開IDのままにする。
+fn gen_edge_payload_mut_method(edge: &EdgeInfo<'_>) -> TokenStream {
+    let Some(payload) = edge.payload() else {
         return quote! {};
     };
     let id_ty = &edge.id_ty;
@@ -2707,14 +2750,11 @@ fn gen_edge_payload_mut_method(
     let record = edge.record_ident();
     let payload_role = &payload.role;
     let payload_ty = &payload.ty;
-    let payload_mut_ident = Ident::new("payload_mut", kind_span);
+    let payload_mut = kind_api_method_ident(accessor, "payload_mut");
     quote! {
         /// 辺の構造を保ったまま積み荷だけを可変借用する。
-        pub fn #payload_mut_ident<'g>(
-            g: &'g mut #schema_name,
-            id: &#id_ty,
-        ) -> Option<&'g mut #payload_ty> {
-            g.#accessor.get_mut(id).map(|record: &mut #record| &mut record.#payload_role)
+        pub fn #payload_mut(&mut self, id: &#id_ty) -> Option<&mut #payload_ty> {
+            self.#accessor.get_mut(id).map(|record: &mut #record| &mut record.#payload_role)
         }
     }
 }

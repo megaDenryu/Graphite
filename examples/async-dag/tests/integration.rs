@@ -73,7 +73,7 @@ fn 全サービスがちょうど1つの波に現れる() {
     let g = sample_orchestration();
     let waves = depgraph::compute_waves(&g).unwrap();
     let total_scheduled: usize = waves.iter().map(|w| w.len()).sum();
-    assert_eq!(total_scheduled, Orchestration::Service::ids(&g).count());
+    assert_eq!(total_scheduled, g.service_ids().count());
 
     let mut seen: HashSet<String> = HashSet::new();
     for wave in &waves {
@@ -113,10 +113,10 @@ fn 実行ログは依存先が依存元より先に完了していることを�
 
     assert_eq!(
         report.records.len(),
-        Orchestration::Service::ids(&g).count()
+        g.service_ids().count()
     );
 
-    for edge in DependsOn::iter(&g) {
+    for edge in g.depends_on_iter() {
         let dependent = edge.dependent().id();
         let prerequisite = edge.dependency().id();
         let dependent_record = report.record_of(dependent);
@@ -136,7 +136,7 @@ fn 並列実行は直列実行より実測で速い() {
     let waves = depgraph::compute_waves(&g).unwrap();
     let report = async_dag::engine::run_waves(&g, &waves);
 
-    let serial_order: Vec<ServiceId> = Orchestration::Service::ids(&g).cloned().collect();
+    let serial_order: Vec<ServiceId> = g.service_ids().cloned().collect();
     let serial_total = run_serial(&g, &serial_order);
 
     assert!(

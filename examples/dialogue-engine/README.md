@@ -232,7 +232,7 @@ PS> cargo run -- stats
   と、この規模では衝突の特定・修正だけで疲弊する。
 - **選択肢の順序は挿入順で安定していることが実用上重要で、これは
   `graph!`/`graph_schema!` が正式に保証する仕様である**
-  (`docs/schema_v4.md` §3.2「順序保証 (仕様)」)。`Choice::iter`/`Choice::of`
+  (`docs/schema_v4.md` §3.2「順序保証 (仕様)」)。`g.choice_iter()`/`scene.choice_as_scene()`
   はどちらも `KeyedTable` (`crates/graphite/src/keyed_table.rs`) の挿入順
   保持構造 (Vec 本体 + HashMap 索引) 由来で、`graph!` に書いた順をそのまま
   返す。「シーンでの選択肢の表示順」や「スクリプト化したプレイテストでの

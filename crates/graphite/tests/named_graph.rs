@@ -61,7 +61,7 @@ fn 名前付きnodeとedgeは内部位置からrefを返す() {
 
     // 公開IDの動的検索は、静的アクセサとは独立した従来経路として残る。
     assert_eq!(
-        NamedWorld::Person::get(&graph, &PersonId("public-person-42".into()))
+        graph.person_by_id(&PersonId("public-person-42".into()))
             .unwrap()
             .name,
         "太郎"
@@ -93,7 +93,7 @@ fn spliceを名前付き辺の前後に置いても位置は正しい() {
     assert_eq!(graph.first().id(), &KnowsId("first".into()));
     assert_eq!(graph.last().id(), &KnowsId("last".into()));
     assert_eq!(graph.last().knower().id(), &PersonId("bob".into()));
-    assert_eq!(Knows::iter(&graph).count(), 4);
+    assert_eq!(graph.knows_iter().count(), 4);
 }
 
 #[test]
@@ -119,7 +119,7 @@ fn into_graphで名前付きapiを捨てて公開境界へ素のgraphを渡せ�
     .unwrap();
 
     let graph: NamedWorld::Graph = named.into_graph();
-    assert!(NamedWorld::Person::get(&graph, &PersonId("alice".into())).is_some());
+    assert!(graph.person_by_id(&PersonId("alice".into())).is_some());
 }
 
 #[test]

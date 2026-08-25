@@ -146,7 +146,7 @@ fn cmd_route(story: &DialogueGraph::Graph, start: &SceneId, rest: &[String]) {
         std::process::exit(1);
     };
     let ending_id = EndingId(ending_key.clone());
-    if DialogueGraph::Ending::get(story, &ending_id).is_none() {
+    if story.ending_by_id(&ending_id).is_none() {
         eprintln!("未知のエンディングです: {ending_key}");
         eprintln!("利用可能なエンディング: {}", available_endings(story));
         std::process::exit(1);
@@ -155,8 +155,8 @@ fn cmd_route(story: &DialogueGraph::Graph, start: &SceneId, rest: &[String]) {
     match report::route_to_ending(story, start, &ending_id) {
         Some(steps) => {
             for (i, (scene_id, label)) in steps.iter().enumerate() {
-                let scene = DialogueGraph::Scene::get(story, scene_id)
-                    .expect("route が返すキーは必ず Scene::get() で引ける");
+                let scene = story.scene_by_id(scene_id)
+                    .expect("route が返すキーは必ず scene_by_id() で引ける");
                 match label {
                     Some(l) => {
                         println!("{}. [{}] {} --({})-->", i + 1, scene.speaker, scene_id.0, l)
@@ -172,7 +172,7 @@ fn cmd_route(story: &DialogueGraph::Graph, start: &SceneId, rest: &[String]) {
 }
 
 fn available_endings(story: &DialogueGraph::Graph) -> String {
-    let mut ids: Vec<String> = DialogueGraph::Ending::ids(story)
+    let mut ids: Vec<String> = story.ending_ids()
         .map(|id| id.0.clone())
         .collect();
     ids.sort();

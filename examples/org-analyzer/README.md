@@ -109,7 +109,7 @@ cargo run -- summary
   ...
 ```
 
-「span of control」は `grade >= 3` (係長以上) を管理職とみなし、`Boss::iter(&g)`
+「span of control」は `grade >= 3` (係長以上) を管理職とみなし、`g.boss_iter()`
 を上司キーで集計した直属部下数から平均・最大・部下ゼロの管理職一覧を出す。
 
 ### 2. `chain <社員キー>` — 管理チェーンを根まで辿る
@@ -168,7 +168,7 @@ cargo run -- anomalies --seed 7 --inject-anomalies
 
 検出手法:
 
-- **相互上司ペア**: `Boss::iter(&g)` で全ペアを集めておき、`(a, b)` かつ
+- **相互上司ペア**: `g.boss_iter()` で全ペアを集めておき、`(a, b)` かつ
   `(b, a)` が両方存在するものを拾う (README (Graphite本体) に載っている手法
   そのもの)。
 - **上司循環**: `Boss` エッジを `Graph::from_edges` で汎用
@@ -176,10 +176,10 @@ cargo run -- anomalies --seed 7 --inject-anomalies
   検出する。`CycleError::cycle` (循環メンバー全体を返す) をそのまま使えるので
   「boss辺を手で辿って復元する」処理は不要。長さ2の循環 (相互上司) は上の
   項目と重複するのでここには含めない。
-- **部署跨ぎ上司**: `BelongsTo::iter(&g)` で作った所属索引と `Boss::iter(&g)`
+- **部署跨ぎ上司**: `g.belongs_to_iter()` で作った所属索引と `g.boss_iter()`
   を突き合わせ、上司と部下の部署が異なるものを拾う。
-- **無人プロジェクト / スポンサー無しプロジェクト**: `Assigned::iter(&g)` /
-  `Sponsors::iter(&g)` に現れないプロジェクトキーを `Project::ids(&g)` との
+- **無人プロジェクト / スポンサー無しプロジェクト**: `g.assigned_iter()` /
+  `g.sponsors_iter()` に現れないプロジェクトキーを `g.project_ids()` との
   差分で求める。
 
 ### 4. `reorg <部署キー>` — 組織改編シミュレーション
@@ -248,7 +248,7 @@ $ cargo run -- reorg D03
 ### 1. `where each employee: 1` による「全社員は必ず1部署」保証
 
 生HashMap実装では「社員を登録したが部署未設定」「部署を2つ登録してしまった」
-といった不整合が **実行時に静かに** 残り得る。`BelongsTo::iter(&g)` を毎回
+といった不整合が **実行時に静かに** 残り得る。`g.belongs_to_iter()` を毎回
 自分で数えて検査するコードを書かない限り気づけない。
 
 Graphiteでは `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1;`
@@ -272,24 +272,25 @@ Graphiteには可変な削除APIが存在せず、「新しいノード集合と
 
 ### 3. 型付きアクセサによる誤り耐性
 
-`BelongsTo::of_employee(employee)` は `BelongsToRef<'graph>` を、
-`Boss::of_subordinate(employee)` は `Option<BossRef<'graph>>` を、
-`Assigned::of_employee(employee)` は辺参照のiteratorを返す — `where each` 制約が
+`employee.belongs_to_as_employee()` は `BelongsToRef<'graph>` を、
+`employee.boss_as_subordinate()` は `Option<BossRef<'graph>>` を、
+`employee.assigned_as_employee()` は辺参照のiteratorを返す — `where each` 制約が
 そのまま戻り値の型 (直接返却 / `Option` / iterator) に反映されている。生HashMap実装で
 `HashMap<EmployeeId, Vec<DepartmentId>>` のように多重度を型で表現し忘れると、
 「本当は1つのはずの部署が複数入っている」バグを型システムが教えてくれない。
 
-外部入力のキーは `Employee::get()` で安全にNodeRefへ変換し、その後の役割クエリは
-生成元Graphを保持するNodeRefだけを受け取る。アクセサの操作語彙
-(`of_<role>`/`get`/`between`/`iter`/`ids`/`len`)
-は `Kind` によらず共通なので、覚えることは増えない (`docs/schema_v4.md`
+外部入力のキーは `g.employee_by_id()` で安全にNodeRefへ変換し、その後の役割探索は
+NodeRef自身のメソッドで辿る。操作語彙 (`NodeRef` の
+`{kind}_as_<role>`/`{kind}_between` と `Graph` の
+`{kind}_by_id`/`{kind}_iter`/`{kind}_ids`/`{kind}_len`)
+は種別によらず共通なので、覚えることは増えない (`docs/schema_v4.md`
 §3.2 参照)。
 
 ### 4. `iter()` による宣言的なクエリ
 
 `anomalies` コマンドの相互上司検出・部署跨ぎ上司検出は、生HashMapなら
 「全社員をループしてO(N)の検索を都度行う」か「逆引きインデックスを自分で
-構築・保守する」必要がある。Graphiteの `Boss::iter(&g)`/`BelongsTo::iter(&g)`
+構築・保守する」必要がある。Graphiteの `g.boss_iter()`/`g.belongs_to_iter()`
 は最初からその形 (`{Kind}Ref<'graph>` のイテレータ、役割名の端点取得メソッドと
 `.payload()` で分解) で提供されるため、`filter`/`collect`/`contains` といった
 通常のイテレータコンビネータだけで検出ロジックを書ける (`src/analysis.rs`
@@ -317,10 +318,10 @@ tests/
   → **解決 (フェーズ5で `{label}_id` として追加、その後ビュー方式
   (`docs/edge_view_api.md`) へ、さらにスキーマv4 (`docs/schema_v4.md`) で
   辺の第一級キー化へ移行)**: v4 では辺そのものがキー付き要素 (`{Kind}Id`)
-  であり、`Kind::iter(&g)` が返す `{Kind}Ref<'graph>` の役割名メソッド
+  であり、`g.{kind}_iter()` が返す `{Kind}Ref<'graph>` の役割名メソッド
   (`subordinate()`/`superior()` 等) が `NodeRef` を返すため、相手キーは
   `NodeRef::id()` から直接取れる。
-  `management_chain` は `Boss::iter(&g)` から
+  `management_chain` は `g.boss_iter()` から
   `HashMap<EmployeeId, (EmployeeId, i32)>` の索引を1回作って辿っており、
   これは「上司を根まで辿る」という探索自体が単発アクセサでは表現できない
   (毎回グラフに問い合わせ直すより索引を1回作る方が効率的な) ためであって、

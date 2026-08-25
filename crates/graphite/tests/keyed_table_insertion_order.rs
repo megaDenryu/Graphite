@@ -65,7 +65,7 @@ mod tests {
     /// builder 経由で同一始点から7本の平行辺を記述順に張り、`of`/`iter` が
     /// その順を保持することを確認する。
     #[test]
-    fn choiceのofとiterは挿入順を保持する_builder経由() {
+    fn choiceの役割探索とiterは挿入順を保持する_builder経由() {
         const N: usize = 7;
 
         let g = Dialogue::Graph::create(|b| {
@@ -92,21 +92,21 @@ mod tests {
         })
         .expect("制約なし辺種別なので必ず構築に成功する");
 
-        let speaker = Dialogue::Speaker::get(&g, &speaker_id()).unwrap();
-        let of_texts: Vec<String> = Choice::of_speaker(speaker)
+        let speaker = g.speaker_by_id(&speaker_id()).unwrap();
+        let 役割探索のテキスト: Vec<String> = speaker.choice_as_speaker()
             .map(|edge| edge.line().text.clone())
             .collect();
-        assert_eq!(of_texts, expected_texts(N));
+        assert_eq!(役割探索のテキスト, expected_texts(N));
 
-        let iter_ids: Vec<String> = Choice::iter(&g).map(|edge| edge.id().0.clone()).collect();
+        let iter_ids: Vec<String> = g.choice_iter().map(|edge| edge.id().0.clone()).collect();
         let expected_ids: Vec<String> = (0..N).map(|i| format!("c{i}")).collect();
         assert_eq!(iter_ids, expected_ids);
 
-        let ids_only: Vec<String> = Choice::ids(&g).map(|id| id.0.clone()).collect();
+        let ids_only: Vec<String> = g.choice_ids().map(|id| id.0.clone()).collect();
         assert_eq!(ids_only, expected_ids);
 
         let between_texts: Vec<String> =
-            Choice::between(speaker, Dialogue::Line::get(&g, &line_id(3)).unwrap())
+            speaker.choice_between(g.line_by_id(&line_id(3)).unwrap())
                 .map(|edge| edge.line().id().0.clone())
                 .collect();
         assert_eq!(between_texts, vec!["l3".to_string()]);
@@ -115,7 +115,7 @@ mod tests {
     /// `graph!` リテラル経由でも同じ順序保証が成り立つことを確認する。
     #[test]
     #[rustfmt::skip]
-    fn choiceのofは挿入順を保持する_graphリテラル経由() {
+    fn choiceの役割探索は挿入順を保持する_graphリテラル経由() {
         let g = graphite::graph!(Dialogue {
             s  = Speaker { name: "S".into() },
             l0 = Line { text: "line0".into() },
@@ -134,12 +134,12 @@ mod tests {
         })
         .expect("制約なし辺種別なので必ず構築に成功する");
 
-        let of_texts: Vec<String> = g.s().choice_as_speaker()
+        let 役割探索のテキスト: Vec<String> = g.s().choice_as_speaker()
             .map(|edge| edge.line().text.clone())
             .collect();
-        assert_eq!(of_texts, expected_texts(6));
+        assert_eq!(役割探索のテキスト, expected_texts(6));
 
-        let iter_ids: Vec<String> = Choice::iter(&g).map(|edge| edge.id().0.clone()).collect();
+        let iter_ids: Vec<String> = g.choice_iter().map(|edge| edge.id().0.clone()).collect();
         assert_eq!(
             iter_ids,
             vec!["c0", "c1", "c2", "c3", "c4", "c5"]

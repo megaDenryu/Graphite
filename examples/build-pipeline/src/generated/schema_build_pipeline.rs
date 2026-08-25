@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    15483542934912506354u64, 2620345811476116853u64, 230460933547605288u64,
-    2454617294717575148u64,
+    12127010907779013950u64, 14253177010410501191u64, 4427438665710676576u64,
+    7764351407189966700u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConsumesId(pub String);
@@ -204,6 +204,142 @@ pub struct Graph {
     __graphite_construction_stamp: u64,
 }
 impl Graph {
+    /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    pub fn task_by_id<'graph>(&'graph self, id: &TaskId) -> Option<TaskRef<'graph>> {
+        let internal_position = __TaskInternalPosition(
+            self.__graphite_node_task.position(id)?,
+        );
+        Some(TaskRef {
+            graph: self,
+            internal_position,
+        })
+    }
+    /// グラフの構造を保ったままノード値だけを可変借用する。
+    pub fn task_value_mut(&mut self, id: &TaskId) -> Option<&mut super::Task> {
+        self.__graphite_node_task.get_mut(id)
+    }
+    /// この種別のノードの公開IDを挿入順に走査する。
+    pub fn task_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph TaskId> {
+        self.__graphite_node_task.ids()
+    }
+    /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    pub fn task_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = TaskRef<'graph>> + 'graph {
+        self.__graphite_node_task
+            .positions()
+            .map(move |position| TaskRef {
+                graph: self,
+                internal_position: __TaskInternalPosition(position),
+            })
+    }
+    /// この種別のノードの件数を返す。
+    pub fn task_len(&self) -> usize {
+        self.__graphite_node_task.len()
+    }
+    /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    pub fn artifact_by_id<'graph>(
+        &'graph self,
+        id: &ArtifactId,
+    ) -> Option<ArtifactRef<'graph>> {
+        let internal_position = __ArtifactInternalPosition(
+            self.__graphite_node_artifact.position(id)?,
+        );
+        Some(ArtifactRef {
+            graph: self,
+            internal_position,
+        })
+    }
+    /// グラフの構造を保ったままノード値だけを可変借用する。
+    pub fn artifact_value_mut(
+        &mut self,
+        id: &ArtifactId,
+    ) -> Option<&mut super::Artifact> {
+        self.__graphite_node_artifact.get_mut(id)
+    }
+    /// この種別のノードの公開IDを挿入順に走査する。
+    pub fn artifact_ids<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = &'graph ArtifactId> {
+        self.__graphite_node_artifact.ids()
+    }
+    /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    pub fn artifact_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = ArtifactRef<'graph>> + 'graph {
+        self.__graphite_node_artifact
+            .positions()
+            .map(move |position| ArtifactRef {
+                graph: self,
+                internal_position: __ArtifactInternalPosition(position),
+            })
+    }
+    /// この種別のノードの件数を返す。
+    pub fn artifact_len(&self) -> usize {
+        self.__graphite_node_artifact.len()
+    }
+    /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    pub fn produces_by_id<'graph>(
+        &'graph self,
+        id: &ProducesId,
+    ) -> Option<ProducesRef<'graph>> {
+        Some(ProducesRef {
+            graph: self,
+            internal_position: __ProducesInternalPosition(self.produces.position(id)?),
+        })
+    }
+    /// この種別の辺の公開IDを挿入順に走査する。
+    pub fn produces_ids<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = &'graph ProducesId> {
+        self.produces.ids()
+    }
+    /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    pub fn produces_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = ProducesRef<'graph>> + 'graph {
+        self.produces
+            .positions()
+            .map(move |position| ProducesRef {
+                graph: self,
+                internal_position: __ProducesInternalPosition(position),
+            })
+    }
+    /// この種別の辺の件数を返す。
+    pub fn produces_len(&self) -> usize {
+        self.produces.len()
+    }
+    /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    pub fn consumes_by_id<'graph>(
+        &'graph self,
+        id: &ConsumesId,
+    ) -> Option<ConsumesRef<'graph>> {
+        Some(ConsumesRef {
+            graph: self,
+            internal_position: __ConsumesInternalPosition(self.consumes.position(id)?),
+        })
+    }
+    /// この種別の辺の公開IDを挿入順に走査する。
+    pub fn consumes_ids<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = &'graph ConsumesId> {
+        self.consumes.ids()
+    }
+    /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    pub fn consumes_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = ConsumesRef<'graph>> + 'graph {
+        self.consumes
+            .positions()
+            .map(move |position| ConsumesRef {
+                graph: self,
+                internal_position: __ConsumesInternalPosition(position),
+            })
+    }
+    /// この種別の辺の件数を返す。
+    pub fn consumes_len(&self) -> usize {
+        self.consumes.len()
+    }
     /// builder をクロージャに貸し出し、戻ったら凍結して図式適合
     /// (端点種別・where 制約) を一括検査する。最初の1件の違反で
     /// `Err` になる (複数の違反を全件見たい場合は
@@ -365,6 +501,12 @@ pub struct Builder {
 }
 /// 型付き ID を受け取るノード・エッジ共通の挿入トレイト。
 ///
+/// 署名が `insert_with_id(self, b, id)` と、挿入される値を receiver に
+/// して `Builder` を引数で受ける向きなのは、`graph!` がノード項の値の
+/// 型を解析せず、正しい内部ストレージへの振り分けを値の型の trait
+/// ディスパッチに頼るためである。利用者向けの公開入口は
+/// `Builder::insert`/`Builder::add` の側にある。
+///
 /// `insert_named_with_id` は [`graphite::NamedInsertPermit`] を要求する
 /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
 /// `insert_with_id` (許可証不要、名前付き位置を返さない) は独立した
@@ -395,8 +537,8 @@ pub trait BuildPipelineDefaultId: BuildPipelineInsertable {
     ) -> (Self::Id, Self::NamedPosition);
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
-/// ノード挿入で使うトレイト境界。読み取りは同じ module 内の
-/// ノードマーカー型が提供する。利用者がこのトレイトのメソッドを
+/// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと
+/// `NodeRef` のメソッドが提供する。利用者がこのトレイトのメソッドを
 /// 直接呼ぶことは想定しない。
 pub trait BuildPipelineNode: BuildPipelineInsertable {}
 impl BuildPipelineInsertable for super::Task {
@@ -437,8 +579,6 @@ impl graphite::NamedGraphElement<Graph> for __TaskNamedPosition {
     }
 }
 impl BuildPipelineNode for super::Task {}
-/// このスキーマにおける `#ty` ノード種別の問い合わせ名前空間。
-pub struct Task;
 /// 完成済みグラフ上の `#ty` ノード個体。
 #[derive(Clone, Copy)]
 pub struct TaskRef<'graph> {
@@ -464,11 +604,101 @@ impl<'graph> TaskRef<'graph> {
             )
             .1
     }
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
     pub fn produces_as_task(self) -> impl Iterator<Item = ProducesRef<'graph>> + 'graph {
-        Produces::of_task(self)
+        let positions = self.graph.produces_from_index.get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| ProducesRef {
+                graph: self.graph,
+                internal_position,
+            })
     }
+    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    pub fn produces_try_between(
+        self,
+        other: ArtifactRef<'graph>,
+    ) -> Result<Option<ProducesRef<'graph>>, graphite::GraphMismatch> {
+        if self.graph.__graphite_construction_stamp
+            != other.graph.__graphite_construction_stamp
+        {
+            return Err(graphite::GraphMismatch);
+        }
+        let found = self
+            .graph
+            .__graphite_produces_by_pair
+            .get(&(self.internal_position, other.internal_position))
+            .copied();
+        Ok(
+            found
+                .map(|internal_position| ProducesRef {
+                    graph: self.graph,
+                    internal_position,
+                }),
+        )
+    }
+    /// # Panics
+    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    pub fn produces_between(
+        self,
+        other: ArtifactRef<'graph>,
+    ) -> Option<ProducesRef<'graph>> {
+        self.produces_try_between(other)
+            .unwrap_or_else(|error| {
+                panic!(
+                    "{}::{}: {error}", stringify!(TaskRef), stringify!(produces_between)
+                )
+            })
+    }
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
     pub fn consumes_as_task(self) -> impl Iterator<Item = ConsumesRef<'graph>> + 'graph {
-        Consumes::of_task(self)
+        let positions = self.graph.consumes_from_index.get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| ConsumesRef {
+                graph: self.graph,
+                internal_position,
+            })
+    }
+    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    pub fn consumes_try_between(
+        self,
+        other: ArtifactRef<'graph>,
+    ) -> Result<Option<ConsumesRef<'graph>>, graphite::GraphMismatch> {
+        if self.graph.__graphite_construction_stamp
+            != other.graph.__graphite_construction_stamp
+        {
+            return Err(graphite::GraphMismatch);
+        }
+        let found = self
+            .graph
+            .__graphite_consumes_by_pair
+            .get(&(self.internal_position, other.internal_position))
+            .copied();
+        Ok(
+            found
+                .map(|internal_position| ConsumesRef {
+                    graph: self.graph,
+                    internal_position,
+                }),
+        )
+    }
+    /// # Panics
+    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    pub fn consumes_between(
+        self,
+        other: ArtifactRef<'graph>,
+    ) -> Option<ConsumesRef<'graph>> {
+        self.consumes_try_between(other)
+            .unwrap_or_else(|error| {
+                panic!(
+                    "{}::{}: {error}", stringify!(TaskRef), stringify!(consumes_between)
+                )
+            })
     }
 }
 impl<'graph> std::ops::Deref for TaskRef<'graph> {
@@ -486,36 +716,6 @@ impl<'graph> std::ops::Deref for TaskRef<'graph> {
 impl<'graph> std::fmt::Debug for TaskRef<'graph> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(stringify!(TaskRef))
-    }
-}
-impl Task {
-    pub fn get<'graph>(g: &'graph Graph, id: &TaskId) -> Option<TaskRef<'graph>> {
-        let internal_position = __TaskInternalPosition(
-            g.__graphite_node_task.position(id)?,
-        );
-        Some(TaskRef {
-            graph: g,
-            internal_position,
-        })
-    }
-    pub fn get_mut<'graph>(
-        g: &'graph mut Graph,
-        id: &TaskId,
-    ) -> Option<&'graph mut super::Task> {
-        g.__graphite_node_task.get_mut(id)
-    }
-    pub fn ids<'graph>(g: &'graph Graph) -> impl Iterator<Item = &'graph TaskId> {
-        g.__graphite_node_task.ids()
-    }
-    pub fn iter<'graph>(
-        g: &'graph Graph,
-    ) -> impl Iterator<Item = TaskRef<'graph>> + 'graph {
-        g.__graphite_node_task
-            .positions()
-            .map(move |position| TaskRef {
-                graph: g,
-                internal_position: __TaskInternalPosition(position),
-            })
     }
 }
 impl BuildPipelineInsertable for super::Artifact {
@@ -556,8 +756,6 @@ impl graphite::NamedGraphElement<Graph> for __ArtifactNamedPosition {
     }
 }
 impl BuildPipelineNode for super::Artifact {}
-/// このスキーマにおける `#ty` ノード種別の問い合わせ名前空間。
-pub struct Artifact;
 /// 完成済みグラフ上の `#ty` ノード個体。
 #[derive(Clone, Copy)]
 pub struct ArtifactRef<'graph> {
@@ -583,15 +781,33 @@ impl<'graph> ArtifactRef<'graph> {
             )
             .1
     }
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
     pub fn produces_as_artifact(
         self,
     ) -> impl Iterator<Item = ProducesRef<'graph>> + 'graph {
-        Produces::of_artifact(self)
+        let positions = self.graph.produces_to_index.get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| ProducesRef {
+                graph: self.graph,
+                internal_position,
+            })
     }
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
     pub fn consumes_as_artifact(
         self,
     ) -> impl Iterator<Item = ConsumesRef<'graph>> + 'graph {
-        Consumes::of_artifact(self)
+        let positions = self.graph.consumes_to_index.get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| ConsumesRef {
+                graph: self.graph,
+                internal_position,
+            })
     }
 }
 impl<'graph> std::ops::Deref for ArtifactRef<'graph> {
@@ -609,39 +825,6 @@ impl<'graph> std::ops::Deref for ArtifactRef<'graph> {
 impl<'graph> std::fmt::Debug for ArtifactRef<'graph> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(stringify!(ArtifactRef))
-    }
-}
-impl Artifact {
-    pub fn get<'graph>(
-        g: &'graph Graph,
-        id: &ArtifactId,
-    ) -> Option<ArtifactRef<'graph>> {
-        let internal_position = __ArtifactInternalPosition(
-            g.__graphite_node_artifact.position(id)?,
-        );
-        Some(ArtifactRef {
-            graph: g,
-            internal_position,
-        })
-    }
-    pub fn get_mut<'graph>(
-        g: &'graph mut Graph,
-        id: &ArtifactId,
-    ) -> Option<&'graph mut super::Artifact> {
-        g.__graphite_node_artifact.get_mut(id)
-    }
-    pub fn ids<'graph>(g: &'graph Graph) -> impl Iterator<Item = &'graph ArtifactId> {
-        g.__graphite_node_artifact.ids()
-    }
-    pub fn iter<'graph>(
-        g: &'graph Graph,
-    ) -> impl Iterator<Item = ArtifactRef<'graph>> + 'graph {
-        g.__graphite_node_artifact
-            .positions()
-            .map(move |position| ArtifactRef {
-                graph: g,
-                internal_position: __ArtifactInternalPosition(position),
-            })
     }
 }
 /// `graph!` の `add` 経由のエッジ挿入で使うトレイト境界。利用者が
@@ -1114,157 +1297,5 @@ impl graphite::FreezableBuilder for Builder {
     type Violation = Violation;
     fn freeze_into_graph(self) -> Result<Self::Graph, Self::Violation> {
         self.freeze()
-    }
-}
-impl Produces {
-    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
-    /// 問い合わせ時に結果 `Vec` を確保しない。
-    pub fn of_task<'g>(node: TaskRef<'g>) -> impl Iterator<Item = ProducesRef<'g>> + 'g {
-        let positions = node.graph.produces_from_index.get(node.internal_position.0);
-        positions
-            .iter()
-            .copied()
-            .map(move |internal_position| ProducesRef {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
-    /// 問い合わせ時に結果 `Vec` を確保しない。
-    pub fn of_artifact<'g>(
-        node: ArtifactRef<'g>,
-    ) -> impl Iterator<Item = ProducesRef<'g>> + 'g {
-        let positions = node.graph.produces_to_index.get(node.internal_position.0);
-        positions
-            .iter()
-            .copied()
-            .map(move |internal_position| ProducesRef {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
-    pub fn try_between<'g>(
-        a: TaskRef<'g>,
-        b: ArtifactRef<'g>,
-    ) -> Result<Option<ProducesRef<'g>>, graphite::GraphMismatch> {
-        if a.graph.__graphite_construction_stamp != b.graph.__graphite_construction_stamp
-        {
-            return Err(graphite::GraphMismatch);
-        }
-        let found = a
-            .graph
-            .__graphite_produces_by_pair
-            .get(&(a.internal_position, b.internal_position))
-            .copied();
-        Ok(
-            found
-                .map(|internal_position| ProducesRef {
-                    graph: a.graph,
-                    internal_position,
-                }),
-        )
-    }
-    /// # Panics
-    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    pub fn between<'g>(a: TaskRef<'g>, b: ArtifactRef<'g>) -> Option<ProducesRef<'g>> {
-        Self::try_between(a, b)
-            .unwrap_or_else(|error| panic!("{}::between: {error}", stringify!(Produces)))
-    }
-    pub fn get<'g>(g: &'g Graph, id: &ProducesId) -> Option<ProducesRef<'g>> {
-        Some(ProducesRef {
-            graph: g,
-            internal_position: __ProducesInternalPosition(g.produces.position(id)?),
-        })
-    }
-    pub fn iter<'g>(g: &'g Graph) -> impl Iterator<Item = ProducesRef<'g>> + 'g {
-        g.produces
-            .positions()
-            .map(move |position| ProducesRef {
-                graph: g,
-                internal_position: __ProducesInternalPosition(position),
-            })
-    }
-    pub fn ids(g: &Graph) -> impl Iterator<Item = &ProducesId> {
-        g.produces.ids()
-    }
-    pub fn len(g: &Graph) -> usize {
-        g.produces.len()
-    }
-}
-impl Consumes {
-    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
-    /// 問い合わせ時に結果 `Vec` を確保しない。
-    pub fn of_task<'g>(node: TaskRef<'g>) -> impl Iterator<Item = ConsumesRef<'g>> + 'g {
-        let positions = node.graph.consumes_from_index.get(node.internal_position.0);
-        positions
-            .iter()
-            .copied()
-            .map(move |internal_position| ConsumesRef {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
-    /// 問い合わせ時に結果 `Vec` を確保しない。
-    pub fn of_artifact<'g>(
-        node: ArtifactRef<'g>,
-    ) -> impl Iterator<Item = ConsumesRef<'g>> + 'g {
-        let positions = node.graph.consumes_to_index.get(node.internal_position.0);
-        positions
-            .iter()
-            .copied()
-            .map(move |internal_position| ConsumesRef {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
-    pub fn try_between<'g>(
-        a: TaskRef<'g>,
-        b: ArtifactRef<'g>,
-    ) -> Result<Option<ConsumesRef<'g>>, graphite::GraphMismatch> {
-        if a.graph.__graphite_construction_stamp != b.graph.__graphite_construction_stamp
-        {
-            return Err(graphite::GraphMismatch);
-        }
-        let found = a
-            .graph
-            .__graphite_consumes_by_pair
-            .get(&(a.internal_position, b.internal_position))
-            .copied();
-        Ok(
-            found
-                .map(|internal_position| ConsumesRef {
-                    graph: a.graph,
-                    internal_position,
-                }),
-        )
-    }
-    /// # Panics
-    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    pub fn between<'g>(a: TaskRef<'g>, b: ArtifactRef<'g>) -> Option<ConsumesRef<'g>> {
-        Self::try_between(a, b)
-            .unwrap_or_else(|error| panic!("{}::between: {error}", stringify!(Consumes)))
-    }
-    pub fn get<'g>(g: &'g Graph, id: &ConsumesId) -> Option<ConsumesRef<'g>> {
-        Some(ConsumesRef {
-            graph: g,
-            internal_position: __ConsumesInternalPosition(g.consumes.position(id)?),
-        })
-    }
-    pub fn iter<'g>(g: &'g Graph) -> impl Iterator<Item = ConsumesRef<'g>> + 'g {
-        g.consumes
-            .positions()
-            .map(move |position| ConsumesRef {
-                graph: g,
-                internal_position: __ConsumesInternalPosition(position),
-            })
-    }
-    pub fn ids(g: &Graph) -> impl Iterator<Item = &ConsumesId> {
-        g.consumes.ids()
-    }
-    pub fn len(g: &Graph) -> usize {
-        g.consumes.len()
     }
 }

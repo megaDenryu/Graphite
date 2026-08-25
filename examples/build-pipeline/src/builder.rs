@@ -87,11 +87,11 @@ test_core consumes target/core.rlib
         let parsed = parse(input).unwrap();
         let g = build_graph(&parsed).expect("構築に成功するはず");
 
-        assert_eq!(BuildPipeline::Task::ids(&g).count(), 2);
-        assert_eq!(BuildPipeline::Artifact::ids(&g).count(), 1);
+        assert_eq!(g.task_ids().count(), 2);
+        assert_eq!(g.artifact_ids().count(), 1);
 
-        let task = BuildPipeline::Task::get(&g, &TaskId("build_core".to_string())).unwrap();
-        let produced: Vec<_> = Produces::of_task(task).collect();
+        let task = g.task_by_id(&TaskId("build_core".to_string())).unwrap();
+        let produced: Vec<_> = task.produces_as_task().collect();
         assert_eq!(produced.len(), 1);
         assert_eq!(produced[0].artifact().path, "target/core.rlib");
     }

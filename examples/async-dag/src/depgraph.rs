@@ -8,7 +8,7 @@
 //! 実装を1回書けば済む — アプリ側が「並行実行できる集合をどう求めるか」
 //! を自分で再発明する必要が無い、というのが README の主張。
 
-use crate::schema::{DependsOn, Orchestration, ServiceId};
+use crate::schema::{Orchestration, ServiceId};
 use graphite::{CycleError, Graph};
 
 /// ノード値・辺値のいずれも不要 (依存関係の「形」だけが要る) なので
@@ -18,7 +18,7 @@ pub type ServiceDependencyGraph = Graph<(), (), ServiceId>;
 
 /// `Orchestration` から実行順序グラフを射影する。
 ///
-/// `DependsOn::iter(g)` は `(from, to)` = `(dependent, prerequisite)` の
+/// `g.depends_on_iter()` は `(from, to)` = `(dependent, prerequisite)` の
 /// 辺 (`DependsOn(dependent -> prerequisite)`) を返す。実行順序としては
 /// `prerequisite` (to) が先に完了していなければならないので、汎用
 /// `Graph` 上の辺は向きを反転し `prerequisite -> dependent`
@@ -26,23 +26,23 @@ pub type ServiceDependencyGraph = Graph<(), (), ServiceId>;
 /// `topological_levels` が仮定する「辺の始点が先」という向きと
 /// 実行順序が一致する。
 ///
-/// `DependsOn` の終点キーは常に `Service::ids(g)` 由来 (schema の
+/// `DependsOn` の終点キーは常に `g.service_ids()` 由来 (schema の
 /// 図式適合検査が保証する) なので、`Graph::build` が `UnknownEndpoint`
 /// を返すことはない。
 pub fn build_dependency_graph(g: &Orchestration::Graph) -> ServiceDependencyGraph {
-    let nodes: Vec<(ServiceId, ())> = Orchestration::Service::ids(g)
+    let nodes: Vec<(ServiceId, ())> = g.service_ids()
         .map(|id| (id.clone(), ()))
         .collect();
 
     let mut edges: Vec<(ServiceId, ServiceId, ())> = Vec::new();
-    for edge in DependsOn::iter(g) {
+    for edge in g.depends_on_iter() {
         let dependent = edge.dependent().id();
         let prerequisite = edge.dependency().id();
         edges.push((prerequisite.clone(), dependent.clone(), ()));
     }
 
     Graph::build(nodes, edges)
-        .expect("DependsOnの端点は必ずService::ids(g)由来なので未知キーにはならない")
+        .expect("g.depends_onの端点は必ずservice_ids()由来なので未知キーにはならない")
 }
 
 /// 「並行実行できる波」を依存関係グラフから計算する。
@@ -65,7 +65,7 @@ pub fn compute_waves(
 /// 波1つ分の想定所要時間 (無限並列ワーカーを仮定した `max(startup_ms)`)。
 pub fn wave_duration_ms(g: &Orchestration::Graph, wave: &[ServiceId]) -> u64 {
     wave.iter()
-        .filter_map(|id| Orchestration::Service::get(g, id))
+        .filter_map(|id| g.service_by_id(id))
         .map(|s| s.startup_ms)
         .max()
         .unwrap_or(0)
@@ -73,8 +73,8 @@ pub fn wave_duration_ms(g: &Orchestration::Graph, wave: &[ServiceId]) -> u64 {
 
 /// 全サービスの起動時間の総和 (直列実行した場合の下限見積り)。
 pub fn total_serial_ms(g: &Orchestration::Graph) -> u64 {
-    Orchestration::Service::ids(g)
-        .filter_map(|id| Orchestration::Service::get(g, id))
+    g.service_ids()
+        .filter_map(|id| g.service_by_id(id))
         .map(|s| s.startup_ms)
         .sum()
 }

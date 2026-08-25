@@ -19,7 +19,7 @@
 use async_dag::depgraph::{self, build_dependency_graph};
 use async_dag::engine::{self, ExecutionReport};
 use async_dag::fixtures::{cyclic_demo, sample_orchestration};
-use async_dag::schema::{DependsOn, Orchestration, ServiceId};
+use async_dag::schema::{Orchestration, ServiceId};
 
 fn main() {
     循環依存デモ();
@@ -67,8 +67,8 @@ fn 本編のサービスグラフを構築する() -> Orchestration::Graph {
 
     println!(
         "=== 2. 本編サービスグラフを構築 (サービス数={}, DependsOn本数={}) ===",
-        Orchestration::Service::ids(&g).count(),
-        DependsOn::len(&g)
+        g.service_ids().count(),
+        g.depends_on_len()
     );
     g
 }
@@ -83,7 +83,7 @@ fn 波を計算して表示する(g: &Orchestration::Graph) -> Vec<Vec<ServiceId
     for (i, wave) in waves.iter().enumerate() {
         let names: Vec<&str> = wave
             .iter()
-            .filter_map(|id| Orchestration::Service::get(g, id))
+            .filter_map(|id| g.service_by_id(id))
             .map(|s| s.value().name.as_str())
             .collect();
         let duration = depgraph::wave_duration_ms(g, wave);
@@ -111,7 +111,7 @@ fn 波を並列実行してログを表示する(
     let mut sorted_records = report.records.clone();
     sorted_records.sort_by_key(|r| r.start);
     for record in &sorted_records {
-        let name = Orchestration::Service::get(g, &record.service)
+        let name = g.service_by_id(&record.service)
             .map(|s| s.value().name.as_str())
             .unwrap_or("?");
         println!(

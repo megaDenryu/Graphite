@@ -193,14 +193,14 @@ pub fn step(
     event: Event,
 ) -> Result<OrderStateId, TransitionError> {
     let next: Option<OrderStateId> = match event {
-        Event::Submit => Submit::iter(fsm)
+        Event::Submit => fsm.submit_iter()
             .find(|edge| edge.before().id() == current)
             .map(|edge| edge.after().id().clone()),
-        Event::Pay => Pay::iter(fsm)
+        Event::Pay => fsm.pay_iter()
             .find(|edge| edge.before().id() == current)
             .map(|edge| edge.after().id().clone()),
         // ...Ship/Deliver/Cancel/Refundも同様
-        Event::Refund => Refund::iter(fsm)
+        Event::Refund => fsm.refund_iter()
             .find(|edge| edge.before().id() == current)
             .map(|edge| edge.after().id().clone()),
     };

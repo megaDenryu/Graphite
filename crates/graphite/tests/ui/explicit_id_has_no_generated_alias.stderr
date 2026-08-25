@@ -1,8 +1,8 @@
 error[E0425]: cannot find type `PersonId` in module `Explicit`
   --> tests/ui/explicit_id_has_no_generated_alias.rs:17:22
    |
- 9 | graphite::__graph_schema_inline_for_test! {
-   | ----------------------------------------- similarly named struct `Person` defined here
+ 7 | struct Person;
+   | -------------- similarly named struct `Person` defined here
 ...
 17 |     let _: Explicit::PersonId;
    |                      ^^^^^^^^

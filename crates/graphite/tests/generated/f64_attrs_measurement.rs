@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    13394813750615600574u64, 13893820313095183225u64, 15063528064486495760u64,
-    6465027637605961660u64,
+    12632895261805948653u64, 6304695671758245164u64, 14417632608825189843u64,
+    16703500581326239111u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SensorId(pub String);
@@ -133,6 +133,118 @@ pub struct Graph {
     __graphite_construction_stamp: u64,
 }
 impl Graph {
+    /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    pub fn sensor_by_id<'graph>(
+        &'graph self,
+        id: &SensorId,
+    ) -> Option<SensorRef<'graph>> {
+        let internal_position = __SensorInternalPosition(
+            self.__graphite_node_sensor.position(id)?,
+        );
+        Some(SensorRef {
+            graph: self,
+            internal_position,
+        })
+    }
+    /// グラフの構造を保ったままノード値だけを可変借用する。
+    pub fn sensor_value_mut(&mut self, id: &SensorId) -> Option<&mut super::Sensor> {
+        self.__graphite_node_sensor.get_mut(id)
+    }
+    /// この種別のノードの公開IDを挿入順に走査する。
+    pub fn sensor_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph SensorId> {
+        self.__graphite_node_sensor.ids()
+    }
+    /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    pub fn sensor_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = SensorRef<'graph>> + 'graph {
+        self.__graphite_node_sensor
+            .positions()
+            .map(move |position| SensorRef {
+                graph: self,
+                internal_position: __SensorInternalPosition(position),
+            })
+    }
+    /// この種別のノードの件数を返す。
+    pub fn sensor_len(&self) -> usize {
+        self.__graphite_node_sensor.len()
+    }
+    /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    pub fn reading_by_id<'graph>(
+        &'graph self,
+        id: &ReadingId,
+    ) -> Option<ReadingRef<'graph>> {
+        let internal_position = __ReadingInternalPosition(
+            self.__graphite_node_reading.position(id)?,
+        );
+        Some(ReadingRef {
+            graph: self,
+            internal_position,
+        })
+    }
+    /// グラフの構造を保ったままノード値だけを可変借用する。
+    pub fn reading_value_mut(&mut self, id: &ReadingId) -> Option<&mut super::Reading> {
+        self.__graphite_node_reading.get_mut(id)
+    }
+    /// この種別のノードの公開IDを挿入順に走査する。
+    pub fn reading_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph ReadingId> {
+        self.__graphite_node_reading.ids()
+    }
+    /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    pub fn reading_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = ReadingRef<'graph>> + 'graph {
+        self.__graphite_node_reading
+            .positions()
+            .map(move |position| ReadingRef {
+                graph: self,
+                internal_position: __ReadingInternalPosition(position),
+            })
+    }
+    /// この種別のノードの件数を返す。
+    pub fn reading_len(&self) -> usize {
+        self.__graphite_node_reading.len()
+    }
+    /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    pub fn measured_by_id<'graph>(
+        &'graph self,
+        id: &MeasuredId,
+    ) -> Option<MeasuredRef<'graph>> {
+        Some(MeasuredRef {
+            graph: self,
+            internal_position: __MeasuredInternalPosition(self.measured.position(id)?),
+        })
+    }
+    /// 辺の構造を保ったまま積み荷だけを可変借用する。
+    pub fn measured_payload_mut(
+        &mut self,
+        id: &MeasuredId,
+    ) -> Option<&mut MeasuredEdge> {
+        self.measured
+            .get_mut(id)
+            .map(|record: &mut __MeasuredRecord| &mut record.measurement)
+    }
+    /// この種別の辺の公開IDを挿入順に走査する。
+    pub fn measured_ids<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = &'graph MeasuredId> {
+        self.measured.ids()
+    }
+    /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    pub fn measured_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = MeasuredRef<'graph>> + 'graph {
+        self.measured
+            .positions()
+            .map(move |position| MeasuredRef {
+                graph: self,
+                internal_position: __MeasuredInternalPosition(position),
+            })
+    }
+    /// この種別の辺の件数を返す。
+    pub fn measured_len(&self) -> usize {
+        self.measured.len()
+    }
     /// builder をクロージャに貸し出し、戻ったら凍結して図式適合
     /// (端点種別・where 制約) を一括検査する。最初の1件の違反で
     /// `Err` になる (複数の違反を全件見たい場合は
@@ -244,6 +356,12 @@ pub struct Builder {
 }
 /// 型付き ID を受け取るノード・エッジ共通の挿入トレイト。
 ///
+/// 署名が `insert_with_id(self, b, id)` と、挿入される値を receiver に
+/// して `Builder` を引数で受ける向きなのは、`graph!` がノード項の値の
+/// 型を解析せず、正しい内部ストレージへの振り分けを値の型の trait
+/// ディスパッチに頼るためである。利用者向けの公開入口は
+/// `Builder::insert`/`Builder::add` の側にある。
+///
 /// `insert_named_with_id` は [`graphite::NamedInsertPermit`] を要求する
 /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
 /// `insert_with_id` (許可証不要、名前付き位置を返さない) は独立した
@@ -274,8 +392,8 @@ pub trait MeasurementDefaultId: MeasurementInsertable {
     ) -> (Self::Id, Self::NamedPosition);
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
-/// ノード挿入で使うトレイト境界。読み取りは同じ module 内の
-/// ノードマーカー型が提供する。利用者がこのトレイトのメソッドを
+/// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと
+/// `NodeRef` のメソッドが提供する。利用者がこのトレイトのメソッドを
 /// 直接呼ぶことは想定しない。
 pub trait MeasurementNode: MeasurementInsertable {}
 impl MeasurementInsertable for super::Sensor {
@@ -329,8 +447,6 @@ impl MeasurementDefaultId for super::Sensor {
     }
 }
 impl MeasurementNode for super::Sensor {}
-/// このスキーマにおける `#ty` ノード種別の問い合わせ名前空間。
-pub struct Sensor;
 /// 完成済みグラフ上の `#ty` ノード個体。
 #[derive(Clone, Copy)]
 pub struct SensorRef<'graph> {
@@ -356,10 +472,62 @@ impl<'graph> SensorRef<'graph> {
             )
             .1
     }
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
     pub fn measured_as_sensor(
         self,
     ) -> impl Iterator<Item = MeasuredRef<'graph>> + 'graph {
-        Measured::of_sensor(self)
+        let positions = self.graph.measured_from_index.get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| MeasuredRef {
+                graph: self.graph,
+                internal_position,
+            })
+    }
+    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    pub fn measured_try_between(
+        self,
+        other: ReadingRef<'graph>,
+    ) -> Result<
+        impl Iterator<Item = MeasuredRef<'graph>> + 'graph,
+        graphite::GraphMismatch,
+    > {
+        if self.graph.__graphite_construction_stamp
+            != other.graph.__graphite_construction_stamp
+        {
+            return Err(graphite::GraphMismatch);
+        }
+        let positions = self
+            .graph
+            .__graphite_measured_by_pair
+            .get(&(self.internal_position, other.internal_position))
+            .map(Vec::as_slice)
+            .unwrap_or(&[]);
+        Ok(
+            positions
+                .iter()
+                .copied()
+                .map(move |internal_position| MeasuredRef {
+                    graph: self.graph,
+                    internal_position,
+                }),
+        )
+    }
+    /// # Panics
+    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    pub fn measured_between(
+        self,
+        other: ReadingRef<'graph>,
+    ) -> impl Iterator<Item = MeasuredRef<'graph>> + 'graph {
+        self.measured_try_between(other)
+            .unwrap_or_else(|error| {
+                panic!(
+                    "{}::{}: {error}", stringify!(SensorRef),
+                    stringify!(measured_between)
+                )
+            })
     }
 }
 impl<'graph> std::ops::Deref for SensorRef<'graph> {
@@ -379,36 +547,6 @@ impl<'graph> std::fmt::Debug for SensorRef<'graph> {
         f.debug_struct(stringify!(SensorRef))
             .field("id", &self.id())
             .finish_non_exhaustive()
-    }
-}
-impl Sensor {
-    pub fn get<'graph>(g: &'graph Graph, id: &SensorId) -> Option<SensorRef<'graph>> {
-        let internal_position = __SensorInternalPosition(
-            g.__graphite_node_sensor.position(id)?,
-        );
-        Some(SensorRef {
-            graph: g,
-            internal_position,
-        })
-    }
-    pub fn get_mut<'graph>(
-        g: &'graph mut Graph,
-        id: &SensorId,
-    ) -> Option<&'graph mut super::Sensor> {
-        g.__graphite_node_sensor.get_mut(id)
-    }
-    pub fn ids<'graph>(g: &'graph Graph) -> impl Iterator<Item = &'graph SensorId> {
-        g.__graphite_node_sensor.ids()
-    }
-    pub fn iter<'graph>(
-        g: &'graph Graph,
-    ) -> impl Iterator<Item = SensorRef<'graph>> + 'graph {
-        g.__graphite_node_sensor
-            .positions()
-            .map(move |position| SensorRef {
-                graph: g,
-                internal_position: __SensorInternalPosition(position),
-            })
     }
 }
 impl MeasurementInsertable for super::Reading {
@@ -462,8 +600,6 @@ impl MeasurementDefaultId for super::Reading {
     }
 }
 impl MeasurementNode for super::Reading {}
-/// このスキーマにおける `#ty` ノード種別の問い合わせ名前空間。
-pub struct Reading;
 /// 完成済みグラフ上の `#ty` ノード個体。
 #[derive(Clone, Copy)]
 pub struct ReadingRef<'graph> {
@@ -489,10 +625,19 @@ impl<'graph> ReadingRef<'graph> {
             )
             .1
     }
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
     pub fn measured_as_reading(
         self,
     ) -> impl Iterator<Item = MeasuredRef<'graph>> + 'graph {
-        Measured::of_reading(self)
+        let positions = self.graph.measured_to_index.get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| MeasuredRef {
+                graph: self.graph,
+                internal_position,
+            })
     }
 }
 impl<'graph> std::ops::Deref for ReadingRef<'graph> {
@@ -512,36 +657,6 @@ impl<'graph> std::fmt::Debug for ReadingRef<'graph> {
         f.debug_struct(stringify!(ReadingRef))
             .field("id", &self.id())
             .finish_non_exhaustive()
-    }
-}
-impl Reading {
-    pub fn get<'graph>(g: &'graph Graph, id: &ReadingId) -> Option<ReadingRef<'graph>> {
-        let internal_position = __ReadingInternalPosition(
-            g.__graphite_node_reading.position(id)?,
-        );
-        Some(ReadingRef {
-            graph: g,
-            internal_position,
-        })
-    }
-    pub fn get_mut<'graph>(
-        g: &'graph mut Graph,
-        id: &ReadingId,
-    ) -> Option<&'graph mut super::Reading> {
-        g.__graphite_node_reading.get_mut(id)
-    }
-    pub fn ids<'graph>(g: &'graph Graph) -> impl Iterator<Item = &'graph ReadingId> {
-        g.__graphite_node_reading.ids()
-    }
-    pub fn iter<'graph>(
-        g: &'graph Graph,
-    ) -> impl Iterator<Item = ReadingRef<'graph>> + 'graph {
-        g.__graphite_node_reading
-            .positions()
-            .map(move |position| ReadingRef {
-                graph: g,
-                internal_position: __ReadingInternalPosition(position),
-            })
     }
 }
 /// `graph!` の `add` 経由のエッジ挿入で使うトレイト境界。利用者が
@@ -863,98 +978,5 @@ impl graphite::FreezableBuilder for Builder {
     type Violation = Violation;
     fn freeze_into_graph(self) -> Result<Self::Graph, Self::Violation> {
         self.freeze()
-    }
-}
-impl Measured {
-    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
-    /// 問い合わせ時に結果 `Vec` を確保しない。
-    pub fn of_sensor<'g>(
-        node: SensorRef<'g>,
-    ) -> impl Iterator<Item = MeasuredRef<'g>> + 'g {
-        let positions = node.graph.measured_from_index.get(node.internal_position.0);
-        positions
-            .iter()
-            .copied()
-            .map(move |internal_position| MeasuredRef {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
-    /// 問い合わせ時に結果 `Vec` を確保しない。
-    pub fn of_reading<'g>(
-        node: ReadingRef<'g>,
-    ) -> impl Iterator<Item = MeasuredRef<'g>> + 'g {
-        let positions = node.graph.measured_to_index.get(node.internal_position.0);
-        positions
-            .iter()
-            .copied()
-            .map(move |internal_position| MeasuredRef {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
-    pub fn try_between<'g>(
-        a: SensorRef<'g>,
-        b: ReadingRef<'g>,
-    ) -> Result<impl Iterator<Item = MeasuredRef<'g>> + 'g, graphite::GraphMismatch> {
-        if a.graph.__graphite_construction_stamp != b.graph.__graphite_construction_stamp
-        {
-            return Err(graphite::GraphMismatch);
-        }
-        let positions = a
-            .graph
-            .__graphite_measured_by_pair
-            .get(&(a.internal_position, b.internal_position))
-            .map(Vec::as_slice)
-            .unwrap_or(&[]);
-        Ok(
-            positions
-                .iter()
-                .copied()
-                .map(move |internal_position| MeasuredRef {
-                    graph: a.graph,
-                    internal_position,
-                }),
-        )
-    }
-    /// # Panics
-    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    pub fn between<'g>(
-        a: SensorRef<'g>,
-        b: ReadingRef<'g>,
-    ) -> impl Iterator<Item = MeasuredRef<'g>> + 'g {
-        Self::try_between(a, b)
-            .unwrap_or_else(|error| panic!("{}::between: {error}", stringify!(Measured)))
-    }
-    pub fn get<'g>(g: &'g Graph, id: &MeasuredId) -> Option<MeasuredRef<'g>> {
-        Some(MeasuredRef {
-            graph: g,
-            internal_position: __MeasuredInternalPosition(g.measured.position(id)?),
-        })
-    }
-    /// 辺の構造を保ったまま積み荷だけを可変借用する。
-    pub fn payload_mut<'g>(
-        g: &'g mut Graph,
-        id: &MeasuredId,
-    ) -> Option<&'g mut MeasuredEdge> {
-        g.measured
-            .get_mut(id)
-            .map(|record: &mut __MeasuredRecord| &mut record.measurement)
-    }
-    pub fn iter<'g>(g: &'g Graph) -> impl Iterator<Item = MeasuredRef<'g>> + 'g {
-        g.measured
-            .positions()
-            .map(move |position| MeasuredRef {
-                graph: g,
-                internal_position: __MeasuredInternalPosition(position),
-            })
-    }
-    pub fn ids(g: &Graph) -> impl Iterator<Item = &MeasuredId> {
-        g.measured.ids()
-    }
-    pub fn len(g: &Graph) -> usize {
-        g.measured.len()
     }
 }

@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    11839770318223366875u64, 8719046651476168060u64, 5264437717342312181u64,
-    9423459320418163009u64,
+    17450035408185466709u64, 15545461505368515572u64, 8147265102798465751u64,
+    9400441706214570235u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AutomaticNodeId(pub String);
@@ -359,6 +359,259 @@ pub struct Graph {
     __graphite_construction_stamp: u64,
 }
 impl Graph {
+    /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    pub fn external_node_by_id<'graph>(
+        &'graph self,
+        id: &ExternalNodeId,
+    ) -> Option<ExternalNodeRef<'graph>> {
+        let internal_position = __ExternalNodeInternalPosition(
+            self.__graphite_node_external_node.position(id)?,
+        );
+        Some(ExternalNodeRef {
+            graph: self,
+            internal_position,
+        })
+    }
+    /// グラフの構造を保ったままノード値だけを可変借用する。
+    pub fn external_node_value_mut(
+        &mut self,
+        id: &ExternalNodeId,
+    ) -> Option<&mut super::ExternalNode> {
+        self.__graphite_node_external_node.get_mut(id)
+    }
+    /// この種別のノードの公開IDを挿入順に走査する。
+    pub fn external_node_ids<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = &'graph ExternalNodeId> {
+        self.__graphite_node_external_node.ids()
+    }
+    /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    pub fn external_node_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = ExternalNodeRef<'graph>> + 'graph {
+        self.__graphite_node_external_node
+            .positions()
+            .map(move |position| ExternalNodeRef {
+                graph: self,
+                internal_position: __ExternalNodeInternalPosition(position),
+            })
+    }
+    /// この種別のノードの件数を返す。
+    pub fn external_node_len(&self) -> usize {
+        self.__graphite_node_external_node.len()
+    }
+    /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    pub fn automatic_node_by_id<'graph>(
+        &'graph self,
+        id: &AutomaticNodeId,
+    ) -> Option<AutomaticNodeRef<'graph>> {
+        let internal_position = __AutomaticNodeInternalPosition(
+            self.__graphite_node_automatic_node.position(id)?,
+        );
+        Some(AutomaticNodeRef {
+            graph: self,
+            internal_position,
+        })
+    }
+    /// グラフの構造を保ったままノード値だけを可変借用する。
+    pub fn automatic_node_value_mut(
+        &mut self,
+        id: &AutomaticNodeId,
+    ) -> Option<&mut super::AutomaticNode> {
+        self.__graphite_node_automatic_node.get_mut(id)
+    }
+    /// この種別のノードの公開IDを挿入順に走査する。
+    pub fn automatic_node_ids<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = &'graph AutomaticNodeId> {
+        self.__graphite_node_automatic_node.ids()
+    }
+    /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    pub fn automatic_node_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = AutomaticNodeRef<'graph>> + 'graph {
+        self.__graphite_node_automatic_node
+            .positions()
+            .map(move |position| AutomaticNodeRef {
+                graph: self,
+                internal_position: __AutomaticNodeInternalPosition(position),
+            })
+    }
+    /// この種別のノードの件数を返す。
+    pub fn automatic_node_len(&self) -> usize {
+        self.__graphite_node_automatic_node.len()
+    }
+    /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    pub fn boolean_node_by_id<'graph>(
+        &'graph self,
+        id: &bool,
+    ) -> Option<BooleanNodeRef<'graph>> {
+        let internal_position = __BooleanNodeInternalPosition(
+            self.__graphite_node_boolean_node.position(id)?,
+        );
+        Some(BooleanNodeRef {
+            graph: self,
+            internal_position,
+        })
+    }
+    /// グラフの構造を保ったままノード値だけを可変借用する。
+    pub fn boolean_node_value_mut(
+        &mut self,
+        id: &bool,
+    ) -> Option<&mut super::BooleanNode> {
+        self.__graphite_node_boolean_node.get_mut(id)
+    }
+    /// この種別のノードの公開IDを挿入順に走査する。
+    pub fn boolean_node_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph bool> {
+        self.__graphite_node_boolean_node.ids()
+    }
+    /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    pub fn boolean_node_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = BooleanNodeRef<'graph>> + 'graph {
+        self.__graphite_node_boolean_node
+            .positions()
+            .map(move |position| BooleanNodeRef {
+                graph: self,
+                internal_position: __BooleanNodeInternalPosition(position),
+            })
+    }
+    /// この種別のノードの件数を返す。
+    pub fn boolean_node_len(&self) -> usize {
+        self.__graphite_node_boolean_node.len()
+    }
+    /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    pub fn external_link_by_id<'graph>(
+        &'graph self,
+        id: &ExternalEdgeId,
+    ) -> Option<ExternalLinkRef<'graph>> {
+        Some(ExternalLinkRef {
+            graph: self,
+            internal_position: __ExternalLinkInternalPosition(
+                self.external_link.position(id)?,
+            ),
+        })
+    }
+    /// この種別の辺の公開IDを挿入順に走査する。
+    pub fn external_link_ids<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = &'graph ExternalEdgeId> {
+        self.external_link.ids()
+    }
+    /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    pub fn external_link_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = ExternalLinkRef<'graph>> + 'graph {
+        self.external_link
+            .positions()
+            .map(move |position| ExternalLinkRef {
+                graph: self,
+                internal_position: __ExternalLinkInternalPosition(position),
+            })
+    }
+    /// この種別の辺の件数を返す。
+    pub fn external_link_len(&self) -> usize {
+        self.external_link.len()
+    }
+    /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    pub fn external_incoming_by_id<'graph>(
+        &'graph self,
+        id: &ExternalEdgeId,
+    ) -> Option<ExternalIncomingRef<'graph>> {
+        Some(ExternalIncomingRef {
+            graph: self,
+            internal_position: __ExternalIncomingInternalPosition(
+                self.external_incoming.position(id)?,
+            ),
+        })
+    }
+    /// この種別の辺の公開IDを挿入順に走査する。
+    pub fn external_incoming_ids<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = &'graph ExternalEdgeId> {
+        self.external_incoming.ids()
+    }
+    /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    pub fn external_incoming_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = ExternalIncomingRef<'graph>> + 'graph {
+        self.external_incoming
+            .positions()
+            .map(move |position| ExternalIncomingRef {
+                graph: self,
+                internal_position: __ExternalIncomingInternalPosition(position),
+            })
+    }
+    /// この種別の辺の件数を返す。
+    pub fn external_incoming_len(&self) -> usize {
+        self.external_incoming.len()
+    }
+    /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    pub fn external_friend_by_id<'graph>(
+        &'graph self,
+        id: &ExternalEdgeId,
+    ) -> Option<ExternalFriendRef<'graph>> {
+        Some(ExternalFriendRef {
+            graph: self,
+            internal_position: __ExternalFriendInternalPosition(
+                self.external_friend.position(id)?,
+            ),
+        })
+    }
+    /// この種別の辺の公開IDを挿入順に走査する。
+    pub fn external_friend_ids<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = &'graph ExternalEdgeId> {
+        self.external_friend.ids()
+    }
+    /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    pub fn external_friend_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = ExternalFriendRef<'graph>> + 'graph {
+        self.external_friend
+            .positions()
+            .map(move |position| ExternalFriendRef {
+                graph: self,
+                internal_position: __ExternalFriendInternalPosition(position),
+            })
+    }
+    /// この種別の辺の件数を返す。
+    pub fn external_friend_len(&self) -> usize {
+        self.external_friend.len()
+    }
+    /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    pub fn automatic_link_by_id<'graph>(
+        &'graph self,
+        id: &AutomaticLinkId,
+    ) -> Option<AutomaticLinkRef<'graph>> {
+        Some(AutomaticLinkRef {
+            graph: self,
+            internal_position: __AutomaticLinkInternalPosition(
+                self.automatic_link.position(id)?,
+            ),
+        })
+    }
+    /// この種別の辺の公開IDを挿入順に走査する。
+    pub fn automatic_link_ids<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = &'graph AutomaticLinkId> {
+        self.automatic_link.ids()
+    }
+    /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    pub fn automatic_link_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = AutomaticLinkRef<'graph>> + 'graph {
+        self.automatic_link
+            .positions()
+            .map(move |position| AutomaticLinkRef {
+                graph: self,
+                internal_position: __AutomaticLinkInternalPosition(position),
+            })
+    }
+    /// この種別の辺の件数を返す。
+    pub fn automatic_link_len(&self) -> usize {
+        self.automatic_link.len()
+    }
     /// builder をクロージャに貸し出し、戻ったら凍結して図式適合
     /// (端点種別・where 制約) を一括検査する。最初の1件の違反で
     /// `Err` になる (複数の違反を全件見たい場合は
@@ -622,6 +875,12 @@ pub struct Builder {
 }
 /// 型付き ID を受け取るノード・エッジ共通の挿入トレイト。
 ///
+/// 署名が `insert_with_id(self, b, id)` と、挿入される値を receiver に
+/// して `Builder` を引数で受ける向きなのは、`graph!` がノード項の値の
+/// 型を解析せず、正しい内部ストレージへの振り分けを値の型の trait
+/// ディスパッチに頼るためである。利用者向けの公開入口は
+/// `Builder::insert`/`Builder::add` の側にある。
+///
 /// `insert_named_with_id` は [`graphite::NamedInsertPermit`] を要求する
 /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
 /// `insert_with_id` (許可証不要、名前付き位置を返さない) は独立した
@@ -652,8 +911,8 @@ pub trait MixedIdsDefaultId: MixedIdsInsertable {
     ) -> (Self::Id, Self::NamedPosition);
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
-/// ノード挿入で使うトレイト境界。読み取りは同じ module 内の
-/// ノードマーカー型が提供する。利用者がこのトレイトのメソッドを
+/// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと
+/// `NodeRef` のメソッドが提供する。利用者がこのトレイトのメソッドを
 /// 直接呼ぶことは想定しない。
 pub trait MixedIdsNode: MixedIdsInsertable {}
 impl MixedIdsInsertable for super::ExternalNode {
@@ -694,8 +953,6 @@ impl graphite::NamedGraphElement<Graph> for __ExternalNodeNamedPosition {
     }
 }
 impl MixedIdsNode for super::ExternalNode {}
-/// このスキーマにおける `#ty` ノード種別の問い合わせ名前空間。
-pub struct ExternalNode;
 /// 完成済みグラフ上の `#ty` ノード個体。
 #[derive(Clone, Copy)]
 pub struct ExternalNodeRef<'graph> {
@@ -721,26 +978,203 @@ impl<'graph> ExternalNodeRef<'graph> {
             )
             .1
     }
+    /// この役割に接続する唯一の辺を O(1)、追加確保なしで返す。
     pub fn external_link_as_source(self) -> ExternalLinkRef<'graph> {
-        ExternalLink::of_source(self)
+        ExternalLinkRef {
+            graph: self.graph,
+            internal_position: *self
+                .graph
+                .external_link_from_index
+                .get(self.internal_position.0),
+        }
     }
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
     pub fn external_link_as_target(
         self,
     ) -> impl Iterator<Item = ExternalLinkRef<'graph>> + 'graph {
-        ExternalLink::of_target(self)
+        let positions = self.graph.external_link_to_index.get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| ExternalLinkRef {
+                graph: self.graph,
+                internal_position,
+            })
     }
+    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    pub fn external_link_try_between(
+        self,
+        other: ExternalNodeRef<'graph>,
+    ) -> Result<
+        impl Iterator<Item = ExternalLinkRef<'graph>> + 'graph,
+        graphite::GraphMismatch,
+    > {
+        if self.graph.__graphite_construction_stamp
+            != other.graph.__graphite_construction_stamp
+        {
+            return Err(graphite::GraphMismatch);
+        }
+        let positions = self
+            .graph
+            .__graphite_external_link_by_pair
+            .get(&(self.internal_position, other.internal_position))
+            .map(Vec::as_slice)
+            .unwrap_or(&[]);
+        Ok(
+            positions
+                .iter()
+                .copied()
+                .map(move |internal_position| ExternalLinkRef {
+                    graph: self.graph,
+                    internal_position,
+                }),
+        )
+    }
+    /// # Panics
+    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    pub fn external_link_between(
+        self,
+        other: ExternalNodeRef<'graph>,
+    ) -> impl Iterator<Item = ExternalLinkRef<'graph>> + 'graph {
+        self.external_link_try_between(other)
+            .unwrap_or_else(|error| {
+                panic!(
+                    "{}::{}: {error}", stringify!(ExternalNodeRef),
+                    stringify!(external_link_between)
+                )
+            })
+    }
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
     pub fn external_incoming_as_source(
         self,
     ) -> impl Iterator<Item = ExternalIncomingRef<'graph>> + 'graph {
-        ExternalIncoming::of_source(self)
+        let positions = self
+            .graph
+            .external_incoming_from_index
+            .get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| ExternalIncomingRef {
+                graph: self.graph,
+                internal_position,
+            })
     }
+    /// この役割に接続する唯一の辺を O(1)、追加確保なしで返す。
     pub fn external_incoming_as_target(self) -> ExternalIncomingRef<'graph> {
-        ExternalIncoming::of_target(self)
+        ExternalIncomingRef {
+            graph: self.graph,
+            internal_position: *self
+                .graph
+                .external_incoming_to_index
+                .get(self.internal_position.0),
+        }
     }
+    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    pub fn external_incoming_try_between(
+        self,
+        other: ExternalNodeRef<'graph>,
+    ) -> Result<
+        impl Iterator<Item = ExternalIncomingRef<'graph>> + 'graph,
+        graphite::GraphMismatch,
+    > {
+        if self.graph.__graphite_construction_stamp
+            != other.graph.__graphite_construction_stamp
+        {
+            return Err(graphite::GraphMismatch);
+        }
+        let positions = self
+            .graph
+            .__graphite_external_incoming_by_pair
+            .get(&(self.internal_position, other.internal_position))
+            .map(Vec::as_slice)
+            .unwrap_or(&[]);
+        Ok(
+            positions
+                .iter()
+                .copied()
+                .map(move |internal_position| ExternalIncomingRef {
+                    graph: self.graph,
+                    internal_position,
+                }),
+        )
+    }
+    /// # Panics
+    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    pub fn external_incoming_between(
+        self,
+        other: ExternalNodeRef<'graph>,
+    ) -> impl Iterator<Item = ExternalIncomingRef<'graph>> + 'graph {
+        self.external_incoming_try_between(other)
+            .unwrap_or_else(|error| {
+                panic!(
+                    "{}::{}: {error}", stringify!(ExternalNodeRef),
+                    stringify!(external_incoming_between)
+                )
+            })
+    }
+    /// 接続辺を O(1) で参照し、追加確保なしで挿入順に走査する。
     pub fn external_friend_incident(
         self,
     ) -> impl Iterator<Item = ExternalFriendRef<'graph>> + 'graph {
-        ExternalFriend::incident(self)
+        let positions = self.graph.external_friend_index.get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| ExternalFriendRef {
+                graph: self.graph,
+                internal_position,
+            })
+    }
+    ///順序なし端点対を平均 O(1)、追加確保なしで検索する。
+    pub fn external_friend_try_between(
+        self,
+        other: ExternalNodeRef<'graph>,
+    ) -> Result<
+        impl Iterator<Item = ExternalFriendRef<'graph>> + 'graph,
+        graphite::GraphMismatch,
+    > {
+        if self.graph.__graphite_construction_stamp
+            != other.graph.__graphite_construction_stamp
+        {
+            return Err(graphite::GraphMismatch);
+        }
+        let positions = self
+            .graph
+            .__graphite_external_friend_by_pair
+            .get(
+                &graphite::UnorderedPair::new(
+                    self.internal_position,
+                    other.internal_position,
+                ),
+            )
+            .map(Vec::as_slice)
+            .unwrap_or(&[]);
+        Ok(
+            positions
+                .iter()
+                .copied()
+                .map(move |internal_position| ExternalFriendRef {
+                    graph: self.graph,
+                    internal_position,
+                }),
+        )
+    }
+    /// # Panics
+    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    pub fn external_friend_between(
+        self,
+        other: ExternalNodeRef<'graph>,
+    ) -> impl Iterator<Item = ExternalFriendRef<'graph>> + 'graph {
+        self.external_friend_try_between(other)
+            .unwrap_or_else(|error| {
+                panic!(
+                    "{}::{}: {error}", stringify!(ExternalNodeRef),
+                    stringify!(external_friend_between)
+                )
+            })
     }
 }
 impl<'graph> std::ops::Deref for ExternalNodeRef<'graph> {
@@ -758,41 +1192,6 @@ impl<'graph> std::ops::Deref for ExternalNodeRef<'graph> {
 impl<'graph> std::fmt::Debug for ExternalNodeRef<'graph> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(stringify!(ExternalNodeRef))
-    }
-}
-impl ExternalNode {
-    pub fn get<'graph>(
-        g: &'graph Graph,
-        id: &ExternalNodeId,
-    ) -> Option<ExternalNodeRef<'graph>> {
-        let internal_position = __ExternalNodeInternalPosition(
-            g.__graphite_node_external_node.position(id)?,
-        );
-        Some(ExternalNodeRef {
-            graph: g,
-            internal_position,
-        })
-    }
-    pub fn get_mut<'graph>(
-        g: &'graph mut Graph,
-        id: &ExternalNodeId,
-    ) -> Option<&'graph mut super::ExternalNode> {
-        g.__graphite_node_external_node.get_mut(id)
-    }
-    pub fn ids<'graph>(
-        g: &'graph Graph,
-    ) -> impl Iterator<Item = &'graph ExternalNodeId> {
-        g.__graphite_node_external_node.ids()
-    }
-    pub fn iter<'graph>(
-        g: &'graph Graph,
-    ) -> impl Iterator<Item = ExternalNodeRef<'graph>> + 'graph {
-        g.__graphite_node_external_node
-            .positions()
-            .map(move |position| ExternalNodeRef {
-                graph: g,
-                internal_position: __ExternalNodeInternalPosition(position),
-            })
     }
 }
 impl MixedIdsInsertable for super::AutomaticNode {
@@ -851,8 +1250,6 @@ impl MixedIdsDefaultId for super::AutomaticNode {
     }
 }
 impl MixedIdsNode for super::AutomaticNode {}
-/// このスキーマにおける `#ty` ノード種別の問い合わせ名前空間。
-pub struct AutomaticNode;
 /// 完成済みグラフ上の `#ty` ノード個体。
 #[derive(Clone, Copy)]
 pub struct AutomaticNodeRef<'graph> {
@@ -878,15 +1275,79 @@ impl<'graph> AutomaticNodeRef<'graph> {
             )
             .1
     }
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
     pub fn automatic_link_as_source(
         self,
     ) -> impl Iterator<Item = AutomaticLinkRef<'graph>> + 'graph {
-        AutomaticLink::of_source(self)
+        let positions = self
+            .graph
+            .automatic_link_from_index
+            .get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| AutomaticLinkRef {
+                graph: self.graph,
+                internal_position,
+            })
     }
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
     pub fn automatic_link_as_target(
         self,
     ) -> impl Iterator<Item = AutomaticLinkRef<'graph>> + 'graph {
-        AutomaticLink::of_target(self)
+        let positions = self.graph.automatic_link_to_index.get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| AutomaticLinkRef {
+                graph: self.graph,
+                internal_position,
+            })
+    }
+    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    pub fn automatic_link_try_between(
+        self,
+        other: AutomaticNodeRef<'graph>,
+    ) -> Result<
+        impl Iterator<Item = AutomaticLinkRef<'graph>> + 'graph,
+        graphite::GraphMismatch,
+    > {
+        if self.graph.__graphite_construction_stamp
+            != other.graph.__graphite_construction_stamp
+        {
+            return Err(graphite::GraphMismatch);
+        }
+        let positions = self
+            .graph
+            .__graphite_automatic_link_by_pair
+            .get(&(self.internal_position, other.internal_position))
+            .map(Vec::as_slice)
+            .unwrap_or(&[]);
+        Ok(
+            positions
+                .iter()
+                .copied()
+                .map(move |internal_position| AutomaticLinkRef {
+                    graph: self.graph,
+                    internal_position,
+                }),
+        )
+    }
+    /// # Panics
+    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    pub fn automatic_link_between(
+        self,
+        other: AutomaticNodeRef<'graph>,
+    ) -> impl Iterator<Item = AutomaticLinkRef<'graph>> + 'graph {
+        self.automatic_link_try_between(other)
+            .unwrap_or_else(|error| {
+                panic!(
+                    "{}::{}: {error}", stringify!(AutomaticNodeRef),
+                    stringify!(automatic_link_between)
+                )
+            })
     }
 }
 impl<'graph> std::ops::Deref for AutomaticNodeRef<'graph> {
@@ -906,41 +1367,6 @@ impl<'graph> std::fmt::Debug for AutomaticNodeRef<'graph> {
         f.debug_struct(stringify!(AutomaticNodeRef))
             .field("id", &self.id())
             .finish_non_exhaustive()
-    }
-}
-impl AutomaticNode {
-    pub fn get<'graph>(
-        g: &'graph Graph,
-        id: &AutomaticNodeId,
-    ) -> Option<AutomaticNodeRef<'graph>> {
-        let internal_position = __AutomaticNodeInternalPosition(
-            g.__graphite_node_automatic_node.position(id)?,
-        );
-        Some(AutomaticNodeRef {
-            graph: g,
-            internal_position,
-        })
-    }
-    pub fn get_mut<'graph>(
-        g: &'graph mut Graph,
-        id: &AutomaticNodeId,
-    ) -> Option<&'graph mut super::AutomaticNode> {
-        g.__graphite_node_automatic_node.get_mut(id)
-    }
-    pub fn ids<'graph>(
-        g: &'graph Graph,
-    ) -> impl Iterator<Item = &'graph AutomaticNodeId> {
-        g.__graphite_node_automatic_node.ids()
-    }
-    pub fn iter<'graph>(
-        g: &'graph Graph,
-    ) -> impl Iterator<Item = AutomaticNodeRef<'graph>> + 'graph {
-        g.__graphite_node_automatic_node
-            .positions()
-            .map(move |position| AutomaticNodeRef {
-                graph: g,
-                internal_position: __AutomaticNodeInternalPosition(position),
-            })
     }
 }
 impl MixedIdsInsertable for super::BooleanNode {
@@ -981,8 +1407,6 @@ impl graphite::NamedGraphElement<Graph> for __BooleanNodeNamedPosition {
     }
 }
 impl MixedIdsNode for super::BooleanNode {}
-/// このスキーマにおける `#ty` ノード種別の問い合わせ名前空間。
-pub struct BooleanNode;
 /// 完成済みグラフ上の `#ty` ノード個体。
 #[derive(Clone, Copy)]
 pub struct BooleanNodeRef<'graph> {
@@ -1024,36 +1448,6 @@ impl<'graph> std::ops::Deref for BooleanNodeRef<'graph> {
 impl<'graph> std::fmt::Debug for BooleanNodeRef<'graph> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(stringify!(BooleanNodeRef))
-    }
-}
-impl BooleanNode {
-    pub fn get<'graph>(g: &'graph Graph, id: &bool) -> Option<BooleanNodeRef<'graph>> {
-        let internal_position = __BooleanNodeInternalPosition(
-            g.__graphite_node_boolean_node.position(id)?,
-        );
-        Some(BooleanNodeRef {
-            graph: g,
-            internal_position,
-        })
-    }
-    pub fn get_mut<'graph>(
-        g: &'graph mut Graph,
-        id: &bool,
-    ) -> Option<&'graph mut super::BooleanNode> {
-        g.__graphite_node_boolean_node.get_mut(id)
-    }
-    pub fn ids<'graph>(g: &'graph Graph) -> impl Iterator<Item = &'graph bool> {
-        g.__graphite_node_boolean_node.ids()
-    }
-    pub fn iter<'graph>(
-        g: &'graph Graph,
-    ) -> impl Iterator<Item = BooleanNodeRef<'graph>> + 'graph {
-        g.__graphite_node_boolean_node
-            .positions()
-            .map(move |position| BooleanNodeRef {
-                graph: g,
-                internal_position: __BooleanNodeInternalPosition(position),
-            })
     }
 }
 /// `graph!` の `add` 経由のエッジ挿入で使うトレイト境界。利用者が
@@ -1840,355 +2234,5 @@ impl graphite::FreezableBuilder for Builder {
     type Violation = Violation;
     fn freeze_into_graph(self) -> Result<Self::Graph, Self::Violation> {
         self.freeze()
-    }
-}
-impl ExternalLink {
-    /// この役割に接続する唯一の辺を O(1)、追加確保なしで返す。
-    pub fn of_source<'g>(node: ExternalNodeRef<'g>) -> ExternalLinkRef<'g> {
-        ExternalLinkRef {
-            graph: node.graph,
-            internal_position: *node
-                .graph
-                .external_link_from_index
-                .get(node.internal_position.0),
-        }
-    }
-    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
-    /// 問い合わせ時に結果 `Vec` を確保しない。
-    pub fn of_target<'g>(
-        node: ExternalNodeRef<'g>,
-    ) -> impl Iterator<Item = ExternalLinkRef<'g>> + 'g {
-        let positions = node.graph.external_link_to_index.get(node.internal_position.0);
-        positions
-            .iter()
-            .copied()
-            .map(move |internal_position| ExternalLinkRef {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
-    pub fn try_between<'g>(
-        a: ExternalNodeRef<'g>,
-        b: ExternalNodeRef<'g>,
-    ) -> Result<
-        impl Iterator<Item = ExternalLinkRef<'g>> + 'g,
-        graphite::GraphMismatch,
-    > {
-        if a.graph.__graphite_construction_stamp != b.graph.__graphite_construction_stamp
-        {
-            return Err(graphite::GraphMismatch);
-        }
-        let positions = a
-            .graph
-            .__graphite_external_link_by_pair
-            .get(&(a.internal_position, b.internal_position))
-            .map(Vec::as_slice)
-            .unwrap_or(&[]);
-        Ok(
-            positions
-                .iter()
-                .copied()
-                .map(move |internal_position| ExternalLinkRef {
-                    graph: a.graph,
-                    internal_position,
-                }),
-        )
-    }
-    /// # Panics
-    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    pub fn between<'g>(
-        a: ExternalNodeRef<'g>,
-        b: ExternalNodeRef<'g>,
-    ) -> impl Iterator<Item = ExternalLinkRef<'g>> + 'g {
-        Self::try_between(a, b)
-            .unwrap_or_else(|error| {
-                panic!("{}::between: {error}", stringify!(ExternalLink))
-            })
-    }
-    pub fn get<'g>(g: &'g Graph, id: &ExternalEdgeId) -> Option<ExternalLinkRef<'g>> {
-        Some(ExternalLinkRef {
-            graph: g,
-            internal_position: __ExternalLinkInternalPosition(
-                g.external_link.position(id)?,
-            ),
-        })
-    }
-    pub fn iter<'g>(g: &'g Graph) -> impl Iterator<Item = ExternalLinkRef<'g>> + 'g {
-        g.external_link
-            .positions()
-            .map(move |position| ExternalLinkRef {
-                graph: g,
-                internal_position: __ExternalLinkInternalPosition(position),
-            })
-    }
-    pub fn ids(g: &Graph) -> impl Iterator<Item = &ExternalEdgeId> {
-        g.external_link.ids()
-    }
-    pub fn len(g: &Graph) -> usize {
-        g.external_link.len()
-    }
-}
-impl ExternalIncoming {
-    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
-    /// 問い合わせ時に結果 `Vec` を確保しない。
-    pub fn of_source<'g>(
-        node: ExternalNodeRef<'g>,
-    ) -> impl Iterator<Item = ExternalIncomingRef<'g>> + 'g {
-        let positions = node
-            .graph
-            .external_incoming_from_index
-            .get(node.internal_position.0);
-        positions
-            .iter()
-            .copied()
-            .map(move |internal_position| ExternalIncomingRef {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    /// この役割に接続する唯一の辺を O(1)、追加確保なしで返す。
-    pub fn of_target<'g>(node: ExternalNodeRef<'g>) -> ExternalIncomingRef<'g> {
-        ExternalIncomingRef {
-            graph: node.graph,
-            internal_position: *node
-                .graph
-                .external_incoming_to_index
-                .get(node.internal_position.0),
-        }
-    }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
-    pub fn try_between<'g>(
-        a: ExternalNodeRef<'g>,
-        b: ExternalNodeRef<'g>,
-    ) -> Result<
-        impl Iterator<Item = ExternalIncomingRef<'g>> + 'g,
-        graphite::GraphMismatch,
-    > {
-        if a.graph.__graphite_construction_stamp != b.graph.__graphite_construction_stamp
-        {
-            return Err(graphite::GraphMismatch);
-        }
-        let positions = a
-            .graph
-            .__graphite_external_incoming_by_pair
-            .get(&(a.internal_position, b.internal_position))
-            .map(Vec::as_slice)
-            .unwrap_or(&[]);
-        Ok(
-            positions
-                .iter()
-                .copied()
-                .map(move |internal_position| ExternalIncomingRef {
-                    graph: a.graph,
-                    internal_position,
-                }),
-        )
-    }
-    /// # Panics
-    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    pub fn between<'g>(
-        a: ExternalNodeRef<'g>,
-        b: ExternalNodeRef<'g>,
-    ) -> impl Iterator<Item = ExternalIncomingRef<'g>> + 'g {
-        Self::try_between(a, b)
-            .unwrap_or_else(|error| {
-                panic!("{}::between: {error}", stringify!(ExternalIncoming))
-            })
-    }
-    pub fn get<'g>(
-        g: &'g Graph,
-        id: &ExternalEdgeId,
-    ) -> Option<ExternalIncomingRef<'g>> {
-        Some(ExternalIncomingRef {
-            graph: g,
-            internal_position: __ExternalIncomingInternalPosition(
-                g.external_incoming.position(id)?,
-            ),
-        })
-    }
-    pub fn iter<'g>(g: &'g Graph) -> impl Iterator<Item = ExternalIncomingRef<'g>> + 'g {
-        g.external_incoming
-            .positions()
-            .map(move |position| ExternalIncomingRef {
-                graph: g,
-                internal_position: __ExternalIncomingInternalPosition(position),
-            })
-    }
-    pub fn ids(g: &Graph) -> impl Iterator<Item = &ExternalEdgeId> {
-        g.external_incoming.ids()
-    }
-    pub fn len(g: &Graph) -> usize {
-        g.external_incoming.len()
-    }
-}
-impl ExternalFriend {
-    /// 接続辺を O(1) で参照し、追加確保なしで挿入順に走査する。
-    pub fn incident<'g>(
-        node: ExternalNodeRef<'g>,
-    ) -> impl Iterator<Item = ExternalFriendRef<'g>> + 'g {
-        let positions = node.graph.external_friend_index.get(node.internal_position.0);
-        positions
-            .iter()
-            .copied()
-            .map(move |internal_position| ExternalFriendRef {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    ///順序なし端点対を平均 O(1)、追加確保なしで検索する。
-    pub fn try_between<'g>(
-        a: ExternalNodeRef<'g>,
-        b: ExternalNodeRef<'g>,
-    ) -> Result<
-        impl Iterator<Item = ExternalFriendRef<'g>> + 'g,
-        graphite::GraphMismatch,
-    > {
-        if a.graph.__graphite_construction_stamp != b.graph.__graphite_construction_stamp
-        {
-            return Err(graphite::GraphMismatch);
-        }
-        let positions = a
-            .graph
-            .__graphite_external_friend_by_pair
-            .get(&graphite::UnorderedPair::new(a.internal_position, b.internal_position))
-            .map(Vec::as_slice)
-            .unwrap_or(&[]);
-        Ok(
-            positions
-                .iter()
-                .copied()
-                .map(move |internal_position| ExternalFriendRef {
-                    graph: a.graph,
-                    internal_position,
-                }),
-        )
-    }
-    /// # Panics
-    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    pub fn between<'g>(
-        a: ExternalNodeRef<'g>,
-        b: ExternalNodeRef<'g>,
-    ) -> impl Iterator<Item = ExternalFriendRef<'g>> + 'g {
-        Self::try_between(a, b)
-            .unwrap_or_else(|error| {
-                panic!("{}::between: {error}", stringify!(ExternalFriend))
-            })
-    }
-    pub fn get<'g>(g: &'g Graph, id: &ExternalEdgeId) -> Option<ExternalFriendRef<'g>> {
-        Some(ExternalFriendRef {
-            graph: g,
-            internal_position: __ExternalFriendInternalPosition(
-                g.external_friend.position(id)?,
-            ),
-        })
-    }
-    pub fn iter<'g>(g: &'g Graph) -> impl Iterator<Item = ExternalFriendRef<'g>> + 'g {
-        g.external_friend
-            .positions()
-            .map(move |position| ExternalFriendRef {
-                graph: g,
-                internal_position: __ExternalFriendInternalPosition(position),
-            })
-    }
-    pub fn ids(g: &Graph) -> impl Iterator<Item = &ExternalEdgeId> {
-        g.external_friend.ids()
-    }
-    pub fn len(g: &Graph) -> usize {
-        g.external_friend.len()
-    }
-}
-impl AutomaticLink {
-    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
-    /// 問い合わせ時に結果 `Vec` を確保しない。
-    pub fn of_source<'g>(
-        node: AutomaticNodeRef<'g>,
-    ) -> impl Iterator<Item = AutomaticLinkRef<'g>> + 'g {
-        let positions = node
-            .graph
-            .automatic_link_from_index
-            .get(node.internal_position.0);
-        positions
-            .iter()
-            .copied()
-            .map(move |internal_position| AutomaticLinkRef {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
-    /// 問い合わせ時に結果 `Vec` を確保しない。
-    pub fn of_target<'g>(
-        node: AutomaticNodeRef<'g>,
-    ) -> impl Iterator<Item = AutomaticLinkRef<'g>> + 'g {
-        let positions = node.graph.automatic_link_to_index.get(node.internal_position.0);
-        positions
-            .iter()
-            .copied()
-            .map(move |internal_position| AutomaticLinkRef {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
-    pub fn try_between<'g>(
-        a: AutomaticNodeRef<'g>,
-        b: AutomaticNodeRef<'g>,
-    ) -> Result<
-        impl Iterator<Item = AutomaticLinkRef<'g>> + 'g,
-        graphite::GraphMismatch,
-    > {
-        if a.graph.__graphite_construction_stamp != b.graph.__graphite_construction_stamp
-        {
-            return Err(graphite::GraphMismatch);
-        }
-        let positions = a
-            .graph
-            .__graphite_automatic_link_by_pair
-            .get(&(a.internal_position, b.internal_position))
-            .map(Vec::as_slice)
-            .unwrap_or(&[]);
-        Ok(
-            positions
-                .iter()
-                .copied()
-                .map(move |internal_position| AutomaticLinkRef {
-                    graph: a.graph,
-                    internal_position,
-                }),
-        )
-    }
-    /// # Panics
-    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    pub fn between<'g>(
-        a: AutomaticNodeRef<'g>,
-        b: AutomaticNodeRef<'g>,
-    ) -> impl Iterator<Item = AutomaticLinkRef<'g>> + 'g {
-        Self::try_between(a, b)
-            .unwrap_or_else(|error| {
-                panic!("{}::between: {error}", stringify!(AutomaticLink))
-            })
-    }
-    pub fn get<'g>(g: &'g Graph, id: &AutomaticLinkId) -> Option<AutomaticLinkRef<'g>> {
-        Some(AutomaticLinkRef {
-            graph: g,
-            internal_position: __AutomaticLinkInternalPosition(
-                g.automatic_link.position(id)?,
-            ),
-        })
-    }
-    pub fn iter<'g>(g: &'g Graph) -> impl Iterator<Item = AutomaticLinkRef<'g>> + 'g {
-        g.automatic_link
-            .positions()
-            .map(move |position| AutomaticLinkRef {
-                graph: g,
-                internal_position: __AutomaticLinkInternalPosition(position),
-            })
-    }
-    pub fn ids(g: &Graph) -> impl Iterator<Item = &AutomaticLinkId> {
-        g.automatic_link.ids()
-    }
-    pub fn len(g: &Graph) -> usize {
-        g.automatic_link.len()
     }
 }

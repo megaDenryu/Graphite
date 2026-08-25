@@ -1,4 +1,4 @@
-error: schema module内の生成名 `__PersonNamedPosition` が衝突します (名前付き位置型 `__PersonNamedPosition` と ノードマーカー `__PersonNamedPosition`)。ノード名・辺名を変更してください
+error: schema module内の生成名 `__PersonNamedPosition` が衝突します (名前付き位置型 `__PersonNamedPosition` と ノード名 `__PersonNamedPosition` (`__PersonNamedPositionId`/`__PersonNamedPositionRef` と Graph の種別メソッドの由来))。ノード名・辺名を変更してください
  --> tests/ui/schema_named_position_collision.rs:6:14
   |
 6 |         node Person;

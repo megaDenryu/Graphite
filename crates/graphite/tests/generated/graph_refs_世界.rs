@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    7521985830334319672u64, 11643009913795568357u64, 17486321939429865106u64,
-    2106158035785317086u64,
+    6641979153040618895u64, 11433541783532651904u64, 16961896691741900389u64,
+    13784167539940343161u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct 人物Id(pub String);
@@ -214,6 +214,140 @@ pub struct Graph {
     __graphite_construction_stamp: u64,
 }
 impl Graph {
+    /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    pub fn 人物_by_id<'graph>(
+        &'graph self,
+        id: &人物Id,
+    ) -> Option<人物Ref<'graph>> {
+        let internal_position = __人物InternalPosition(
+            self.__graphite_node_人物.position(id)?,
+        );
+        Some(人物Ref {
+            graph: self,
+            internal_position,
+        })
+    }
+    /// グラフの構造を保ったままノード値だけを可変借用する。
+    pub fn 人物_value_mut(&mut self, id: &人物Id) -> Option<&mut super::人物> {
+        self.__graphite_node_人物.get_mut(id)
+    }
+    /// この種別のノードの公開IDを挿入順に走査する。
+    pub fn 人物_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph 人物Id> {
+        self.__graphite_node_人物.ids()
+    }
+    /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    pub fn 人物_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = 人物Ref<'graph>> + 'graph {
+        self.__graphite_node_人物
+            .positions()
+            .map(move |position| 人物Ref {
+                graph: self,
+                internal_position: __人物InternalPosition(position),
+            })
+    }
+    /// この種別のノードの件数を返す。
+    pub fn 人物_len(&self) -> usize {
+        self.__graphite_node_人物.len()
+    }
+    /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    pub fn 商品_by_id<'graph>(
+        &'graph self,
+        id: &商品Id,
+    ) -> Option<商品Ref<'graph>> {
+        let internal_position = __商品InternalPosition(
+            self.__graphite_node_商品.position(id)?,
+        );
+        Some(商品Ref {
+            graph: self,
+            internal_position,
+        })
+    }
+    /// グラフの構造を保ったままノード値だけを可変借用する。
+    pub fn 商品_value_mut(&mut self, id: &商品Id) -> Option<&mut super::商品> {
+        self.__graphite_node_商品.get_mut(id)
+    }
+    /// この種別のノードの公開IDを挿入順に走査する。
+    pub fn 商品_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph 商品Id> {
+        self.__graphite_node_商品.ids()
+    }
+    /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    pub fn 商品_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = 商品Ref<'graph>> + 'graph {
+        self.__graphite_node_商品
+            .positions()
+            .map(move |position| 商品Ref {
+                graph: self,
+                internal_position: __商品InternalPosition(position),
+            })
+    }
+    /// この種別のノードの件数を返す。
+    pub fn 商品_len(&self) -> usize {
+        self.__graphite_node_商品.len()
+    }
+    /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    pub fn 購入_by_id<'graph>(
+        &'graph self,
+        id: &購入Id,
+    ) -> Option<購入Ref<'graph>> {
+        Some(購入Ref {
+            graph: self,
+            internal_position: __購入InternalPosition(self.購入.position(id)?),
+        })
+    }
+    /// 辺の構造を保ったまま積み荷だけを可変借用する。
+    pub fn 購入_payload_mut(&mut self, id: &購入Id) -> Option<&mut 取引情報> {
+        self.購入.get_mut(id).map(|record: &mut __購入Record| &mut record.取引)
+    }
+    /// この種別の辺の公開IDを挿入順に走査する。
+    pub fn 購入_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph 購入Id> {
+        self.購入.ids()
+    }
+    /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    pub fn 購入_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = 購入Ref<'graph>> + 'graph {
+        self.購入
+            .positions()
+            .map(move |position| 購入Ref {
+                graph: self,
+                internal_position: __購入InternalPosition(position),
+            })
+    }
+    /// この種別の辺の件数を返す。
+    pub fn 購入_len(&self) -> usize {
+        self.購入.len()
+    }
+    /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    pub fn 友人_by_id<'graph>(
+        &'graph self,
+        id: &友人Id,
+    ) -> Option<友人Ref<'graph>> {
+        Some(友人Ref {
+            graph: self,
+            internal_position: __友人InternalPosition(self.友人.position(id)?),
+        })
+    }
+    /// この種別の辺の公開IDを挿入順に走査する。
+    pub fn 友人_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph 友人Id> {
+        self.友人.ids()
+    }
+    /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    pub fn 友人_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = 友人Ref<'graph>> + 'graph {
+        self.友人
+            .positions()
+            .map(move |position| 友人Ref {
+                graph: self,
+                internal_position: __友人InternalPosition(position),
+            })
+    }
+    /// この種別の辺の件数を返す。
+    pub fn 友人_len(&self) -> usize {
+        self.友人.len()
+    }
     /// builder をクロージャに貸し出し、戻ったら凍結して図式適合
     /// (端点種別・where 制約) を一括検査する。最初の1件の違反で
     /// `Err` になる (複数の違反を全件見たい場合は
@@ -372,6 +506,12 @@ pub struct Builder {
 }
 /// 型付き ID を受け取るノード・エッジ共通の挿入トレイト。
 ///
+/// 署名が `insert_with_id(self, b, id)` と、挿入される値を receiver に
+/// して `Builder` を引数で受ける向きなのは、`graph!` がノード項の値の
+/// 型を解析せず、正しい内部ストレージへの振り分けを値の型の trait
+/// ディスパッチに頼るためである。利用者向けの公開入口は
+/// `Builder::insert`/`Builder::add` の側にある。
+///
 /// `insert_named_with_id` は [`graphite::NamedInsertPermit`] を要求する
 /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
 /// `insert_with_id` (許可証不要、名前付き位置を返さない) は独立した
@@ -402,8 +542,8 @@ pub trait 世界DefaultId: 世界Insertable {
     ) -> (Self::Id, Self::NamedPosition);
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
-/// ノード挿入で使うトレイト境界。読み取りは同じ module 内の
-/// ノードマーカー型が提供する。利用者がこのトレイトのメソッドを
+/// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと
+/// `NodeRef` のメソッドが提供する。利用者がこのトレイトのメソッドを
 /// 直接呼ぶことは想定しない。
 pub trait 世界Node: 世界Insertable {}
 impl 世界Insertable for super::人物 {
@@ -457,8 +597,6 @@ impl 世界DefaultId for super::人物 {
     }
 }
 impl 世界Node for super::人物 {}
-/// このスキーマにおける `#ty` ノード種別の問い合わせ名前空間。
-pub struct 人物;
 /// 完成済みグラフ上の `#ty` ノード個体。
 #[derive(Clone, Copy)]
 pub struct 人物Ref<'graph> {
@@ -484,13 +622,101 @@ impl<'graph> 人物Ref<'graph> {
             )
             .1
     }
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
     pub fn 購入_as_購入者(
         self,
     ) -> impl Iterator<Item = 購入Ref<'graph>> + 'graph {
-        購入::of_購入者(self)
+        let positions = self.graph.購入_from_index.get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| 購入Ref {
+                graph: self.graph,
+                internal_position,
+            })
     }
+    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    pub fn 購入_try_between(
+        self,
+        other: 商品Ref<'graph>,
+    ) -> Result<Option<購入Ref<'graph>>, graphite::GraphMismatch> {
+        if self.graph.__graphite_construction_stamp
+            != other.graph.__graphite_construction_stamp
+        {
+            return Err(graphite::GraphMismatch);
+        }
+        let found = self
+            .graph
+            .__graphite_購入_by_pair
+            .get(&(self.internal_position, other.internal_position))
+            .copied();
+        Ok(
+            found
+                .map(|internal_position| 購入Ref {
+                    graph: self.graph,
+                    internal_position,
+                }),
+        )
+    }
+    /// # Panics
+    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    pub fn 購入_between(self, other: 商品Ref<'graph>) -> Option<購入Ref<'graph>> {
+        self.購入_try_between(other)
+            .unwrap_or_else(|error| {
+                panic!(
+                    "{}::{}: {error}", stringify!(人物Ref), stringify!(購入_between)
+                )
+            })
+    }
+    /// 接続辺を O(1) で参照し、追加確保なしで挿入順に走査する。
     pub fn 友人_incident(self) -> impl Iterator<Item = 友人Ref<'graph>> + 'graph {
-        友人::incident(self)
+        let positions = self.graph.友人_index.get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| 友人Ref {
+                graph: self.graph,
+                internal_position,
+            })
+    }
+    ///順序なし端点対を平均 O(1)、追加確保なしで検索する。
+    pub fn 友人_try_between(
+        self,
+        other: 人物Ref<'graph>,
+    ) -> Result<Option<友人Ref<'graph>>, graphite::GraphMismatch> {
+        if self.graph.__graphite_construction_stamp
+            != other.graph.__graphite_construction_stamp
+        {
+            return Err(graphite::GraphMismatch);
+        }
+        let found = self
+            .graph
+            .__graphite_友人_by_pair
+            .get(
+                &graphite::UnorderedPair::new(
+                    self.internal_position,
+                    other.internal_position,
+                ),
+            )
+            .copied();
+        Ok(
+            found
+                .map(|internal_position| 友人Ref {
+                    graph: self.graph,
+                    internal_position,
+                }),
+        )
+    }
+    /// # Panics
+    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    pub fn 友人_between(self, other: 人物Ref<'graph>) -> Option<友人Ref<'graph>> {
+        self.友人_try_between(other)
+            .unwrap_or_else(|error| {
+                panic!(
+                    "{}::{}: {error}", stringify!(人物Ref), stringify!(友人_between)
+                )
+            })
     }
 }
 impl<'graph> std::ops::Deref for 人物Ref<'graph> {
@@ -510,36 +736,6 @@ impl<'graph> std::fmt::Debug for 人物Ref<'graph> {
         f.debug_struct(stringify!(人物Ref))
             .field("id", &self.id())
             .finish_non_exhaustive()
-    }
-}
-impl 人物 {
-    pub fn get<'graph>(g: &'graph Graph, id: &人物Id) -> Option<人物Ref<'graph>> {
-        let internal_position = __人物InternalPosition(
-            g.__graphite_node_人物.position(id)?,
-        );
-        Some(人物Ref {
-            graph: g,
-            internal_position,
-        })
-    }
-    pub fn get_mut<'graph>(
-        g: &'graph mut Graph,
-        id: &人物Id,
-    ) -> Option<&'graph mut super::人物> {
-        g.__graphite_node_人物.get_mut(id)
-    }
-    pub fn ids<'graph>(g: &'graph Graph) -> impl Iterator<Item = &'graph 人物Id> {
-        g.__graphite_node_人物.ids()
-    }
-    pub fn iter<'graph>(
-        g: &'graph Graph,
-    ) -> impl Iterator<Item = 人物Ref<'graph>> + 'graph {
-        g.__graphite_node_人物
-            .positions()
-            .map(move |position| 人物Ref {
-                graph: g,
-                internal_position: __人物InternalPosition(position),
-            })
     }
 }
 impl 世界Insertable for super::商品 {
@@ -593,8 +789,6 @@ impl 世界DefaultId for super::商品 {
     }
 }
 impl 世界Node for super::商品 {}
-/// このスキーマにおける `#ty` ノード種別の問い合わせ名前空間。
-pub struct 商品;
 /// 完成済みグラフ上の `#ty` ノード個体。
 #[derive(Clone, Copy)]
 pub struct 商品Ref<'graph> {
@@ -620,10 +814,19 @@ impl<'graph> 商品Ref<'graph> {
             )
             .1
     }
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
     pub fn 購入_as_対象商品(
         self,
     ) -> impl Iterator<Item = 購入Ref<'graph>> + 'graph {
-        購入::of_対象商品(self)
+        let positions = self.graph.購入_to_index.get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| 購入Ref {
+                graph: self.graph,
+                internal_position,
+            })
     }
 }
 impl<'graph> std::ops::Deref for 商品Ref<'graph> {
@@ -643,36 +846,6 @@ impl<'graph> std::fmt::Debug for 商品Ref<'graph> {
         f.debug_struct(stringify!(商品Ref))
             .field("id", &self.id())
             .finish_non_exhaustive()
-    }
-}
-impl 商品 {
-    pub fn get<'graph>(g: &'graph Graph, id: &商品Id) -> Option<商品Ref<'graph>> {
-        let internal_position = __商品InternalPosition(
-            g.__graphite_node_商品.position(id)?,
-        );
-        Some(商品Ref {
-            graph: g,
-            internal_position,
-        })
-    }
-    pub fn get_mut<'graph>(
-        g: &'graph mut Graph,
-        id: &商品Id,
-    ) -> Option<&'graph mut super::商品> {
-        g.__graphite_node_商品.get_mut(id)
-    }
-    pub fn ids<'graph>(g: &'graph Graph) -> impl Iterator<Item = &'graph 商品Id> {
-        g.__graphite_node_商品.ids()
-    }
-    pub fn iter<'graph>(
-        g: &'graph Graph,
-    ) -> impl Iterator<Item = 商品Ref<'graph>> + 'graph {
-        g.__graphite_node_商品
-            .positions()
-            .map(move |position| 商品Ref {
-                graph: g,
-                internal_position: __商品InternalPosition(position),
-            })
     }
 }
 /// `graph!` の `add` 経由のエッジ挿入で使うトレイト境界。利用者が
@@ -1150,153 +1323,5 @@ impl graphite::FreezableBuilder for Builder {
     type Violation = Violation;
     fn freeze_into_graph(self) -> Result<Self::Graph, Self::Violation> {
         self.freeze()
-    }
-}
-impl 購入 {
-    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
-    /// 問い合わせ時に結果 `Vec` を確保しない。
-    pub fn of_購入者<'g>(
-        node: 人物Ref<'g>,
-    ) -> impl Iterator<Item = 購入Ref<'g>> + 'g {
-        let positions = node.graph.購入_from_index.get(node.internal_position.0);
-        positions
-            .iter()
-            .copied()
-            .map(move |internal_position| 購入Ref {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
-    /// 問い合わせ時に結果 `Vec` を確保しない。
-    pub fn of_対象商品<'g>(
-        node: 商品Ref<'g>,
-    ) -> impl Iterator<Item = 購入Ref<'g>> + 'g {
-        let positions = node.graph.購入_to_index.get(node.internal_position.0);
-        positions
-            .iter()
-            .copied()
-            .map(move |internal_position| 購入Ref {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
-    pub fn try_between<'g>(
-        a: 人物Ref<'g>,
-        b: 商品Ref<'g>,
-    ) -> Result<Option<購入Ref<'g>>, graphite::GraphMismatch> {
-        if a.graph.__graphite_construction_stamp != b.graph.__graphite_construction_stamp
-        {
-            return Err(graphite::GraphMismatch);
-        }
-        let found = a
-            .graph
-            .__graphite_購入_by_pair
-            .get(&(a.internal_position, b.internal_position))
-            .copied();
-        Ok(
-            found
-                .map(|internal_position| 購入Ref {
-                    graph: a.graph,
-                    internal_position,
-                }),
-        )
-    }
-    /// # Panics
-    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    pub fn between<'g>(a: 人物Ref<'g>, b: 商品Ref<'g>) -> Option<購入Ref<'g>> {
-        Self::try_between(a, b)
-            .unwrap_or_else(|error| panic!("{}::between: {error}", stringify!(購入)))
-    }
-    pub fn get<'g>(g: &'g Graph, id: &購入Id) -> Option<購入Ref<'g>> {
-        Some(購入Ref {
-            graph: g,
-            internal_position: __購入InternalPosition(g.購入.position(id)?),
-        })
-    }
-    /// 辺の構造を保ったまま積み荷だけを可変借用する。
-    pub fn payload_mut<'g>(
-        g: &'g mut Graph,
-        id: &購入Id,
-    ) -> Option<&'g mut 取引情報> {
-        g.購入.get_mut(id).map(|record: &mut __購入Record| &mut record.取引)
-    }
-    pub fn iter<'g>(g: &'g Graph) -> impl Iterator<Item = 購入Ref<'g>> + 'g {
-        g.購入
-            .positions()
-            .map(move |position| 購入Ref {
-                graph: g,
-                internal_position: __購入InternalPosition(position),
-            })
-    }
-    pub fn ids(g: &Graph) -> impl Iterator<Item = &購入Id> {
-        g.購入.ids()
-    }
-    pub fn len(g: &Graph) -> usize {
-        g.購入.len()
-    }
-}
-impl 友人 {
-    /// 接続辺を O(1) で参照し、追加確保なしで挿入順に走査する。
-    pub fn incident<'g>(
-        node: 人物Ref<'g>,
-    ) -> impl Iterator<Item = 友人Ref<'g>> + 'g {
-        let positions = node.graph.友人_index.get(node.internal_position.0);
-        positions
-            .iter()
-            .copied()
-            .map(move |internal_position| 友人Ref {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    ///順序なし端点対を平均 O(1)、追加確保なしで検索する。
-    pub fn try_between<'g>(
-        a: 人物Ref<'g>,
-        b: 人物Ref<'g>,
-    ) -> Result<Option<友人Ref<'g>>, graphite::GraphMismatch> {
-        if a.graph.__graphite_construction_stamp != b.graph.__graphite_construction_stamp
-        {
-            return Err(graphite::GraphMismatch);
-        }
-        let found = a
-            .graph
-            .__graphite_友人_by_pair
-            .get(&graphite::UnorderedPair::new(a.internal_position, b.internal_position))
-            .copied();
-        Ok(
-            found
-                .map(|internal_position| 友人Ref {
-                    graph: a.graph,
-                    internal_position,
-                }),
-        )
-    }
-    /// # Panics
-    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    pub fn between<'g>(a: 人物Ref<'g>, b: 人物Ref<'g>) -> Option<友人Ref<'g>> {
-        Self::try_between(a, b)
-            .unwrap_or_else(|error| panic!("{}::between: {error}", stringify!(友人)))
-    }
-    pub fn get<'g>(g: &'g Graph, id: &友人Id) -> Option<友人Ref<'g>> {
-        Some(友人Ref {
-            graph: g,
-            internal_position: __友人InternalPosition(g.友人.position(id)?),
-        })
-    }
-    pub fn iter<'g>(g: &'g Graph) -> impl Iterator<Item = 友人Ref<'g>> + 'g {
-        g.友人
-            .positions()
-            .map(move |position| 友人Ref {
-                graph: g,
-                internal_position: __友人InternalPosition(position),
-            })
-    }
-    pub fn ids(g: &Graph) -> impl Iterator<Item = &友人Id> {
-        g.友人.ids()
-    }
-    pub fn len(g: &Graph) -> usize {
-        g.友人.len()
     }
 }

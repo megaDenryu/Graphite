@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    9088289943822195796u64, 9237966871188043349u64, 1486501201801209562u64,
-    7646608545235055806u64,
+    14748953094325769172u64, 12685835378228650395u64, 11558121362020793874u64,
+    13762779732426612886u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SpeakerId(pub String);
@@ -124,6 +124,104 @@ pub struct Graph {
     __graphite_construction_stamp: u64,
 }
 impl Graph {
+    /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    pub fn speaker_by_id<'graph>(
+        &'graph self,
+        id: &SpeakerId,
+    ) -> Option<SpeakerRef<'graph>> {
+        let internal_position = __SpeakerInternalPosition(
+            self.__graphite_node_speaker.position(id)?,
+        );
+        Some(SpeakerRef {
+            graph: self,
+            internal_position,
+        })
+    }
+    /// グラフの構造を保ったままノード値だけを可変借用する。
+    pub fn speaker_value_mut(&mut self, id: &SpeakerId) -> Option<&mut super::Speaker> {
+        self.__graphite_node_speaker.get_mut(id)
+    }
+    /// この種別のノードの公開IDを挿入順に走査する。
+    pub fn speaker_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph SpeakerId> {
+        self.__graphite_node_speaker.ids()
+    }
+    /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    pub fn speaker_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = SpeakerRef<'graph>> + 'graph {
+        self.__graphite_node_speaker
+            .positions()
+            .map(move |position| SpeakerRef {
+                graph: self,
+                internal_position: __SpeakerInternalPosition(position),
+            })
+    }
+    /// この種別のノードの件数を返す。
+    pub fn speaker_len(&self) -> usize {
+        self.__graphite_node_speaker.len()
+    }
+    /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    pub fn line_by_id<'graph>(&'graph self, id: &LineId) -> Option<LineRef<'graph>> {
+        let internal_position = __LineInternalPosition(
+            self.__graphite_node_line.position(id)?,
+        );
+        Some(LineRef {
+            graph: self,
+            internal_position,
+        })
+    }
+    /// グラフの構造を保ったままノード値だけを可変借用する。
+    pub fn line_value_mut(&mut self, id: &LineId) -> Option<&mut super::Line> {
+        self.__graphite_node_line.get_mut(id)
+    }
+    /// この種別のノードの公開IDを挿入順に走査する。
+    pub fn line_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph LineId> {
+        self.__graphite_node_line.ids()
+    }
+    /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    pub fn line_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = LineRef<'graph>> + 'graph {
+        self.__graphite_node_line
+            .positions()
+            .map(move |position| LineRef {
+                graph: self,
+                internal_position: __LineInternalPosition(position),
+            })
+    }
+    /// この種別のノードの件数を返す。
+    pub fn line_len(&self) -> usize {
+        self.__graphite_node_line.len()
+    }
+    /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    pub fn choice_by_id<'graph>(
+        &'graph self,
+        id: &ChoiceId,
+    ) -> Option<ChoiceRef<'graph>> {
+        Some(ChoiceRef {
+            graph: self,
+            internal_position: __ChoiceInternalPosition(self.choice.position(id)?),
+        })
+    }
+    /// この種別の辺の公開IDを挿入順に走査する。
+    pub fn choice_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph ChoiceId> {
+        self.choice.ids()
+    }
+    /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    pub fn choice_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = ChoiceRef<'graph>> + 'graph {
+        self.choice
+            .positions()
+            .map(move |position| ChoiceRef {
+                graph: self,
+                internal_position: __ChoiceInternalPosition(position),
+            })
+    }
+    /// この種別の辺の件数を返す。
+    pub fn choice_len(&self) -> usize {
+        self.choice.len()
+    }
     /// builder をクロージャに貸し出し、戻ったら凍結して図式適合
     /// (端点種別・where 制約) を一括検査する。最初の1件の違反で
     /// `Err` になる (複数の違反を全件見たい場合は
@@ -229,6 +327,12 @@ pub struct Builder {
 }
 /// 型付き ID を受け取るノード・エッジ共通の挿入トレイト。
 ///
+/// 署名が `insert_with_id(self, b, id)` と、挿入される値を receiver に
+/// して `Builder` を引数で受ける向きなのは、`graph!` がノード項の値の
+/// 型を解析せず、正しい内部ストレージへの振り分けを値の型の trait
+/// ディスパッチに頼るためである。利用者向けの公開入口は
+/// `Builder::insert`/`Builder::add` の側にある。
+///
 /// `insert_named_with_id` は [`graphite::NamedInsertPermit`] を要求する
 /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
 /// `insert_with_id` (許可証不要、名前付き位置を返さない) は独立した
@@ -259,8 +363,8 @@ pub trait DialogueDefaultId: DialogueInsertable {
     ) -> (Self::Id, Self::NamedPosition);
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
-/// ノード挿入で使うトレイト境界。読み取りは同じ module 内の
-/// ノードマーカー型が提供する。利用者がこのトレイトのメソッドを
+/// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと
+/// `NodeRef` のメソッドが提供する。利用者がこのトレイトのメソッドを
 /// 直接呼ぶことは想定しない。
 pub trait DialogueNode: DialogueInsertable {}
 impl DialogueInsertable for super::Speaker {
@@ -314,8 +418,6 @@ impl DialogueDefaultId for super::Speaker {
     }
 }
 impl DialogueNode for super::Speaker {}
-/// このスキーマにおける `#ty` ノード種別の問い合わせ名前空間。
-pub struct Speaker;
 /// 完成済みグラフ上の `#ty` ノード個体。
 #[derive(Clone, Copy)]
 pub struct SpeakerRef<'graph> {
@@ -341,8 +443,59 @@ impl<'graph> SpeakerRef<'graph> {
             )
             .1
     }
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
     pub fn choice_as_speaker(self) -> impl Iterator<Item = ChoiceRef<'graph>> + 'graph {
-        Choice::of_speaker(self)
+        let positions = self.graph.choice_from_index.get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| ChoiceRef {
+                graph: self.graph,
+                internal_position,
+            })
+    }
+    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    pub fn choice_try_between(
+        self,
+        other: LineRef<'graph>,
+    ) -> Result<
+        impl Iterator<Item = ChoiceRef<'graph>> + 'graph,
+        graphite::GraphMismatch,
+    > {
+        if self.graph.__graphite_construction_stamp
+            != other.graph.__graphite_construction_stamp
+        {
+            return Err(graphite::GraphMismatch);
+        }
+        let positions = self
+            .graph
+            .__graphite_choice_by_pair
+            .get(&(self.internal_position, other.internal_position))
+            .map(Vec::as_slice)
+            .unwrap_or(&[]);
+        Ok(
+            positions
+                .iter()
+                .copied()
+                .map(move |internal_position| ChoiceRef {
+                    graph: self.graph,
+                    internal_position,
+                }),
+        )
+    }
+    /// # Panics
+    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    pub fn choice_between(
+        self,
+        other: LineRef<'graph>,
+    ) -> impl Iterator<Item = ChoiceRef<'graph>> + 'graph {
+        self.choice_try_between(other)
+            .unwrap_or_else(|error| {
+                panic!(
+                    "{}::{}: {error}", stringify!(SpeakerRef), stringify!(choice_between)
+                )
+            })
     }
 }
 impl<'graph> std::ops::Deref for SpeakerRef<'graph> {
@@ -362,36 +515,6 @@ impl<'graph> std::fmt::Debug for SpeakerRef<'graph> {
         f.debug_struct(stringify!(SpeakerRef))
             .field("id", &self.id())
             .finish_non_exhaustive()
-    }
-}
-impl Speaker {
-    pub fn get<'graph>(g: &'graph Graph, id: &SpeakerId) -> Option<SpeakerRef<'graph>> {
-        let internal_position = __SpeakerInternalPosition(
-            g.__graphite_node_speaker.position(id)?,
-        );
-        Some(SpeakerRef {
-            graph: g,
-            internal_position,
-        })
-    }
-    pub fn get_mut<'graph>(
-        g: &'graph mut Graph,
-        id: &SpeakerId,
-    ) -> Option<&'graph mut super::Speaker> {
-        g.__graphite_node_speaker.get_mut(id)
-    }
-    pub fn ids<'graph>(g: &'graph Graph) -> impl Iterator<Item = &'graph SpeakerId> {
-        g.__graphite_node_speaker.ids()
-    }
-    pub fn iter<'graph>(
-        g: &'graph Graph,
-    ) -> impl Iterator<Item = SpeakerRef<'graph>> + 'graph {
-        g.__graphite_node_speaker
-            .positions()
-            .map(move |position| SpeakerRef {
-                graph: g,
-                internal_position: __SpeakerInternalPosition(position),
-            })
     }
 }
 impl DialogueInsertable for super::Line {
@@ -445,8 +568,6 @@ impl DialogueDefaultId for super::Line {
     }
 }
 impl DialogueNode for super::Line {}
-/// このスキーマにおける `#ty` ノード種別の問い合わせ名前空間。
-pub struct Line;
 /// 完成済みグラフ上の `#ty` ノード個体。
 #[derive(Clone, Copy)]
 pub struct LineRef<'graph> {
@@ -472,8 +593,17 @@ impl<'graph> LineRef<'graph> {
             )
             .1
     }
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
     pub fn choice_as_line(self) -> impl Iterator<Item = ChoiceRef<'graph>> + 'graph {
-        Choice::of_line(self)
+        let positions = self.graph.choice_to_index.get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| ChoiceRef {
+                graph: self.graph,
+                internal_position,
+            })
     }
 }
 impl<'graph> std::ops::Deref for LineRef<'graph> {
@@ -493,36 +623,6 @@ impl<'graph> std::fmt::Debug for LineRef<'graph> {
         f.debug_struct(stringify!(LineRef))
             .field("id", &self.id())
             .finish_non_exhaustive()
-    }
-}
-impl Line {
-    pub fn get<'graph>(g: &'graph Graph, id: &LineId) -> Option<LineRef<'graph>> {
-        let internal_position = __LineInternalPosition(
-            g.__graphite_node_line.position(id)?,
-        );
-        Some(LineRef {
-            graph: g,
-            internal_position,
-        })
-    }
-    pub fn get_mut<'graph>(
-        g: &'graph mut Graph,
-        id: &LineId,
-    ) -> Option<&'graph mut super::Line> {
-        g.__graphite_node_line.get_mut(id)
-    }
-    pub fn ids<'graph>(g: &'graph Graph) -> impl Iterator<Item = &'graph LineId> {
-        g.__graphite_node_line.ids()
-    }
-    pub fn iter<'graph>(
-        g: &'graph Graph,
-    ) -> impl Iterator<Item = LineRef<'graph>> + 'graph {
-        g.__graphite_node_line
-            .positions()
-            .map(move |position| LineRef {
-                graph: g,
-                internal_position: __LineInternalPosition(position),
-            })
     }
 }
 /// `graph!` の `add` 経由のエッジ挿入で使うトレイト境界。利用者が
@@ -843,87 +943,5 @@ impl graphite::FreezableBuilder for Builder {
     type Violation = Violation;
     fn freeze_into_graph(self) -> Result<Self::Graph, Self::Violation> {
         self.freeze()
-    }
-}
-impl Choice {
-    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
-    /// 問い合わせ時に結果 `Vec` を確保しない。
-    pub fn of_speaker<'g>(
-        node: SpeakerRef<'g>,
-    ) -> impl Iterator<Item = ChoiceRef<'g>> + 'g {
-        let positions = node.graph.choice_from_index.get(node.internal_position.0);
-        positions
-            .iter()
-            .copied()
-            .map(move |internal_position| ChoiceRef {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
-    /// 問い合わせ時に結果 `Vec` を確保しない。
-    pub fn of_line<'g>(node: LineRef<'g>) -> impl Iterator<Item = ChoiceRef<'g>> + 'g {
-        let positions = node.graph.choice_to_index.get(node.internal_position.0);
-        positions
-            .iter()
-            .copied()
-            .map(move |internal_position| ChoiceRef {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
-    pub fn try_between<'g>(
-        a: SpeakerRef<'g>,
-        b: LineRef<'g>,
-    ) -> Result<impl Iterator<Item = ChoiceRef<'g>> + 'g, graphite::GraphMismatch> {
-        if a.graph.__graphite_construction_stamp != b.graph.__graphite_construction_stamp
-        {
-            return Err(graphite::GraphMismatch);
-        }
-        let positions = a
-            .graph
-            .__graphite_choice_by_pair
-            .get(&(a.internal_position, b.internal_position))
-            .map(Vec::as_slice)
-            .unwrap_or(&[]);
-        Ok(
-            positions
-                .iter()
-                .copied()
-                .map(move |internal_position| ChoiceRef {
-                    graph: a.graph,
-                    internal_position,
-                }),
-        )
-    }
-    /// # Panics
-    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    pub fn between<'g>(
-        a: SpeakerRef<'g>,
-        b: LineRef<'g>,
-    ) -> impl Iterator<Item = ChoiceRef<'g>> + 'g {
-        Self::try_between(a, b)
-            .unwrap_or_else(|error| panic!("{}::between: {error}", stringify!(Choice)))
-    }
-    pub fn get<'g>(g: &'g Graph, id: &ChoiceId) -> Option<ChoiceRef<'g>> {
-        Some(ChoiceRef {
-            graph: g,
-            internal_position: __ChoiceInternalPosition(g.choice.position(id)?),
-        })
-    }
-    pub fn iter<'g>(g: &'g Graph) -> impl Iterator<Item = ChoiceRef<'g>> + 'g {
-        g.choice
-            .positions()
-            .map(move |position| ChoiceRef {
-                graph: g,
-                internal_position: __ChoiceInternalPosition(position),
-            })
-    }
-    pub fn ids(g: &Graph) -> impl Iterator<Item = &ChoiceId> {
-        g.choice.ids()
-    }
-    pub fn len(g: &Graph) -> usize {
-        g.choice.len()
     }
 }

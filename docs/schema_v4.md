@@ -151,37 +151,52 @@ let lead_ref = g.lead();   // AssignedRef<'_>
 
 ノード値型が `id`/`value` という名のメソッドを持つ場合、`NodeRef` の同名の固有メソッドが優先される (メソッド解決は `Deref` より先に固有メソッドを探すため)。値側のメソッドを呼びたいときは `(*node_ref).id()` のように明示的に `Deref` させる。
 
-### 3.2 アクセス (動的検索は型名前空間、静的な名前は名前付きラッパーのメソッド)
+### 3.2 アクセス (種別APIは Graph、探索は Ref、静的な名前は名前付きラッパーのメソッド)
+
+種別APIとは、ある種別に属する個体の全体を対象にする読み取り・可変操作の
+ことである。個体と索引の所有者は完成済みの `Graph` なので、種別APIは `Graph`
+のメソッドになる。名前は `{種別名}_{固定接尾辞}` の機械的連結であり、
+`bosses()` のような自然言語の複数形は生成しない。一度 `NodeRef` を得た後の
+関係の探索は、その参照が親 `Graph` と内部位置を保持しているので参照自身の
+メソッドで辿る (親 `Graph` を引数で渡し直さない)。
 
 ```rust
-// ノード (schema module 内のノードマーカー。
-// ユーザー struct への固有 impl は行わない — 複数 schema 共有時の衝突回避)
-let p: Option<Org::PersonRef<'_>> = Org::Person::get(&g, &alice_id);
-Org::Person::ids(&g);  Org::Person::iter(&g);   // &PersonId / PersonRef<'_>
-Org::Person::get_mut(&mut g, &alice_id);        // Option<&mut Person>
+// ノード種別API (ユーザー struct への固有 impl は行わない —
+// 複数 schema 共有時の衝突回避。schema module にノード名の型も作らない)
+let p: Option<Org::PersonRef<'_>> = g.person_by_id(&alice_id);
+g.person_ids();  g.person_iter();       // &PersonId / PersonRef<'_>
+g.person_len();                         // usize
+g.person_value_mut(&alice_id);          // Option<&mut Person>
 
-// 辺 — NodeRef と役割名で検索し、常に EdgeRef を返す
-let bob = Org::Person::get(&g, &bob_id).unwrap();
-Org::Boss::of_subordinate(bob);         // each subordinate:0..1 → Option<BossRef<'_>>
-bob.boss_as_subordinate();              // 同じ検索の NodeRef 版
-Org::Boss::get(&g, &boss_id);          // キーで辺 1 本: Option<BossRef<'_>>
-Org::Boss::between(bob, alice);         // unique pair → Option、他 → iterator
-Org::Boss::try_between(bob, alice);     // 異なるGraphなら GraphMismatch
-Org::Boss::iter(&g);                   // BossRef<'_>
-Org::Boss::ids(&g);  Org::Boss::len(&g);
-Org::Boss::payload_mut(&mut g, &boss_id); // Option<&mut BossEdge>
+// 辺 — NodeRef から役割名で探索し、常に EdgeRef を返す
+let bob = g.person_by_id(&bob_id).unwrap();
+bob.boss_as_subordinate();              // each subordinate:0..1 → Option<BossRef<'_>>
+bob.boss_between(alice);                // unique pair → Option、他 → iterator
+bob.boss_try_between(alice);            // 異なるGraphなら GraphMismatch
+
+// 辺種別API
+g.boss_by_id(&boss_id);                 // キーで辺 1 本: Option<BossRef<'_>>
+g.boss_iter();                          // BossRef<'_>
+g.boss_ids();  g.boss_len();
+g.boss_payload_mut(&boss_id);           // Option<&mut BossEdge>
 
 // graph! の同じ呼び出し箇所で名前が分かる場合 (ID検索なし)
 g.alice();
 g.b_boss();
 ```
 
+`{kind}_between` / `{kind}_try_between` の主語は位置0側 (有向辺は始点側、
+無向辺は唯一の端点型) の `NodeRef` である。可変APIの主語は `&mut Graph` だけ
+とする。`NodeRef`/`EdgeRef` は共有借用のハンドルなのでそこから可変借用は
+作れず、引数も公開IDのままにする (可変借用中は `Ref` を生かせないため、
+内部位置をキーにできない)。
+
 有向の `EdgeRef` は役割名による取得メソッドに加え、方向固定の別名
 `from()` / `to()` / `from_id()` / `to_id()` を持つ。自己型辺でも
 `subordinate()` / `superior()` のように両役割が曖昧にならない。無向の `EdgeRef` は
 方向を捏造せず、`endpoints()` で2つの `NodeRef` を返し、`from` / `to` は持たない。
 辺値の端点IDは構築の入力であり、完成後の端点は変更できない。ノード値と辺の
-積み荷だけを `get_mut` / `payload_mut` で変更できる。
+積み荷だけを `graph.{type}_value_mut` / `graph.{kind}_payload_mut` で変更できる。
 
 - 旧ビュー API (`g.boss().of(..)`、EdgeOne 等 6 型) は**全廃**。
   ランタイムの共通機構は「キー付き要素表」に対するジェネリクスとして
@@ -190,7 +205,7 @@ g.b_boss();
   `b.add(key, edge_value)` (辺版の総称)。
 - **順序保証 (仕様):** `KeyedTable` (`crates/graphite/src/keyed_table.rs`)
   の `ids`/`iter` は挿入順 (`insert` を呼んだ順) を保持する。これにより
-  制約なし辺の役割クエリ/`iter`/`between` (iterator を返す各所) は格納順
+  制約なし辺の役割探索/`{kind}_iter`/`{kind}_between` (iterator を返す各所) は格納順
   (構築時の追加順) を保持する — 旧フェーズ5 項目 i で仕様化された
   「正式な順序保証」の言語の約束であり、実装の副産物ではなく仕様として
   扱う (同じ役割の平行辺が複数ある場合でも、役割クエリはリテラル/builder

@@ -66,9 +66,9 @@ mod tests {
         })
         .expect("正常な依存グラフは構築に成功するはず");
 
-        assert_eq!(Orchestration::Service::ids(&g).count(), 3);
-        let api = Orchestration::Service::get(&g, &ServiceId("api".to_string())).unwrap();
-        let deps: Vec<_> = DependsOn::of_dependent(api).collect();
+        assert_eq!(g.service_ids().count(), 3);
+        let api = g.service_by_id(&ServiceId("api".to_string())).unwrap();
+        let deps: Vec<_> = api.depends_on_as_dependent().collect();
         assert_eq!(deps.len(), 1);
         assert_eq!(deps[0].dependency().name, "db");
     }

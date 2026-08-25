@@ -56,10 +56,10 @@ fn 同じノード値型と辺名を複数schemaで使っても生成型が衝�
     .expect("Socialの構築に成功するはず")
     .into_graph();
 
-    assert_eq!(Org::Person::get(&org, &Org::PersonId("manager".into())).unwrap().name, "Manager");
-    assert_eq!(Social::Person::get(&social, &Social::PersonId("alice".into())).unwrap().name, "Alice");
-    assert_eq!(Org::Relation::len(&org), 1);
-    assert_eq!(Social::Relation::len(&social), 1);
+    assert_eq!(org.person_by_id(&Org::PersonId("manager".into())).unwrap().name, "Manager");
+    assert_eq!(social.person_by_id(&Social::PersonId("alice".into())).unwrap().name, "Alice");
+    assert_eq!(org.relation_len(), 1);
+    assert_eq!(social.relation_len(), 1);
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -99,11 +99,11 @@ fn 日本語のschema名とノード名と辺名と束縛名を通常の識別�
     .expect("日本語識別子を使ったグラフの構築に成功するはず")
     .into_graph();
 
-    assert_eq!(世界::人物::get(&graph, &世界::人物Id("太郎".into())).unwrap().名前, "太郎");
-    assert_eq!(世界::関係::len(&graph), 1);
-    let edge = 世界::関係::ids(&graph)
+    assert_eq!(graph.人物_by_id(&世界::人物Id("太郎".into())).unwrap().名前, "太郎");
+    assert_eq!(graph.関係_len(), 1);
+    let edge = graph.関係_ids()
         .next()
-        .and_then(|id| 世界::関係::get(&graph, id))
+        .and_then(|id| graph.関係_by_id(id))
         .expect("日本語roleを持つedgeを取得できるはず");
     assert_eq!(edge.始点().id(), &世界::人物Id("太郎".into()));
     assert_eq!(edge.終点().id(), &世界::人物Id("次郎".into()));

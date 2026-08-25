@@ -4,7 +4,7 @@
 //! による到達不能/行き止まり検出」の4カテゴリを一通り確認する。
 
 use state_machine::fsm::{self, Event, TransitionError};
-use state_machine::schema::{Cancel, Deliver, OrderFsm, OrderStateId, Pay, Refund, Ship, Submit};
+use state_machine::schema::OrderStateId;
 use state_machine::validate;
 
 fn id(s: &str) -> OrderStateId {
@@ -129,7 +129,7 @@ fn 同じ状態と同じイベントは常に同じ遷移先を返す_決定性(
 fn payのiterは各始点キーにつき1本ずつしか無い_多重度01の保証() {
     let g = fsm::build();
     let mut seen_sources = std::collections::HashSet::new();
-    for edge in Pay::iter(&g) {
+    for edge in g.pay_iter() {
         let before = edge.before().id();
         assert!(
             seen_sources.insert(before.clone()),
@@ -193,12 +193,12 @@ fn 出口を書き忘れた状態を埋め込んだ変種は行き止まりと�
 fn 終端状態集合に含まれる状態は正規fsmでは出て行く辺を持たない() {
     let g = fsm::build();
     for terminal in fsm::terminal_states() {
-        let terminal = OrderFsm::OrderState::get(&g, &terminal).unwrap();
-        assert!(Submit::of_before(terminal).is_none());
-        assert!(Pay::of_before(terminal).is_none());
-        assert!(Ship::of_before(terminal).is_none());
-        assert!(Deliver::of_before(terminal).is_none());
-        assert!(Cancel::of_before(terminal).is_none());
-        assert!(Refund::of_before(terminal).is_none());
+        let terminal = g.order_state_by_id(&terminal).unwrap();
+        assert!(terminal.submit_as_before().is_none());
+        assert!(terminal.pay_as_before().is_none());
+        assert!(terminal.ship_as_before().is_none());
+        assert!(terminal.deliver_as_before().is_none());
+        assert!(terminal.cancel_as_before().is_none());
+        assert!(terminal.refund_as_before().is_none());
     }
 }

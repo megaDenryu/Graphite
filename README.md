@@ -70,10 +70,10 @@ let g = graphite::graph!(Org {
     bob_boss  = Boss(bob -[BossEdge { since: 2021 }]-> alice),
 })?;
 
-let alice = Org::Person::get(&g, &Org::PersonId("alice".to_string())).unwrap();
-let bob = Org::Person::get(&g, &Org::PersonId("bob".to_string())).unwrap();
-let team = Org::BelongsTo::of_member(alice).team();
-let boss_edge = Org::Boss::of_subordinate(bob).unwrap();
+let alice = g.person_by_id(&Org::PersonId("alice".to_string())).unwrap();
+let bob = g.person_by_id(&Org::PersonId("bob".to_string())).unwrap();
+let team = alice.belongs_to_as_member().team();
+let boss_edge = bob.boss_as_subordinate().unwrap();
 let (boss, attrs) = (boss_edge.superior(), boss_edge.payload());
 ```
 
@@ -240,7 +240,7 @@ graph.assignment(); // BelongsToRef<'_>
 `alice` というRust名、`EmployeeId("external-alice")` という公開ID、凍結後の
 内部位置は別概念です。名前付きアクセサはbuilderが挿入時に記録した内部位置を
 使うため公開IDのハッシュ表での検索を行いません。実行時にIDしか分からない
-場合は従来どおり `OrgChart::Employee::get(&graph, &id)` を使います。名前付き
+場合は `graph.employee_by_id(&id)` を使います。名前付き
 ラッパーは `Deref<Target = OrgChart::Graph>` / `DerefMut` を実装するため
 既存の借用APIへそのまま渡せます。
 
@@ -260,12 +260,13 @@ graph.assignment(); // BelongsToRef<'_>
 rustc の型推論に任せます。実行時のリフレクション・型判別は一切無く
 (原則5: ゼロコスト志向)、`b.employee(id, value)` を明示的に呼ぶプログラム的
 構築 (examples の合成データ生成など) では従来通り型名付きメソッドを使えます。
-ノードの**読み取り**API は、スキーマ module 内のノードマーカー
-(`OrgChart::Employee::get`/`ids`/`iter`、後述) が提供します。エッジの書き込み側も対称に `{Schema}::{Schema}Edge` トレイト経由の総称
-`b.add(key, value)` を持ちますが、エッジの**読み取り**API (`of`/`get`/
-`between`/`iter`/`ids`/`len`) は通常のRustファイルに生成した `Kind` 型そのものへの
-固有 impl (`impl Boss { .. }`) として提供されるため、トレイトの `use` は
-不要です (詳しくは次節「アクセサ・アルゴリズムを使う」参照)。
+ノードの**読み取り**API は `Graph` のメソッド
+(`graph.employee_by_id`/`employee_ids`/`employee_iter`、後述) が提供します。
+エッジの書き込み側も対称に `{Schema}::{Schema}Edge` トレイト経由の総称
+`b.add(key, value)` を持ちますが、エッジの**読み取り**API も同じく `Graph` の
+メソッド (`graph.boss_by_id`/`boss_iter` 等) と `NodeRef` のメソッド
+(`person.boss_as_subordinate()` 等) なので、トレイトの `use` は不要です
+(詳しくは次節「アクセサ・アルゴリズムを使う」参照)。
 
 **一括構築 (`extend`)**: 実行時データ (合成データ生成器・CSV 等) から構築する
 場合、要素単位の `insert`/`add` に加えて単一の総称メソッド
@@ -291,23 +292,27 @@ rustc の型推論に任せます。実行時のリフレクション・型判�
 
 schema ごとの生成物は `OrgChart`/`ApprovalFlow` のように別々の Rust module
 へ置かれます。同じ `Person` 値型と同じ辺名を共有しても生成型は衝突せず、
-問い合わせ先も `OrgChart::Person::get(..)` と
-`ApprovalFlow::Person::get(..)` のように一意に指定できます。
+問い合わせ先はどちらの `Graph` の `person_by_id(..)` を呼ぶかで一意に
+決まります。
 
-**動的アクセスは型名前空間の関連関数**: v3 にあった
+**種別APIの主語は `Graph`、探索の主語は `Ref`**: v3 にあった
 「ラベルごとに1個のビューを返すメソッド `{label}()`」という間接層は v4 では
-無くなりました。辺の読み取りAPI (`of_<role>`/`get`/`between`/`iter`/`ids`/`len`) は
-通常のRustファイルに生成した辺型への固有 impl として直接生えます
-(`OrgChart::Boss::of_subordinate(person)` のように呼びます)。ノードの読み取り API
-(`get`/`get_mut`/`ids`/`iter`) はスキーマ module 内のノードマーカーに生えます
-(`OrgChart::Employee::get(&g, ..)`)。ユーザー struct (`Employee` 等) への
-固有 impl は追加しないため、複数 schema が同じ値型を共有できます。
+無くなりました。完成済みの `Graph` が個体と索引の所有者なので、公開IDからの
+検索と種別全体への操作は `Graph` のメソッドとして生えます
+(`graph.boss_by_id(&id)`、`graph.boss_iter()`)。一度 `NodeRef`/`EdgeRef` を
+得た後の関係の探索は、その参照が親 `Graph` と内部位置を保持しているので参照
+自身のメソッドで辿ります (`person.boss_as_subordinate()`)。親 `Graph` を
+引数で渡し直す形は作りません。
 ここで廃止したのはschema由来のビューAPIであり、`graph!` 左辺名から呼び出し箇所
 ごとに生成される `graph.alice()` のような名前付き静的アクセサとは別物です。
 
-- **`Kind::of_<role>(NodeRef)`** — 指定した役割で接続する辺を検索します。
-  **その役割の `where each` 制約が戻り型を決めます**。NodeRefにも
-  `<kind>_as_<role>()` という同じ検索が生成されます。
+種別APIの名前はすべて `{種別名}_{固定接尾辞}` の機械的連結です。同じ種別の
+操作が同じ接頭辞で並ぶため、補完で `graph.boss` と打てば辺 `Boss` に対する
+操作が一覧に出ます。接尾辞は英語のまま固定で、`bosses()` のような自然言語の
+複数形は生成しません。
+
+- **`node.<kind>_as_<role>()`** — 指定した役割で接続する辺を検索します。
+  **その役割の `where each` 制約が戻り型を決めます**。
 
   | 制約             | 戻り値 |
   |------------------|--------|
@@ -316,19 +321,25 @@ schema ごとの生成物は `OrgChart`/`ApprovalFlow` のように別々の Rus
   | 制約なし          | `impl Iterator<Item = KindRef<'graph>>` |
 
   戻り値は常に辺参照なので、相手端点・積み荷・辺IDを失いません。複数件は
-  問い合わせ時の `Vec` 確保なしで挿入順に走査できます。
-- **`Kind::get(&g, &{Kind}Id)`** — 辺そのものをキー (`{Kind}Id`) で1本検索
-  します。見つかれば `Some(KindRef<'graph>)` を返します。
-- **`Kind::between(a, b)`** — 2つのNodeRefの対で検索します。
+  問い合わせ時の `Vec` 確保なしで挿入順に走査できます。無向辺は役割名を
+  持たないため `node.<kind>_incident()` になり、常にiteratorを返します。
+- **`graph.<kind>_by_id(&{Kind}Id)`** — 辺そのものをキー (`{Kind}Id`) で1本
+  検索します。見つかれば `Some(KindRef<'graph>)` を返します。ノードも同じく
+  `graph.<type>_by_id(&{Type}Id)` です。
+- **`a.<kind>_between(b)`** — 2つのNodeRefの対で検索します。主語は位置0側
+  (有向辺は始点側、無向辺は唯一の端点型) のNodeRefです。
   `where unique pair` が付いていれば `Option<KindRef<'graph>>`、無ければ平行辺を
   許すためiteratorを返します。異なるGraph由来を `Result` で扱う
-  `try_between(a, b)` もあります。有向は順序付き、無向は順序なしです。
-- **`Kind::iter(&g)`** — 表全体を `KindRef<'graph>` で走査します。`match`
+  `a.<kind>_try_between(b)` もあります。有向は順序付き、無向は順序なしです。
+- **`graph.<kind>_iter()`** — 表全体を `KindRef<'graph>` で走査します。`match`
   パターンでのグラフクエリの代替として使えます。
-- **`Kind::ids(&g)`/`Kind::len(&g)`** — 全キー列挙 / 本数。
-- **`Type::get_mut(&mut g, &TypeId)`/`Kind::payload_mut(&mut g, &KindId)`** — ノード値または辺の積み荷だけを可変参照として取得します。端点と内部位置は変更できません。
+- **`graph.<kind>_ids()`/`graph.<kind>_len()`** — 全キー列挙 / 本数。
+  ノードも同じく `graph.<type>_ids()`/`graph.<type>_len()` です。
+- **`graph.<type>_value_mut(&{Type}Id)`/`graph.<kind>_payload_mut(&{Kind}Id)`** — ノード値または辺の積み荷だけを可変参照として取得します。端点と内部位置は変更できません。
 
-ノード種別ごとのキー列挙は `{Schema}::{Type}::ids(&g)` です。
+可変APIの主語は `&mut Graph` だけです。`NodeRef`/`EdgeRef` は共有借用の
+ハンドルなのでそこから可変借用は作れず、引数も公開IDのままにしています
+(可変借用中は `Ref` を生かせないため、内部位置をキーにできません)。
 
 **`create_collecting`**: `create` は最初の1件の違反で `Err`
 になりますが、組織図の全違反を一覧表示するような検証系ユースケースでは
@@ -485,14 +496,14 @@ let g = graphite::graph!(OrgChart {
 ### 3. アクセサ・アルゴリズムを使う
 
 ```rust
-let tanaka = OrgChart::Employee::get(&g, &OrgChart::EmployeeId("tanaka".to_string())).unwrap();
-let dept_edge = OrgChart::BelongsTo::of_employee(tanaka); // BelongsToRef (each employee: 1)
-let boss_edge = OrgChart::Boss::of_subordinate(tanaka);   // Option<BossRef>
-let reports = OrgChart::Reports::of_reporter(tanaka);     // iterator<Item = ReportsRef>
+let tanaka = g.employee_by_id(&OrgChart::EmployeeId("tanaka".to_string())).unwrap();
+let dept_edge = tanaka.belongs_to_as_employee(); // BelongsToRef (each employee: 1)
+let boss_edge = tanaka.boss_as_subordinate();    // Option<BossRef>
+let reports = tanaka.reports_as_reporter();      // iterator<Item = ReportsRef>
 
-// iter(): match パターンの代替。イテレータチェーンでクエリを書く。
+// {kind}_iter(): match パターンの代替。イテレータチェーンでクエリを書く。
 // 例: 相互に上司であるペア (A の boss が B かつ B の boss が A) を検出する。
-let all: Vec<(&OrgChart::EmployeeId, &OrgChart::EmployeeId)> = OrgChart::Boss::iter(&g)
+let all: Vec<(&OrgChart::EmployeeId, &OrgChart::EmployeeId)> = g.boss_iter()
     .map(|edge| (edge.subordinate().id(), edge.superior().id()))
     .collect();
 let mutual_bosses: Vec<(&OrgChart::EmployeeId, &OrgChart::EmployeeId)> = all
@@ -501,14 +512,12 @@ let mutual_bosses: Vec<(&OrgChart::EmployeeId, &OrgChart::EmployeeId)> = all
     .filter(|(a, b)| all.contains(&(b, a)))
     .collect();
 
-// {Schema}::{Type}::ids(&g): ノード種別ごとの全キー列挙。
-let all_employee_ids: Vec<&EmployeeId> = OrgChart::Employee::ids(&g).collect();
+// graph.{type}_ids(): ノード種別ごとの全キー列挙。
+let all_employee_ids: Vec<&EmployeeId> = g.employee_ids().collect();
 
-// Kind::get: 辺キー (newtype) そのもので1本検索する。
-let edge: Option<OrgChart::BelongsToRef<'_>> = OrgChart::BelongsTo::get(
-    &g,
-    &OrgChart::BelongsToId("tanaka_dept".to_string()),
-);
+// graph.{kind}_by_id: 辺キー (newtype) そのもので1本検索する。
+let edge: Option<OrgChart::BelongsToRef<'_>> =
+    g.belongs_to_by_id(&OrgChart::BelongsToId("tanaka_dept".to_string()));
 
 // create_collecting: 最初の1件で打ち切らず全違反を収集する。
 let result: Result<OrgChart::Graph, Vec<OrgChart::Violation>> = OrgChart::Graph::create_collecting(|b| {
@@ -545,8 +554,8 @@ let result: Result<OrgChart::Graph, Vec<OrgChart::Violation>> = OrgChart::Graph:
 
 導出エッジ (保存されない計算結果、例: 同じ部署の同僚一覧) は `graph_schema!`
 の DSLには含めていません。生成した`OrgChart` moduleの私有ストレージ・索引へは
-親moduleからアクセスできませんが、`{Type}::get`/`{Kind}::iter` のような
-公開クエリAPIだけで導出クエリを書けます。
+親moduleからアクセスできませんが、`graph.{type}_by_id`/`graph.{kind}_iter`
+のような公開クエリAPIだけで導出クエリを書けます。
 `impl OrgChart::Graph { pub fn colleagues(&self, ...) -> Vec<&Employee> { ... } }`
 のように後から普通のメソッドとして追記してください
 (`crates/graphite/tests/orgchart_macro.rs` に実例あり)。

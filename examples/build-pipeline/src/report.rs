@@ -3,7 +3,7 @@
 //! 計算ロジックは一切持たない。
 
 use crate::analysis::{CriticalPath, DomainIssue, Wave};
-use crate::schema::{BuildPipeline, Consumes, Produces};
+use crate::schema::BuildPipeline;
 
 /// `validate` サブコマンドの結果表示。
 pub fn format_domain_issues(issues: &[DomainIssue]) -> String {
@@ -53,7 +53,7 @@ pub fn format_critical_path(cp: &CriticalPath, g: &BuildPipeline::Graph) -> Stri
     let mut out = String::new();
     out.push_str("クリティカルパス (依存関係上、最も時間がかかる経路):\n");
     for (i, task_id) in cp.path.iter().enumerate() {
-        let secs = BuildPipeline::Task::get(g, task_id)
+        let secs = g.task_by_id(task_id)
             .map(|t| t.secs)
             .unwrap_or(0);
         if i > 0 {
@@ -93,10 +93,10 @@ pub fn mermaid(g: &BuildPipeline::Graph) -> String {
     let mut out = String::new();
     out.push_str("flowchart TD\n");
 
-    let mut task_ids: Vec<_> = BuildPipeline::Task::ids(g).collect();
+    let mut task_ids: Vec<_> = g.task_ids().collect();
     task_ids.sort_by(|a, b| a.0.cmp(&b.0));
     for id in &task_ids {
-        let task = BuildPipeline::Task::get(g, id).expect("Task::ids(g)由来のキーは必ず存在する");
+        let task = g.task_by_id(id).expect("g.task_ids()由来のキーは必ず存在する");
         out.push_str(&format!(
             "    T_{}[\"{} ({}s)\"]\n",
             sanitize_id(&id.0),
@@ -105,11 +105,11 @@ pub fn mermaid(g: &BuildPipeline::Graph) -> String {
         ));
     }
 
-    let mut artifact_ids: Vec<_> = BuildPipeline::Artifact::ids(g).collect();
+    let mut artifact_ids: Vec<_> = g.artifact_ids().collect();
     artifact_ids.sort_by(|a, b| a.0.cmp(&b.0));
     for id in &artifact_ids {
         let artifact =
-            BuildPipeline::Artifact::get(g, id).expect("Artifact::ids(g)由来のキーは必ず存在する");
+            g.artifact_by_id(id).expect("g.artifact_ids()由来のキーは必ず存在する");
         out.push_str(&format!(
             "    A_{}[(\"{}\")]\n",
             sanitize_id(&id.0),
@@ -117,7 +117,7 @@ pub fn mermaid(g: &BuildPipeline::Graph) -> String {
         ));
     }
 
-    let mut produces: Vec<(String, String)> = Produces::iter(g)
+    let mut produces: Vec<(String, String)> = g.produces_iter()
         .map(|edge| {
             (
                 sanitize_id(&edge.task().id().0),
@@ -130,7 +130,7 @@ pub fn mermaid(g: &BuildPipeline::Graph) -> String {
         out.push_str(&format!("    T_{t} -->|produces| A_{a}\n"));
     }
 
-    let mut consumes: Vec<(String, String)> = Consumes::iter(g)
+    let mut consumes: Vec<(String, String)> = g.consumes_iter()
         .map(|edge| {
             (
                 sanitize_id(&edge.task().id().0),

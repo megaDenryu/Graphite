@@ -5,8 +5,6 @@
 //! [`cyclic_demo_sheet`] は循環デモ専用の壊れたシート。
 
 use crate::schema::{Cell, Formula, Sheet};
-#[cfg(test)]
-use crate::schema::{Feeds, Lhs, Rhs};
 
 /// 本編のミニスプレッドシート。10セル・11本の依存エッジ (`Feeds` 9本 +
 /// `Lhs`/`Rhs` 1本ずつ)。
@@ -121,10 +119,10 @@ mod tests {
     #[test]
     fn default_sheetは10セル11エッジで構築できる() {
         let sheet = default_sheet().expect("正常なシートは構築に成功するはず");
-        assert_eq!(Sheet::Cell::ids(&sheet).count(), 10);
-        assert_eq!(Feeds::len(&sheet), 9, "可換な演算(Mul/Sum)の被演算子9本");
-        assert_eq!(Lhs::len(&sheet), 1, "adjustmentの被減数(tax)1本");
-        assert_eq!(Rhs::len(&sheet), 1, "adjustmentの減数(discount_amount)1本");
+        assert_eq!(sheet.cell_ids().count(), 10);
+        assert_eq!(sheet.feeds_len(), 9, "可換な演算(Mul/Sum)の被演算子9本");
+        assert_eq!(sheet.lhs_len(), 1, "adjustmentの被減数(tax)1本");
+        assert_eq!(sheet.rhs_len(), 1, "adjustmentの減数(discount_amount)1本");
     }
 
     #[test]
@@ -133,7 +131,7 @@ mod tests {
         // unique pairだけを見る)。循環検出はEngine::new側の責務。
         let sheet =
             cyclic_demo_sheet().expect("Feedsはunique pairのみなので循環でも構造検証は通るはず");
-        assert_eq!(Sheet::Cell::ids(&sheet).count(), 3);
-        assert_eq!(Feeds::len(&sheet), 3);
+        assert_eq!(sheet.cell_ids().count(), 3);
+        assert_eq!(sheet.feeds_len(), 3);
     }
 }

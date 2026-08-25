@@ -3,9 +3,9 @@
 有向辺は始点・終点という固定語彙ではなく、スキーマに書いた役割名を両側で対称に使う。
 
 ```rust
-let alice = OrgChart::Employee::get(&graph, &alice_id).unwrap();
-let as_subordinate = Boss::of_subordinate(alice); // Option<BossRef<'_>>
-let as_superior = Boss::of_superior(alice);       // impl Iterator<Item = BossRef<'_>>
+let alice = graph.employee_by_id(&alice_id).unwrap();
+let as_subordinate = alice.boss_as_subordinate(); // Option<BossRef<'_>>
+let as_superior = alice.boss_as_superior();       // impl Iterator<Item = BossRef<'_>>
 
 // 同じクエリを NodeRef からも機械的な名前で開始できる。
 alice.boss_as_subordinate();

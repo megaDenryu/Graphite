@@ -104,7 +104,7 @@ pub fn validate_edge_roles(edges: &[EdgeDecl]) -> syn::Result<()> {
 ///
 /// - `既存id型を明示`: 自動生成ID型 (`{ノード名}Id` 等) との衝突。ユーザーが
 ///   既存のID型を使い回したい意図であることが多いため `(id: 型)` の明示を促す。
-/// - `ノードまたは辺の名前を変更`: ノードマーカー・エッジ型・参照型
+/// - `ノードまたは辺の名前を変更`: ノード名・エッジ型・参照型
 ///   (`{ノード名}Ref` 等) との衝突。これらの生成名はノード名/辺名から機械的に
 ///   導出されるため、`(id: 型)` を明示しても衝突は解消できない。宣言名自体の
 ///   変更を促す。
@@ -167,11 +167,18 @@ pub fn validate_generated_type_names(
         Ok(())
     };
 
+    // ノード名そのものは schema module へ型として生成しなくなったが、
+    // `{name}Id`/`{name}Ref` と `Graph` の種別メソッド名の由来なので、
+    // 名前の重複はここで弾き続ける (登録を外すと `node Graph;` のような
+    // 宣言が検査を通ってしまう)。
     for node in nodes {
         register(
             node.name.to_string(),
             node.name.span(),
-            format!("ノードマーカー `{}`", node.name),
+            format!(
+                "ノード名 `{}` (`{}Id`/`{}Ref` と Graph の種別メソッドの由来)",
+                node.name, node.name, node.name
+            ),
             生成名衝突助言::ノードまたは辺の名前を変更,
         )?;
     }

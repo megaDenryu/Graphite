@@ -48,18 +48,18 @@ fn スプライスでノードのみを追加できる() {
     .expect("ノードのみのスプライスは構築に成功するはず");
 
     assert_eq!(
-        SpliceDemo::Person::get(&g, &PersonId("鈴木".to_string())).unwrap().name,
+        g.person_by_id(&PersonId("鈴木".to_string())).unwrap().name,
         "鈴木"
     );
     assert_eq!(
-        SpliceDemo::Person::get(&g, &PersonId("田中".to_string())).unwrap().name,
+        g.person_by_id(&PersonId("田中".to_string())).unwrap().name,
         "田中"
     );
     assert_eq!(
-        SpliceDemo::Person::get(&g, &PersonId("佐藤".to_string())).unwrap().name,
+        g.person_by_id(&PersonId("佐藤".to_string())).unwrap().name,
         "佐藤"
     );
-    assert_eq!(SpliceDemo::Person::ids(&g).count(), 3);
+    assert_eq!(g.person_ids().count(), 3);
 }
 
 #[test]
@@ -78,8 +78,8 @@ fn スプライスで辺のみを追加できる() {
     })
     .expect("辺のみのスプライスは構築に成功するはず");
 
-    assert_eq!(Knows::len(&g), 2);
-    let k1 = Knows::get(&g, &KnowsId("k1".to_string())).expect("k1が存在するはず");
+    assert_eq!(g.knows_len(), 2);
+    let k1 = g.knows_by_id(&KnowsId("k1".to_string())).expect("k1が存在するはず");
     assert_eq!(k1.knower().id(), &PersonId("alice".to_string()));
     assert_eq!(k1.known().id(), &PersonId("bob".to_string()));
 }
@@ -101,9 +101,9 @@ fn 静的項とスプライスを混在できる() {
     })
     .expect("静的項とスプライスの混在は構築に成功するはず");
 
-    assert_eq!(SpliceDemo::Person::ids(&g).count(), 2);
-    assert_eq!(Knows::len(&g), 2);
-    assert!(Knows::get(&g, &KnowsId("k_extra".to_string())).is_some());
+    assert_eq!(g.person_ids().count(), 2);
+    assert_eq!(g.knows_len(), 2);
+    assert!(g.knows_by_id(&KnowsId("k_extra".to_string())).is_some());
 }
 
 #[test]
@@ -119,8 +119,8 @@ fn 空コレクションのスプライスは何も追加しない() {
     })
     .expect("空コレクションのスプライスも成功するはず");
 
-    assert_eq!(SpliceDemo::Person::ids(&g).count(), 1);
-    assert_eq!(Knows::len(&g), 0);
+    assert_eq!(g.person_ids().count(), 1);
+    assert_eq!(g.knows_len(), 0);
 }
 
 #[test]
@@ -128,7 +128,7 @@ fn 空コレクションのスプライスは何も追加しない() {
 fn 静的項とスプライスが混在する場合_挿入順は記述順になる() {
     // `docs/graph_splice.md` §1: 実行順は「静的ノードのlet列 → 静的エッジと
     // スプライスを記述順」。ここでは 静的辺 → スプライス → 静的辺 の順で
-    // 書き、`Knows::ids` (挿入順を保持する `KeyedTable` 経由) がその記述順
+    // 書き、`graph.knows_ids()` (挿入順を保持する `KeyedTable` 経由) がその記述順
     // どおりに列挙することを確認する。
     let middle: Vec<(String, Knows)> = vec![
         (
@@ -152,7 +152,7 @@ fn 静的項とスプライスが混在する場合_挿入順は記述順にな�
     })
     .expect("構築に成功するはず");
 
-    let ids: Vec<String> = Knows::ids(&g).map(|id| id.0.clone()).collect();
+    let ids: Vec<String> = g.knows_ids().map(|id| id.0.clone()).collect();
     assert_eq!(
         ids,
         vec![

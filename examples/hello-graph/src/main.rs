@@ -122,10 +122,7 @@ graphite::graph_schema! {
 }
 
 // 綴り短縮のための再輸出。同名edgeを持つschemaを足したらこの行を消す。
-use Org::{
-    BelongsTo, BelongsToId, Boss, Friends, FriendsId, PersonId, Reports, ReportsId, ReviewedBy,
-    TeamId,
-};
+use Org::{BelongsTo, BelongsToId, FriendsId, PersonId, Reports, ReportsId, TeamId};
 
 fn main() {
     section3();
@@ -237,7 +234,7 @@ fn main() {
 //
 // v3 の比喩は「ラベルはリレーショナルDBの表名、辺はその1行」でしたが、
 // v4 ではさらに一歩進み、**辺という「行」自体が独立したキーを持つ実体**
-// になりました。`Boss::of_subordinate(bob_ref)` はNodeRef内の位置から、
+// になりました。`bob_ref.boss_as_subordinate()` はNodeRef内の位置から、
 // 位置索引から `BossPosition` を取得して `BossRef` を返します。`BossRef` の
 // `superior()` は記録済みの端点位置から `PersonRef` を直接組み立てます。
 
@@ -253,7 +250,7 @@ fn main() {
 // v4 (`docs/schema_v4.md` §3.2) の動的検索は型名前空間の関連関数です。
 // これとは別に、graph! の左辺名は呼び出しsite固有の `g.alice()` のような
 // 静的アクセサになります:
-// - ノード: schema module 内のマーカー型 (`Org::Person::get(&g, &id)` 等)。
+// - ノード: schema module 内のマーカー型 (`g.person_by_id(&id)` 等)。
 // - エッジ: 各 `Kind` への固有 impl (`Boss::of`/`get`/`between`/`iter`/
 //   `ids`/`len`)。`of`/`between` の戻り型は宣言した `where` 制約が決めます
 //   (`each 1` → 直接参照、`each 0..1` → `Option`、制約なし → `Vec`、
@@ -283,14 +280,14 @@ fn section3() {
     チームノードを1件読む(&g);
     personidの作り方とgraphのキーの対応を確認する(&g);
 
-    // --- エッジを辿る (Kind::of_<role>/get/between) ---
-    println!("\n--- エッジを辿る (Kind::of_<role>/get/between) ---");
-    each_1のofは直接参照を返す(&g);
-    each_0か1のofはoptionを返す(&g);
+    // --- エッジを辿る ({kind}_as_<role> / {kind}_by_id / {kind}_between) ---
+    println!("\n--- エッジを辿る (種別名_as_役割名 / 種別名_by_id / 種別名_between) ---");
+    each_1の役割探索は直接参照を返す(&g);
+    each_0か1の役割探索はoptionを返す(&g);
     unique_pairのbetweenはoptionを返す(&g);
-    制約なしのofはvecを返す(&g);
+    制約なしの役割探索はvecを返す(&g);
     無向辺のendpointsアクセサで両端を読む(&g);
-    無向辺のofとbetweenは対称に辿れる(&g);
+    無向辺の接続探索と端点対検索は対称に辿れる(&g);
 
     // --- 一覧する (iter/ids/len) ---
     println!("\n--- 一覧する (iter/ids/len) ---");
@@ -400,7 +397,7 @@ fn builderの型名メソッドで組み立てる() {
         );
     })
     .expect("builder の型名メソッドでも構築に成功するはず");
-    let dave: Org::PersonRef<'_> = Org::Person::get(&g, &PersonId("dave".to_string())).unwrap();
+    let dave: Org::PersonRef<'_> = g.person_by_id(&PersonId("dave".to_string())).unwrap();
     println!("(構築4: builderの型名メソッド) dave = {}", dave.name);
 }
 
@@ -425,27 +422,27 @@ fn builderの総称insertとaddで組み立てる() {
             b.add("eve_dept", BelongsTo::new(eve_id.clone(), sales_id.clone()));
     })
     .expect("insert/add 経由の構築も成功するはず");
-    let eve: Org::PersonRef<'_> = Org::Person::get(&g, &PersonId("eve".to_string())).unwrap();
+    let eve: Org::PersonRef<'_> = g.person_by_id(&PersonId("eve".to_string())).unwrap();
     println!("(構築5: builderの総称insert/add) eve = {}", eve.name);
 }
 
 // --- ノードを読む ---
 
-// やりたいこと: `{Type}::get(&g, &id)` で1件読む (無ければ None)。
+// やりたいこと: `g.{type}_by_id(&id)` で1件読む (無ければ None)。
 fn 人ノードを1件読む(g: &Org::Graph) {
-    let alice: Option<Org::PersonRef<'_>> = Org::Person::get(g, &PersonId("alice".to_string()));
+    let alice: Option<Org::PersonRef<'_>> = g.person_by_id(&PersonId("alice".to_string()));
     if let Some(person) = alice {
-        println!("(ノード) Person::get(&g, &alice) = {}", person.name);
+        println!("(ノード) g.person_by_id(&alice) = {}", person.name);
     }
-    let unknown: Option<Org::PersonRef<'_>> = Org::Person::get(g, &PersonId("dave".to_string()));
-    println!("(ノード) Person::get(&g, &dave) = {unknown:?}");
+    let unknown: Option<Org::PersonRef<'_>> = g.person_by_id(&PersonId("dave".to_string()));
+    println!("(ノード) g.person_by_id(&dave) = {unknown:?}");
 }
 
-// やりたいこと: `Team::get` も同じ形。ノード型が違っても命名規則は共通。
+// やりたいこと: `g.team_by_id` も同じ形。ノード型が違っても命名規則は共通。
 fn チームノードを1件読む(g: &Org::Graph) {
-    let eng: Option<Org::TeamRef<'_>> = Org::Team::get(g, &TeamId("eng".to_string()));
+    let eng: Option<Org::TeamRef<'_>> = g.team_by_id(&TeamId("eng".to_string()));
     if let Some(team) = eng {
-        println!("(ノード) Team::get(&g, &eng) = {}", team.name);
+        println!("(ノード) g.team_by_id(&eng) = {}", team.name);
     }
 }
 
@@ -453,7 +450,7 @@ fn チームノードを1件読む(g: &Org::Graph) {
 // キー (`alice = ..`) はこの `PersonId("alice".to_string())` と同一視される。
 fn personidの作り方とgraphのキーの対応を確認する(g: &Org::Graph) {
     let hand_built_id: PersonId = PersonId("alice".to_string());
-    let alice: Org::PersonRef<'_> = Org::Person::get(g, &hand_built_id)
+    let alice: Org::PersonRef<'_> = g.person_by_id(&hand_built_id)
         .expect("graph!のキーaliceがPersonId(\"alice\")と一致するはず");
     println!(
         "(型) PersonId(\"alice\".to_string()) で graph! の alice = {} が引ける",
@@ -461,36 +458,36 @@ fn personidの作り方とgraphのキーの対応を確認する(g: &Org::Graph)
     );
 }
 
-// --- エッジを辿る (Kind::of_<role>/get/between) ---
+// --- エッジを辿る ({kind}_as_<role> / {kind}_by_id / {kind}_between) ---
 
 // やりたいこと: `each member: 1` の役割クエリは辺参照を直接返す。
-fn each_1のofは直接参照を返す(g: &Org::Graph) {
-    let alice = Org::Person::get(g, &PersonId("alice".to_string())).unwrap();
-    let membership: Org::BelongsToRef<'_> = BelongsTo::of_member(alice);
+fn each_1の役割探索は直接参照を返す(g: &Org::Graph) {
+    let alice = g.person_by_id(&PersonId("alice".to_string())).unwrap();
+    let membership: Org::BelongsToRef<'_> = alice.belongs_to_as_member();
     println!(
-        "(each 1) BelongsTo::of_member(alice) = {}",
+        "(each 1) alice.belongs_to_as_member() = {}",
         membership.team().name
     );
 
-    let unknown = Org::Person::get(g, &PersonId("dave".to_string()));
-    println!("Person::get(&g, &dave) = {unknown:?}");
+    let unknown = g.person_by_id(&PersonId("dave".to_string()));
+    println!("g.person_by_id(&dave) = {unknown:?}");
 }
 
 // やりたいこと: `each subordinate: 0..1` の役割クエリは `Option<EdgeRef>` を返す。
-fn each_0か1のofはoptionを返す(g: &Org::Graph) {
-    let bob = Org::Person::get(g, &PersonId("bob".to_string())).unwrap();
-    let boss: Option<Org::BossRef<'_>> = Boss::of_subordinate(bob);
+fn each_0か1の役割探索はoptionを返す(g: &Org::Graph) {
+    let bob = g.person_by_id(&PersonId("bob".to_string())).unwrap();
+    let boss: Option<Org::BossRef<'_>> = bob.boss_as_subordinate();
     if let Some(edge) = boss {
         println!(
-            "(each 0..1) Boss::of_subordinate(bob) = {} (就任年: {})",
+            "(each 0..1) bob.boss_as_subordinate() = {} (就任年: {})",
             edge.superior().name,
             edge.payload().since
         );
     }
-    let alice = Org::Person::get(g, &PersonId("alice".to_string())).unwrap();
-    let no_boss = Boss::of_subordinate(alice);
+    let alice = g.person_by_id(&PersonId("alice".to_string())).unwrap();
+    let no_boss = alice.boss_as_subordinate();
     println!(
-        "(each 0..1) Boss::of_subordinate(alice) で値が無い = {}",
+        "(each 0..1) alice.boss_as_subordinate() で値が無い = {}",
         no_boss.is_none()
     );
 }
@@ -498,26 +495,26 @@ fn each_0か1のofはoptionを返す(g: &Org::Graph) {
 // やりたいこと: `unique pair` のエッジは `between` が `Option` を返す
 // (同じ対に2本目を張れないので「あるかないか」で十分)。
 fn unique_pairのbetweenはoptionを返す(g: &Org::Graph) {
-    let alice = Org::Person::get(g, &PersonId("alice".to_string())).unwrap();
-    let bob = Org::Person::get(g, &PersonId("bob".to_string())).unwrap();
-    let r: Option<Org::ReportsRef<'_>> = Reports::between(alice, bob);
+    let alice = g.person_by_id(&PersonId("alice".to_string())).unwrap();
+    let bob = g.person_by_id(&PersonId("bob".to_string())).unwrap();
+    let r: Option<Org::ReportsRef<'_>> = alice.reports_between(bob);
     println!(
-        "(unique pair) Reports::between(alice, bob) = {}",
+        "(unique pair) alice.reports_between(bob) = {}",
         r.is_some()
     );
-    let none = Reports::between(bob, alice);
+    let none = bob.reports_between(alice);
     println!(
-        "(unique pair) Reports::between(bob, alice) = {} (逆向きは無い)",
+        "(unique pair) bob.reports_between(alice) = {} (逆向きは無い)",
         none.is_some()
     );
 }
 
 // やりたいこと: 制約なしの役割クエリは `EdgeRef` の iterator を返す。
-fn 制約なしのofはvecを返す(g: &Org::Graph) {
-    let bob = Org::Person::get(g, &PersonId("bob".to_string())).unwrap();
-    for edge in ReviewedBy::of_reviewee(bob) {
+fn 制約なしの役割探索はvecを返す(g: &Org::Graph) {
+    let bob = g.person_by_id(&PersonId("bob".to_string())).unwrap();
+    for edge in bob.reviewed_by_as_reviewee() {
         println!(
-            "(制約なし) ReviewedBy::of_reviewee(bob) に {} ({}年度) が含まれる",
+            "(制約なし) bob.reviewed_by_as_reviewee() に {} ({}年度) が含まれる",
             edge.reviewer().name,
             edge.payload().year
         );
@@ -530,10 +527,10 @@ fn 制約なしのofはvecを返す(g: &Org::Graph) {
 // 意味論としては順序なし対であることに注意 (次の関数で確認する)。
 fn 無向辺のendpointsアクセサで両端を読む(g: &Org::Graph) {
     let friends_id = FriendsId("alice_bob_friends".to_string());
-    let edge: Org::FriendsRef<'_> = Friends::get(g, &friends_id).unwrap();
+    let edge: Org::FriendsRef<'_> = g.friends_by_id(&friends_id).unwrap();
     let (p0, p1) = edge.endpoints();
     println!(
-        "(無向) Friends::get(&g, &alice_bob_friends).endpoints() = ({:?}, {:?})",
+        "(無向) g.friends_by_id(&alice_bob_friends).endpoints() = ({:?}, {:?})",
         p0.id(),
         p1.id()
     );
@@ -542,21 +539,21 @@ fn 無向辺のendpointsアクセサで両端を読む(g: &Org::Graph) {
 // やりたいこと: `incident`/`between` はどちらの位置に置かれても対称に辿れる。
 // `unique pair` の同値判定も順序を無視する (`alice -- bob` と `bob -- alice`
 // は同じ対)。
-fn 無向辺のofとbetweenは対称に辿れる(g: &Org::Graph) {
-    let alice = Org::Person::get(g, &PersonId("alice".to_string())).unwrap();
-    let bob = Org::Person::get(g, &PersonId("bob".to_string())).unwrap();
+fn 無向辺の接続探索と端点対検索は対称に辿れる(g: &Org::Graph) {
+    let alice = g.person_by_id(&PersonId("alice".to_string())).unwrap();
+    let bob = g.person_by_id(&PersonId("bob".to_string())).unwrap();
 
-    for edge in Friends::incident(bob) {
+    for edge in bob.friends_incident() {
         let (a, b) = edge.endpoints();
         let friend = if a.id() == bob.id() { b } else { a };
         println!(
-            "(無向) Friends::incident(bob) に {} が含まれる (aliceが位置0でも辿れる)",
+            "(無向) bob.friends_incident() に {} が含まれる (aliceが位置0でも辿れる)",
             friend.name
         );
     }
 
-    let forward: Option<Org::FriendsRef<'_>> = Friends::between(alice, bob);
-    let backward: Option<Org::FriendsRef<'_>> = Friends::between(bob, alice);
+    let forward: Option<Org::FriendsRef<'_>> = alice.friends_between(bob);
+    let backward: Option<Org::FriendsRef<'_>> = bob.friends_between(alice);
     println!(
         "(無向) between(alice, bob) = {:?} / between(bob, alice) = {:?} (順序を無視して同じ辺)",
         forward.map(|edge| edge.id()),
@@ -566,22 +563,22 @@ fn 無向辺のofとbetweenは対称に辿れる(g: &Org::Graph) {
 
 // --- 一覧する (iter/ids/len) ---
 
-// やりたいこと: `{Type}::ids(&g)` でノード種別ごとの全キーを列挙する。
+// やりたいこと: `g.{type}_ids()` でノード種別ごとの全キーを列挙する。
 fn person_idsで全ノードキーを列挙する(g: &Org::Graph) {
-    for id in Org::Person::ids(g) {
-        println!("(一覧) Person::ids: {id:?}");
+    for id in g.person_ids() {
+        println!("(一覧) person_ids: {id:?}");
     }
 }
 
 fn team_idsで全ノードキーを列挙する(g: &Org::Graph) {
-    for id in Org::Team::ids(g) {
-        println!("(一覧) Team::ids: {id:?}");
+    for id in g.team_ids() {
+        println!("(一覧) team_ids: {id:?}");
     }
 }
 
-// やりたいこと: `Kind::iter(&g)` は `{Kind}Ref` を返す。積み荷なしエッジの例。
+// やりたいこと: `g.kind_iter()` は `{Kind}Ref` を返す。積み荷なしエッジの例。
 fn belongs_toのiterで制約ありエッジを列挙する(g: &Org::Graph) {
-    for edge in BelongsTo::iter(g) {
+    for edge in g.belongs_to_iter() {
         println!(
             "(iter) BelongsTo {:?}: {:?} -> {:?}",
             edge.id(),
@@ -593,7 +590,7 @@ fn belongs_toのiterで制約ありエッジを列挙する(g: &Org::Graph) {
 
 // やりたいこと: 積み荷ありエッジの `iter()` も同じ形。`edge.payload()` で積み荷を読む。
 fn bossのiterで積み荷ありエッジを列挙する(g: &Org::Graph) {
-    for edge in Boss::iter(g) {
+    for edge in g.boss_iter() {
         println!(
             "(iter) Boss {:?}: {:?} -> {:?} (since={})",
             edge.id(),
@@ -604,12 +601,12 @@ fn bossのiterで積み荷ありエッジを列挙する(g: &Org::Graph) {
     }
 }
 
-// やりたいこと: `Kind::len(&g)` で表の辺の本数を確認する。
+// やりたいこと: `g.kind_len()` で表の辺の本数を確認する。
 fn lenで表の辺の本数を確認する(g: &Org::Graph) {
-    println!("(len) BelongsTo::len(&g) = {}", BelongsTo::len(g));
+    println!("(len) g.belongs_to_len() = {}", g.belongs_to_len());
     println!(
-        "(len) ReviewedBy::len(&g) = {} (制約なしは平行辺込みの総本数)",
-        ReviewedBy::len(g)
+        "(len) g.reviewed_by_len() = {} (制約なしは平行辺込みの総本数)",
+        g.reviewed_by_len()
     );
 }
 
@@ -1002,6 +999,8 @@ fn section5() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    // 辺値型そのものを組み立てるテストだけが使う (本体は `graph!` 経由で構築する)。
+    use Org::Boss;
 
     fn build() -> Org::Graph {
         #[rustfmt::skip]
@@ -1024,29 +1023,29 @@ mod tests {
     }
 
     #[test]
-    fn each_1のofは参照そのものを返す() {
+    fn each_1の役割探索は参照そのものを返す() {
         let g = build();
-        let alice = Org::Person::get(&g, &PersonId("alice".to_string())).unwrap();
-        let edge = BelongsTo::of_member(alice);
+        let alice = g.person_by_id(&PersonId("alice".to_string())).unwrap();
+        let edge = alice.belongs_to_as_member();
         assert_eq!(edge.team().name, "Engineering");
     }
 
     #[test]
-    fn each_0か1のofはoptionのタプルを返し積み荷フィールドへアクセスできる() {
+    fn each_0か1の役割探索はoptionのタプルを返し積み荷フィールドへアクセスできる() {
         let g = build();
-        let bob = Org::Person::get(&g, &PersonId("bob".to_string())).unwrap();
-        let edge = Boss::of_subordinate(bob).expect("bobの上司はaliceのはず");
+        let bob = g.person_by_id(&PersonId("bob".to_string())).unwrap();
+        let edge = bob.boss_as_subordinate().expect("bobの上司はaliceのはず");
         assert_eq!(edge.superior().name, "Alice");
         assert_eq!(edge.payload().since, 2021);
-        let alice = Org::Person::get(&g, &PersonId("alice".to_string())).unwrap();
-        assert!(Boss::of_subordinate(alice).is_none());
+        let alice = g.person_by_id(&PersonId("alice".to_string())).unwrap();
+        assert!(alice.boss_as_subordinate().is_none());
     }
 
     #[test]
-    fn 制約なしのofはiteratorを返す() {
+    fn 制約なしの役割探索はiteratorを返す() {
         let g = build();
-        let bob = Org::Person::get(&g, &PersonId("bob".to_string())).unwrap();
-        let mut names: Vec<String> = ReviewedBy::of_reviewee(bob)
+        let bob = g.person_by_id(&PersonId("bob".to_string())).unwrap();
+        let mut names: Vec<String> = bob.reviewed_by_as_reviewee()
             .map(|edge| edge.reviewer().name.clone())
             .collect();
         names.sort();
@@ -1056,7 +1055,7 @@ mod tests {
     #[test]
     fn iterで表全体を列挙できる() {
         let g = build();
-        let boss_pairs: Vec<Org::BossRef<'_>> = Boss::iter(&g).collect();
+        let boss_pairs: Vec<Org::BossRef<'_>> = g.boss_iter().collect();
         assert_eq!(boss_pairs.len(), 1);
         let edge = boss_pairs[0];
         assert_eq!(edge.subordinate().id(), &PersonId("bob".to_string()));
@@ -1068,28 +1067,28 @@ mod tests {
     fn person_getで1件読める() {
         let g = build();
         assert_eq!(
-            Org::Person::get(&g, &PersonId("alice".to_string()))
+            g.person_by_id(&PersonId("alice".to_string()))
                 .unwrap()
                 .name,
             "Alice"
         );
-        assert!(Org::Person::get(&g, &PersonId("dave".to_string())).is_none());
+        assert!(g.person_by_id(&PersonId("dave".to_string())).is_none());
     }
 
     #[test]
     fn reports_betweenはunique_pairなのでoptionを返す() {
         let g = build();
-        let alice = Org::Person::get(&g, &PersonId("alice".to_string())).unwrap();
-        let bob = Org::Person::get(&g, &PersonId("bob".to_string())).unwrap();
-        assert!(Reports::between(alice, bob).is_some());
-        assert!(Reports::between(bob, alice).is_none());
+        let alice = g.person_by_id(&PersonId("alice".to_string())).unwrap();
+        let bob = g.person_by_id(&PersonId("bob".to_string())).unwrap();
+        assert!(alice.reports_between(bob).is_some());
+        assert!(bob.reports_between(alice).is_none());
     }
 
     #[test]
-    fn review_のofは制約なしでvecのタプルを返す() {
+    fn review_の役割探索は制約なしでvecのタプルを返す() {
         let g = build();
-        let bob = Org::Person::get(&g, &PersonId("bob".to_string())).unwrap();
-        let reviewers: Vec<_> = ReviewedBy::of_reviewee(bob).collect();
+        let bob = g.person_by_id(&PersonId("bob".to_string())).unwrap();
+        let reviewers: Vec<_> = bob.reviewed_by_as_reviewee().collect();
         assert_eq!(reviewers.len(), 2);
         assert!(reviewers
             .iter()
@@ -1102,8 +1101,8 @@ mod tests {
     #[test]
     fn lenで辺の本数を確認できる() {
         let g = build();
-        assert_eq!(BelongsTo::len(&g), 3);
-        assert_eq!(Reports::len(&g), 2);
+        assert_eq!(g.belongs_to_len(), 3);
+        assert_eq!(g.reports_len(), 2);
     }
 
     #[test]

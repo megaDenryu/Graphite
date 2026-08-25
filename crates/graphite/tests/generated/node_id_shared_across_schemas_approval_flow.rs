@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    13192437405552699691u64, 7823665457649872346u64, 6849670002603668973u64,
-    9742176764316551825u64,
+    15081436115925564042u64, 16148735133537865287u64, 8232687317961150268u64,
+    11324778935394544976u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ApprovesId(pub String);
@@ -113,6 +113,73 @@ pub struct Graph {
     __graphite_construction_stamp: u64,
 }
 impl Graph {
+    /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    pub fn person_by_id<'graph>(
+        &'graph self,
+        id: &PersonId,
+    ) -> Option<PersonRef<'graph>> {
+        let internal_position = __PersonInternalPosition(
+            self.__graphite_node_person.position(id)?,
+        );
+        Some(PersonRef {
+            graph: self,
+            internal_position,
+        })
+    }
+    /// グラフの構造を保ったままノード値だけを可変借用する。
+    pub fn person_value_mut(&mut self, id: &PersonId) -> Option<&mut super::Person> {
+        self.__graphite_node_person.get_mut(id)
+    }
+    /// この種別のノードの公開IDを挿入順に走査する。
+    pub fn person_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph PersonId> {
+        self.__graphite_node_person.ids()
+    }
+    /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    pub fn person_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = PersonRef<'graph>> + 'graph {
+        self.__graphite_node_person
+            .positions()
+            .map(move |position| PersonRef {
+                graph: self,
+                internal_position: __PersonInternalPosition(position),
+            })
+    }
+    /// この種別のノードの件数を返す。
+    pub fn person_len(&self) -> usize {
+        self.__graphite_node_person.len()
+    }
+    /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    pub fn approves_by_id<'graph>(
+        &'graph self,
+        id: &ApprovesId,
+    ) -> Option<ApprovesRef<'graph>> {
+        Some(ApprovesRef {
+            graph: self,
+            internal_position: __ApprovesInternalPosition(self.approves.position(id)?),
+        })
+    }
+    /// この種別の辺の公開IDを挿入順に走査する。
+    pub fn approves_ids<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = &'graph ApprovesId> {
+        self.approves.ids()
+    }
+    /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    pub fn approves_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = ApprovesRef<'graph>> + 'graph {
+        self.approves
+            .positions()
+            .map(move |position| ApprovesRef {
+                graph: self,
+                internal_position: __ApprovesInternalPosition(position),
+            })
+    }
+    /// この種別の辺の件数を返す。
+    pub fn approves_len(&self) -> usize {
+        self.approves.len()
+    }
     /// builder をクロージャに貸し出し、戻ったら凍結して図式適合
     /// (端点種別・where 制約) を一括検査する。最初の1件の違反で
     /// `Err` になる (複数の違反を全件見たい場合は
@@ -217,6 +284,12 @@ pub struct Builder {
 }
 /// 型付き ID を受け取るノード・エッジ共通の挿入トレイト。
 ///
+/// 署名が `insert_with_id(self, b, id)` と、挿入される値を receiver に
+/// して `Builder` を引数で受ける向きなのは、`graph!` がノード項の値の
+/// 型を解析せず、正しい内部ストレージへの振り分けを値の型の trait
+/// ディスパッチに頼るためである。利用者向けの公開入口は
+/// `Builder::insert`/`Builder::add` の側にある。
+///
 /// `insert_named_with_id` は [`graphite::NamedInsertPermit`] を要求する
 /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
 /// `insert_with_id` (許可証不要、名前付き位置を返さない) は独立した
@@ -247,8 +320,8 @@ pub trait ApprovalFlowDefaultId: ApprovalFlowInsertable {
     ) -> (Self::Id, Self::NamedPosition);
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
-/// ノード挿入で使うトレイト境界。読み取りは同じ module 内の
-/// ノードマーカー型が提供する。利用者がこのトレイトのメソッドを
+/// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと
+/// `NodeRef` のメソッドが提供する。利用者がこのトレイトのメソッドを
 /// 直接呼ぶことは想定しない。
 pub trait ApprovalFlowNode: ApprovalFlowInsertable {}
 impl ApprovalFlowInsertable for super::Person {
@@ -289,8 +362,6 @@ impl graphite::NamedGraphElement<Graph> for __PersonNamedPosition {
     }
 }
 impl ApprovalFlowNode for super::Person {}
-/// このスキーマにおける `#ty` ノード種別の問い合わせ名前空間。
-pub struct Person;
 /// 完成済みグラフ上の `#ty` ノード個体。
 #[derive(Clone, Copy)]
 pub struct PersonRef<'graph> {
@@ -316,15 +387,76 @@ impl<'graph> PersonRef<'graph> {
             )
             .1
     }
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
     pub fn approves_as_approver(
         self,
     ) -> impl Iterator<Item = ApprovesRef<'graph>> + 'graph {
-        Approves::of_approver(self)
+        let positions = self.graph.approves_from_index.get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| ApprovesRef {
+                graph: self.graph,
+                internal_position,
+            })
     }
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
     pub fn approves_as_approved(
         self,
     ) -> impl Iterator<Item = ApprovesRef<'graph>> + 'graph {
-        Approves::of_approved(self)
+        let positions = self.graph.approves_to_index.get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| ApprovesRef {
+                graph: self.graph,
+                internal_position,
+            })
+    }
+    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    pub fn approves_try_between(
+        self,
+        other: PersonRef<'graph>,
+    ) -> Result<
+        impl Iterator<Item = ApprovesRef<'graph>> + 'graph,
+        graphite::GraphMismatch,
+    > {
+        if self.graph.__graphite_construction_stamp
+            != other.graph.__graphite_construction_stamp
+        {
+            return Err(graphite::GraphMismatch);
+        }
+        let positions = self
+            .graph
+            .__graphite_approves_by_pair
+            .get(&(self.internal_position, other.internal_position))
+            .map(Vec::as_slice)
+            .unwrap_or(&[]);
+        Ok(
+            positions
+                .iter()
+                .copied()
+                .map(move |internal_position| ApprovesRef {
+                    graph: self.graph,
+                    internal_position,
+                }),
+        )
+    }
+    /// # Panics
+    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    pub fn approves_between(
+        self,
+        other: PersonRef<'graph>,
+    ) -> impl Iterator<Item = ApprovesRef<'graph>> + 'graph {
+        self.approves_try_between(other)
+            .unwrap_or_else(|error| {
+                panic!(
+                    "{}::{}: {error}", stringify!(PersonRef),
+                    stringify!(approves_between)
+                )
+            })
     }
 }
 impl<'graph> std::ops::Deref for PersonRef<'graph> {
@@ -342,36 +474,6 @@ impl<'graph> std::ops::Deref for PersonRef<'graph> {
 impl<'graph> std::fmt::Debug for PersonRef<'graph> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(stringify!(PersonRef))
-    }
-}
-impl Person {
-    pub fn get<'graph>(g: &'graph Graph, id: &PersonId) -> Option<PersonRef<'graph>> {
-        let internal_position = __PersonInternalPosition(
-            g.__graphite_node_person.position(id)?,
-        );
-        Some(PersonRef {
-            graph: g,
-            internal_position,
-        })
-    }
-    pub fn get_mut<'graph>(
-        g: &'graph mut Graph,
-        id: &PersonId,
-    ) -> Option<&'graph mut super::Person> {
-        g.__graphite_node_person.get_mut(id)
-    }
-    pub fn ids<'graph>(g: &'graph Graph) -> impl Iterator<Item = &'graph PersonId> {
-        g.__graphite_node_person.ids()
-    }
-    pub fn iter<'graph>(
-        g: &'graph Graph,
-    ) -> impl Iterator<Item = PersonRef<'graph>> + 'graph {
-        g.__graphite_node_person
-            .positions()
-            .map(move |position| PersonRef {
-                graph: g,
-                internal_position: __PersonInternalPosition(position),
-            })
     }
 }
 /// `graph!` の `add` 経由のエッジ挿入で使うトレイト境界。利用者が
@@ -685,89 +787,5 @@ impl graphite::FreezableBuilder for Builder {
     type Violation = Violation;
     fn freeze_into_graph(self) -> Result<Self::Graph, Self::Violation> {
         self.freeze()
-    }
-}
-impl Approves {
-    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
-    /// 問い合わせ時に結果 `Vec` を確保しない。
-    pub fn of_approver<'g>(
-        node: PersonRef<'g>,
-    ) -> impl Iterator<Item = ApprovesRef<'g>> + 'g {
-        let positions = node.graph.approves_from_index.get(node.internal_position.0);
-        positions
-            .iter()
-            .copied()
-            .map(move |internal_position| ApprovesRef {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
-    /// 問い合わせ時に結果 `Vec` を確保しない。
-    pub fn of_approved<'g>(
-        node: PersonRef<'g>,
-    ) -> impl Iterator<Item = ApprovesRef<'g>> + 'g {
-        let positions = node.graph.approves_to_index.get(node.internal_position.0);
-        positions
-            .iter()
-            .copied()
-            .map(move |internal_position| ApprovesRef {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
-    pub fn try_between<'g>(
-        a: PersonRef<'g>,
-        b: PersonRef<'g>,
-    ) -> Result<impl Iterator<Item = ApprovesRef<'g>> + 'g, graphite::GraphMismatch> {
-        if a.graph.__graphite_construction_stamp != b.graph.__graphite_construction_stamp
-        {
-            return Err(graphite::GraphMismatch);
-        }
-        let positions = a
-            .graph
-            .__graphite_approves_by_pair
-            .get(&(a.internal_position, b.internal_position))
-            .map(Vec::as_slice)
-            .unwrap_or(&[]);
-        Ok(
-            positions
-                .iter()
-                .copied()
-                .map(move |internal_position| ApprovesRef {
-                    graph: a.graph,
-                    internal_position,
-                }),
-        )
-    }
-    /// # Panics
-    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    pub fn between<'g>(
-        a: PersonRef<'g>,
-        b: PersonRef<'g>,
-    ) -> impl Iterator<Item = ApprovesRef<'g>> + 'g {
-        Self::try_between(a, b)
-            .unwrap_or_else(|error| panic!("{}::between: {error}", stringify!(Approves)))
-    }
-    pub fn get<'g>(g: &'g Graph, id: &ApprovesId) -> Option<ApprovesRef<'g>> {
-        Some(ApprovesRef {
-            graph: g,
-            internal_position: __ApprovesInternalPosition(g.approves.position(id)?),
-        })
-    }
-    pub fn iter<'g>(g: &'g Graph) -> impl Iterator<Item = ApprovesRef<'g>> + 'g {
-        g.approves
-            .positions()
-            .map(move |position| ApprovesRef {
-                graph: g,
-                internal_position: __ApprovesInternalPosition(position),
-            })
-    }
-    pub fn ids(g: &Graph) -> impl Iterator<Item = &ApprovesId> {
-        g.approves.ids()
-    }
-    pub fn len(g: &Graph) -> usize {
-        g.approves.len()
     }
 }

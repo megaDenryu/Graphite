@@ -115,7 +115,7 @@ a は起動できない)」と読む。これは実行順序 (トポロジカル
 | 循環依存の検出 | 実行時にハングして気づく (エラーなし) | 構築直後に `CycleError { cycle }` として拒否 (循環パス付き) |
 | 依存を1本追加する | チャネル配線・`spawn` ブロックを複数箇所手直し | `graph!` に1行 `key = DependsOn(a -> b)` を追加するだけ。波は再計算されるだけ |
 | 「実際に並行に実行する」実行主体 | 自作 `spawn` + 同期プリミティブ | 波ごとに `std::thread::scope` (§5) |
-| 依存順序が守られているかの検証 | 手作業でログを目で確認 (or 検証コード無し) | 実行ログの `start`/`end` を `DependsOn::iter(&g)` で全数検査可能 (`tests/integration.rs`) |
+| 依存順序が守られているかの検証 | 手作業でログを目で確認 (or 検証コード無し) | 実行ログの `start`/`end` を `g.depends_on_iter()` で全数検査可能 (`tests/integration.rs`) |
 
 ## 5. 実装の要点
 
@@ -191,7 +191,7 @@ cargo test
 - 循環依存サンプルが `has_cycle()`/`compute_waves()` の両方で検出され、
   具体的な循環パス (`CycleError.cycle`) が得られること
 - `run_waves` の実行ログから、依存先 (`prerequisite`) が依存元
-  (`dependent`) より先に完了していることを `DependsOn::iter(&g)` の
+  (`dependent`) より先に完了していることを `g.depends_on_iter()` の
   全ペアについて検証すること
 - 並列実行が直列実行より実測で速いこと
 - 未知の依存先を参照すると `DependsOnUnknownTarget` 違反になること

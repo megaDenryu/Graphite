@@ -11,7 +11,7 @@ fn ref_outlives_graph<'graph>() -> World::PersonRef<'graph> {
         alice = Person,
     })
     .unwrap();
-    World::Person::get(&graph, &World::PersonId("alice".into())).unwrap()
+    graph.person_by_id(&World::PersonId("alice".into())).unwrap()
 }
 
 fn main() {}

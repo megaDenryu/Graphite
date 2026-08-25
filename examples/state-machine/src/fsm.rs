@@ -9,8 +9,7 @@ use std::fmt;
 
 use crate::schema::OrderFsm::OrderStateRef;
 use crate::schema::{
-    Cancel, CancelEdge, Deliver, OrderFsm, OrderState, OrderStateId, Pay, Refund, RefundEdge, Ship,
-    Submit,
+    CancelEdge, OrderFsm, OrderState, OrderStateId, RefundEdge,
 };
 
 /// FSM が受理するイベント一覧。
@@ -64,11 +63,11 @@ impl std::error::Error for TransitionError {}
 
 /// 遷移エンジン本体。
 ///
-/// イベントの `match` で `{Kind}::iter` を引き、`before` のIDが `current` に
+/// イベントの `match` で `{kind}_iter` を引き、`before` のIDが `current` に
 /// 一致する辺を探して `after` のIDを返すだけ。`where each before: 0..1`
 /// (schema 側の制約) により、一致する辺は高々1本しか無い。
 ///
-/// `{Kind}::iter` は完成済みグラフに束縛されたEdgeRefを返し、役割名getterが
+/// `{kind}_iter` は完成済みグラフに束縛されたEdgeRefを返し、役割名getterが
 /// NodeRefを返す。`step` は `before().id()` / `after().id()` からキーを得る。
 /// 遷移規則そのものはここには一切書かれていない
 /// (schema と `build` にしか無い) — enum+match 散在アンチパターンとの
@@ -79,22 +78,22 @@ pub fn step(
     event: Event,
 ) -> Result<OrderStateId, TransitionError> {
     let next: Option<OrderStateId> = match event {
-        Event::Submit => Submit::iter(fsm)
+        Event::Submit => fsm.submit_iter()
             .find(|edge| edge.before().id() == current)
             .map(|edge| edge.after().id().clone()),
-        Event::Pay => Pay::iter(fsm)
+        Event::Pay => fsm.pay_iter()
             .find(|edge| edge.before().id() == current)
             .map(|edge| edge.after().id().clone()),
-        Event::Ship => Ship::iter(fsm)
+        Event::Ship => fsm.ship_iter()
             .find(|edge| edge.before().id() == current)
             .map(|edge| edge.after().id().clone()),
-        Event::Deliver => Deliver::iter(fsm)
+        Event::Deliver => fsm.deliver_iter()
             .find(|edge| edge.before().id() == current)
             .map(|edge| edge.after().id().clone()),
-        Event::Cancel => Cancel::iter(fsm)
+        Event::Cancel => fsm.cancel_iter()
             .find(|edge| edge.before().id() == current)
             .map(|edge| edge.after().id().clone()),
-        Event::Refund => Refund::iter(fsm)
+        Event::Refund => fsm.refund_iter()
             .find(|edge| edge.before().id() == current)
             .map(|edge| edge.after().id().clone()),
     };
@@ -105,13 +104,13 @@ pub fn step(
 }
 
 /// `cancel` イベントのガード条件・監査情報 (`CancelEdge`) も見たい場合は
-/// `Cancel::of_before` を直接使う (`step` はキーだけ返すため属性は運ばない)。
+/// `state.cancel_as_before()` を直接使う (`step` はキーだけ返すため属性は運ばない)。
 pub fn cancel_details<'a>(
     fsm: &'a OrderFsm::Graph,
     current: &OrderStateId,
 ) -> Option<(OrderStateRef<'a>, &'a CancelEdge)> {
-    let current = OrderFsm::OrderState::get(fsm, current)?;
-    Cancel::of_before(current).map(|edge| (edge.after(), edge.payload()))
+    let current = fsm.order_state_by_id(current)?;
+    current.cancel_as_before().map(|edge| (edge.after(), edge.payload()))
 }
 
 /// `refund` イベントの監査ログ用ラベル (`RefundEdge`) を見たい場合。
@@ -119,8 +118,8 @@ pub fn refund_details<'a>(
     fsm: &'a OrderFsm::Graph,
     current: &OrderStateId,
 ) -> Option<(OrderStateRef<'a>, &'a RefundEdge)> {
-    let current = OrderFsm::OrderState::get(fsm, current)?;
-    Refund::of_before(current).map(|edge| (edge.after(), edge.payload()))
+    let current = fsm.order_state_by_id(current)?;
+    current.refund_as_before().map(|edge| (edge.after(), edge.payload()))
 }
 
 /// 初期状態のキー。

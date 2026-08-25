@@ -9,7 +9,7 @@ use std::collections::HashSet;
 use reactive_cells::antipattern::{build_diamond_demo, build_infinite_loop_demo};
 use reactive_cells::engine::Engine;
 use reactive_cells::fixtures::{cyclic_demo_sheet, default_sheet};
-use reactive_cells::schema::{CellId, Feeds, Lhs, Rhs};
+use reactive_cells::schema::CellId;
 
 fn id(s: &str) -> CellId {
     CellId(s.to_string())
@@ -124,10 +124,10 @@ fn topological_orderはgraph_dependency構造と整合する() {
     // 全ての `Feeds(from -> to)`/`Lhs(from -> to)`/`Rhs(from -> to)` エッジ
     // について pos(from) < pos(to) (3種とも「依存元→依存先」という同じ
     // 向きの意味を持つ、`src/schema.rs` 参照)。
-    for (from, to) in Feeds::iter(engine.graph())
+    for (from, to) in engine.graph().feeds_iter()
         .map(|edge| (edge.dependency().id(), edge.dependent().id()))
-        .chain(Lhs::iter(engine.graph()).map(|edge| (edge.operand().id(), edge.operation().id())))
-        .chain(Rhs::iter(engine.graph()).map(|edge| (edge.operand().id(), edge.operation().id())))
+        .chain(engine.graph().lhs_iter().map(|edge| (edge.operand().id(), edge.operation().id())))
+        .chain(engine.graph().rhs_iter().map(|edge| (edge.operand().id(), edge.operation().id())))
     {
         assert!(
             pos(&from.0) < pos(&to.0),

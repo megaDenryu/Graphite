@@ -14,11 +14,9 @@ fn main() {
         friendship = Friend(alice -- bob),
     })
     .unwrap();
-    let edge = Social::Friend::get(
-        &graph,
-        &Social::FriendId("friendship".to_string()),
-    )
-    .unwrap();
+    let edge = graph
+        .friend_by_id(&Social::FriendId("friendship".to_string()))
+        .unwrap();
     let _ = edge.from();
     let _ = edge.to();
 }

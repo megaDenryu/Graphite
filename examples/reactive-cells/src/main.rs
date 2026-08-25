@@ -9,7 +9,7 @@ use reactive_cells::antipattern::{build_diamond_demo, build_infinite_loop_demo};
 use reactive_cells::engine::Engine;
 use reactive_cells::fixtures::{cyclic_demo_sheet, default_sheet};
 use reactive_cells::report;
-use reactive_cells::schema::{CellId, Feeds, Lhs, Rhs, Sheet};
+use reactive_cells::schema::CellId;
 
 fn id(s: &str) -> CellId {
     CellId(s.to_string())
@@ -46,11 +46,11 @@ fn main() {
     println!(
         "セル数 = {}, 依存エッジ数 = {} (Feeds {} + Lhs {} + Rhs {}。依存関係は実行前に\n\
          一枚で見える構造データ。Lhs/Rhsは減算セルadjustmentの被減数/減数の区別を運ぶ辺種別)",
-        Sheet::Cell::ids(&sheet).count(),
-        Feeds::len(&sheet) + Lhs::len(&sheet) + Rhs::len(&sheet),
-        Feeds::len(&sheet),
-        Lhs::len(&sheet),
-        Rhs::len(&sheet)
+        sheet.cell_ids().count(),
+        sheet.feeds_len() + sheet.lhs_len() + sheet.rhs_len(),
+        sheet.feeds_len(),
+        sheet.lhs_len(),
+        sheet.rhs_len()
     );
     let mut engine = Engine::new(sheet).expect("循環が無いので構築に成功するはず");
     println!("トポロジカル順序 (これがそのままglitch-freeな再計算順になる):");

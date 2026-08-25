@@ -1,4 +1,4 @@
-error: schema module内の生成名 `PersonRef` が衝突します (参照型 `PersonRef` と ノードマーカー `PersonRef`)。ノード名・辺名を変更してください
+error: schema module内の生成名 `PersonRef` が衝突します (参照型 `PersonRef` と ノード名 `PersonRef` (`PersonRefId`/`PersonRefRef` と Graph の種別メソッドの由来))。ノード名・辺名を変更してください
  --> tests/ui/schema_ref_name_collision.rs:6:14
   |
 6 |         node Person;

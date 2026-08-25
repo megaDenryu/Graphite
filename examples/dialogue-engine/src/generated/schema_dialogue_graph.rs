@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    1538426009044193200u64, 11207720484538818739u64, 6679130818709782086u64,
-    1195569750460946250u64,
+    17433344059809225167u64, 12717927844930783120u64, 4673788066204504741u64,
+    16075631939720401905u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SceneId(pub String);
@@ -208,6 +208,137 @@ pub struct Graph {
     __graphite_construction_stamp: u64,
 }
 impl Graph {
+    /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    pub fn scene_by_id<'graph>(&'graph self, id: &SceneId) -> Option<SceneRef<'graph>> {
+        let internal_position = __SceneInternalPosition(
+            self.__graphite_node_scene.position(id)?,
+        );
+        Some(SceneRef {
+            graph: self,
+            internal_position,
+        })
+    }
+    /// グラフの構造を保ったままノード値だけを可変借用する。
+    pub fn scene_value_mut(&mut self, id: &SceneId) -> Option<&mut super::Scene> {
+        self.__graphite_node_scene.get_mut(id)
+    }
+    /// この種別のノードの公開IDを挿入順に走査する。
+    pub fn scene_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph SceneId> {
+        self.__graphite_node_scene.ids()
+    }
+    /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    pub fn scene_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = SceneRef<'graph>> + 'graph {
+        self.__graphite_node_scene
+            .positions()
+            .map(move |position| SceneRef {
+                graph: self,
+                internal_position: __SceneInternalPosition(position),
+            })
+    }
+    /// この種別のノードの件数を返す。
+    pub fn scene_len(&self) -> usize {
+        self.__graphite_node_scene.len()
+    }
+    /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    pub fn ending_by_id<'graph>(
+        &'graph self,
+        id: &EndingId,
+    ) -> Option<EndingRef<'graph>> {
+        let internal_position = __EndingInternalPosition(
+            self.__graphite_node_ending.position(id)?,
+        );
+        Some(EndingRef {
+            graph: self,
+            internal_position,
+        })
+    }
+    /// グラフの構造を保ったままノード値だけを可変借用する。
+    pub fn ending_value_mut(&mut self, id: &EndingId) -> Option<&mut super::Ending> {
+        self.__graphite_node_ending.get_mut(id)
+    }
+    /// この種別のノードの公開IDを挿入順に走査する。
+    pub fn ending_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph EndingId> {
+        self.__graphite_node_ending.ids()
+    }
+    /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    pub fn ending_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = EndingRef<'graph>> + 'graph {
+        self.__graphite_node_ending
+            .positions()
+            .map(move |position| EndingRef {
+                graph: self,
+                internal_position: __EndingInternalPosition(position),
+            })
+    }
+    /// この種別のノードの件数を返す。
+    pub fn ending_len(&self) -> usize {
+        self.__graphite_node_ending.len()
+    }
+    /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    pub fn choice_by_id<'graph>(
+        &'graph self,
+        id: &ChoiceId,
+    ) -> Option<ChoiceRef<'graph>> {
+        Some(ChoiceRef {
+            graph: self,
+            internal_position: __ChoiceInternalPosition(self.choice.position(id)?),
+        })
+    }
+    /// 辺の構造を保ったまま積み荷だけを可変借用する。
+    pub fn choice_payload_mut(&mut self, id: &ChoiceId) -> Option<&mut ChoiceEdge> {
+        self.choice.get_mut(id).map(|record: &mut __ChoiceRecord| &mut record.choice)
+    }
+    /// この種別の辺の公開IDを挿入順に走査する。
+    pub fn choice_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph ChoiceId> {
+        self.choice.ids()
+    }
+    /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    pub fn choice_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = ChoiceRef<'graph>> + 'graph {
+        self.choice
+            .positions()
+            .map(move |position| ChoiceRef {
+                graph: self,
+                internal_position: __ChoiceInternalPosition(position),
+            })
+    }
+    /// この種別の辺の件数を返す。
+    pub fn choice_len(&self) -> usize {
+        self.choice.len()
+    }
+    /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    pub fn finale_by_id<'graph>(
+        &'graph self,
+        id: &FinaleId,
+    ) -> Option<FinaleRef<'graph>> {
+        Some(FinaleRef {
+            graph: self,
+            internal_position: __FinaleInternalPosition(self.finale.position(id)?),
+        })
+    }
+    /// この種別の辺の公開IDを挿入順に走査する。
+    pub fn finale_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph FinaleId> {
+        self.finale.ids()
+    }
+    /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    pub fn finale_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = FinaleRef<'graph>> + 'graph {
+        self.finale
+            .positions()
+            .map(move |position| FinaleRef {
+                graph: self,
+                internal_position: __FinaleInternalPosition(position),
+            })
+    }
+    /// この種別の辺の件数を返す。
+    pub fn finale_len(&self) -> usize {
+        self.finale.len()
+    }
     /// builder をクロージャに貸し出し、戻ったら凍結して図式適合
     /// (端点種別・where 制約) を一括検査する。最初の1件の違反で
     /// `Err` になる (複数の違反を全件見たい場合は
@@ -377,6 +508,12 @@ pub struct Builder {
 }
 /// 型付き ID を受け取るノード・エッジ共通の挿入トレイト。
 ///
+/// 署名が `insert_with_id(self, b, id)` と、挿入される値を receiver に
+/// して `Builder` を引数で受ける向きなのは、`graph!` がノード項の値の
+/// 型を解析せず、正しい内部ストレージへの振り分けを値の型の trait
+/// ディスパッチに頼るためである。利用者向けの公開入口は
+/// `Builder::insert`/`Builder::add` の側にある。
+///
 /// `insert_named_with_id` は [`graphite::NamedInsertPermit`] を要求する
 /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
 /// `insert_with_id` (許可証不要、名前付き位置を返さない) は独立した
@@ -407,8 +544,8 @@ pub trait DialogueGraphDefaultId: DialogueGraphInsertable {
     ) -> (Self::Id, Self::NamedPosition);
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
-/// ノード挿入で使うトレイト境界。読み取りは同じ module 内の
-/// ノードマーカー型が提供する。利用者がこのトレイトのメソッドを
+/// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと
+/// `NodeRef` のメソッドが提供する。利用者がこのトレイトのメソッドを
 /// 直接呼ぶことは想定しない。
 pub trait DialogueGraphNode: DialogueGraphInsertable {}
 impl DialogueGraphInsertable for super::Scene {
@@ -462,8 +599,6 @@ impl DialogueGraphDefaultId for super::Scene {
     }
 }
 impl DialogueGraphNode for super::Scene {}
-/// このスキーマにおける `#ty` ノード種別の問い合わせ名前空間。
-pub struct Scene;
 /// 完成済みグラフ上の `#ty` ノード個体。
 #[derive(Clone, Copy)]
 pub struct SceneRef<'graph> {
@@ -489,14 +624,124 @@ impl<'graph> SceneRef<'graph> {
             )
             .1
     }
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
     pub fn choice_as_scene(self) -> impl Iterator<Item = ChoiceRef<'graph>> + 'graph {
-        Choice::of_scene(self)
+        let positions = self.graph.choice_from_index.get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| ChoiceRef {
+                graph: self.graph,
+                internal_position,
+            })
     }
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
     pub fn choice_as_next(self) -> impl Iterator<Item = ChoiceRef<'graph>> + 'graph {
-        Choice::of_next(self)
+        let positions = self.graph.choice_to_index.get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| ChoiceRef {
+                graph: self.graph,
+                internal_position,
+            })
     }
+    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    pub fn choice_try_between(
+        self,
+        other: SceneRef<'graph>,
+    ) -> Result<
+        impl Iterator<Item = ChoiceRef<'graph>> + 'graph,
+        graphite::GraphMismatch,
+    > {
+        if self.graph.__graphite_construction_stamp
+            != other.graph.__graphite_construction_stamp
+        {
+            return Err(graphite::GraphMismatch);
+        }
+        let positions = self
+            .graph
+            .__graphite_choice_by_pair
+            .get(&(self.internal_position, other.internal_position))
+            .map(Vec::as_slice)
+            .unwrap_or(&[]);
+        Ok(
+            positions
+                .iter()
+                .copied()
+                .map(move |internal_position| ChoiceRef {
+                    graph: self.graph,
+                    internal_position,
+                }),
+        )
+    }
+    /// # Panics
+    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    pub fn choice_between(
+        self,
+        other: SceneRef<'graph>,
+    ) -> impl Iterator<Item = ChoiceRef<'graph>> + 'graph {
+        self.choice_try_between(other)
+            .unwrap_or_else(|error| {
+                panic!(
+                    "{}::{}: {error}", stringify!(SceneRef), stringify!(choice_between)
+                )
+            })
+    }
+    /// この役割に接続する高々1本の辺を O(1)、追加確保なしで返す。
     pub fn finale_as_scene(self) -> Option<FinaleRef<'graph>> {
-        Finale::of_scene(self)
+        self.graph
+            .finale_from_index
+            .get(self.internal_position.0)
+            .copied()
+            .map(|internal_position| FinaleRef {
+                graph: self.graph,
+                internal_position,
+            })
+    }
+    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    pub fn finale_try_between(
+        self,
+        other: EndingRef<'graph>,
+    ) -> Result<
+        impl Iterator<Item = FinaleRef<'graph>> + 'graph,
+        graphite::GraphMismatch,
+    > {
+        if self.graph.__graphite_construction_stamp
+            != other.graph.__graphite_construction_stamp
+        {
+            return Err(graphite::GraphMismatch);
+        }
+        let positions = self
+            .graph
+            .__graphite_finale_by_pair
+            .get(&(self.internal_position, other.internal_position))
+            .map(Vec::as_slice)
+            .unwrap_or(&[]);
+        Ok(
+            positions
+                .iter()
+                .copied()
+                .map(move |internal_position| FinaleRef {
+                    graph: self.graph,
+                    internal_position,
+                }),
+        )
+    }
+    /// # Panics
+    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    pub fn finale_between(
+        self,
+        other: EndingRef<'graph>,
+    ) -> impl Iterator<Item = FinaleRef<'graph>> + 'graph {
+        self.finale_try_between(other)
+            .unwrap_or_else(|error| {
+                panic!(
+                    "{}::{}: {error}", stringify!(SceneRef), stringify!(finale_between)
+                )
+            })
     }
 }
 impl<'graph> std::ops::Deref for SceneRef<'graph> {
@@ -516,36 +761,6 @@ impl<'graph> std::fmt::Debug for SceneRef<'graph> {
         f.debug_struct(stringify!(SceneRef))
             .field("id", &self.id())
             .finish_non_exhaustive()
-    }
-}
-impl Scene {
-    pub fn get<'graph>(g: &'graph Graph, id: &SceneId) -> Option<SceneRef<'graph>> {
-        let internal_position = __SceneInternalPosition(
-            g.__graphite_node_scene.position(id)?,
-        );
-        Some(SceneRef {
-            graph: g,
-            internal_position,
-        })
-    }
-    pub fn get_mut<'graph>(
-        g: &'graph mut Graph,
-        id: &SceneId,
-    ) -> Option<&'graph mut super::Scene> {
-        g.__graphite_node_scene.get_mut(id)
-    }
-    pub fn ids<'graph>(g: &'graph Graph) -> impl Iterator<Item = &'graph SceneId> {
-        g.__graphite_node_scene.ids()
-    }
-    pub fn iter<'graph>(
-        g: &'graph Graph,
-    ) -> impl Iterator<Item = SceneRef<'graph>> + 'graph {
-        g.__graphite_node_scene
-            .positions()
-            .map(move |position| SceneRef {
-                graph: g,
-                internal_position: __SceneInternalPosition(position),
-            })
     }
 }
 impl DialogueGraphInsertable for super::Ending {
@@ -599,8 +814,6 @@ impl DialogueGraphDefaultId for super::Ending {
     }
 }
 impl DialogueGraphNode for super::Ending {}
-/// このスキーマにおける `#ty` ノード種別の問い合わせ名前空間。
-pub struct Ending;
 /// 完成済みグラフ上の `#ty` ノード個体。
 #[derive(Clone, Copy)]
 pub struct EndingRef<'graph> {
@@ -626,8 +839,17 @@ impl<'graph> EndingRef<'graph> {
             )
             .1
     }
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
     pub fn finale_as_ending(self) -> impl Iterator<Item = FinaleRef<'graph>> + 'graph {
-        Finale::of_ending(self)
+        let positions = self.graph.finale_to_index.get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| FinaleRef {
+                graph: self.graph,
+                internal_position,
+            })
     }
 }
 impl<'graph> std::ops::Deref for EndingRef<'graph> {
@@ -647,36 +869,6 @@ impl<'graph> std::fmt::Debug for EndingRef<'graph> {
         f.debug_struct(stringify!(EndingRef))
             .field("id", &self.id())
             .finish_non_exhaustive()
-    }
-}
-impl Ending {
-    pub fn get<'graph>(g: &'graph Graph, id: &EndingId) -> Option<EndingRef<'graph>> {
-        let internal_position = __EndingInternalPosition(
-            g.__graphite_node_ending.position(id)?,
-        );
-        Some(EndingRef {
-            graph: g,
-            internal_position,
-        })
-    }
-    pub fn get_mut<'graph>(
-        g: &'graph mut Graph,
-        id: &EndingId,
-    ) -> Option<&'graph mut super::Ending> {
-        g.__graphite_node_ending.get_mut(id)
-    }
-    pub fn ids<'graph>(g: &'graph Graph) -> impl Iterator<Item = &'graph EndingId> {
-        g.__graphite_node_ending.ids()
-    }
-    pub fn iter<'graph>(
-        g: &'graph Graph,
-    ) -> impl Iterator<Item = EndingRef<'graph>> + 'graph {
-        g.__graphite_node_ending
-            .positions()
-            .map(move |position| EndingRef {
-                graph: g,
-                internal_position: __EndingInternalPosition(position),
-            })
     }
 }
 /// `graph!` の `add` 経由のエッジ挿入で使うトレイト境界。利用者が
@@ -1165,173 +1357,5 @@ impl graphite::FreezableBuilder for Builder {
     type Violation = Violation;
     fn freeze_into_graph(self) -> Result<Self::Graph, Self::Violation> {
         self.freeze()
-    }
-}
-impl Choice {
-    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
-    /// 問い合わせ時に結果 `Vec` を確保しない。
-    pub fn of_scene<'g>(node: SceneRef<'g>) -> impl Iterator<Item = ChoiceRef<'g>> + 'g {
-        let positions = node.graph.choice_from_index.get(node.internal_position.0);
-        positions
-            .iter()
-            .copied()
-            .map(move |internal_position| ChoiceRef {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
-    /// 問い合わせ時に結果 `Vec` を確保しない。
-    pub fn of_next<'g>(node: SceneRef<'g>) -> impl Iterator<Item = ChoiceRef<'g>> + 'g {
-        let positions = node.graph.choice_to_index.get(node.internal_position.0);
-        positions
-            .iter()
-            .copied()
-            .map(move |internal_position| ChoiceRef {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
-    pub fn try_between<'g>(
-        a: SceneRef<'g>,
-        b: SceneRef<'g>,
-    ) -> Result<impl Iterator<Item = ChoiceRef<'g>> + 'g, graphite::GraphMismatch> {
-        if a.graph.__graphite_construction_stamp != b.graph.__graphite_construction_stamp
-        {
-            return Err(graphite::GraphMismatch);
-        }
-        let positions = a
-            .graph
-            .__graphite_choice_by_pair
-            .get(&(a.internal_position, b.internal_position))
-            .map(Vec::as_slice)
-            .unwrap_or(&[]);
-        Ok(
-            positions
-                .iter()
-                .copied()
-                .map(move |internal_position| ChoiceRef {
-                    graph: a.graph,
-                    internal_position,
-                }),
-        )
-    }
-    /// # Panics
-    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    pub fn between<'g>(
-        a: SceneRef<'g>,
-        b: SceneRef<'g>,
-    ) -> impl Iterator<Item = ChoiceRef<'g>> + 'g {
-        Self::try_between(a, b)
-            .unwrap_or_else(|error| panic!("{}::between: {error}", stringify!(Choice)))
-    }
-    pub fn get<'g>(g: &'g Graph, id: &ChoiceId) -> Option<ChoiceRef<'g>> {
-        Some(ChoiceRef {
-            graph: g,
-            internal_position: __ChoiceInternalPosition(g.choice.position(id)?),
-        })
-    }
-    /// 辺の構造を保ったまま積み荷だけを可変借用する。
-    pub fn payload_mut<'g>(
-        g: &'g mut Graph,
-        id: &ChoiceId,
-    ) -> Option<&'g mut ChoiceEdge> {
-        g.choice.get_mut(id).map(|record: &mut __ChoiceRecord| &mut record.choice)
-    }
-    pub fn iter<'g>(g: &'g Graph) -> impl Iterator<Item = ChoiceRef<'g>> + 'g {
-        g.choice
-            .positions()
-            .map(move |position| ChoiceRef {
-                graph: g,
-                internal_position: __ChoiceInternalPosition(position),
-            })
-    }
-    pub fn ids(g: &Graph) -> impl Iterator<Item = &ChoiceId> {
-        g.choice.ids()
-    }
-    pub fn len(g: &Graph) -> usize {
-        g.choice.len()
-    }
-}
-impl Finale {
-    /// この役割に接続する高々1本の辺を O(1)、追加確保なしで返す。
-    pub fn of_scene<'g>(node: SceneRef<'g>) -> Option<FinaleRef<'g>> {
-        node.graph
-            .finale_from_index
-            .get(node.internal_position.0)
-            .copied()
-            .map(|internal_position| FinaleRef {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
-    /// 問い合わせ時に結果 `Vec` を確保しない。
-    pub fn of_ending<'g>(
-        node: EndingRef<'g>,
-    ) -> impl Iterator<Item = FinaleRef<'g>> + 'g {
-        let positions = node.graph.finale_to_index.get(node.internal_position.0);
-        positions
-            .iter()
-            .copied()
-            .map(move |internal_position| FinaleRef {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
-    pub fn try_between<'g>(
-        a: SceneRef<'g>,
-        b: EndingRef<'g>,
-    ) -> Result<impl Iterator<Item = FinaleRef<'g>> + 'g, graphite::GraphMismatch> {
-        if a.graph.__graphite_construction_stamp != b.graph.__graphite_construction_stamp
-        {
-            return Err(graphite::GraphMismatch);
-        }
-        let positions = a
-            .graph
-            .__graphite_finale_by_pair
-            .get(&(a.internal_position, b.internal_position))
-            .map(Vec::as_slice)
-            .unwrap_or(&[]);
-        Ok(
-            positions
-                .iter()
-                .copied()
-                .map(move |internal_position| FinaleRef {
-                    graph: a.graph,
-                    internal_position,
-                }),
-        )
-    }
-    /// # Panics
-    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    pub fn between<'g>(
-        a: SceneRef<'g>,
-        b: EndingRef<'g>,
-    ) -> impl Iterator<Item = FinaleRef<'g>> + 'g {
-        Self::try_between(a, b)
-            .unwrap_or_else(|error| panic!("{}::between: {error}", stringify!(Finale)))
-    }
-    pub fn get<'g>(g: &'g Graph, id: &FinaleId) -> Option<FinaleRef<'g>> {
-        Some(FinaleRef {
-            graph: g,
-            internal_position: __FinaleInternalPosition(g.finale.position(id)?),
-        })
-    }
-    pub fn iter<'g>(g: &'g Graph) -> impl Iterator<Item = FinaleRef<'g>> + 'g {
-        g.finale
-            .positions()
-            .map(move |position| FinaleRef {
-                graph: g,
-                internal_position: __FinaleInternalPosition(position),
-            })
-    }
-    pub fn ids(g: &Graph) -> impl Iterator<Item = &FinaleId> {
-        g.finale.ids()
-    }
-    pub fn len(g: &Graph) -> usize {
-        g.finale.len()
     }
 }

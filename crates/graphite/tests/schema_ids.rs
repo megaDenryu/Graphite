@@ -51,7 +51,7 @@ graphite::graph_schema! {
         })
         .expect("修飾した既存ID型を利用できるはず");
 
-        assert!(QualifiedIds::Person::get(&graph, &KnowsId(1)).is_some());
+        assert!(graph.person_by_id(&KnowsId(1)).is_some());
     }
 }
 
@@ -101,24 +101,21 @@ fn defaultと明示のid型を同じschemaで使える() {
     .expect("既定IDと明示IDを混在させたグラフを構築できるはず");
 
     assert_eq!(
-        MixedIds::ExternalNode::get(&graph, &ExternalNodeId(10)).unwrap().name,
+        graph.external_node_by_id(&ExternalNodeId(10)).unwrap().name,
         "left"
     );
-    assert!(MixedIds::ExternalLink::ids(&graph).next() == Some(&ExternalEdgeId(30)));
+    assert!(graph.external_link_ids().next() == Some(&ExternalEdgeId(30)));
     assert_eq!(
-        MixedIds::AutomaticNode::get(
-            &graph,
-            &MixedIds::AutomaticNodeId("custom-b".into()),
-        )
+        graph.automatic_node_by_id(&MixedIds::AutomaticNodeId("custom-b".into()))
         .unwrap()
         .name,
         "b"
     );
     assert_eq!(
-        MixedIds::AutomaticLink::ids(&graph).next(),
+        graph.automatic_link_ids().next(),
         Some(&MixedIds::AutomaticLinkId("auto_edge".into()))
     );
-    assert!(MixedIds::BooleanNode::get(&graph, &true).is_some());
+    assert!(graph.boolean_node_by_id(&true).is_some());
 }
 
 #[test]

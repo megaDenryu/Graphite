@@ -10,7 +10,7 @@ use graphite::{CycleError, Graph};
 
 use crate::dataset::MANAGER_GRADE_THRESHOLD;
 use crate::schema::{
-    Assigned, BelongsTo, Boss, DepartmentId, EmployeeId, OrgChart, ProjectId, Sponsors,
+    DepartmentId, EmployeeId, OrgChart, ProjectId,
 };
 
 // ============================================================
@@ -62,22 +62,20 @@ pub struct SummaryReport {
 }
 
 pub fn summarize(org: &OrgChart::Graph) -> SummaryReport {
-    let total_employees = OrgChart::Employee::ids(org).count();
+    let total_employees = org.employee_ids().count();
 
     // 部署別人数: 部署を終点とする BelongsTo エッジの本数。`docs/reverse_query.md`
-    // の役割クエリ `of_department` を使うと、
+    // の役割探索 `department.belongs_to_as_department()` を使うと、
     // 全エッジを走査して HashMap に集計する前段が不要になる (freeze 時に
     // 構築済みの終点索引を `id` ごとに引くだけで済む)。
-    let mut dept_counts: Vec<DeptCount> = OrgChart::Department::ids(org)
+    let mut dept_counts: Vec<DeptCount> = org.department_ids()
         .map(|id| DeptCount {
             department: id.clone(),
-            name: OrgChart::Department::get(org, id)
-                .expect("Department::idsから得たキーは必ず存在する")
+            name: org.department_by_id(id)
+                .expect("department_idsから得たキーは必ず存在する")
                 .name
                 .clone(),
-            count: BelongsTo::of_department(
-                OrgChart::Department::get(org, id).expect("列挙した部署は存在する"),
-            )
+            count: org.department_by_id(id).expect("列挙した部署は存在する").belongs_to_as_department()
             .count(),
         })
         .collect();
@@ -85,9 +83,9 @@ pub fn summarize(org: &OrgChart::Graph) -> SummaryReport {
 
     // grade 分布
     let mut grade_counter: HashMap<u8, usize> = HashMap::new();
-    for id in OrgChart::Employee::ids(org) {
-        let grade = OrgChart::Employee::get(org, id)
-            .expect("Employee::idsから得たキーは必ず存在する")
+    for id in org.employee_ids() {
+        let grade = org.employee_by_id(id)
+            .expect("employee_idsから得たキーは必ず存在する")
             .grade;
         *grade_counter.entry(grade).or_insert(0) += 1;
     }
@@ -98,10 +96,10 @@ pub fn summarize(org: &OrgChart::Graph) -> SummaryReport {
     grade_counts.sort_by_key(|g| g.grade);
 
     // span of control: 社員 (boss) を終点とする Boss エッジの本数 =
-    // 直属部下数。`Boss::of_superior` で直接引く
+    // 直属部下数。`superior.boss_as_superior()` で直接引く
     // (`direct_reports` を全エッジから事前に集計する HashMap は不要になる)。
-    let managers: Vec<EmployeeId> = OrgChart::Employee::ids(org)
-        .filter(|id| OrgChart::Employee::get(org, id).unwrap().grade >= MANAGER_GRADE_THRESHOLD)
+    let managers: Vec<EmployeeId> = org.employee_ids()
+        .filter(|id| org.employee_by_id(id).unwrap().grade >= MANAGER_GRADE_THRESHOLD)
         .cloned()
         .collect();
 
@@ -111,10 +109,10 @@ pub fn summarize(org: &OrgChart::Graph) -> SummaryReport {
     let mut sum: usize = 0;
     for id in &managers {
         let count =
-            Boss::of_superior(OrgChart::Employee::get(org, id).expect("列挙した社員は存在する"))
+            org.employee_by_id(id).expect("列挙した社員は存在する").boss_as_superior()
                 .count();
         sum += count;
-        let emp = OrgChart::Employee::get(org, id).unwrap();
+        let emp = org.employee_by_id(id).unwrap();
         if count > max {
             max = count;
             max_manager = Some((id.clone(), emp.name.clone()));
@@ -130,14 +128,12 @@ pub fn summarize(org: &OrgChart::Graph) -> SummaryReport {
         sum as f64 / managers.len() as f64
     };
 
-    // プロジェクト別アサイン人数。同じ理由で `Assigned::of_project` を使う。
-    let mut project_assignments: Vec<ProjectAssignmentCount> = OrgChart::Project::ids(org)
+    // プロジェクト別アサイン人数。同じ理由で `project.assigned_as_project()` を使う。
+    let mut project_assignments: Vec<ProjectAssignmentCount> = org.project_ids()
         .map(|id| ProjectAssignmentCount {
             project: id.clone(),
-            name: OrgChart::Project::get(org, id).unwrap().name.clone(),
-            count: Assigned::of_project(
-                OrgChart::Project::get(org, id).expect("列挙したプロジェクトは存在する"),
-            )
+            name: org.project_by_id(id).unwrap().name.clone(),
+            count: org.project_by_id(id).expect("列挙したプロジェクトは存在する").assigned_as_project()
             .count(),
         })
         .collect();
@@ -182,16 +178,16 @@ pub struct ChainResult {
 
 /// 指定した社員から `Boss` 辺を根 (トップ層) まで辿る。
 ///
-/// `Boss::iter` が返すEdgeRefの役割名getterから両端のNodeRefを取り、
+/// `boss_iter` が返すEdgeRefの役割名getterから両端のNodeRefを取り、
 /// `EmployeeId -> (EmployeeId, since)` の索引を先に作って辿る。
 ///
 /// 訪問済み集合を持ちながら辿ることで循環を検出する。循環に突入したら
 /// そこで打ち切り、`cycle_back_to` にループの戻り先キーを記録する
 /// (`anomalies` コマンドの循環検出とは独立した、チェーン単体での安全対策)。
 pub fn management_chain(org: &OrgChart::Graph, start: &EmployeeId) -> Option<ChainResult> {
-    let start_employee = OrgChart::Employee::get(org, start)?;
+    let start_employee = org.employee_by_id(start)?;
 
-    let boss_of: HashMap<EmployeeId, (EmployeeId, i32)> = Boss::iter(org)
+    let boss_of: HashMap<EmployeeId, (EmployeeId, i32)> = org.boss_iter()
         .map(|edge| {
             (
                 edge.subordinate().id().clone(),
@@ -222,7 +218,7 @@ pub fn management_chain(org: &OrgChart::Graph, start: &EmployeeId) -> Option<Cha
                     cycle_back_to = Some(boss_id.clone());
                     break;
                 }
-                let boss_employee = OrgChart::Employee::get(org, boss_id)
+                let boss_employee = org.employee_by_id(boss_id)
                     .expect("Boss::iterの終点は必ずemployeeに存在するはず");
                 entries.push(ChainEntry {
                     depth,
@@ -285,7 +281,7 @@ pub fn detect_anomalies(org: &OrgChart::Graph) -> AnomalyReport {
 ///
 /// 判定には `EmployeeId` の対そのものが要るため、EdgeRefの両端からIDを集める。
 fn detect_mutual_boss_pairs(org: &OrgChart::Graph) -> Vec<(EmployeeId, EmployeeId)> {
-    let all: Vec<(&EmployeeId, &EmployeeId)> = Boss::iter(org)
+    let all: Vec<(&EmployeeId, &EmployeeId)> = org.boss_iter()
         .map(|edge| (edge.subordinate().id(), edge.superior().id()))
         .collect();
 
@@ -303,7 +299,7 @@ fn detect_mutual_boss_pairs(org: &OrgChart::Graph) -> Vec<(EmployeeId, EmployeeI
 ///
 /// `Boss` エッジ (`(subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee)`, each subordinate: 0..1) を
 /// 汎用 `graphite::Graph<(), (), EmployeeId>` に射影する (`Graph::from_edges`
-/// が `Kind::iter` からの定型的な射影をまとめてくれる)。`topological_sort`
+/// が `{kind}_iter` からの定型的な射影をまとめてくれる)。`topological_sort`
 /// が返す `CycleError::cycle` はフェーズ5から循環メンバー全体を返すように
 /// なったため、以前のような「boss辺を手で辿って復元する」処理は不要になった。
 /// 1つの循環を見つけたら `filter_nodes_with_key` でそのメンバーを取り除いた
@@ -311,15 +307,15 @@ fn detect_mutual_boss_pairs(org: &OrgChart::Graph) -> Vec<(EmployeeId, EmployeeI
 /// いる。
 fn detect_boss_cycles(org: &OrgChart::Graph) -> Vec<Vec<EmployeeId>> {
     let mut graph: Graph<(), (), EmployeeId> = Graph::from_edges(
-        OrgChart::Employee::ids(org).cloned(),
-        Boss::iter(org).map(|edge| {
+        org.employee_ids().cloned(),
+        org.boss_iter().map(|edge| {
             (
                 edge.subordinate().id().clone(),
                 edge.superior().id().clone(),
             )
         }),
     )
-    .expect("Employee::idsは重複せず、Boss::iterの端点は全てEmployee::idsに含まれるはず");
+    .expect("employee_idsは重複せず、boss_iterの端点は全てemployee_idsに含まれるはず");
 
     let mut cycles: Vec<Vec<EmployeeId>> = Vec::new();
 
@@ -342,11 +338,11 @@ fn detect_boss_cycles(org: &OrgChart::Graph) -> Vec<Vec<EmployeeId>> {
 
 /// 部署跨ぎの上司関係 (上司と部下が異なる部署)。
 fn detect_cross_department_bosses(org: &OrgChart::Graph) -> Vec<CrossDepartmentBoss> {
-    let dept_of: HashMap<&EmployeeId, &DepartmentId> = BelongsTo::iter(org)
+    let dept_of: HashMap<&EmployeeId, &DepartmentId> = org.belongs_to_iter()
         .map(|edge| (edge.employee().id(), edge.department().id()))
         .collect();
 
-    let mut result: Vec<CrossDepartmentBoss> = Boss::iter(org)
+    let mut result: Vec<CrossDepartmentBoss> = org.boss_iter()
         .filter_map(|edge| {
             let emp_id = edge.subordinate().id();
             let boss_id = edge.superior().id();
@@ -357,10 +353,10 @@ fn detect_cross_department_bosses(org: &OrgChart::Graph) -> Vec<CrossDepartmentB
             }
             Some(CrossDepartmentBoss {
                 employee: emp_id.clone(),
-                employee_name: OrgChart::Employee::get(org, emp_id).unwrap().name.clone(),
+                employee_name: org.employee_by_id(emp_id).unwrap().name.clone(),
                 employee_dept: emp_dept.clone(),
                 boss: boss_id.clone(),
-                boss_name: OrgChart::Employee::get(org, boss_id).unwrap().name.clone(),
+                boss_name: org.employee_by_id(boss_id).unwrap().name.clone(),
                 boss_dept: boss_dept.clone(),
             })
         })
@@ -372,13 +368,13 @@ fn detect_cross_department_bosses(org: &OrgChart::Graph) -> Vec<CrossDepartmentB
 /// 誰もアサインされていないプロジェクト。
 ///
 /// 「このプロジェクトを終点とする Assigned エッジが1本もない」を判定するには
-/// 「全エッジから staffed 集合を事前に作る」必要はなく、`Assigned::of_project`
+/// 「全エッジから staffed 集合を事前に作る」必要はなく、`project.assigned_as_project()`
 /// をプロジェクトごとに直接引いて空かどうかを見れば
 /// 十分 (freeze 時に構築済みの終点索引を引くだけ)。
 fn detect_unstaffed_projects(org: &OrgChart::Graph) -> Vec<ProjectId> {
-    let mut result: Vec<ProjectId> = OrgChart::Project::ids(org)
+    let mut result: Vec<ProjectId> = org.project_ids()
         .filter(|p| {
-            Assigned::of_project(OrgChart::Project::get(org, p).unwrap())
+            org.project_by_id(p).unwrap().assigned_as_project()
                 .next()
                 .is_none()
         })
@@ -389,11 +385,11 @@ fn detect_unstaffed_projects(org: &OrgChart::Graph) -> Vec<ProjectId> {
 }
 
 /// どの部署からもスポンサーされていないプロジェクト。同じ理由で
-/// `Sponsors::of_project` を使う。
+/// `project.sponsors_as_project()` を使う。
 fn detect_sponsorless_projects(org: &OrgChart::Graph) -> Vec<ProjectId> {
-    let mut result: Vec<ProjectId> = OrgChart::Project::ids(org)
+    let mut result: Vec<ProjectId> = org.project_ids()
         .filter(|p| {
-            Sponsors::of_project(OrgChart::Project::get(org, p).unwrap())
+            org.project_by_id(p).unwrap().sponsors_as_project()
                 .next()
                 .is_none()
         })

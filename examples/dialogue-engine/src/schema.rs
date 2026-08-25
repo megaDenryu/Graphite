@@ -99,9 +99,9 @@ impl Ord for EndingId {
 impl DialogueGraph::Graph {
     /// あるシーンから出ている選択肢一覧を `(行き先キー, 選択肢ラベル)` で返す。
     /// `Choice::of` は行き先の `Scene` 値 (キーではない) を返すため使えず、
-    /// 生の辺 (キー付き) を走査する `Choice::iter` をフィルタして使う。
+    /// 生の辺 (キー付き) を走査する `choice_iter` をフィルタして使う。
     pub fn scene_choices(&self, id: &SceneId) -> Vec<(SceneId, String)> {
-        DialogueGraph::Choice::iter(self)
+        self.choice_iter()
             .filter(|edge| edge.scene().id() == id)
             .map(|edge| (edge.next().id().clone(), edge.payload().label.clone()))
             .collect()
@@ -118,10 +118,10 @@ impl DialogueGraph::Graph {
     /// 重複キー・未知キーは有り得ず、`expect` で握り潰してよい。
     pub fn scene_graph(&self) -> Graph<SceneId, String, SceneId> {
         Graph::create(|b| {
-            for id in DialogueGraph::Scene::ids(self) {
+            for id in self.scene_ids() {
                 b.node(id.clone(), id.clone());
             }
-            for edge in DialogueGraph::Choice::iter(self) {
+            for edge in self.choice_iter() {
                 b.edge(
                     edge.scene().id().clone(),
                     edge.next().id().clone(),
@@ -134,16 +134,16 @@ impl DialogueGraph::Graph {
 
     /// このシーンに finale (エンディングへの到達) があるか。
     pub fn is_finale_scene(&self, id: &SceneId) -> bool {
-        DialogueGraph::Scene::get(self, id)
-            .and_then(DialogueGraph::Finale::of_scene)
+        self.scene_by_id(id)
+            .and_then(|scene| scene.finale_as_scene())
             .is_some()
     }
 
     /// このシーンに選択肢が 0 本、かつ finale も無いか (= デッドエンド)。
     pub fn is_dead_end(&self, id: &SceneId) -> bool {
-        DialogueGraph::Scene::get(self, id).is_none_or(|scene| {
-            DialogueGraph::Choice::of_scene(scene).next().is_none()
-                && DialogueGraph::Finale::of_scene(scene).is_none()
+        self.scene_by_id(id).is_none_or(|scene| {
+            scene.choice_as_scene().next().is_none()
+                && scene.finale_as_scene().is_none()
         })
     }
 }

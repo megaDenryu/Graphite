@@ -83,7 +83,7 @@ mod tests {
     #[test]
     fn endpointsアクセサで両端を取得できる() {
         let g = build_chart();
-        let f = Friends::get(&g, &FriendsId("f1".to_string())).unwrap();
+        let f = g.friends_by_id(&FriendsId("f1".to_string())).unwrap();
         let (first, second) = f.endpoints();
         assert_eq!(
             (first.id(), second.id()),
@@ -96,13 +96,13 @@ mod tests {
     }
 
     #[test]
-    fn ofはどちらの位置に置かれても対称に検索できる() {
+    fn 接続探索はどちらの位置に置かれても対称に検索できる() {
         let g = build_chart();
 
         // alice は f1 の位置0、f2 の位置1 に置かれているが、どちらからでも
         // 相手を辿れる。
-        let alice = Social::Person::get(&g, &person("alice")).unwrap();
-        let mut friends_of_alice: Vec<String> = Friends::incident(alice)
+        let alice = g.person_by_id(&person("alice")).unwrap();
+        let mut friends_of_alice: Vec<String> = alice.friends_incident()
             .map(|edge| other(edge.endpoints(), alice).name.clone())
             .collect();
         friends_of_alice.sort();
@@ -111,8 +111,8 @@ mod tests {
             vec!["Bob".to_string(), "Carol".to_string()]
         );
 
-        let bob = Social::Person::get(&g, &person("bob")).unwrap();
-        let friends_of_bob: Vec<_> = Friends::incident(bob)
+        let bob = g.person_by_id(&person("bob")).unwrap();
+        let friends_of_bob: Vec<_> = bob.friends_incident()
             .map(|edge| other(edge.endpoints(), bob))
             .collect();
         assert_eq!(friends_of_bob.len(), 1);
@@ -123,13 +123,13 @@ mod tests {
     fn betweenは順序を無視して対称に検索する() {
         let g = build_chart();
         // `Friends(alice -- bob)` で作った辺だが、between は逆順でも見つかる。
-        let alice = Social::Person::get(&g, &person("alice")).unwrap();
-        let bob = Social::Person::get(&g, &person("bob")).unwrap();
-        let carol = Social::Person::get(&g, &person("carol")).unwrap();
-        assert!(Friends::between(alice, bob).is_some());
-        assert!(Friends::between(bob, alice).is_some());
-        assert!(Friends::between(alice, carol).is_some());
-        assert!(Friends::between(bob, carol).is_none());
+        let alice = g.person_by_id(&person("alice")).unwrap();
+        let bob = g.person_by_id(&person("bob")).unwrap();
+        let carol = g.person_by_id(&person("carol")).unwrap();
+        assert!(alice.friends_between(bob).is_some());
+        assert!(bob.friends_between(alice).is_some());
+        assert!(alice.friends_between(carol).is_some());
+        assert!(bob.friends_between(carol).is_none());
     }
 
     #[test]
@@ -192,11 +192,11 @@ mod tests {
         .expect("自己ループを含む友人関係も構築に成功するはず");
 
         // alice の次数は「自己ループ (1本) + bob との辺 (1本)」で2本。
-        let alice = Social::Person::get(&g, &person("alice")).unwrap();
-        let friends_of_alice: Vec<_> = Friends::incident(alice).collect();
+        let alice = g.person_by_id(&person("alice")).unwrap();
+        let friends_of_alice: Vec<_> = alice.friends_incident().collect();
         assert_eq!(friends_of_alice.len(), 2);
 
-        assert!(Friends::between(alice, alice).is_some());
+        assert!(alice.friends_between(alice).is_some());
     }
 
     #[test]
@@ -221,14 +221,14 @@ mod tests {
         })
         .expect("無向のwireも構築に成功するはず");
 
-        let bob = Social::Person::get(&g, &person("bob")).unwrap();
-        let wire = Wire::incident(bob)
+        let bob = g.person_by_id(&person("bob")).unwrap();
+        let wire = bob.wire_incident()
             .next()
             .expect("bob に接続する wire があるはず");
         assert_eq!(other(wire.endpoints(), bob).name, "Alice");
         assert_eq!(wire.payload().ohm, 5);
 
-        let w = Wire::get(&g, &WireId("w1".to_string())).unwrap();
+        let w = g.wire_by_id(&WireId("w1".to_string())).unwrap();
         let (first, second) = w.endpoints();
         assert_eq!(
             (first.id(), second.id()),
@@ -242,7 +242,7 @@ mod tests {
     }
 
     #[test]
-    fn ofとiterは挿入順を保持する() {
+    fn 接続探索とiterは挿入順を保持する() {
         let g = Social::Graph::create(|b| {
             b.person(
                 person("alice"),
@@ -285,8 +285,8 @@ mod tests {
         })
         .expect("構築に成功するはず");
 
-        let alice = Social::Person::get(&g, &person("alice")).unwrap();
-        let names: Vec<String> = Friends::incident(alice)
+        let alice = g.person_by_id(&person("alice")).unwrap();
+        let names: Vec<String> = alice.friends_incident()
             .map(|edge| other(edge.endpoints(), alice).name.clone())
             .collect();
         assert_eq!(
@@ -294,7 +294,7 @@ mod tests {
             vec!["Bob".to_string(), "Carol".to_string(), "Dave".to_string()]
         );
 
-        let ids: Vec<String> = Friends::ids(&g).map(|id| id.0.clone()).collect();
+        let ids: Vec<String> = g.friends_ids().map(|id| id.0.clone()).collect();
         assert_eq!(
             ids,
             vec!["f1".to_string(), "f2".to_string(), "f3".to_string()]

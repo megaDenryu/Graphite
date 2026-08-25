@@ -148,11 +148,11 @@ v4 (`docs/schema_v4.md`: 辺の第一級化・where 制約・型名前空間ア�
 | 操作 | 結果 |
 |---|---|
 | schema `-[appointment: BossEdge]->` の積み荷型 → 定義 | ✅ ユーザーstructへ精密 |
-| `OrgChart::Boss::of_subordinate(node)` / マクロ外の `OrgChart::Boss { subordinate, superior, appointment }` 構築 / リテラルの `Boss(..)` → 定義 | ✅ いずれもschemaの `edge Boss` トークンへ精密着地する。辺種別は生成された名前付きフィールドの構造体として全文脈で解決される。 |
+| `node.boss_as_subordinate()` / マクロ外の `OrgChart::Boss { subordinate, superior, appointment }` 構築 / リテラルの `Boss(..)` → 定義 | ✅ いずれもschemaの `edge Boss` トークンへ精密着地する。辺種別は生成された名前付きフィールドの構造体として全文脈で解決される。 |
 | リテラルのノードキー (`tanaka`)・積み荷フィールド (`since`)・辺キー束縛 (`tanaka_boss`) | ✅ v3 同様に精密 (let 束縛・式素通しの機構は v4 でも維持) |
 | schema `Boss` → 参照検索 | ✅ 宣言 + 全使用 15 件 (アクセス・リテラル・素の構築・型注釈) |
 | `where each subordinate` の `subordinate` → 定義 | ✅ 端点の役割名フィールドへ型検査文を生成し、宣言した役割名と同じトークンを検証コードへ補間する |
-| `OrgChart::Boss::of` の `of` 等、生成関連関数のメソッド名トークン → 定義 | ✅ `2dce96a` で修正し実測確認済み: schema の `edge Boss` トークンへ精密着地 (修正前はマクロブロックに着地)。生成 fn ident に由来する Kind/ノード型トークンのスパンを付与 (G3 ポリシー適用) |
+| `node.boss_as_subordinate()` の `boss_as_subordinate` 等、生成メソッド名トークン → 定義 | ✅ `2dce96a` で修正し実測確認済み: schema の `edge Boss` トークンへ精密着地 (修正前はマクロブロックに着地)。生成 fn ident に由来する Kind/ノード型トークンのスパンを付与 (G3 ポリシー適用) |
 
 v4 の DSL 全トークン種 (辺種別・積み荷型・where 節端点・ノードキー・辺キー・
 積み荷フィールド・生成関連関数名) が定義解決可能になり、参照検索も全使用を
@@ -206,8 +206,15 @@ NodeRef/EdgeRef の公開メソッド群にも既存の G3 ポリシー (`§1.9`
 `NodeRef::id`/`value` はノード型トークン (`node Person;` の `Person`) の
 スパンを、`EdgeRef::id`/`from`/`to`/`from_id`/`to_id`/`endpoints`/`payload`
 は辺種別トークン (`edge Boss = ..;` の `Boss`) のスパンを、それぞれ
-`Ident::new(名前, span)` で明示的に継承する (既存の `get_mut`/`payload_mut`
-と同じ書き方)。
+`Ident::new(名前, span)` で明示的に継承する。
+
+issue #9 で `Graph` へ移した種別API (`{type}_by_id`/`{type}_value_mut`/
+`{type}_ids`/`{type}_iter`/`{type}_len`、`{kind}_by_id`/`{kind}_payload_mut`/
+`{kind}_ids`/`{kind}_iter`/`{kind}_len`) と、`NodeRef` へ移した
+`{kind}_between`/`{kind}_try_between` にも同じ規約を適用する。名前は
+`naming.rs` の `kind_api_method_ident(accessor, suffix)` が組み立て、
+`accessor` がノード型トークンまたは辺種別トークンのスパンを引き継ぐため、
+接頭辞の由来となる宣言トークンへ着地する。
 
 **検証範囲**: rust-analyzer 実機での F12 (go to definition) 再計測は
 今回実施していない。代わりに、対象メソッドをわざと誤った引数数で呼び出し
@@ -238,9 +245,10 @@ rust-analyzer 実機での F12 (go to definition) / rename 再計測は今回実
 
 schemaに由来する公開APIは、手続き型マクロの展開だけに置かず、`src/generated/`
 または`tests/generated/`の通常のRustファイルへ生成する。利用コードから
-NodeRef・EdgeRefのメソッド、役割アクセサ、探索API、`get`・`iter`・`ids`・
-`between`・`try_between`へ定義ジャンプした場合、生成ファイル内の実装へ着地する
-ことを受理条件とする。生成ファイル先頭の「生成元」から元DSLのファイルと行へ
+NodeRef・EdgeRefのメソッド、役割アクセサ、`Graph`の種別API
+(`{type}_by_id`・`{kind}_iter`・`{kind}_ids`・`{kind}_len` 等)、
+`NodeRef`の`{kind}_between`・`{kind}_try_between`へ定義ジャンプした場合、
+生成ファイル内の実装へ着地することを受理条件とする。生成ファイル先頭の「生成元」から元DSLのファイルと行へ
 戻れる。
 
 `graph!`が作る名前付きラッパーは呼び出し箇所ローカル型なので通常ファイルへ

@@ -1,4 +1,4 @@
-error: schema module内の生成名 `PersonId` が衝突します (自動生成ID型 `PersonId` と ノードマーカー `PersonId`)。既存ID型を使う場合は `(id: 型)` を明示してください
+error: schema module内の生成名 `PersonId` が衝突します (自動生成ID型 `PersonId` と ノード名 `PersonId` (`PersonIdId`/`PersonIdRef` と Graph の種別メソッドの由来))。既存ID型を使う場合は `(id: 型)` を明示してください
  --> tests/ui/schema_id_name_collision.rs:6:14
   |
 6 |         node Person;

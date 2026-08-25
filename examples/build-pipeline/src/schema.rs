@@ -91,16 +91,16 @@ mod fixed_pipeline_showcase {
         })
         .expect("正常な固定パイプラインは構築に成功するはず");
 
-        assert_eq!(BuildPipeline::Task::ids(&g).count(), 3);
-        assert_eq!(BuildPipeline::Artifact::ids(&g).count(), 2);
+        assert_eq!(g.task_ids().count(), 3);
+        assert_eq!(g.artifact_ids().count(), 2);
 
-        let build = BuildPipeline::Task::get(&g, &TaskId("build".to_string())).unwrap();
-        let produced: Vec<_> = Produces::of_task(build).collect();
+        let build = g.task_by_id(&TaskId("build".to_string())).unwrap();
+        let produced: Vec<_> = build.produces_as_task().collect();
         assert_eq!(produced.len(), 1);
         assert_eq!(produced[0].artifact().path, "target/core.rlib");
 
-        let test = BuildPipeline::Task::get(&g, &TaskId("test".to_string())).unwrap();
-        let consumed: Vec<_> = Consumes::of_task(test).collect();
+        let test = g.task_by_id(&TaskId("test".to_string())).unwrap();
+        let consumed: Vec<_> = test.consumes_as_task().collect();
         assert_eq!(consumed.len(), 1);
         assert_eq!(consumed[0].artifact().path, "target/core.rlib");
     }

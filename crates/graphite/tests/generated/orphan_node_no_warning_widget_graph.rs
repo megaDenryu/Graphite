@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    14828357880250477023u64, 3265913295252730778u64, 4996914242823445693u64,
-    14078611728675528345u64,
+    16892280805405953341u64, 11808001825183673254u64, 1973734618575458827u64,
+    933310614959920543u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WidgetId(pub String);
@@ -46,6 +46,42 @@ pub struct Graph {
     __graphite_construction_stamp: u64,
 }
 impl Graph {
+    /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    pub fn widget_by_id<'graph>(
+        &'graph self,
+        id: &WidgetId,
+    ) -> Option<WidgetRef<'graph>> {
+        let internal_position = __WidgetInternalPosition(
+            self.__graphite_node_widget.position(id)?,
+        );
+        Some(WidgetRef {
+            graph: self,
+            internal_position,
+        })
+    }
+    /// グラフの構造を保ったままノード値だけを可変借用する。
+    pub fn widget_value_mut(&mut self, id: &WidgetId) -> Option<&mut super::Widget> {
+        self.__graphite_node_widget.get_mut(id)
+    }
+    /// この種別のノードの公開IDを挿入順に走査する。
+    pub fn widget_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph WidgetId> {
+        self.__graphite_node_widget.ids()
+    }
+    /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    pub fn widget_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = WidgetRef<'graph>> + 'graph {
+        self.__graphite_node_widget
+            .positions()
+            .map(move |position| WidgetRef {
+                graph: self,
+                internal_position: __WidgetInternalPosition(position),
+            })
+    }
+    /// この種別のノードの件数を返す。
+    pub fn widget_len(&self) -> usize {
+        self.__graphite_node_widget.len()
+    }
     /// builder をクロージャに貸し出し、戻ったら凍結して図式適合
     /// (端点種別・where 制約) を一括検査する。最初の1件の違反で
     /// `Err` になる (複数の違反を全件見たい場合は
@@ -92,6 +128,12 @@ pub struct Builder {
 }
 /// 型付き ID を受け取るノード・エッジ共通の挿入トレイト。
 ///
+/// 署名が `insert_with_id(self, b, id)` と、挿入される値を receiver に
+/// して `Builder` を引数で受ける向きなのは、`graph!` がノード項の値の
+/// 型を解析せず、正しい内部ストレージへの振り分けを値の型の trait
+/// ディスパッチに頼るためである。利用者向けの公開入口は
+/// `Builder::insert`/`Builder::add` の側にある。
+///
 /// `insert_named_with_id` は [`graphite::NamedInsertPermit`] を要求する
 /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
 /// `insert_with_id` (許可証不要、名前付き位置を返さない) は独立した
@@ -122,8 +164,8 @@ pub trait WidgetGraphDefaultId: WidgetGraphInsertable {
     ) -> (Self::Id, Self::NamedPosition);
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
-/// ノード挿入で使うトレイト境界。読み取りは同じ module 内の
-/// ノードマーカー型が提供する。利用者がこのトレイトのメソッドを
+/// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと
+/// `NodeRef` のメソッドが提供する。利用者がこのトレイトのメソッドを
 /// 直接呼ぶことは想定しない。
 pub trait WidgetGraphNode: WidgetGraphInsertable {}
 impl WidgetGraphInsertable for super::Widget {
@@ -177,8 +219,6 @@ impl WidgetGraphDefaultId for super::Widget {
     }
 }
 impl WidgetGraphNode for super::Widget {}
-/// このスキーマにおける `#ty` ノード種別の問い合わせ名前空間。
-pub struct Widget;
 /// 完成済みグラフ上の `#ty` ノード個体。
 #[derive(Clone, Copy)]
 pub struct WidgetRef<'graph> {
@@ -222,36 +262,6 @@ impl<'graph> std::fmt::Debug for WidgetRef<'graph> {
         f.debug_struct(stringify!(WidgetRef))
             .field("id", &self.id())
             .finish_non_exhaustive()
-    }
-}
-impl Widget {
-    pub fn get<'graph>(g: &'graph Graph, id: &WidgetId) -> Option<WidgetRef<'graph>> {
-        let internal_position = __WidgetInternalPosition(
-            g.__graphite_node_widget.position(id)?,
-        );
-        Some(WidgetRef {
-            graph: g,
-            internal_position,
-        })
-    }
-    pub fn get_mut<'graph>(
-        g: &'graph mut Graph,
-        id: &WidgetId,
-    ) -> Option<&'graph mut super::Widget> {
-        g.__graphite_node_widget.get_mut(id)
-    }
-    pub fn ids<'graph>(g: &'graph Graph) -> impl Iterator<Item = &'graph WidgetId> {
-        g.__graphite_node_widget.ids()
-    }
-    pub fn iter<'graph>(
-        g: &'graph Graph,
-    ) -> impl Iterator<Item = WidgetRef<'graph>> + 'graph {
-        g.__graphite_node_widget
-            .positions()
-            .map(move |position| WidgetRef {
-                graph: g,
-                internal_position: __WidgetInternalPosition(position),
-            })
     }
 }
 /// `graph!` の `add` 経由のエッジ挿入で使うトレイト境界。利用者が

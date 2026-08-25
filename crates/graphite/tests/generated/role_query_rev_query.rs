@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    5353397219847024101u64, 10251989551518377406u64, 10761281396055388695u64,
-    6697326677574025035u64,
+    12987367537200975726u64, 7845968990354384509u64, 336999901808702200u64,
+    11540689986323353388u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NodeAId(pub String);
@@ -384,6 +384,219 @@ pub struct Graph {
     __graphite_construction_stamp: u64,
 }
 impl Graph {
+    /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    pub fn node_a_by_id<'graph>(&'graph self, id: &NodeAId) -> Option<NodeARef<'graph>> {
+        let internal_position = __NodeAInternalPosition(
+            self.__graphite_node_node_a.position(id)?,
+        );
+        Some(NodeARef {
+            graph: self,
+            internal_position,
+        })
+    }
+    /// グラフの構造を保ったままノード値だけを可変借用する。
+    pub fn node_a_value_mut(&mut self, id: &NodeAId) -> Option<&mut super::NodeA> {
+        self.__graphite_node_node_a.get_mut(id)
+    }
+    /// この種別のノードの公開IDを挿入順に走査する。
+    pub fn node_a_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph NodeAId> {
+        self.__graphite_node_node_a.ids()
+    }
+    /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    pub fn node_a_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = NodeARef<'graph>> + 'graph {
+        self.__graphite_node_node_a
+            .positions()
+            .map(move |position| NodeARef {
+                graph: self,
+                internal_position: __NodeAInternalPosition(position),
+            })
+    }
+    /// この種別のノードの件数を返す。
+    pub fn node_a_len(&self) -> usize {
+        self.__graphite_node_node_a.len()
+    }
+    /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    pub fn node_b_by_id<'graph>(&'graph self, id: &NodeBId) -> Option<NodeBRef<'graph>> {
+        let internal_position = __NodeBInternalPosition(
+            self.__graphite_node_node_b.position(id)?,
+        );
+        Some(NodeBRef {
+            graph: self,
+            internal_position,
+        })
+    }
+    /// グラフの構造を保ったままノード値だけを可変借用する。
+    pub fn node_b_value_mut(&mut self, id: &NodeBId) -> Option<&mut super::NodeB> {
+        self.__graphite_node_node_b.get_mut(id)
+    }
+    /// この種別のノードの公開IDを挿入順に走査する。
+    pub fn node_b_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph NodeBId> {
+        self.__graphite_node_node_b.ids()
+    }
+    /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    pub fn node_b_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = NodeBRef<'graph>> + 'graph {
+        self.__graphite_node_node_b
+            .positions()
+            .map(move |position| NodeBRef {
+                graph: self,
+                internal_position: __NodeBInternalPosition(position),
+            })
+    }
+    /// この種別のノードの件数を返す。
+    pub fn node_b_len(&self) -> usize {
+        self.__graphite_node_node_b.len()
+    }
+    /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    pub fn unconstrained_by_id<'graph>(
+        &'graph self,
+        id: &UnconstrainedId,
+    ) -> Option<UnconstrainedRef<'graph>> {
+        Some(UnconstrainedRef {
+            graph: self,
+            internal_position: __UnconstrainedInternalPosition(
+                self.unconstrained.position(id)?,
+            ),
+        })
+    }
+    /// 辺の構造を保ったまま積み荷だけを可変借用する。
+    pub fn unconstrained_payload_mut(
+        &mut self,
+        id: &UnconstrainedId,
+    ) -> Option<&mut Weight> {
+        self.unconstrained
+            .get_mut(id)
+            .map(|record: &mut __UnconstrainedRecord| &mut record.weight)
+    }
+    /// この種別の辺の公開IDを挿入順に走査する。
+    pub fn unconstrained_ids<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = &'graph UnconstrainedId> {
+        self.unconstrained.ids()
+    }
+    /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    pub fn unconstrained_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = UnconstrainedRef<'graph>> + 'graph {
+        self.unconstrained
+            .positions()
+            .map(move |position| UnconstrainedRef {
+                graph: self,
+                internal_position: __UnconstrainedInternalPosition(position),
+            })
+    }
+    /// この種別の辺の件数を返す。
+    pub fn unconstrained_len(&self) -> usize {
+        self.unconstrained.len()
+    }
+    /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    pub fn unconstrained_no_payload_by_id<'graph>(
+        &'graph self,
+        id: &UnconstrainedNoPayloadId,
+    ) -> Option<UnconstrainedNoPayloadRef<'graph>> {
+        Some(UnconstrainedNoPayloadRef {
+            graph: self,
+            internal_position: __UnconstrainedNoPayloadInternalPosition(
+                self.unconstrained_no_payload.position(id)?,
+            ),
+        })
+    }
+    /// この種別の辺の公開IDを挿入順に走査する。
+    pub fn unconstrained_no_payload_ids<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = &'graph UnconstrainedNoPayloadId> {
+        self.unconstrained_no_payload.ids()
+    }
+    /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    pub fn unconstrained_no_payload_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = UnconstrainedNoPayloadRef<'graph>> + 'graph {
+        self.unconstrained_no_payload
+            .positions()
+            .map(move |position| UnconstrainedNoPayloadRef {
+                graph: self,
+                internal_position: __UnconstrainedNoPayloadInternalPosition(position),
+            })
+    }
+    /// この種別の辺の件数を返す。
+    pub fn unconstrained_no_payload_len(&self) -> usize {
+        self.unconstrained_no_payload.len()
+    }
+    /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    pub fn at_most_one_by_id<'graph>(
+        &'graph self,
+        id: &AtMostOneId,
+    ) -> Option<AtMostOneRef<'graph>> {
+        Some(AtMostOneRef {
+            graph: self,
+            internal_position: __AtMostOneInternalPosition(
+                self.at_most_one.position(id)?,
+            ),
+        })
+    }
+    /// この種別の辺の公開IDを挿入順に走査する。
+    pub fn at_most_one_ids<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = &'graph AtMostOneId> {
+        self.at_most_one.ids()
+    }
+    /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    pub fn at_most_one_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = AtMostOneRef<'graph>> + 'graph {
+        self.at_most_one
+            .positions()
+            .map(move |position| AtMostOneRef {
+                graph: self,
+                internal_position: __AtMostOneInternalPosition(position),
+            })
+    }
+    /// この種別の辺の件数を返す。
+    pub fn at_most_one_len(&self) -> usize {
+        self.at_most_one.len()
+    }
+    /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    pub fn exactly_one_by_id<'graph>(
+        &'graph self,
+        id: &ExactlyOneId,
+    ) -> Option<ExactlyOneRef<'graph>> {
+        Some(ExactlyOneRef {
+            graph: self,
+            internal_position: __ExactlyOneInternalPosition(
+                self.exactly_one.position(id)?,
+            ),
+        })
+    }
+    /// 辺の構造を保ったまま積み荷だけを可変借用する。
+    pub fn exactly_one_payload_mut(&mut self, id: &ExactlyOneId) -> Option<&mut Weight> {
+        self.exactly_one
+            .get_mut(id)
+            .map(|record: &mut __ExactlyOneRecord| &mut record.weight)
+    }
+    /// この種別の辺の公開IDを挿入順に走査する。
+    pub fn exactly_one_ids<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = &'graph ExactlyOneId> {
+        self.exactly_one.ids()
+    }
+    /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    pub fn exactly_one_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = ExactlyOneRef<'graph>> + 'graph {
+        self.exactly_one
+            .positions()
+            .map(move |position| ExactlyOneRef {
+                graph: self,
+                internal_position: __ExactlyOneInternalPosition(position),
+            })
+    }
+    /// この種別の辺の件数を返す。
+    pub fn exactly_one_len(&self) -> usize {
+        self.exactly_one.len()
+    }
     /// builder をクロージャに貸し出し、戻ったら凍結して図式適合
     /// (端点種別・where 制約) を一括検査する。最初の1件の違反で
     /// `Err` になる (複数の違反を全件見たい場合は
@@ -675,6 +888,12 @@ pub struct Builder {
 }
 /// 型付き ID を受け取るノード・エッジ共通の挿入トレイト。
 ///
+/// 署名が `insert_with_id(self, b, id)` と、挿入される値を receiver に
+/// して `Builder` を引数で受ける向きなのは、`graph!` がノード項の値の
+/// 型を解析せず、正しい内部ストレージへの振り分けを値の型の trait
+/// ディスパッチに頼るためである。利用者向けの公開入口は
+/// `Builder::insert`/`Builder::add` の側にある。
+///
 /// `insert_named_with_id` は [`graphite::NamedInsertPermit`] を要求する
 /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
 /// `insert_with_id` (許可証不要、名前付き位置を返さない) は独立した
@@ -705,8 +924,8 @@ pub trait RevQueryDefaultId: RevQueryInsertable {
     ) -> (Self::Id, Self::NamedPosition);
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
-/// ノード挿入で使うトレイト境界。読み取りは同じ module 内の
-/// ノードマーカー型が提供する。利用者がこのトレイトのメソッドを
+/// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと
+/// `NodeRef` のメソッドが提供する。利用者がこのトレイトのメソッドを
 /// 直接呼ぶことは想定しない。
 pub trait RevQueryNode: RevQueryInsertable {}
 impl RevQueryInsertable for super::NodeA {
@@ -760,8 +979,6 @@ impl RevQueryDefaultId for super::NodeA {
     }
 }
 impl RevQueryNode for super::NodeA {}
-/// このスキーマにおける `#ty` ノード種別の問い合わせ名前空間。
-pub struct NodeA;
 /// 完成済みグラフ上の `#ty` ノード個体。
 #[derive(Clone, Copy)]
 pub struct NodeARef<'graph> {
@@ -787,25 +1004,239 @@ impl<'graph> NodeARef<'graph> {
             )
             .1
     }
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
     pub fn unconstrained_as_source(
         self,
     ) -> impl Iterator<Item = UnconstrainedRef<'graph>> + 'graph {
-        Unconstrained::of_source(self)
+        let positions = self
+            .graph
+            .unconstrained_from_index
+            .get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| UnconstrainedRef {
+                graph: self.graph,
+                internal_position,
+            })
     }
+    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    pub fn unconstrained_try_between(
+        self,
+        other: NodeBRef<'graph>,
+    ) -> Result<
+        impl Iterator<Item = UnconstrainedRef<'graph>> + 'graph,
+        graphite::GraphMismatch,
+    > {
+        if self.graph.__graphite_construction_stamp
+            != other.graph.__graphite_construction_stamp
+        {
+            return Err(graphite::GraphMismatch);
+        }
+        let positions = self
+            .graph
+            .__graphite_unconstrained_by_pair
+            .get(&(self.internal_position, other.internal_position))
+            .map(Vec::as_slice)
+            .unwrap_or(&[]);
+        Ok(
+            positions
+                .iter()
+                .copied()
+                .map(move |internal_position| UnconstrainedRef {
+                    graph: self.graph,
+                    internal_position,
+                }),
+        )
+    }
+    /// # Panics
+    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    pub fn unconstrained_between(
+        self,
+        other: NodeBRef<'graph>,
+    ) -> impl Iterator<Item = UnconstrainedRef<'graph>> + 'graph {
+        self.unconstrained_try_between(other)
+            .unwrap_or_else(|error| {
+                panic!(
+                    "{}::{}: {error}", stringify!(NodeARef),
+                    stringify!(unconstrained_between)
+                )
+            })
+    }
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
     pub fn unconstrained_no_payload_as_source(
         self,
     ) -> impl Iterator<Item = UnconstrainedNoPayloadRef<'graph>> + 'graph {
-        UnconstrainedNoPayload::of_source(self)
+        let positions = self
+            .graph
+            .unconstrained_no_payload_from_index
+            .get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| UnconstrainedNoPayloadRef {
+                graph: self.graph,
+                internal_position,
+            })
     }
+    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    pub fn unconstrained_no_payload_try_between(
+        self,
+        other: NodeBRef<'graph>,
+    ) -> Result<
+        impl Iterator<Item = UnconstrainedNoPayloadRef<'graph>> + 'graph,
+        graphite::GraphMismatch,
+    > {
+        if self.graph.__graphite_construction_stamp
+            != other.graph.__graphite_construction_stamp
+        {
+            return Err(graphite::GraphMismatch);
+        }
+        let positions = self
+            .graph
+            .__graphite_unconstrained_no_payload_by_pair
+            .get(&(self.internal_position, other.internal_position))
+            .map(Vec::as_slice)
+            .unwrap_or(&[]);
+        Ok(
+            positions
+                .iter()
+                .copied()
+                .map(move |internal_position| UnconstrainedNoPayloadRef {
+                    graph: self.graph,
+                    internal_position,
+                }),
+        )
+    }
+    /// # Panics
+    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    pub fn unconstrained_no_payload_between(
+        self,
+        other: NodeBRef<'graph>,
+    ) -> impl Iterator<Item = UnconstrainedNoPayloadRef<'graph>> + 'graph {
+        self.unconstrained_no_payload_try_between(other)
+            .unwrap_or_else(|error| {
+                panic!(
+                    "{}::{}: {error}", stringify!(NodeARef),
+                    stringify!(unconstrained_no_payload_between)
+                )
+            })
+    }
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
     pub fn at_most_one_as_src(
         self,
     ) -> impl Iterator<Item = AtMostOneRef<'graph>> + 'graph {
-        AtMostOne::of_src(self)
+        let positions = self.graph.at_most_one_from_index.get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| AtMostOneRef {
+                graph: self.graph,
+                internal_position,
+            })
     }
+    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    pub fn at_most_one_try_between(
+        self,
+        other: NodeBRef<'graph>,
+    ) -> Result<
+        impl Iterator<Item = AtMostOneRef<'graph>> + 'graph,
+        graphite::GraphMismatch,
+    > {
+        if self.graph.__graphite_construction_stamp
+            != other.graph.__graphite_construction_stamp
+        {
+            return Err(graphite::GraphMismatch);
+        }
+        let positions = self
+            .graph
+            .__graphite_at_most_one_by_pair
+            .get(&(self.internal_position, other.internal_position))
+            .map(Vec::as_slice)
+            .unwrap_or(&[]);
+        Ok(
+            positions
+                .iter()
+                .copied()
+                .map(move |internal_position| AtMostOneRef {
+                    graph: self.graph,
+                    internal_position,
+                }),
+        )
+    }
+    /// # Panics
+    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    pub fn at_most_one_between(
+        self,
+        other: NodeBRef<'graph>,
+    ) -> impl Iterator<Item = AtMostOneRef<'graph>> + 'graph {
+        self.at_most_one_try_between(other)
+            .unwrap_or_else(|error| {
+                panic!(
+                    "{}::{}: {error}", stringify!(NodeARef),
+                    stringify!(at_most_one_between)
+                )
+            })
+    }
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
     pub fn exactly_one_as_src(
         self,
     ) -> impl Iterator<Item = ExactlyOneRef<'graph>> + 'graph {
-        ExactlyOne::of_src(self)
+        let positions = self.graph.exactly_one_from_index.get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| ExactlyOneRef {
+                graph: self.graph,
+                internal_position,
+            })
+    }
+    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    pub fn exactly_one_try_between(
+        self,
+        other: NodeBRef<'graph>,
+    ) -> Result<
+        impl Iterator<Item = ExactlyOneRef<'graph>> + 'graph,
+        graphite::GraphMismatch,
+    > {
+        if self.graph.__graphite_construction_stamp
+            != other.graph.__graphite_construction_stamp
+        {
+            return Err(graphite::GraphMismatch);
+        }
+        let positions = self
+            .graph
+            .__graphite_exactly_one_by_pair
+            .get(&(self.internal_position, other.internal_position))
+            .map(Vec::as_slice)
+            .unwrap_or(&[]);
+        Ok(
+            positions
+                .iter()
+                .copied()
+                .map(move |internal_position| ExactlyOneRef {
+                    graph: self.graph,
+                    internal_position,
+                }),
+        )
+    }
+    /// # Panics
+    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    pub fn exactly_one_between(
+        self,
+        other: NodeBRef<'graph>,
+    ) -> impl Iterator<Item = ExactlyOneRef<'graph>> + 'graph {
+        self.exactly_one_try_between(other)
+            .unwrap_or_else(|error| {
+                panic!(
+                    "{}::{}: {error}", stringify!(NodeARef),
+                    stringify!(exactly_one_between)
+                )
+            })
     }
 }
 impl<'graph> std::ops::Deref for NodeARef<'graph> {
@@ -825,36 +1256,6 @@ impl<'graph> std::fmt::Debug for NodeARef<'graph> {
         f.debug_struct(stringify!(NodeARef))
             .field("id", &self.id())
             .finish_non_exhaustive()
-    }
-}
-impl NodeA {
-    pub fn get<'graph>(g: &'graph Graph, id: &NodeAId) -> Option<NodeARef<'graph>> {
-        let internal_position = __NodeAInternalPosition(
-            g.__graphite_node_node_a.position(id)?,
-        );
-        Some(NodeARef {
-            graph: g,
-            internal_position,
-        })
-    }
-    pub fn get_mut<'graph>(
-        g: &'graph mut Graph,
-        id: &NodeAId,
-    ) -> Option<&'graph mut super::NodeA> {
-        g.__graphite_node_node_a.get_mut(id)
-    }
-    pub fn ids<'graph>(g: &'graph Graph) -> impl Iterator<Item = &'graph NodeAId> {
-        g.__graphite_node_node_a.ids()
-    }
-    pub fn iter<'graph>(
-        g: &'graph Graph,
-    ) -> impl Iterator<Item = NodeARef<'graph>> + 'graph {
-        g.__graphite_node_node_a
-            .positions()
-            .map(move |position| NodeARef {
-                graph: g,
-                internal_position: __NodeAInternalPosition(position),
-            })
     }
 }
 impl RevQueryInsertable for super::NodeB {
@@ -908,8 +1309,6 @@ impl RevQueryDefaultId for super::NodeB {
     }
 }
 impl RevQueryNode for super::NodeB {}
-/// このスキーマにおける `#ty` ノード種別の問い合わせ名前空間。
-pub struct NodeB;
 /// 完成済みグラフ上の `#ty` ノード個体。
 #[derive(Clone, Copy)]
 pub struct NodeBRef<'graph> {
@@ -935,21 +1334,57 @@ impl<'graph> NodeBRef<'graph> {
             )
             .1
     }
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
     pub fn unconstrained_as_target(
         self,
     ) -> impl Iterator<Item = UnconstrainedRef<'graph>> + 'graph {
-        Unconstrained::of_target(self)
+        let positions = self.graph.unconstrained_to_index.get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| UnconstrainedRef {
+                graph: self.graph,
+                internal_position,
+            })
     }
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
     pub fn unconstrained_no_payload_as_target(
         self,
     ) -> impl Iterator<Item = UnconstrainedNoPayloadRef<'graph>> + 'graph {
-        UnconstrainedNoPayload::of_target(self)
+        let positions = self
+            .graph
+            .unconstrained_no_payload_to_index
+            .get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| UnconstrainedNoPayloadRef {
+                graph: self.graph,
+                internal_position,
+            })
     }
+    /// この役割に接続する高々1本の辺を O(1)、追加確保なしで返す。
     pub fn at_most_one_as_dst(self) -> Option<AtMostOneRef<'graph>> {
-        AtMostOne::of_dst(self)
+        self.graph
+            .at_most_one_to_index
+            .get(self.internal_position.0)
+            .copied()
+            .map(|internal_position| AtMostOneRef {
+                graph: self.graph,
+                internal_position,
+            })
     }
+    /// この役割に接続する唯一の辺を O(1)、追加確保なしで返す。
     pub fn exactly_one_as_dst(self) -> ExactlyOneRef<'graph> {
-        ExactlyOne::of_dst(self)
+        ExactlyOneRef {
+            graph: self.graph,
+            internal_position: *self
+                .graph
+                .exactly_one_to_index
+                .get(self.internal_position.0),
+        }
     }
 }
 impl<'graph> std::ops::Deref for NodeBRef<'graph> {
@@ -969,36 +1404,6 @@ impl<'graph> std::fmt::Debug for NodeBRef<'graph> {
         f.debug_struct(stringify!(NodeBRef))
             .field("id", &self.id())
             .finish_non_exhaustive()
-    }
-}
-impl NodeB {
-    pub fn get<'graph>(g: &'graph Graph, id: &NodeBId) -> Option<NodeBRef<'graph>> {
-        let internal_position = __NodeBInternalPosition(
-            g.__graphite_node_node_b.position(id)?,
-        );
-        Some(NodeBRef {
-            graph: g,
-            internal_position,
-        })
-    }
-    pub fn get_mut<'graph>(
-        g: &'graph mut Graph,
-        id: &NodeBId,
-    ) -> Option<&'graph mut super::NodeB> {
-        g.__graphite_node_node_b.get_mut(id)
-    }
-    pub fn ids<'graph>(g: &'graph Graph) -> impl Iterator<Item = &'graph NodeBId> {
-        g.__graphite_node_node_b.ids()
-    }
-    pub fn iter<'graph>(
-        g: &'graph Graph,
-    ) -> impl Iterator<Item = NodeBRef<'graph>> + 'graph {
-        g.__graphite_node_node_b
-            .positions()
-            .map(move |position| NodeBRef {
-                graph: g,
-                internal_position: __NodeBInternalPosition(position),
-            })
     }
 }
 /// `graph!` の `add` 経由のエッジ挿入で使うトレイト境界。利用者が
@@ -1813,384 +2218,5 @@ impl graphite::FreezableBuilder for Builder {
     type Violation = Violation;
     fn freeze_into_graph(self) -> Result<Self::Graph, Self::Violation> {
         self.freeze()
-    }
-}
-impl Unconstrained {
-    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
-    /// 問い合わせ時に結果 `Vec` を確保しない。
-    pub fn of_source<'g>(
-        node: NodeARef<'g>,
-    ) -> impl Iterator<Item = UnconstrainedRef<'g>> + 'g {
-        let positions = node
-            .graph
-            .unconstrained_from_index
-            .get(node.internal_position.0);
-        positions
-            .iter()
-            .copied()
-            .map(move |internal_position| UnconstrainedRef {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
-    /// 問い合わせ時に結果 `Vec` を確保しない。
-    pub fn of_target<'g>(
-        node: NodeBRef<'g>,
-    ) -> impl Iterator<Item = UnconstrainedRef<'g>> + 'g {
-        let positions = node.graph.unconstrained_to_index.get(node.internal_position.0);
-        positions
-            .iter()
-            .copied()
-            .map(move |internal_position| UnconstrainedRef {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
-    pub fn try_between<'g>(
-        a: NodeARef<'g>,
-        b: NodeBRef<'g>,
-    ) -> Result<
-        impl Iterator<Item = UnconstrainedRef<'g>> + 'g,
-        graphite::GraphMismatch,
-    > {
-        if a.graph.__graphite_construction_stamp != b.graph.__graphite_construction_stamp
-        {
-            return Err(graphite::GraphMismatch);
-        }
-        let positions = a
-            .graph
-            .__graphite_unconstrained_by_pair
-            .get(&(a.internal_position, b.internal_position))
-            .map(Vec::as_slice)
-            .unwrap_or(&[]);
-        Ok(
-            positions
-                .iter()
-                .copied()
-                .map(move |internal_position| UnconstrainedRef {
-                    graph: a.graph,
-                    internal_position,
-                }),
-        )
-    }
-    /// # Panics
-    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    pub fn between<'g>(
-        a: NodeARef<'g>,
-        b: NodeBRef<'g>,
-    ) -> impl Iterator<Item = UnconstrainedRef<'g>> + 'g {
-        Self::try_between(a, b)
-            .unwrap_or_else(|error| {
-                panic!("{}::between: {error}", stringify!(Unconstrained))
-            })
-    }
-    pub fn get<'g>(g: &'g Graph, id: &UnconstrainedId) -> Option<UnconstrainedRef<'g>> {
-        Some(UnconstrainedRef {
-            graph: g,
-            internal_position: __UnconstrainedInternalPosition(
-                g.unconstrained.position(id)?,
-            ),
-        })
-    }
-    /// 辺の構造を保ったまま積み荷だけを可変借用する。
-    pub fn payload_mut<'g>(
-        g: &'g mut Graph,
-        id: &UnconstrainedId,
-    ) -> Option<&'g mut Weight> {
-        g.unconstrained
-            .get_mut(id)
-            .map(|record: &mut __UnconstrainedRecord| &mut record.weight)
-    }
-    pub fn iter<'g>(g: &'g Graph) -> impl Iterator<Item = UnconstrainedRef<'g>> + 'g {
-        g.unconstrained
-            .positions()
-            .map(move |position| UnconstrainedRef {
-                graph: g,
-                internal_position: __UnconstrainedInternalPosition(position),
-            })
-    }
-    pub fn ids(g: &Graph) -> impl Iterator<Item = &UnconstrainedId> {
-        g.unconstrained.ids()
-    }
-    pub fn len(g: &Graph) -> usize {
-        g.unconstrained.len()
-    }
-}
-impl UnconstrainedNoPayload {
-    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
-    /// 問い合わせ時に結果 `Vec` を確保しない。
-    pub fn of_source<'g>(
-        node: NodeARef<'g>,
-    ) -> impl Iterator<Item = UnconstrainedNoPayloadRef<'g>> + 'g {
-        let positions = node
-            .graph
-            .unconstrained_no_payload_from_index
-            .get(node.internal_position.0);
-        positions
-            .iter()
-            .copied()
-            .map(move |internal_position| UnconstrainedNoPayloadRef {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
-    /// 問い合わせ時に結果 `Vec` を確保しない。
-    pub fn of_target<'g>(
-        node: NodeBRef<'g>,
-    ) -> impl Iterator<Item = UnconstrainedNoPayloadRef<'g>> + 'g {
-        let positions = node
-            .graph
-            .unconstrained_no_payload_to_index
-            .get(node.internal_position.0);
-        positions
-            .iter()
-            .copied()
-            .map(move |internal_position| UnconstrainedNoPayloadRef {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
-    pub fn try_between<'g>(
-        a: NodeARef<'g>,
-        b: NodeBRef<'g>,
-    ) -> Result<
-        impl Iterator<Item = UnconstrainedNoPayloadRef<'g>> + 'g,
-        graphite::GraphMismatch,
-    > {
-        if a.graph.__graphite_construction_stamp != b.graph.__graphite_construction_stamp
-        {
-            return Err(graphite::GraphMismatch);
-        }
-        let positions = a
-            .graph
-            .__graphite_unconstrained_no_payload_by_pair
-            .get(&(a.internal_position, b.internal_position))
-            .map(Vec::as_slice)
-            .unwrap_or(&[]);
-        Ok(
-            positions
-                .iter()
-                .copied()
-                .map(move |internal_position| UnconstrainedNoPayloadRef {
-                    graph: a.graph,
-                    internal_position,
-                }),
-        )
-    }
-    /// # Panics
-    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    pub fn between<'g>(
-        a: NodeARef<'g>,
-        b: NodeBRef<'g>,
-    ) -> impl Iterator<Item = UnconstrainedNoPayloadRef<'g>> + 'g {
-        Self::try_between(a, b)
-            .unwrap_or_else(|error| {
-                panic!("{}::between: {error}", stringify!(UnconstrainedNoPayload))
-            })
-    }
-    pub fn get<'g>(
-        g: &'g Graph,
-        id: &UnconstrainedNoPayloadId,
-    ) -> Option<UnconstrainedNoPayloadRef<'g>> {
-        Some(UnconstrainedNoPayloadRef {
-            graph: g,
-            internal_position: __UnconstrainedNoPayloadInternalPosition(
-                g.unconstrained_no_payload.position(id)?,
-            ),
-        })
-    }
-    pub fn iter<'g>(
-        g: &'g Graph,
-    ) -> impl Iterator<Item = UnconstrainedNoPayloadRef<'g>> + 'g {
-        g.unconstrained_no_payload
-            .positions()
-            .map(move |position| UnconstrainedNoPayloadRef {
-                graph: g,
-                internal_position: __UnconstrainedNoPayloadInternalPosition(position),
-            })
-    }
-    pub fn ids(g: &Graph) -> impl Iterator<Item = &UnconstrainedNoPayloadId> {
-        g.unconstrained_no_payload.ids()
-    }
-    pub fn len(g: &Graph) -> usize {
-        g.unconstrained_no_payload.len()
-    }
-}
-impl AtMostOne {
-    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
-    /// 問い合わせ時に結果 `Vec` を確保しない。
-    pub fn of_src<'g>(
-        node: NodeARef<'g>,
-    ) -> impl Iterator<Item = AtMostOneRef<'g>> + 'g {
-        let positions = node.graph.at_most_one_from_index.get(node.internal_position.0);
-        positions
-            .iter()
-            .copied()
-            .map(move |internal_position| AtMostOneRef {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    /// この役割に接続する高々1本の辺を O(1)、追加確保なしで返す。
-    pub fn of_dst<'g>(node: NodeBRef<'g>) -> Option<AtMostOneRef<'g>> {
-        node.graph
-            .at_most_one_to_index
-            .get(node.internal_position.0)
-            .copied()
-            .map(|internal_position| AtMostOneRef {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
-    pub fn try_between<'g>(
-        a: NodeARef<'g>,
-        b: NodeBRef<'g>,
-    ) -> Result<impl Iterator<Item = AtMostOneRef<'g>> + 'g, graphite::GraphMismatch> {
-        if a.graph.__graphite_construction_stamp != b.graph.__graphite_construction_stamp
-        {
-            return Err(graphite::GraphMismatch);
-        }
-        let positions = a
-            .graph
-            .__graphite_at_most_one_by_pair
-            .get(&(a.internal_position, b.internal_position))
-            .map(Vec::as_slice)
-            .unwrap_or(&[]);
-        Ok(
-            positions
-                .iter()
-                .copied()
-                .map(move |internal_position| AtMostOneRef {
-                    graph: a.graph,
-                    internal_position,
-                }),
-        )
-    }
-    /// # Panics
-    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    pub fn between<'g>(
-        a: NodeARef<'g>,
-        b: NodeBRef<'g>,
-    ) -> impl Iterator<Item = AtMostOneRef<'g>> + 'g {
-        Self::try_between(a, b)
-            .unwrap_or_else(|error| {
-                panic!("{}::between: {error}", stringify!(AtMostOne))
-            })
-    }
-    pub fn get<'g>(g: &'g Graph, id: &AtMostOneId) -> Option<AtMostOneRef<'g>> {
-        Some(AtMostOneRef {
-            graph: g,
-            internal_position: __AtMostOneInternalPosition(g.at_most_one.position(id)?),
-        })
-    }
-    pub fn iter<'g>(g: &'g Graph) -> impl Iterator<Item = AtMostOneRef<'g>> + 'g {
-        g.at_most_one
-            .positions()
-            .map(move |position| AtMostOneRef {
-                graph: g,
-                internal_position: __AtMostOneInternalPosition(position),
-            })
-    }
-    pub fn ids(g: &Graph) -> impl Iterator<Item = &AtMostOneId> {
-        g.at_most_one.ids()
-    }
-    pub fn len(g: &Graph) -> usize {
-        g.at_most_one.len()
-    }
-}
-impl ExactlyOne {
-    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
-    /// 問い合わせ時に結果 `Vec` を確保しない。
-    pub fn of_src<'g>(
-        node: NodeARef<'g>,
-    ) -> impl Iterator<Item = ExactlyOneRef<'g>> + 'g {
-        let positions = node.graph.exactly_one_from_index.get(node.internal_position.0);
-        positions
-            .iter()
-            .copied()
-            .map(move |internal_position| ExactlyOneRef {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    /// この役割に接続する唯一の辺を O(1)、追加確保なしで返す。
-    pub fn of_dst<'g>(node: NodeBRef<'g>) -> ExactlyOneRef<'g> {
-        ExactlyOneRef {
-            graph: node.graph,
-            internal_position: *node
-                .graph
-                .exactly_one_to_index
-                .get(node.internal_position.0),
-        }
-    }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
-    pub fn try_between<'g>(
-        a: NodeARef<'g>,
-        b: NodeBRef<'g>,
-    ) -> Result<impl Iterator<Item = ExactlyOneRef<'g>> + 'g, graphite::GraphMismatch> {
-        if a.graph.__graphite_construction_stamp != b.graph.__graphite_construction_stamp
-        {
-            return Err(graphite::GraphMismatch);
-        }
-        let positions = a
-            .graph
-            .__graphite_exactly_one_by_pair
-            .get(&(a.internal_position, b.internal_position))
-            .map(Vec::as_slice)
-            .unwrap_or(&[]);
-        Ok(
-            positions
-                .iter()
-                .copied()
-                .map(move |internal_position| ExactlyOneRef {
-                    graph: a.graph,
-                    internal_position,
-                }),
-        )
-    }
-    /// # Panics
-    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    pub fn between<'g>(
-        a: NodeARef<'g>,
-        b: NodeBRef<'g>,
-    ) -> impl Iterator<Item = ExactlyOneRef<'g>> + 'g {
-        Self::try_between(a, b)
-            .unwrap_or_else(|error| {
-                panic!("{}::between: {error}", stringify!(ExactlyOne))
-            })
-    }
-    pub fn get<'g>(g: &'g Graph, id: &ExactlyOneId) -> Option<ExactlyOneRef<'g>> {
-        Some(ExactlyOneRef {
-            graph: g,
-            internal_position: __ExactlyOneInternalPosition(g.exactly_one.position(id)?),
-        })
-    }
-    /// 辺の構造を保ったまま積み荷だけを可変借用する。
-    pub fn payload_mut<'g>(
-        g: &'g mut Graph,
-        id: &ExactlyOneId,
-    ) -> Option<&'g mut Weight> {
-        g.exactly_one
-            .get_mut(id)
-            .map(|record: &mut __ExactlyOneRecord| &mut record.weight)
-    }
-    pub fn iter<'g>(g: &'g Graph) -> impl Iterator<Item = ExactlyOneRef<'g>> + 'g {
-        g.exactly_one
-            .positions()
-            .map(move |position| ExactlyOneRef {
-                graph: g,
-                internal_position: __ExactlyOneInternalPosition(position),
-            })
-    }
-    pub fn ids(g: &Graph) -> impl Iterator<Item = &ExactlyOneId> {
-        g.exactly_one.ids()
-    }
-    pub fn len(g: &Graph) -> usize {
-        g.exactly_one.len()
     }
 }

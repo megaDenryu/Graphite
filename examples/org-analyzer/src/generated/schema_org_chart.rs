@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    4122241107010618612u64, 10665832898375627523u64, 11116896019736164086u64,
-    3139759974661147562u64,
+    13388828035039336394u64, 9267011499379554095u64, 18043866843965230568u64,
+    8694632547052950180u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EmployeeId(pub String);
@@ -395,6 +395,256 @@ pub struct Graph {
     __graphite_construction_stamp: u64,
 }
 impl Graph {
+    /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    pub fn employee_by_id<'graph>(
+        &'graph self,
+        id: &EmployeeId,
+    ) -> Option<EmployeeRef<'graph>> {
+        let internal_position = __EmployeeInternalPosition(
+            self.__graphite_node_employee.position(id)?,
+        );
+        Some(EmployeeRef {
+            graph: self,
+            internal_position,
+        })
+    }
+    /// グラフの構造を保ったままノード値だけを可変借用する。
+    pub fn employee_value_mut(
+        &mut self,
+        id: &EmployeeId,
+    ) -> Option<&mut super::Employee> {
+        self.__graphite_node_employee.get_mut(id)
+    }
+    /// この種別のノードの公開IDを挿入順に走査する。
+    pub fn employee_ids<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = &'graph EmployeeId> {
+        self.__graphite_node_employee.ids()
+    }
+    /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    pub fn employee_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = EmployeeRef<'graph>> + 'graph {
+        self.__graphite_node_employee
+            .positions()
+            .map(move |position| EmployeeRef {
+                graph: self,
+                internal_position: __EmployeeInternalPosition(position),
+            })
+    }
+    /// この種別のノードの件数を返す。
+    pub fn employee_len(&self) -> usize {
+        self.__graphite_node_employee.len()
+    }
+    /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    pub fn department_by_id<'graph>(
+        &'graph self,
+        id: &DepartmentId,
+    ) -> Option<DepartmentRef<'graph>> {
+        let internal_position = __DepartmentInternalPosition(
+            self.__graphite_node_department.position(id)?,
+        );
+        Some(DepartmentRef {
+            graph: self,
+            internal_position,
+        })
+    }
+    /// グラフの構造を保ったままノード値だけを可変借用する。
+    pub fn department_value_mut(
+        &mut self,
+        id: &DepartmentId,
+    ) -> Option<&mut super::Department> {
+        self.__graphite_node_department.get_mut(id)
+    }
+    /// この種別のノードの公開IDを挿入順に走査する。
+    pub fn department_ids<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = &'graph DepartmentId> {
+        self.__graphite_node_department.ids()
+    }
+    /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    pub fn department_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = DepartmentRef<'graph>> + 'graph {
+        self.__graphite_node_department
+            .positions()
+            .map(move |position| DepartmentRef {
+                graph: self,
+                internal_position: __DepartmentInternalPosition(position),
+            })
+    }
+    /// この種別のノードの件数を返す。
+    pub fn department_len(&self) -> usize {
+        self.__graphite_node_department.len()
+    }
+    /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    pub fn project_by_id<'graph>(
+        &'graph self,
+        id: &ProjectId,
+    ) -> Option<ProjectRef<'graph>> {
+        let internal_position = __ProjectInternalPosition(
+            self.__graphite_node_project.position(id)?,
+        );
+        Some(ProjectRef {
+            graph: self,
+            internal_position,
+        })
+    }
+    /// グラフの構造を保ったままノード値だけを可変借用する。
+    pub fn project_value_mut(&mut self, id: &ProjectId) -> Option<&mut super::Project> {
+        self.__graphite_node_project.get_mut(id)
+    }
+    /// この種別のノードの公開IDを挿入順に走査する。
+    pub fn project_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph ProjectId> {
+        self.__graphite_node_project.ids()
+    }
+    /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    pub fn project_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = ProjectRef<'graph>> + 'graph {
+        self.__graphite_node_project
+            .positions()
+            .map(move |position| ProjectRef {
+                graph: self,
+                internal_position: __ProjectInternalPosition(position),
+            })
+    }
+    /// この種別のノードの件数を返す。
+    pub fn project_len(&self) -> usize {
+        self.__graphite_node_project.len()
+    }
+    /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    pub fn belongs_to_by_id<'graph>(
+        &'graph self,
+        id: &BelongsToId,
+    ) -> Option<BelongsToRef<'graph>> {
+        Some(BelongsToRef {
+            graph: self,
+            internal_position: __BelongsToInternalPosition(self.belongs_to.position(id)?),
+        })
+    }
+    /// この種別の辺の公開IDを挿入順に走査する。
+    pub fn belongs_to_ids<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = &'graph BelongsToId> {
+        self.belongs_to.ids()
+    }
+    /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    pub fn belongs_to_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = BelongsToRef<'graph>> + 'graph {
+        self.belongs_to
+            .positions()
+            .map(move |position| BelongsToRef {
+                graph: self,
+                internal_position: __BelongsToInternalPosition(position),
+            })
+    }
+    /// この種別の辺の件数を返す。
+    pub fn belongs_to_len(&self) -> usize {
+        self.belongs_to.len()
+    }
+    /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    pub fn boss_by_id<'graph>(&'graph self, id: &BossId) -> Option<BossRef<'graph>> {
+        Some(BossRef {
+            graph: self,
+            internal_position: __BossInternalPosition(self.boss.position(id)?),
+        })
+    }
+    /// 辺の構造を保ったまま積み荷だけを可変借用する。
+    pub fn boss_payload_mut(&mut self, id: &BossId) -> Option<&mut BossEdge> {
+        self.boss.get_mut(id).map(|record: &mut __BossRecord| &mut record.appointment)
+    }
+    /// この種別の辺の公開IDを挿入順に走査する。
+    pub fn boss_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph BossId> {
+        self.boss.ids()
+    }
+    /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    pub fn boss_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = BossRef<'graph>> + 'graph {
+        self.boss
+            .positions()
+            .map(move |position| BossRef {
+                graph: self,
+                internal_position: __BossInternalPosition(position),
+            })
+    }
+    /// この種別の辺の件数を返す。
+    pub fn boss_len(&self) -> usize {
+        self.boss.len()
+    }
+    /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    pub fn assigned_by_id<'graph>(
+        &'graph self,
+        id: &AssignedId,
+    ) -> Option<AssignedRef<'graph>> {
+        Some(AssignedRef {
+            graph: self,
+            internal_position: __AssignedInternalPosition(self.assigned.position(id)?),
+        })
+    }
+    /// 辺の構造を保ったまま積み荷だけを可変借用する。
+    pub fn assigned_payload_mut(
+        &mut self,
+        id: &AssignedId,
+    ) -> Option<&mut AssignedEdge> {
+        self.assigned
+            .get_mut(id)
+            .map(|record: &mut __AssignedRecord| &mut record.assignment)
+    }
+    /// この種別の辺の公開IDを挿入順に走査する。
+    pub fn assigned_ids<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = &'graph AssignedId> {
+        self.assigned.ids()
+    }
+    /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    pub fn assigned_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = AssignedRef<'graph>> + 'graph {
+        self.assigned
+            .positions()
+            .map(move |position| AssignedRef {
+                graph: self,
+                internal_position: __AssignedInternalPosition(position),
+            })
+    }
+    /// この種別の辺の件数を返す。
+    pub fn assigned_len(&self) -> usize {
+        self.assigned.len()
+    }
+    /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    pub fn sponsors_by_id<'graph>(
+        &'graph self,
+        id: &SponsorsId,
+    ) -> Option<SponsorsRef<'graph>> {
+        Some(SponsorsRef {
+            graph: self,
+            internal_position: __SponsorsInternalPosition(self.sponsors.position(id)?),
+        })
+    }
+    /// この種別の辺の公開IDを挿入順に走査する。
+    pub fn sponsors_ids<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = &'graph SponsorsId> {
+        self.sponsors.ids()
+    }
+    /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    pub fn sponsors_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = SponsorsRef<'graph>> + 'graph {
+        self.sponsors
+            .positions()
+            .map(move |position| SponsorsRef {
+                graph: self,
+                internal_position: __SponsorsInternalPosition(position),
+            })
+    }
+    /// この種別の辺の件数を返す。
+    pub fn sponsors_len(&self) -> usize {
+        self.sponsors.len()
+    }
     /// builder をクロージャに貸し出し、戻ったら凍結して図式適合
     /// (端点種別・where 制約) を一括検査する。最初の1件の違反で
     /// `Err` になる (複数の違反を全件見たい場合は
@@ -687,6 +937,12 @@ pub struct Builder {
 }
 /// 型付き ID を受け取るノード・エッジ共通の挿入トレイト。
 ///
+/// 署名が `insert_with_id(self, b, id)` と、挿入される値を receiver に
+/// して `Builder` を引数で受ける向きなのは、`graph!` がノード項の値の
+/// 型を解析せず、正しい内部ストレージへの振り分けを値の型の trait
+/// ディスパッチに頼るためである。利用者向けの公開入口は
+/// `Builder::insert`/`Builder::add` の側にある。
+///
 /// `insert_named_with_id` は [`graphite::NamedInsertPermit`] を要求する
 /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
 /// `insert_with_id` (許可証不要、名前付き位置を返さない) は独立した
@@ -717,8 +973,8 @@ pub trait OrgChartDefaultId: OrgChartInsertable {
     ) -> (Self::Id, Self::NamedPosition);
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
-/// ノード挿入で使うトレイト境界。読み取りは同じ module 内の
-/// ノードマーカー型が提供する。利用者がこのトレイトのメソッドを
+/// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと
+/// `NodeRef` のメソッドが提供する。利用者がこのトレイトのメソッドを
 /// 直接呼ぶことは想定しない。
 pub trait OrgChartNode: OrgChartInsertable {}
 impl OrgChartInsertable for super::Employee {
@@ -772,8 +1028,6 @@ impl OrgChartDefaultId for super::Employee {
     }
 }
 impl OrgChartNode for super::Employee {}
-/// このスキーマにおける `#ty` ノード種別の問い合わせ名前空間。
-pub struct Employee;
 /// 完成済みグラフ上の `#ty` ノード個体。
 #[derive(Clone, Copy)]
 pub struct EmployeeRef<'graph> {
@@ -799,19 +1053,180 @@ impl<'graph> EmployeeRef<'graph> {
             )
             .1
     }
+    /// この役割に接続する唯一の辺を O(1)、追加確保なしで返す。
     pub fn belongs_to_as_employee(self) -> BelongsToRef<'graph> {
-        BelongsTo::of_employee(self)
+        BelongsToRef {
+            graph: self.graph,
+            internal_position: *self
+                .graph
+                .belongs_to_from_index
+                .get(self.internal_position.0),
+        }
     }
+    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    pub fn belongs_to_try_between(
+        self,
+        other: DepartmentRef<'graph>,
+    ) -> Result<
+        impl Iterator<Item = BelongsToRef<'graph>> + 'graph,
+        graphite::GraphMismatch,
+    > {
+        if self.graph.__graphite_construction_stamp
+            != other.graph.__graphite_construction_stamp
+        {
+            return Err(graphite::GraphMismatch);
+        }
+        let positions = self
+            .graph
+            .__graphite_belongs_to_by_pair
+            .get(&(self.internal_position, other.internal_position))
+            .map(Vec::as_slice)
+            .unwrap_or(&[]);
+        Ok(
+            positions
+                .iter()
+                .copied()
+                .map(move |internal_position| BelongsToRef {
+                    graph: self.graph,
+                    internal_position,
+                }),
+        )
+    }
+    /// # Panics
+    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    pub fn belongs_to_between(
+        self,
+        other: DepartmentRef<'graph>,
+    ) -> impl Iterator<Item = BelongsToRef<'graph>> + 'graph {
+        self.belongs_to_try_between(other)
+            .unwrap_or_else(|error| {
+                panic!(
+                    "{}::{}: {error}", stringify!(EmployeeRef),
+                    stringify!(belongs_to_between)
+                )
+            })
+    }
+    /// この役割に接続する高々1本の辺を O(1)、追加確保なしで返す。
     pub fn boss_as_subordinate(self) -> Option<BossRef<'graph>> {
-        Boss::of_subordinate(self)
+        self.graph
+            .boss_from_index
+            .get(self.internal_position.0)
+            .copied()
+            .map(|internal_position| BossRef {
+                graph: self.graph,
+                internal_position,
+            })
     }
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
     pub fn boss_as_superior(self) -> impl Iterator<Item = BossRef<'graph>> + 'graph {
-        Boss::of_superior(self)
+        let positions = self.graph.boss_to_index.get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| BossRef {
+                graph: self.graph,
+                internal_position,
+            })
     }
+    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    pub fn boss_try_between(
+        self,
+        other: EmployeeRef<'graph>,
+    ) -> Result<
+        impl Iterator<Item = BossRef<'graph>> + 'graph,
+        graphite::GraphMismatch,
+    > {
+        if self.graph.__graphite_construction_stamp
+            != other.graph.__graphite_construction_stamp
+        {
+            return Err(graphite::GraphMismatch);
+        }
+        let positions = self
+            .graph
+            .__graphite_boss_by_pair
+            .get(&(self.internal_position, other.internal_position))
+            .map(Vec::as_slice)
+            .unwrap_or(&[]);
+        Ok(
+            positions
+                .iter()
+                .copied()
+                .map(move |internal_position| BossRef {
+                    graph: self.graph,
+                    internal_position,
+                }),
+        )
+    }
+    /// # Panics
+    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    pub fn boss_between(
+        self,
+        other: EmployeeRef<'graph>,
+    ) -> impl Iterator<Item = BossRef<'graph>> + 'graph {
+        self.boss_try_between(other)
+            .unwrap_or_else(|error| {
+                panic!(
+                    "{}::{}: {error}", stringify!(EmployeeRef), stringify!(boss_between)
+                )
+            })
+    }
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
     pub fn assigned_as_employee(
         self,
     ) -> impl Iterator<Item = AssignedRef<'graph>> + 'graph {
-        Assigned::of_employee(self)
+        let positions = self.graph.assigned_from_index.get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| AssignedRef {
+                graph: self.graph,
+                internal_position,
+            })
+    }
+    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    pub fn assigned_try_between(
+        self,
+        other: ProjectRef<'graph>,
+    ) -> Result<
+        impl Iterator<Item = AssignedRef<'graph>> + 'graph,
+        graphite::GraphMismatch,
+    > {
+        if self.graph.__graphite_construction_stamp
+            != other.graph.__graphite_construction_stamp
+        {
+            return Err(graphite::GraphMismatch);
+        }
+        let positions = self
+            .graph
+            .__graphite_assigned_by_pair
+            .get(&(self.internal_position, other.internal_position))
+            .map(Vec::as_slice)
+            .unwrap_or(&[]);
+        Ok(
+            positions
+                .iter()
+                .copied()
+                .map(move |internal_position| AssignedRef {
+                    graph: self.graph,
+                    internal_position,
+                }),
+        )
+    }
+    /// # Panics
+    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    pub fn assigned_between(
+        self,
+        other: ProjectRef<'graph>,
+    ) -> impl Iterator<Item = AssignedRef<'graph>> + 'graph {
+        self.assigned_try_between(other)
+            .unwrap_or_else(|error| {
+                panic!(
+                    "{}::{}: {error}", stringify!(EmployeeRef),
+                    stringify!(assigned_between)
+                )
+            })
     }
 }
 impl<'graph> std::ops::Deref for EmployeeRef<'graph> {
@@ -831,39 +1246,6 @@ impl<'graph> std::fmt::Debug for EmployeeRef<'graph> {
         f.debug_struct(stringify!(EmployeeRef))
             .field("id", &self.id())
             .finish_non_exhaustive()
-    }
-}
-impl Employee {
-    pub fn get<'graph>(
-        g: &'graph Graph,
-        id: &EmployeeId,
-    ) -> Option<EmployeeRef<'graph>> {
-        let internal_position = __EmployeeInternalPosition(
-            g.__graphite_node_employee.position(id)?,
-        );
-        Some(EmployeeRef {
-            graph: g,
-            internal_position,
-        })
-    }
-    pub fn get_mut<'graph>(
-        g: &'graph mut Graph,
-        id: &EmployeeId,
-    ) -> Option<&'graph mut super::Employee> {
-        g.__graphite_node_employee.get_mut(id)
-    }
-    pub fn ids<'graph>(g: &'graph Graph) -> impl Iterator<Item = &'graph EmployeeId> {
-        g.__graphite_node_employee.ids()
-    }
-    pub fn iter<'graph>(
-        g: &'graph Graph,
-    ) -> impl Iterator<Item = EmployeeRef<'graph>> + 'graph {
-        g.__graphite_node_employee
-            .positions()
-            .map(move |position| EmployeeRef {
-                graph: g,
-                internal_position: __EmployeeInternalPosition(position),
-            })
     }
 }
 impl OrgChartInsertable for super::Department {
@@ -917,8 +1299,6 @@ impl OrgChartDefaultId for super::Department {
     }
 }
 impl OrgChartNode for super::Department {}
-/// このスキーマにおける `#ty` ノード種別の問い合わせ名前空間。
-pub struct Department;
 /// 完成済みグラフ上の `#ty` ノード個体。
 #[derive(Clone, Copy)]
 pub struct DepartmentRef<'graph> {
@@ -944,13 +1324,73 @@ impl<'graph> DepartmentRef<'graph> {
             )
             .1
     }
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
     pub fn belongs_to_as_department(
         self,
     ) -> impl Iterator<Item = BelongsToRef<'graph>> + 'graph {
-        BelongsTo::of_department(self)
+        let positions = self.graph.belongs_to_to_index.get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| BelongsToRef {
+                graph: self.graph,
+                internal_position,
+            })
     }
+    /// この役割に接続する高々1本の辺を O(1)、追加確保なしで返す。
     pub fn sponsors_as_department(self) -> Option<SponsorsRef<'graph>> {
-        Sponsors::of_department(self)
+        self.graph
+            .sponsors_from_index
+            .get(self.internal_position.0)
+            .copied()
+            .map(|internal_position| SponsorsRef {
+                graph: self.graph,
+                internal_position,
+            })
+    }
+    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    pub fn sponsors_try_between(
+        self,
+        other: ProjectRef<'graph>,
+    ) -> Result<
+        impl Iterator<Item = SponsorsRef<'graph>> + 'graph,
+        graphite::GraphMismatch,
+    > {
+        if self.graph.__graphite_construction_stamp
+            != other.graph.__graphite_construction_stamp
+        {
+            return Err(graphite::GraphMismatch);
+        }
+        let positions = self
+            .graph
+            .__graphite_sponsors_by_pair
+            .get(&(self.internal_position, other.internal_position))
+            .map(Vec::as_slice)
+            .unwrap_or(&[]);
+        Ok(
+            positions
+                .iter()
+                .copied()
+                .map(move |internal_position| SponsorsRef {
+                    graph: self.graph,
+                    internal_position,
+                }),
+        )
+    }
+    /// # Panics
+    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    pub fn sponsors_between(
+        self,
+        other: ProjectRef<'graph>,
+    ) -> impl Iterator<Item = SponsorsRef<'graph>> + 'graph {
+        self.sponsors_try_between(other)
+            .unwrap_or_else(|error| {
+                panic!(
+                    "{}::{}: {error}", stringify!(DepartmentRef),
+                    stringify!(sponsors_between)
+                )
+            })
     }
 }
 impl<'graph> std::ops::Deref for DepartmentRef<'graph> {
@@ -970,39 +1410,6 @@ impl<'graph> std::fmt::Debug for DepartmentRef<'graph> {
         f.debug_struct(stringify!(DepartmentRef))
             .field("id", &self.id())
             .finish_non_exhaustive()
-    }
-}
-impl Department {
-    pub fn get<'graph>(
-        g: &'graph Graph,
-        id: &DepartmentId,
-    ) -> Option<DepartmentRef<'graph>> {
-        let internal_position = __DepartmentInternalPosition(
-            g.__graphite_node_department.position(id)?,
-        );
-        Some(DepartmentRef {
-            graph: g,
-            internal_position,
-        })
-    }
-    pub fn get_mut<'graph>(
-        g: &'graph mut Graph,
-        id: &DepartmentId,
-    ) -> Option<&'graph mut super::Department> {
-        g.__graphite_node_department.get_mut(id)
-    }
-    pub fn ids<'graph>(g: &'graph Graph) -> impl Iterator<Item = &'graph DepartmentId> {
-        g.__graphite_node_department.ids()
-    }
-    pub fn iter<'graph>(
-        g: &'graph Graph,
-    ) -> impl Iterator<Item = DepartmentRef<'graph>> + 'graph {
-        g.__graphite_node_department
-            .positions()
-            .map(move |position| DepartmentRef {
-                graph: g,
-                internal_position: __DepartmentInternalPosition(position),
-            })
     }
 }
 impl OrgChartInsertable for super::Project {
@@ -1056,8 +1463,6 @@ impl OrgChartDefaultId for super::Project {
     }
 }
 impl OrgChartNode for super::Project {}
-/// このスキーマにおける `#ty` ノード種別の問い合わせ名前空間。
-pub struct Project;
 /// 完成済みグラフ上の `#ty` ノード個体。
 #[derive(Clone, Copy)]
 pub struct ProjectRef<'graph> {
@@ -1083,15 +1488,33 @@ impl<'graph> ProjectRef<'graph> {
             )
             .1
     }
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
     pub fn assigned_as_project(
         self,
     ) -> impl Iterator<Item = AssignedRef<'graph>> + 'graph {
-        Assigned::of_project(self)
+        let positions = self.graph.assigned_to_index.get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| AssignedRef {
+                graph: self.graph,
+                internal_position,
+            })
     }
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
     pub fn sponsors_as_project(
         self,
     ) -> impl Iterator<Item = SponsorsRef<'graph>> + 'graph {
-        Sponsors::of_project(self)
+        let positions = self.graph.sponsors_to_index.get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| SponsorsRef {
+                graph: self.graph,
+                internal_position,
+            })
     }
 }
 impl<'graph> std::ops::Deref for ProjectRef<'graph> {
@@ -1111,36 +1534,6 @@ impl<'graph> std::fmt::Debug for ProjectRef<'graph> {
         f.debug_struct(stringify!(ProjectRef))
             .field("id", &self.id())
             .finish_non_exhaustive()
-    }
-}
-impl Project {
-    pub fn get<'graph>(g: &'graph Graph, id: &ProjectId) -> Option<ProjectRef<'graph>> {
-        let internal_position = __ProjectInternalPosition(
-            g.__graphite_node_project.position(id)?,
-        );
-        Some(ProjectRef {
-            graph: g,
-            internal_position,
-        })
-    }
-    pub fn get_mut<'graph>(
-        g: &'graph mut Graph,
-        id: &ProjectId,
-    ) -> Option<&'graph mut super::Project> {
-        g.__graphite_node_project.get_mut(id)
-    }
-    pub fn ids<'graph>(g: &'graph Graph) -> impl Iterator<Item = &'graph ProjectId> {
-        g.__graphite_node_project.ids()
-    }
-    pub fn iter<'graph>(
-        g: &'graph Graph,
-    ) -> impl Iterator<Item = ProjectRef<'graph>> + 'graph {
-        g.__graphite_node_project
-            .positions()
-            .map(move |position| ProjectRef {
-                graph: g,
-                internal_position: __ProjectInternalPosition(position),
-            })
     }
 }
 /// `graph!` の `add` 経由のエッジ挿入で使うトレイト境界。利用者が
@@ -1968,346 +2361,5 @@ impl graphite::FreezableBuilder for Builder {
     type Violation = Violation;
     fn freeze_into_graph(self) -> Result<Self::Graph, Self::Violation> {
         self.freeze()
-    }
-}
-impl BelongsTo {
-    /// この役割に接続する唯一の辺を O(1)、追加確保なしで返す。
-    pub fn of_employee<'g>(node: EmployeeRef<'g>) -> BelongsToRef<'g> {
-        BelongsToRef {
-            graph: node.graph,
-            internal_position: *node
-                .graph
-                .belongs_to_from_index
-                .get(node.internal_position.0),
-        }
-    }
-    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
-    /// 問い合わせ時に結果 `Vec` を確保しない。
-    pub fn of_department<'g>(
-        node: DepartmentRef<'g>,
-    ) -> impl Iterator<Item = BelongsToRef<'g>> + 'g {
-        let positions = node.graph.belongs_to_to_index.get(node.internal_position.0);
-        positions
-            .iter()
-            .copied()
-            .map(move |internal_position| BelongsToRef {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
-    pub fn try_between<'g>(
-        a: EmployeeRef<'g>,
-        b: DepartmentRef<'g>,
-    ) -> Result<impl Iterator<Item = BelongsToRef<'g>> + 'g, graphite::GraphMismatch> {
-        if a.graph.__graphite_construction_stamp != b.graph.__graphite_construction_stamp
-        {
-            return Err(graphite::GraphMismatch);
-        }
-        let positions = a
-            .graph
-            .__graphite_belongs_to_by_pair
-            .get(&(a.internal_position, b.internal_position))
-            .map(Vec::as_slice)
-            .unwrap_or(&[]);
-        Ok(
-            positions
-                .iter()
-                .copied()
-                .map(move |internal_position| BelongsToRef {
-                    graph: a.graph,
-                    internal_position,
-                }),
-        )
-    }
-    /// # Panics
-    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    pub fn between<'g>(
-        a: EmployeeRef<'g>,
-        b: DepartmentRef<'g>,
-    ) -> impl Iterator<Item = BelongsToRef<'g>> + 'g {
-        Self::try_between(a, b)
-            .unwrap_or_else(|error| {
-                panic!("{}::between: {error}", stringify!(BelongsTo))
-            })
-    }
-    pub fn get<'g>(g: &'g Graph, id: &BelongsToId) -> Option<BelongsToRef<'g>> {
-        Some(BelongsToRef {
-            graph: g,
-            internal_position: __BelongsToInternalPosition(g.belongs_to.position(id)?),
-        })
-    }
-    pub fn iter<'g>(g: &'g Graph) -> impl Iterator<Item = BelongsToRef<'g>> + 'g {
-        g.belongs_to
-            .positions()
-            .map(move |position| BelongsToRef {
-                graph: g,
-                internal_position: __BelongsToInternalPosition(position),
-            })
-    }
-    pub fn ids(g: &Graph) -> impl Iterator<Item = &BelongsToId> {
-        g.belongs_to.ids()
-    }
-    pub fn len(g: &Graph) -> usize {
-        g.belongs_to.len()
-    }
-}
-impl Boss {
-    /// この役割に接続する高々1本の辺を O(1)、追加確保なしで返す。
-    pub fn of_subordinate<'g>(node: EmployeeRef<'g>) -> Option<BossRef<'g>> {
-        node.graph
-            .boss_from_index
-            .get(node.internal_position.0)
-            .copied()
-            .map(|internal_position| BossRef {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
-    /// 問い合わせ時に結果 `Vec` を確保しない。
-    pub fn of_superior<'g>(
-        node: EmployeeRef<'g>,
-    ) -> impl Iterator<Item = BossRef<'g>> + 'g {
-        let positions = node.graph.boss_to_index.get(node.internal_position.0);
-        positions
-            .iter()
-            .copied()
-            .map(move |internal_position| BossRef {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
-    pub fn try_between<'g>(
-        a: EmployeeRef<'g>,
-        b: EmployeeRef<'g>,
-    ) -> Result<impl Iterator<Item = BossRef<'g>> + 'g, graphite::GraphMismatch> {
-        if a.graph.__graphite_construction_stamp != b.graph.__graphite_construction_stamp
-        {
-            return Err(graphite::GraphMismatch);
-        }
-        let positions = a
-            .graph
-            .__graphite_boss_by_pair
-            .get(&(a.internal_position, b.internal_position))
-            .map(Vec::as_slice)
-            .unwrap_or(&[]);
-        Ok(
-            positions
-                .iter()
-                .copied()
-                .map(move |internal_position| BossRef {
-                    graph: a.graph,
-                    internal_position,
-                }),
-        )
-    }
-    /// # Panics
-    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    pub fn between<'g>(
-        a: EmployeeRef<'g>,
-        b: EmployeeRef<'g>,
-    ) -> impl Iterator<Item = BossRef<'g>> + 'g {
-        Self::try_between(a, b)
-            .unwrap_or_else(|error| panic!("{}::between: {error}", stringify!(Boss)))
-    }
-    pub fn get<'g>(g: &'g Graph, id: &BossId) -> Option<BossRef<'g>> {
-        Some(BossRef {
-            graph: g,
-            internal_position: __BossInternalPosition(g.boss.position(id)?),
-        })
-    }
-    /// 辺の構造を保ったまま積み荷だけを可変借用する。
-    pub fn payload_mut<'g>(g: &'g mut Graph, id: &BossId) -> Option<&'g mut BossEdge> {
-        g.boss.get_mut(id).map(|record: &mut __BossRecord| &mut record.appointment)
-    }
-    pub fn iter<'g>(g: &'g Graph) -> impl Iterator<Item = BossRef<'g>> + 'g {
-        g.boss
-            .positions()
-            .map(move |position| BossRef {
-                graph: g,
-                internal_position: __BossInternalPosition(position),
-            })
-    }
-    pub fn ids(g: &Graph) -> impl Iterator<Item = &BossId> {
-        g.boss.ids()
-    }
-    pub fn len(g: &Graph) -> usize {
-        g.boss.len()
-    }
-}
-impl Assigned {
-    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
-    /// 問い合わせ時に結果 `Vec` を確保しない。
-    pub fn of_employee<'g>(
-        node: EmployeeRef<'g>,
-    ) -> impl Iterator<Item = AssignedRef<'g>> + 'g {
-        let positions = node.graph.assigned_from_index.get(node.internal_position.0);
-        positions
-            .iter()
-            .copied()
-            .map(move |internal_position| AssignedRef {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
-    /// 問い合わせ時に結果 `Vec` を確保しない。
-    pub fn of_project<'g>(
-        node: ProjectRef<'g>,
-    ) -> impl Iterator<Item = AssignedRef<'g>> + 'g {
-        let positions = node.graph.assigned_to_index.get(node.internal_position.0);
-        positions
-            .iter()
-            .copied()
-            .map(move |internal_position| AssignedRef {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
-    pub fn try_between<'g>(
-        a: EmployeeRef<'g>,
-        b: ProjectRef<'g>,
-    ) -> Result<impl Iterator<Item = AssignedRef<'g>> + 'g, graphite::GraphMismatch> {
-        if a.graph.__graphite_construction_stamp != b.graph.__graphite_construction_stamp
-        {
-            return Err(graphite::GraphMismatch);
-        }
-        let positions = a
-            .graph
-            .__graphite_assigned_by_pair
-            .get(&(a.internal_position, b.internal_position))
-            .map(Vec::as_slice)
-            .unwrap_or(&[]);
-        Ok(
-            positions
-                .iter()
-                .copied()
-                .map(move |internal_position| AssignedRef {
-                    graph: a.graph,
-                    internal_position,
-                }),
-        )
-    }
-    /// # Panics
-    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    pub fn between<'g>(
-        a: EmployeeRef<'g>,
-        b: ProjectRef<'g>,
-    ) -> impl Iterator<Item = AssignedRef<'g>> + 'g {
-        Self::try_between(a, b)
-            .unwrap_or_else(|error| panic!("{}::between: {error}", stringify!(Assigned)))
-    }
-    pub fn get<'g>(g: &'g Graph, id: &AssignedId) -> Option<AssignedRef<'g>> {
-        Some(AssignedRef {
-            graph: g,
-            internal_position: __AssignedInternalPosition(g.assigned.position(id)?),
-        })
-    }
-    /// 辺の構造を保ったまま積み荷だけを可変借用する。
-    pub fn payload_mut<'g>(
-        g: &'g mut Graph,
-        id: &AssignedId,
-    ) -> Option<&'g mut AssignedEdge> {
-        g.assigned
-            .get_mut(id)
-            .map(|record: &mut __AssignedRecord| &mut record.assignment)
-    }
-    pub fn iter<'g>(g: &'g Graph) -> impl Iterator<Item = AssignedRef<'g>> + 'g {
-        g.assigned
-            .positions()
-            .map(move |position| AssignedRef {
-                graph: g,
-                internal_position: __AssignedInternalPosition(position),
-            })
-    }
-    pub fn ids(g: &Graph) -> impl Iterator<Item = &AssignedId> {
-        g.assigned.ids()
-    }
-    pub fn len(g: &Graph) -> usize {
-        g.assigned.len()
-    }
-}
-impl Sponsors {
-    /// この役割に接続する高々1本の辺を O(1)、追加確保なしで返す。
-    pub fn of_department<'g>(node: DepartmentRef<'g>) -> Option<SponsorsRef<'g>> {
-        node.graph
-            .sponsors_from_index
-            .get(node.internal_position.0)
-            .copied()
-            .map(|internal_position| SponsorsRef {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
-    /// 問い合わせ時に結果 `Vec` を確保しない。
-    pub fn of_project<'g>(
-        node: ProjectRef<'g>,
-    ) -> impl Iterator<Item = SponsorsRef<'g>> + 'g {
-        let positions = node.graph.sponsors_to_index.get(node.internal_position.0);
-        positions
-            .iter()
-            .copied()
-            .map(move |internal_position| SponsorsRef {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
-    pub fn try_between<'g>(
-        a: DepartmentRef<'g>,
-        b: ProjectRef<'g>,
-    ) -> Result<impl Iterator<Item = SponsorsRef<'g>> + 'g, graphite::GraphMismatch> {
-        if a.graph.__graphite_construction_stamp != b.graph.__graphite_construction_stamp
-        {
-            return Err(graphite::GraphMismatch);
-        }
-        let positions = a
-            .graph
-            .__graphite_sponsors_by_pair
-            .get(&(a.internal_position, b.internal_position))
-            .map(Vec::as_slice)
-            .unwrap_or(&[]);
-        Ok(
-            positions
-                .iter()
-                .copied()
-                .map(move |internal_position| SponsorsRef {
-                    graph: a.graph,
-                    internal_position,
-                }),
-        )
-    }
-    /// # Panics
-    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    pub fn between<'g>(
-        a: DepartmentRef<'g>,
-        b: ProjectRef<'g>,
-    ) -> impl Iterator<Item = SponsorsRef<'g>> + 'g {
-        Self::try_between(a, b)
-            .unwrap_or_else(|error| panic!("{}::between: {error}", stringify!(Sponsors)))
-    }
-    pub fn get<'g>(g: &'g Graph, id: &SponsorsId) -> Option<SponsorsRef<'g>> {
-        Some(SponsorsRef {
-            graph: g,
-            internal_position: __SponsorsInternalPosition(g.sponsors.position(id)?),
-        })
-    }
-    pub fn iter<'g>(g: &'g Graph) -> impl Iterator<Item = SponsorsRef<'g>> + 'g {
-        g.sponsors
-            .positions()
-            .map(move |position| SponsorsRef {
-                graph: g,
-                internal_position: __SponsorsInternalPosition(position),
-            })
-    }
-    pub fn ids(g: &Graph) -> impl Iterator<Item = &SponsorsId> {
-        g.sponsors.ids()
-    }
-    pub fn len(g: &Graph) -> usize {
-        g.sponsors.len()
     }
 }

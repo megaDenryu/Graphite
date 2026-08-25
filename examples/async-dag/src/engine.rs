@@ -65,8 +65,8 @@ pub fn run_waves(g: &Orchestration::Graph, waves: &[Vec<ServiceId>]) -> Executio
     for (wave_index, wave) in waves.iter().enumerate() {
         thread::scope(|scope| {
             for id in wave {
-                let service = Orchestration::Service::get(g, id)
-                    .unwrap_or_else(|| panic!("波に含まれるキー{id:?}はService::ids(g)由来のはず"));
+                let service = g.service_by_id(id)
+                    .unwrap_or_else(|| panic!("波に含まれるキー{id:?}g.はservice_ids()由来のはず"));
                 let records = &records;
                 scope.spawn(move || {
                     let start = overall_start.elapsed();
@@ -97,7 +97,7 @@ pub fn run_waves(g: &Orchestration::Graph, waves: &[Vec<ServiceId>]) -> Executio
 pub fn run_serial(g: &Orchestration::Graph, order: &[ServiceId]) -> Duration {
     let start = Instant::now();
     for id in order {
-        if let Some(service) = Orchestration::Service::get(g, id) {
+        if let Some(service) = g.service_by_id(id) {
             simulate_startup(service.startup_ms);
         }
     }
@@ -108,7 +108,7 @@ pub fn run_serial(g: &Orchestration::Graph, order: &[ServiceId]) -> Duration {
 mod tests {
     use super::*;
     use crate::depgraph::compute_waves;
-    use crate::schema::{DependsOn, Orchestration, Service};
+    use crate::schema::{Orchestration, Service};
 
     #[test]
     #[rustfmt::skip]
@@ -133,7 +133,7 @@ mod tests {
 
         // DependsOn の全ペアについて、依存先 (prerequisite) の完了時刻が
         // 依存元 (dependent) の開始時刻より前 (以下) であることを確認する。
-        for edge in DependsOn::iter(&g) {
+        for edge in g.depends_on_iter() {
             let dependent = edge.dependent().id();
             let prerequisite = edge.dependency().id();
             let dependent_record = report.record_of(dependent);
@@ -166,7 +166,7 @@ mod tests {
         let waves = compute_waves(&g).unwrap();
         let report = run_waves(&g, &waves);
 
-        let order: Vec<ServiceId> = Orchestration::Service::ids(&g).cloned().collect();
+        let order: Vec<ServiceId> = g.service_ids().cloned().collect();
         let serial = run_serial(&g, &order);
 
         // 直列: 20+40+40+10=110ms。並列: 20 (config) + 40 (db,cacheの最大) +

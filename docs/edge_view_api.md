@@ -2,9 +2,11 @@
 
 > **[v4 (`docs/schema_v4.md`) で置換済み]** このファイルは歴史的記録として残す。
 > ビュー6型 (`EdgeOne`/`EdgeOneWith`/`EdgeOption`/`EdgeOptionWith`/`EdgeMany`/
-> `EdgeManyWith`) は v4 で全廃され、型名前空間アクセス (`Kind::of`/`get`/
-> `between`/`iter`/`ids`/`len`) に置き換わった。現行のエッジアクセスAPIは
-> `docs/schema_v4.md` §3.2 を参照すること。
+> `EdgeManyWith`) は v4 で全廃された。置き換え先はいったん辺種別型の関連関数
+> だったが、issue #9 で `Graph` の種別API (`{kind}_by_id`/`{kind}_iter`/
+> `{kind}_ids`/`{kind}_len`/`{kind}_payload_mut`) と `NodeRef` の探索メソッド
+> (`{kind}_as_{役割}`/`{kind}_incident`/`{kind}_between`) へ移した。現行の
+> エッジアクセスAPIは `docs/schema_v4.md` §3.2 を参照すること。
 
 2026-07-15 セッション2 でのユーザー決定。設計考察はオーケストレータ (本ドキュメント
 著者) によるもので、経緯は `docs/dev_history_2026-07-14_session2.md` を参照。

@@ -1,7 +1,7 @@
-//! 終点側の役割クエリ (`Kind::of_<role>`、`docs/reverse_query.md`) の統合テスト。
+//! 終点側の役割探索 (`node.{kind}_as_<role>()`、`docs/reverse_query.md`) の統合テスト。
 //!
 //! `orgchart_macro.rs` の既存スキーマは目的が違う (v4/v4.1 の実証) ので、
-//! 役割クエリ専用の最小スキーマをこのファイルに用意する。カバーする
+//! 役割探索専用の最小スキーマをこのファイルに用意する。カバーする
 //! 組み合わせ (積み荷の有無 × 終点側 each 制約):
 //!
 //! - `Unconstrained`  : 積み荷あり、終点側制約なし → `impl Iterator<Item = UnconstrainedRef>`
@@ -145,7 +145,7 @@ mod tests {
     fn 制約なしかつ積み荷ありはiteratorで辺を返り挿入順を保持する() {
         let g = build();
         let sources: Vec<_> =
-            Unconstrained::of_target(RevQuery::NodeB::get(&g, &nb("b1")).unwrap()).collect();
+            g.node_b_by_id(&nb("b1")).unwrap().unconstrained_as_target().collect();
         assert_eq!(sources.len(), 2);
         // 挿入順 (u1: a2, u2: a1) を保持する — ノード宣言順 (a1, a2, ...) では
         // ない。
@@ -159,13 +159,13 @@ mod tests {
     fn 制約なしかつ積み荷なしはiteratorで辺を返す() {
         let g = build();
         let sources: Vec<_> =
-            UnconstrainedNoPayload::of_target(RevQuery::NodeB::get(&g, &nb("b1")).unwrap())
+            g.node_b_by_id(&nb("b1")).unwrap().unconstrained_no_payload_as_target()
                 .collect();
         assert_eq!(sources.len(), 1);
         assert_eq!(sources[0].source().name, "a3");
 
         assert!(
-            UnconstrainedNoPayload::of_target(RevQuery::NodeB::get(&g, &nb("b2")).unwrap())
+            g.node_b_by_id(&nb("b2")).unwrap().unconstrained_no_payload_as_target()
                 .next()
                 .is_none()
         );
@@ -175,10 +175,10 @@ mod tests {
     fn 終点側0か1制約かつ積み荷なしはoptionを返す() {
         let g = build();
 
-        let m = AtMostOne::of_dst(RevQuery::NodeB::get(&g, &nb("b1")).unwrap());
+        let m = g.node_b_by_id(&nb("b1")).unwrap().at_most_one_as_dst();
         assert_eq!(m.expect("b1の代表はa1のはず").src().name, "a1");
 
-        let none = AtMostOne::of_dst(RevQuery::NodeB::get(&g, &nb("b2")).unwrap());
+        let none = g.node_b_by_id(&nb("b2")).unwrap().at_most_one_as_dst();
         assert!(none.is_none(), "b2には代表がいないはず");
     }
 
@@ -186,28 +186,28 @@ mod tests {
     fn 終点側ちょうど1制約かつ積み荷ありは直接参照を返す() {
         let g = build();
 
-        let edge = ExactlyOne::of_dst(RevQuery::NodeB::get(&g, &nb("b1")).unwrap());
+        let edge = g.node_b_by_id(&nb("b1")).unwrap().exactly_one_as_dst();
         assert_eq!(edge.src().name, "a1");
         assert_eq!(edge.payload().w, 100);
 
-        let edge2 = ExactlyOne::of_dst(RevQuery::NodeB::get(&g, &nb("b2")).unwrap());
+        let edge2 = g.node_b_by_id(&nb("b2")).unwrap().exactly_one_as_dst();
         assert_eq!(edge2.src().name, "a2");
         assert_eq!(edge2.payload().w, 200);
     }
 
     #[test]
-    fn of_targetは相手側から見た関係でありof_sourceとは非対称() {
-        // Unconstrained::of_source(a1) は a1 を始点とする辺 (終点側は b1) を
-        // 返す。Unconstrained::of_target(b1) はその逆で a1 を含む始点側の
-        // 一覧を返す (自分自身が相手にとっての of_target に現れることを
+    fn 終点側の役割探索は始点側の役割探索とは非対称() {
+        // a1.unconstrained_as_source() は a1 を始点とする辺 (終点側は b1) を
+        // 返す。b1.unconstrained_as_target() はその逆で a1 を含む始点側の
+        // 一覧を返す (自分自身が相手にとっての終点側探索に現れることを
         // 確認する)。
         let g = build();
         let targets: Vec<_> =
-            Unconstrained::of_source(RevQuery::NodeA::get(&g, &na("a1")).unwrap()).collect();
+            g.node_a_by_id(&na("a1")).unwrap().unconstrained_as_source().collect();
         assert_eq!(targets.len(), 1);
         assert_eq!(targets[0].target().name, "b1");
 
-        let sources = Unconstrained::of_target(RevQuery::NodeB::get(&g, &nb("b1")).unwrap());
+        let sources = g.node_b_by_id(&nb("b1")).unwrap().unconstrained_as_target();
         assert!(sources.into_iter().any(|edge| edge.source().name == "a1"));
     }
 }

@@ -27,7 +27,7 @@
 //! 「モデリングガイド§5の適用例」節参照)。
 //!
 //! この「終点で絞り込む」操作には役割クエリ
-//! (`Feeds::of_dependent` / `Lhs::of_operation` / `Rhs::of_operation`) を使う。
+//! (`cell.feeds_as_dependent()` / `cell.lhs_as_operation()` / `cell.rhs_as_operation()`) を使う。
 //! 戻り値は `EdgeRef` のiteratorなので、本数は `.count()`、相手セルのキーは
 //! `edge.dependency().id()` / `edge.operand().id()` から追加検索なしで得られる。
 
@@ -37,7 +37,7 @@ use graphite::{CycleError, Graph};
 
 #[cfg(test)]
 use crate::schema::Cell;
-use crate::schema::{CellId, Feeds, Formula, Lhs, Rhs, Sheet};
+use crate::schema::{CellId, Formula, Sheet};
 
 /// [`Engine::set_input`] が1回の更新で行った再計算1件分の記録。
 ///
@@ -91,8 +91,8 @@ impl Engine {
         Self::validate_formula_wiring(&graph);
 
         let dependency_graph: Graph<(), (), CellId> = Graph::from_edges(
-            Sheet::Cell::ids(&graph).cloned(),
-            Feeds::iter(&graph)
+            graph.cell_ids().cloned(),
+            graph.feeds_iter()
                 .map(|edge| {
                     (
                         edge.dependency().id().clone(),
@@ -100,16 +100,16 @@ impl Engine {
                     )
                 })
                 .chain(
-                    Lhs::iter(&graph)
+                    graph.lhs_iter()
                         .map(|edge| (edge.operand().id().clone(), edge.operation().id().clone())),
                 )
                 .chain(
-                    Rhs::iter(&graph)
+                    graph.rhs_iter()
                         .map(|edge| (edge.operand().id().clone(), edge.operation().id().clone())),
                 ),
         )
         .expect(
-            "Cell::ids()とFeeds/Lhs/Rhs::iter()の端点整合はSheet::create/create_collectingの検証で\
+            "cell_ids()とfeeds_iter/lhs_iter/rhs_iter()の端点整合はSheet::create/create_collectingの検証で\
              既に保証されているはず (未知キー・重複キーはここでは起こらない)",
         );
 
@@ -119,7 +119,7 @@ impl Engine {
             .cloned()
             .collect();
 
-        let values: HashMap<CellId, f64> = Sheet::Cell::ids(&graph)
+        let values: HashMap<CellId, f64> = graph.cell_ids()
             .map(|id| (id.clone(), 0.0))
             .collect();
 
@@ -139,17 +139,17 @@ impl Engine {
     ///   ちょうど1本必要 (被減数/減数はどちらも一意でなければならない)。
     /// - `Input` — エッジ本数を問わない (値は `set_input` で直接与える)。
     ///
-    /// 本数だけが要件で相手セルの値は不要なので、`{Kind}::iter` を毎回
+    /// 本数だけが要件で相手セルの値は不要なので、`{kind}_iter` を毎回
     /// 全走査して `.filter(.. edge.dependent == cell_id ..)` する代わりに
-    /// `{Kind}::of_<role>(cell).count()`
+    /// `cell.{kind}_as_<role>().count()`
     /// を使う。freeze 時に構築済みの終点索引を引くだけの O(1) 償却になる。
     fn validate_formula_wiring(graph: &Sheet::Graph) {
-        for cell in Sheet::Cell::iter(graph) {
+        for cell in graph.cell_iter() {
             let cell_id = cell.id();
             match cell.formula {
                 Formula::Input => {}
                 Formula::Mul | Formula::Sum => {
-                    let count = Feeds::of_dependent(cell).count();
+                    let count = cell.feeds_as_dependent().count();
                     assert!(
                         count >= 1,
                         "{cell_id:?}: {:?}セルには演算対象を表すFeedsエッジが1本以上必要です (実際: {count}本)",
@@ -157,8 +157,8 @@ impl Engine {
                     );
                 }
                 Formula::Sub => {
-                    let lhs_count = Lhs::of_operation(cell).count();
-                    let rhs_count = Rhs::of_operation(cell).count();
+                    let lhs_count = cell.lhs_as_operation().count();
+                    let rhs_count = cell.rhs_as_operation().count();
                     assert_eq!(
                         lhs_count, 1,
                         "{cell_id:?}: Subセルには被減数を表すLhsエッジがちょうど1本必要です (実際: {lhs_count}本)"
@@ -209,7 +209,7 @@ impl Engine {
     ///   直接代入は契約違反 — 式を経由せず値を書き換えると依存グラフと
     ///   値ストアが不整合になるため)。
     pub fn set_input(&mut self, id: &CellId, value: f64) -> Vec<RecomputeStep> {
-        let cell = Sheet::Cell::get(&self.graph, id)
+        let cell = self.graph.cell_by_id(id)
             .unwrap_or_else(|| panic!("set_input: 未知のセルキーです: {id:?}"));
         assert!(
             matches!(cell.formula, Formula::Input),
@@ -233,8 +233,8 @@ impl Engine {
             if cell_id == id || !affected.contains(cell_id) {
                 continue;
             }
-            let formula = Sheet::Cell::get(&self.graph, cell_id)
-                .expect("topo_orderに含まれるキーはCell::get()に必ず存在する")
+            let formula = self.graph.cell_by_id(cell_id)
+                .expect("topo_orderに含まれるキーはcell_by_id()に必ず存在する")
                 .formula;
             let new_value = self.eval_formula(cell_id, formula);
             self.values.insert(cell_id.clone(), new_value);
@@ -263,12 +263,12 @@ impl Engine {
     /// `cell_id` を終点とする `Feeds` エッジの起点セルの値を、挿入順
     /// (`docs/schema_v4.md` §3.2 の順序保証) で列挙する。
     ///
-    /// `Feeds::of_dependent` は辺参照を返す。起点NodeRefの `id()` から
+    /// `cell.feeds_as_dependent()` は辺参照を返す。起点NodeRefの `id()` から
     /// 現在値ストアのキーを直接得られるため、辺表の全走査は不要である。
     fn feeds_into<'a>(&'a self, cell_id: &'a CellId) -> impl Iterator<Item = f64> + 'a {
         let cell =
-            Sheet::Cell::get(&self.graph, cell_id).expect("評価対象セルはグラフに存在するはず");
-        Feeds::of_dependent(cell).map(move |edge| self.value(edge.dependency().id()))
+            self.graph.cell_by_id(cell_id).expect("評価対象セルはグラフに存在するはず");
+        cell.feeds_as_dependent().map(move |edge| self.value(edge.dependency().id()))
     }
 
     /// `cell_id` を終点とする `Lhs` エッジの起点セルの値 (被減数)。
@@ -281,8 +281,8 @@ impl Engine {
     /// 見つからなければ実装の不整合 (バグ) である。
     fn lhs_value(&self, cell_id: &CellId) -> f64 {
         let cell =
-            Sheet::Cell::get(&self.graph, cell_id).expect("評価対象セルはグラフに存在するはず");
-        let operand = Lhs::of_operation(cell)
+            self.graph.cell_by_id(cell_id).expect("評価対象セルはグラフに存在するはず");
+        let operand = cell.lhs_as_operation()
             .next()
             .expect("validate_formula_wiringで存在を検査済みのはず");
         self.value(operand.operand().id())
@@ -296,8 +296,8 @@ impl Engine {
     /// いる場合のみパニックする (実装の不整合)。
     fn rhs_value(&self, cell_id: &CellId) -> f64 {
         let cell =
-            Sheet::Cell::get(&self.graph, cell_id).expect("評価対象セルはグラフに存在するはず");
-        let operand = Rhs::of_operation(cell)
+            self.graph.cell_by_id(cell_id).expect("評価対象セルはグラフに存在するはず");
+        let operand = cell.rhs_as_operation()
             .next()
             .expect("validate_formula_wiringで存在を検査済みのはず");
         self.value(operand.operand().id())

@@ -182,8 +182,8 @@ task <名前>: <コマンド...> (<秒数>s)      タスク定義
 - **型付きアクセサの手書き**: `HashMap<String, Task>` と
   `HashMap<String, Artifact>` を別々に持つと、「このキーは Task 用か
   Artifact 用か」を呼び出し側が毎回意識する必要がある。`graphite` では
-  `Task::get(&g, &TaskId)` / `Artifact::get(&g, &ArtifactId)` のようにキー型
-  自体が newtype で区別されるため、`ArtifactId` を `Task::get()` に渡す
+  `g.task_by_id(&TaskId)` / `g.artifact_by_id(&ArtifactId)` のようにキー型
+  自体が newtype で区別されるため、`ArtifactId` を `g.task_by_id()` に渡す
   コードはコンパイルが通らない。素朴な `HashMap<String, _>` 2枚構成では
   この区別が実行時までに検出されない (例: `Produces` のキーに誤って
   artifact のパスではなくタスク名を入れてしまう、といったバグを型で防げ
@@ -198,20 +198,20 @@ task <名前>: <コマンド...> (<秒数>s)      タスク定義
   しない。
 - **each制約 API とiteratorの使い分け**: `Produces`/`Consumes` はどちらも
   多重度の each 制約を付けていないため、
-  `Produces::of_task(task) -> impl Iterator<Item = ProducesRef<'graph>>` が自動生成される。自作なら
+  `task.produces_as_task() -> impl Iterator<Item = ProducesRef<'graph>>` が自動生成される。自作なら
   `HashMap<String, Vec<String>>` を用意したうえで `.get(key).cloned()
   .unwrap_or_default()` のような空デフォルト処理を毎回書く必要がある
   (書き忘れると未知キーで `panic`)。
-- **`Kind::iter(&g)`**: 本アプリのドメイン検証 (孤児成果物・
+- **`g.{kind}_iter()`**: 本アプリのドメイン検証 (孤児成果物・
   produce競合・循環依存) はどれも「全 Produces ペア」「全 Consumes ペア」を
   俯瞰して初めて判定できる (1本のエッジだけを見ても分からない)。
-  `Produces::iter(&g)`/`Consumes::iter(&g)` が無ければ、内部の
+  `g.produces_iter()`/`g.consumes_iter()` が無ければ、内部の
   `HashMap<K, Vec<V>>` を手でフラット化するイテレータをアプリ側に毎回書く
   ことになる。ここでは `analysis.rs` の `validate`/`task_dependency_graph`
   がこれをそのまま使い、artifactごとの producer/consumer 集合を
   `HashMap<&ArtifactId, Vec<&TaskId>>` へ畳み込むだけで済んでいる。
 - **`{Node}::ids(&g)` による全件列挙**: `plan`/`critical-path` は
-  「全タスク」を起点にした波・経路の計算が要る。`Task::ids(&g)` が無ければ、
+  「全タスク」を起点にした波・経路の計算が要る。`g.task_ids()` が無ければ、
   ノード用 `HashMap` のキー列挙を毎回 `.keys()` で取り出したうえで、それが
   「タスクのキーである」という前提をコメントで祈るしかない。
 - **タスク依存グラフへの射影と汎用アルゴリズムの再利用**: 「タスク A は

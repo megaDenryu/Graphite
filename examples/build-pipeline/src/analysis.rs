@@ -9,7 +9,7 @@
 //! 射影を使って別レイヤーとして実装する
 //! (README「導出エッジ」節が想定する使い分けそのもの)。
 
-use crate::schema::{ArtifactId, BuildPipeline, Consumes, Produces, TaskId};
+use crate::schema::{ArtifactId, BuildPipeline, TaskId};
 use graphite::{CycleError, Graph};
 use std::collections::{HashMap, HashSet};
 use std::fmt;
@@ -24,20 +24,20 @@ pub type TaskDependencyGraph = Graph<(), (), TaskId>;
 
 /// [`BuildPipeline`] からタスク依存グラフを射影する。
 ///
-/// `Produces::iter(g)`/`Consumes::iter(g)` はどちらも `BuildPipeline` の生成物
+/// `g.produces_iter()`/`g.consumes_iter()` はどちらも `BuildPipeline` の生成物
 /// (図式グラフのクエリ API) であり、ここで初めて「タスク間の順序」という
-/// 導出情報を組み立てる。エッジの終点キーは常に `Task::ids(g)` 由来なので
+/// 導出情報を組み立てる。エッジの終点キーは常に `g.task_ids()` 由来なので
 /// `Graph::build` が `UnknownEndpoint` を返すことはない (`expect` で妥当)。
 pub fn task_dependency_graph(g: &BuildPipeline::Graph) -> TaskDependencyGraph {
     let mut producers_of: HashMap<&ArtifactId, Vec<&TaskId>> = HashMap::new();
-    for edge in Produces::iter(g) {
+    for edge in g.produces_iter() {
         producers_of
             .entry(edge.artifact().id())
             .or_default()
             .push(edge.task().id());
     }
 
-    let nodes: Vec<(TaskId, ())> = BuildPipeline::Task::ids(g)
+    let nodes: Vec<(TaskId, ())> = g.task_ids()
         .map(|id| (id.clone(), ()))
         .collect();
 
@@ -47,7 +47,7 @@ pub fn task_dependency_graph(g: &BuildPipeline::Graph) -> TaskDependencyGraph {
     // `FnMut` の性質上、その借用は呼び出しの外へ逃がせない)。ループで
     // 即座に `Vec` へ確定させることで回避する。
     let mut edges: Vec<(TaskId, TaskId, ())> = Vec::new();
-    for edge in Consumes::iter(g) {
+    for edge in g.consumes_iter() {
         let consumer = edge.task().id();
         let artifact = edge.artifact().id();
         if let Some(producers) = producers_of.get(artifact) {
@@ -58,7 +58,7 @@ pub fn task_dependency_graph(g: &BuildPipeline::Graph) -> TaskDependencyGraph {
     }
 
     Graph::build(nodes, edges)
-        .expect("タスク依存グラフの辺の端点は必ずTask::ids(g)由来なので未知キーにはならない")
+        .expect("g.タスク依存グラフの辺の端点は必ずtask_ids()由来なので未知キーにはならない")
 }
 
 /// `validate` サブコマンドが報告するドメイン違反 1 件。
@@ -127,14 +127,14 @@ pub fn validate(g: &BuildPipeline::Graph) -> Vec<DomainIssue> {
     let mut issues = Vec::new();
 
     let mut producers_of: HashMap<&ArtifactId, Vec<&TaskId>> = HashMap::new();
-    for edge in Produces::iter(g) {
+    for edge in g.produces_iter() {
         producers_of
             .entry(edge.artifact().id())
             .or_default()
             .push(edge.task().id());
     }
     let mut consumers_of: HashMap<&ArtifactId, Vec<&TaskId>> = HashMap::new();
-    for edge in Consumes::iter(g) {
+    for edge in g.consumes_iter() {
         consumers_of
             .entry(edge.artifact().id())
             .or_default()
@@ -200,12 +200,12 @@ pub fn plan(g: &BuildPipeline::Graph) -> Result<Vec<Wave>, CycleError<TaskId>> {
     // 循環があれば代表ノード付きで早期に報告する。
     dep_graph.topological_sort()?;
 
-    let mut remaining: HashMap<TaskId, usize> = BuildPipeline::Task::ids(g)
+    let mut remaining: HashMap<TaskId, usize> = g.task_ids()
         .map(|id| (id.clone(), 0usize))
         .collect();
-    for id in BuildPipeline::Task::ids(g) {
+    for id in g.task_ids() {
         for succ in dep_graph.out_neighbors(id) {
-            *remaining.get_mut(succ).expect("succはTask::ids(g)由来") += 1;
+            *remaining.get_mut(succ).expect("g.succはtask_ids()由来") += 1;
         }
     }
 
@@ -225,7 +225,7 @@ pub fn plan(g: &BuildPipeline::Graph) -> Result<Vec<Wave>, CycleError<TaskId>> {
 
         let duration = frontier
             .iter()
-            .map(|id| BuildPipeline::Task::get(g, id).map(|t| t.secs).unwrap_or(0))
+            .map(|id| g.task_by_id(id).map(|t| t.secs).unwrap_or(0))
             .max()
             .unwrap_or(0);
 
@@ -286,7 +286,7 @@ pub fn critical_path(g: &BuildPipeline::Graph) -> Result<CriticalPath, CycleErro
     let order = dep_graph.topological_sort()?;
 
     let secs_of =
-        |id: &TaskId| -> u32 { BuildPipeline::Task::get(g, id).map(|t| t.secs).unwrap_or(0) };
+        |id: &TaskId| -> u32 { g.task_by_id(id).map(|t| t.secs).unwrap_or(0) };
 
     if order.is_empty() {
         return Ok(CriticalPath {
@@ -329,7 +329,7 @@ pub fn critical_path(g: &BuildPipeline::Graph) -> Result<CriticalPath, CycleErro
     }
     path.reverse();
 
-    let total_work_secs: u32 = BuildPipeline::Task::ids(g).map(secs_of).sum();
+    let total_work_secs: u32 = g.task_ids().map(secs_of).sum();
 
     Ok(CriticalPath {
         path,

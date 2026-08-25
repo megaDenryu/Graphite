@@ -6,8 +6,8 @@
 //!
 //! 各 schema は生成物を `OrgChart`/`ApprovalFlow` module に分離するため、
 //! 同じ `Person` 値型を共有しても問い合わせ名は衝突しない。`PersonId` という
-//! 値は module を跨いで自由に受け渡せ、問い合わせ先は
-//! `OrgChart::Person::get` と `ApprovalFlow::Person::get` で明示できる。
+//! 値は module を跨いで自由に受け渡せ、問い合わせ先はどちらの `Graph` の
+//! `person_by_id` を呼ぶかで決まる。
 
 /// 2つのschemaから明示的に参照する共有ID型。
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -135,32 +135,32 @@ fn 組織図で得たキーを承認フローのクエリにそのまま渡せ�
     let flow = approval_flow::build();
 
     // 組織図側で「田中さんのキー」を取得する。
-    let tanaka_id_in_org: &PersonId = org_chart::OrgChart::Person::ids(&org)
-        .find(|id| org_chart::OrgChart::Person::get(&org, id).unwrap().name == "田中")
+    let tanaka_id_in_org: &PersonId = org.person_ids()
+        .find(|id| org.person_by_id(id).unwrap().name == "田中")
         .expect("組織図に田中さんがいるはず");
 
     // 両schemaが同じ既存型を明示指定しているため、そのキーを型変換も
     // ラップもせずに承認フロー側のクエリへ渡せる。
-    let tanaka_in_flow = approval_flow::ApprovalFlow::Person::get(&flow, tanaka_id_in_org)
+    let tanaka_in_flow = flow.person_by_id(tanaka_id_in_org)
         .expect("組織図で得たキーがそのまま承認フローでも引けるはず");
     assert_eq!(tanaka_in_flow.name, "田中");
 
     // 逆方向 (承認フロー → 組織図) も同様に成立する。
-    let sato_id_in_flow: &PersonId = approval_flow::ApprovalFlow::Person::ids(&flow)
+    let sato_id_in_flow: &PersonId = flow.person_ids()
         .find(|id| {
-            approval_flow::ApprovalFlow::Person::get(&flow, id)
+            flow.person_by_id(id)
                 .unwrap()
                 .name
                 == "佐藤"
         })
         .expect("承認フローに佐藤さんがいるはず");
-    let sato_in_org = org_chart::OrgChart::Person::get(&org, sato_id_in_flow)
+    let sato_in_org = org.person_by_id(sato_id_in_flow)
         .expect("承認フローで得たキーがそのまま組織図でも引けるはず");
     assert_eq!(sato_in_org.name, "佐藤");
 
     // 承認フロー自体の意味論も一応確認しておく: 佐藤 -> 田中 の承認関係。
-    let sato_ref = approval_flow::ApprovalFlow::Person::get(&flow, sato_id_in_flow).unwrap();
-    let approves_target = approval_flow::ApprovalFlow::Approves::of_approver(sato_ref)
+    let sato_ref = flow.person_by_id(sato_id_in_flow).unwrap();
+    let approves_target = sato_ref.approves_as_approver()
         .next()
         .unwrap();
     assert_eq!(approves_target.approved().name, "田中");

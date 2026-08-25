@@ -50,9 +50,9 @@ Rust 的な型安全性そのものを失う。
 必ず非パニック版の `try_` 関数を対で用意し、パニックする関数の doc コメントに
 `# Panics` 節を書いて条件を明記する。
 
-**Graphite での具体例**: `Kind::between(a, b)` は異なるGraph由来のNodeRefを
+**Graphite での具体例**: `a.{kind}_between(b)` は異なるGraph由来のNodeRefを
 組み合わせるという契約違反時だけパニックする。対になる
-`Kind::try_between(a, b) -> Result<_, GraphMismatch>` が非パニック版として
+`a.{kind}_try_between(b) -> Result<_, GraphMismatch>` が非パニック版として
 必ず生成される。
 
 ### 原則3: std 命名規約準拠

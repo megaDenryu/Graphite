@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    16000792481818271715u64, 16052991655113111562u64, 4471474897916515041u64,
-    17078392918793111037u64,
+    9679269966857011566u64, 245596974385210351u64, 6756990841367221828u64,
+    5467987076053389568u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ServiceId(pub String);
@@ -128,6 +128,73 @@ pub struct Graph {
     __graphite_construction_stamp: u64,
 }
 impl Graph {
+    /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    pub fn service_by_id<'graph>(
+        &'graph self,
+        id: &ServiceId,
+    ) -> Option<ServiceRef<'graph>> {
+        let internal_position = __ServiceInternalPosition(
+            self.__graphite_node_service.position(id)?,
+        );
+        Some(ServiceRef {
+            graph: self,
+            internal_position,
+        })
+    }
+    /// グラフの構造を保ったままノード値だけを可変借用する。
+    pub fn service_value_mut(&mut self, id: &ServiceId) -> Option<&mut super::Service> {
+        self.__graphite_node_service.get_mut(id)
+    }
+    /// この種別のノードの公開IDを挿入順に走査する。
+    pub fn service_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph ServiceId> {
+        self.__graphite_node_service.ids()
+    }
+    /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    pub fn service_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = ServiceRef<'graph>> + 'graph {
+        self.__graphite_node_service
+            .positions()
+            .map(move |position| ServiceRef {
+                graph: self,
+                internal_position: __ServiceInternalPosition(position),
+            })
+    }
+    /// この種別のノードの件数を返す。
+    pub fn service_len(&self) -> usize {
+        self.__graphite_node_service.len()
+    }
+    /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    pub fn depends_on_by_id<'graph>(
+        &'graph self,
+        id: &DependsOnId,
+    ) -> Option<DependsOnRef<'graph>> {
+        Some(DependsOnRef {
+            graph: self,
+            internal_position: __DependsOnInternalPosition(self.depends_on.position(id)?),
+        })
+    }
+    /// この種別の辺の公開IDを挿入順に走査する。
+    pub fn depends_on_ids<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = &'graph DependsOnId> {
+        self.depends_on.ids()
+    }
+    /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    pub fn depends_on_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = DependsOnRef<'graph>> + 'graph {
+        self.depends_on
+            .positions()
+            .map(move |position| DependsOnRef {
+                graph: self,
+                internal_position: __DependsOnInternalPosition(position),
+            })
+    }
+    /// この種別の辺の件数を返す。
+    pub fn depends_on_len(&self) -> usize {
+        self.depends_on.len()
+    }
     /// builder をクロージャに貸し出し、戻ったら凍結して図式適合
     /// (端点種別・where 制約) を一括検査する。最初の1件の違反で
     /// `Err` になる (複数の違反を全件見たい場合は
@@ -232,6 +299,12 @@ pub struct Builder {
 }
 /// 型付き ID を受け取るノード・エッジ共通の挿入トレイト。
 ///
+/// 署名が `insert_with_id(self, b, id)` と、挿入される値を receiver に
+/// して `Builder` を引数で受ける向きなのは、`graph!` がノード項の値の
+/// 型を解析せず、正しい内部ストレージへの振り分けを値の型の trait
+/// ディスパッチに頼るためである。利用者向けの公開入口は
+/// `Builder::insert`/`Builder::add` の側にある。
+///
 /// `insert_named_with_id` は [`graphite::NamedInsertPermit`] を要求する
 /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
 /// `insert_with_id` (許可証不要、名前付き位置を返さない) は独立した
@@ -262,8 +335,8 @@ pub trait OrchestrationDefaultId: OrchestrationInsertable {
     ) -> (Self::Id, Self::NamedPosition);
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
-/// ノード挿入で使うトレイト境界。読み取りは同じ module 内の
-/// ノードマーカー型が提供する。利用者がこのトレイトのメソッドを
+/// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと
+/// `NodeRef` のメソッドが提供する。利用者がこのトレイトのメソッドを
 /// 直接呼ぶことは想定しない。
 pub trait OrchestrationNode: OrchestrationInsertable {}
 impl OrchestrationInsertable for super::Service {
@@ -322,8 +395,6 @@ impl OrchestrationDefaultId for super::Service {
     }
 }
 impl OrchestrationNode for super::Service {}
-/// このスキーマにおける `#ty` ノード種別の問い合わせ名前空間。
-pub struct Service;
 /// 完成済みグラフ上の `#ty` ノード個体。
 #[derive(Clone, Copy)]
 pub struct ServiceRef<'graph> {
@@ -349,15 +420,70 @@ impl<'graph> ServiceRef<'graph> {
             )
             .1
     }
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
     pub fn depends_on_as_dependent(
         self,
     ) -> impl Iterator<Item = DependsOnRef<'graph>> + 'graph {
-        DependsOn::of_dependent(self)
+        let positions = self.graph.depends_on_from_index.get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| DependsOnRef {
+                graph: self.graph,
+                internal_position,
+            })
     }
+    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
+    /// 問い合わせ時に結果 `Vec` を確保しない。
     pub fn depends_on_as_dependency(
         self,
     ) -> impl Iterator<Item = DependsOnRef<'graph>> + 'graph {
-        DependsOn::of_dependency(self)
+        let positions = self.graph.depends_on_to_index.get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| DependsOnRef {
+                graph: self.graph,
+                internal_position,
+            })
+    }
+    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    pub fn depends_on_try_between(
+        self,
+        other: ServiceRef<'graph>,
+    ) -> Result<Option<DependsOnRef<'graph>>, graphite::GraphMismatch> {
+        if self.graph.__graphite_construction_stamp
+            != other.graph.__graphite_construction_stamp
+        {
+            return Err(graphite::GraphMismatch);
+        }
+        let found = self
+            .graph
+            .__graphite_depends_on_by_pair
+            .get(&(self.internal_position, other.internal_position))
+            .copied();
+        Ok(
+            found
+                .map(|internal_position| DependsOnRef {
+                    graph: self.graph,
+                    internal_position,
+                }),
+        )
+    }
+    /// # Panics
+    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    pub fn depends_on_between(
+        self,
+        other: ServiceRef<'graph>,
+    ) -> Option<DependsOnRef<'graph>> {
+        self.depends_on_try_between(other)
+            .unwrap_or_else(|error| {
+                panic!(
+                    "{}::{}: {error}", stringify!(ServiceRef),
+                    stringify!(depends_on_between)
+                )
+            })
     }
 }
 impl<'graph> std::ops::Deref for ServiceRef<'graph> {
@@ -377,36 +503,6 @@ impl<'graph> std::fmt::Debug for ServiceRef<'graph> {
         f.debug_struct(stringify!(ServiceRef))
             .field("id", &self.id())
             .finish_non_exhaustive()
-    }
-}
-impl Service {
-    pub fn get<'graph>(g: &'graph Graph, id: &ServiceId) -> Option<ServiceRef<'graph>> {
-        let internal_position = __ServiceInternalPosition(
-            g.__graphite_node_service.position(id)?,
-        );
-        Some(ServiceRef {
-            graph: g,
-            internal_position,
-        })
-    }
-    pub fn get_mut<'graph>(
-        g: &'graph mut Graph,
-        id: &ServiceId,
-    ) -> Option<&'graph mut super::Service> {
-        g.__graphite_node_service.get_mut(id)
-    }
-    pub fn ids<'graph>(g: &'graph Graph) -> impl Iterator<Item = &'graph ServiceId> {
-        g.__graphite_node_service.ids()
-    }
-    pub fn iter<'graph>(
-        g: &'graph Graph,
-    ) -> impl Iterator<Item = ServiceRef<'graph>> + 'graph {
-        g.__graphite_node_service
-            .positions()
-            .map(move |position| ServiceRef {
-                graph: g,
-                internal_position: __ServiceInternalPosition(position),
-            })
     }
 }
 /// `graph!` の `add` 経由のエッジ挿入で使うトレイト境界。利用者が
@@ -731,88 +827,5 @@ impl graphite::FreezableBuilder for Builder {
     type Violation = Violation;
     fn freeze_into_graph(self) -> Result<Self::Graph, Self::Violation> {
         self.freeze()
-    }
-}
-impl DependsOn {
-    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
-    /// 問い合わせ時に結果 `Vec` を確保しない。
-    pub fn of_dependent<'g>(
-        node: ServiceRef<'g>,
-    ) -> impl Iterator<Item = DependsOnRef<'g>> + 'g {
-        let positions = node.graph.depends_on_from_index.get(node.internal_position.0);
-        positions
-            .iter()
-            .copied()
-            .map(move |internal_position| DependsOnRef {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
-    /// 問い合わせ時に結果 `Vec` を確保しない。
-    pub fn of_dependency<'g>(
-        node: ServiceRef<'g>,
-    ) -> impl Iterator<Item = DependsOnRef<'g>> + 'g {
-        let positions = node.graph.depends_on_to_index.get(node.internal_position.0);
-        positions
-            .iter()
-            .copied()
-            .map(move |internal_position| DependsOnRef {
-                graph: node.graph,
-                internal_position,
-            })
-    }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
-    pub fn try_between<'g>(
-        a: ServiceRef<'g>,
-        b: ServiceRef<'g>,
-    ) -> Result<Option<DependsOnRef<'g>>, graphite::GraphMismatch> {
-        if a.graph.__graphite_construction_stamp != b.graph.__graphite_construction_stamp
-        {
-            return Err(graphite::GraphMismatch);
-        }
-        let found = a
-            .graph
-            .__graphite_depends_on_by_pair
-            .get(&(a.internal_position, b.internal_position))
-            .copied();
-        Ok(
-            found
-                .map(|internal_position| DependsOnRef {
-                    graph: a.graph,
-                    internal_position,
-                }),
-        )
-    }
-    /// # Panics
-    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    pub fn between<'g>(
-        a: ServiceRef<'g>,
-        b: ServiceRef<'g>,
-    ) -> Option<DependsOnRef<'g>> {
-        Self::try_between(a, b)
-            .unwrap_or_else(|error| {
-                panic!("{}::between: {error}", stringify!(DependsOn))
-            })
-    }
-    pub fn get<'g>(g: &'g Graph, id: &DependsOnId) -> Option<DependsOnRef<'g>> {
-        Some(DependsOnRef {
-            graph: g,
-            internal_position: __DependsOnInternalPosition(g.depends_on.position(id)?),
-        })
-    }
-    pub fn iter<'g>(g: &'g Graph) -> impl Iterator<Item = DependsOnRef<'g>> + 'g {
-        g.depends_on
-            .positions()
-            .map(move |position| DependsOnRef {
-                graph: g,
-                internal_position: __DependsOnInternalPosition(position),
-            })
-    }
-    pub fn ids(g: &Graph) -> impl Iterator<Item = &DependsOnId> {
-        g.depends_on.ids()
-    }
-    pub fn len(g: &Graph) -> usize {
-        g.depends_on.len()
     }
 }
