@@ -9,15 +9,22 @@ Graphiteの独自構文を消去したときにどの普通のRustのファイ�
 からの引用であり、引用ごとに出典のパスと行を併記する。生成ファイルは
 `cargo xtask generate` が書き出したものであり、`cargo xtask generate --check` が
 本文のバイト一致を検査している。一覧性を優先して本体を省いた箇所には
-「(署名のみ抜粋)」と書く。それ以外の引用は出典の当該行を写しており、読みやすさの
-ために先頭の字下げを落とした箇所だけが原文と異なる。1つの出典範囲が、続けて並ぶ
-2つのコードブロックを覆うことがある。
+「(署名のみ抜粋)」と書く。それ以外の引用は出典の当該行を写しており、原文との違いは
+次の4つに限る。先頭の字下げの除去、docコメント記号 (`///`・`//!` 等) の除去、
+「(署名のみ抜粋)」と記した箇所での本体省略とシグネチャの1行化、および出典範囲内の
+一部メソッドの無印省略 (該当箇所には「(途中の1メソッドを省略)」等の注記を添える)。
+1つの出典範囲が、続けて並ぶ2つのコードブロックを覆うことがある。
 
 出典を併記していないコードブロックは引用ではなく例示である。該当するのは、
 8段組の第1段 (Graphite構文) に置く構文の字面と、マクロの展開結果を示すブロックの
 2種類だけである。構文の字面の例示は `examples/hello-graph/src/main.rs:109-122` の
 `schema Org` (ノード `Person`・`Team`、辺 `BelongsTo`・`Boss`・`Friends` 等) を
-題材にしている。
+題材にしている。PowerShellコマンド (§26.3) とテキスト図 (§26.5) は、Rustコードの
+引用でも構文の例示でもないコードブロックであり、この数え上げの対象外である。
+
+`flow!` (参照: `docs/flow_macro.md`) は `schema`/`graph!` とは独立した別レイヤ
+(関数の辺の即時実行) であり、完成済み `Graph` を作らないため本書の8段組の対象外と
+する (`crates/graphite/src/lib.rs:10-11`)。
 
 書いてあるのは現行の実装だけである。過去の仕様は混在させない。歴史的な経緯は
 `docs/edge_syntax_v2.md`・`docs/edge_syntax_v3.md`・`docs/graph_literal_v3.md`・
@@ -260,12 +267,15 @@ node Person;
 
 **2. 利用者定義**
 
+ノード値型は利用者が普通のRustで書く
+(`crates/graphite/tests/edge_roles.rs:1-2` から引用)。
+
 ```rust
 #[derive(Clone, PartialEq)]
 pub struct Person;
 ```
 
-ノード値型は利用者が普通のRustで書く。Graphiteは生成しない。`NodeRef` の
+Graphiteは生成しない。`NodeRef` の
 `Deref::Target` に現れるため、schema moduleから到達できる可視性が要る。
 
 **3. 公開生成物**
@@ -353,6 +363,9 @@ node ExternalNode(id: ExternalNodeId);
 ```
 
 **2. 利用者定義**
+
+明示ID型とノード値型は利用者が普通のRustで書く
+(`crates/graphite/tests/schema_ids.rs:3-4, 9-11` から引用)。
 
 ```rust
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -451,7 +464,8 @@ edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product);
 
 **2. 利用者定義**
 
-積み荷型は利用者が普通のRustで書く。
+積み荷型は利用者が普通のRustで書く
+(`crates/graphite/tests/edge_roles.rs:10-13` から引用)。
 
 ```rust
 #[derive(Clone, PartialEq)]
@@ -647,6 +661,8 @@ edge ExactlyOne = (src: NodeA) -[weight: Weight]-> (dst: NodeB) where each dst: 
             })
     }
 ```
+
+(途中の1メソッド `unconstrained_no_payload_as_target` を省略)
 
 ```rust
     pub fn at_most_one_as_dst(self) -> Option<AtMostOneRef<'graph>> {
@@ -1001,6 +1017,9 @@ edge ExternalLink(id: ExternalEdgeId) = (source: ExternalNode) -> (target: Exter
 ```
 
 **2. 利用者定義**
+
+明示ID型は利用者が普通のRustで書く
+(`crates/graphite/tests/schema_ids.rs:6-7` から引用)。
 
 ```rust
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -2498,7 +2517,7 @@ crate rootなので、`#[global_allocator]` の差し替えはこのテストバ
 閉じ、他のテストへ影響しない。数える先はスレッドローカルであり、`cargo test` の
 並行実行で他スレッドの確保が測定区間へ混入しない。
 
-固定している区間は次の6つである。
+固定している区間は次の7つである。
 
 | テスト | 対象 |
 |---|---|
@@ -2507,6 +2526,7 @@ crate rootなので、`#[global_allocator]` の差し替えはこのテストバ
 | `静的アクセサはヒープを確保しない` | 名前付きラッパーの静的アクセサ |
 | `役割クエリの開始と走査はヒープを確保しない` | 3種の役割クエリと無向の `incident` |
 | `端点対検索はヒープを確保しない` | `between` / `try_between` の有向・無向 |
+| `値可変apiはヒープを確保しない` | `{type}_value_mut` / `{kind}_payload_mut` |
 | `種別apiの走査はヒープを確保しない` | `iter` / `ids` / `len` |
 
 時間を計るベンチマーク (criterion など) は置かない。計測ぶれで偽陽性を出し、

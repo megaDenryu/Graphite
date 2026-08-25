@@ -295,6 +295,24 @@ fn 端点対検索はヒープを確保しない() {
 }
 
 #[test]
+fn 値可変apiはヒープを確保しない() {
+    let mut graph = 測定用グラフを構築する();
+    let 人物の公開id = 人物Id("太郎".to_string());
+    let 辺の公開id = 購入Id("太郎の本購入".to_string());
+
+    let 計測区間 = 確保回数の計測::開始する();
+    let 人物値 = graph.人物_value_mut(&人物の公開id).expect("太郎は存在する");
+    人物値.名前.clear();
+    let 積み荷 = graph
+        .購入_payload_mut(&辺の公開id)
+        .expect("太郎の本購入は存在する");
+    積み荷.金額 += 1;
+    let 確保回数 = 計測区間.区間内の確保回数();
+
+    assert_eq!(確保回数, 0, "値可変APIによる可変参照の取得と書き込み");
+}
+
+#[test]
 fn 種別apiの走査はヒープを確保しない() {
     let graph = 測定用グラフを構築する();
 
