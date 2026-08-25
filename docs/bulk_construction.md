@@ -11,7 +11,12 @@ let graph = Org::Graph::create(|builder| {
         pairs
             .into_iter()
             .enumerate()
-            .map(|(index, (from, to))| (format!("dependency-{index}"), Org::DependsOn(from, to))),
+            .map(|(index, (from, to))| {
+                (
+                    format!("dependency-{index}"),
+                    Org::DependsOn::new(from, to),
+                )
+            }),
     );
 });
 ```
@@ -20,4 +25,4 @@ let graph = Org::Graph::create(|builder| {
 
 `extend` は文字列からschema module内の既定IDを作れる要素だけを受け付ける。既存ID型を `(id: 型パス)` で明示した要素には、要素単位の `insert_with_id` / `add_with_id` を使う。明示IDを一括投入する専用構文は現時点では提供しない。
 
-`graph!` の `..式` は `extend` への糖衣であり、同じ型境界と挿入順保証を持つ。詳細は `docs/graph_splice.md` を参照する。
+`graph!` の `..式` は `extend` への糖衣であり、同じ型境界と挿入順保証を持つ。詳細は `docs/graph_splice.md` を参照する。生成される `extend` の実際の形と、挿入APIの一覧は `docs/desugaring_reference.md` §16・§17 にある。

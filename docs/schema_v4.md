@@ -4,6 +4,10 @@
 edge_view_api.md) を置き換える大改訂。設計議論の経緯は
 dev_history と Fudaba #7 を参照。
 
+この文書はschema構文とその生成物の設計決定を扱う。「構文を消去するとどの普通の
+Rustコードになるか」を構文ごとに機械的に確認する場合は
+`docs/desugaring_reference.md` (正本) を参照する。
+
 ## 0. 基盤の宣言
 
 **Graphite の基盤は多重グラフ (辺は独立した要素) である。**

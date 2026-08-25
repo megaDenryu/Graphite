@@ -1,6 +1,7 @@
 # 役割ベースの逆引きクエリ (Fudaba #5)
 
 有向辺は始点・終点という固定語彙ではなく、スキーマに書いた役割名を両側で対称に使う。
+生成される探索メソッドの実際の形と索引の型は `docs/desugaring_reference.md` §5・§18 にある。
 
 ```rust
 let alice = graph.employee_by_id(&alice_id).unwrap();
