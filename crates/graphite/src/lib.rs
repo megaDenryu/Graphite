@@ -28,6 +28,11 @@ pub use graph::{CycleError, Graph, GraphBuilder, GraphError};
 pub use keyed_table::KeyedTable;
 pub use unordered_pair::UnorderedPair;
 
+// `GraphMismatch` だけ `#[doc(hidden)]` を付けない (issue #14)。この下の
+// 再公開群は生成コードだけが名指しする内部契約だが、`GraphMismatch` は
+// `{kind}_try_between` のような生成メソッドが利用者へ返す `Result` の
+// エラー型そのものであり、利用者が `match`/`?` で扱う値なので rustdoc で
+// 読める必要がある。
 pub use schema_runtime::GraphMismatch;
 
 #[doc(hidden)]

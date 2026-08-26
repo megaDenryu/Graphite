@@ -91,6 +91,24 @@ where
         self.entries.get(idx).map(|(_, v)| v)
     }
 
+    // 以下4メソッド (`position`/`get_at`/`get_mut`/`positions`) はどれも
+    // `#[doc(hidden)]` を付けただけの `pub` であり、`pub(crate)` にはしない。
+    // 生成コードは `graph_schema!` を展開した利用者クレート側にあり
+    // `graphite` クレートの外から呼ぶため、`pub(crate)` では生成コードから
+    // 呼べなくなる (issue #14)。利用者からは `#[doc(hidden)]` で隠し、内部
+    // 位置の取り違えは `TablePosition` newtype (`position`/`get_at`/
+    // `positions` の型) が防ぐ。
+    //
+    // `get_mut` だけは「構築後不変」という `Graph` 側の方針と見た目が
+    // 矛盾するように見えるが、矛盾しない。「構築後不変」が指すのは構造
+    // (キー・内部位置・辺の接続) であり、`get_mut` はキー→値の対応
+    // (`entries` の添字割り当て) を変えず値だけを差し替える。凍結済み
+    // `Graph` の `{node}_value_mut`/`{kind}_payload_mut`
+    // (`kind_api/node_kind_api.rs`/`kind_api/edge_payload_mutation.rs` が
+    // 生成) がこの経路を使い、構造を保ったまま値だけを可変借用する
+    // (`graph_construction_api.rs` の doc コメント「可変APIの主語は
+    // `&mut Graph` だけ」参照)。
+
     /// キーから挿入順の内部位置を求める。`graph_schema!` の生成コードが
     /// 凍結済みグラフの薄い参照値を構築するために使う。
     #[doc(hidden)]

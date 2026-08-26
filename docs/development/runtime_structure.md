@@ -130,8 +130,10 @@ Get-ChildItem crates\graphite\src -Recurse -Filter *.rs |
 `UndirectedEdgeLiteral` / `GraphMismatch` / `NamedGraphElement` / `NamedInsertPermit` /
 `FreezableBuilder` / `build_named_graph` / `次の構築印を発行する`
 
-再公開文には `#[doc(hidden)]` を付ける。`GraphMismatch` だけは利用者が受け取る
-エラー型なので付けない。
+再公開文には `#[doc(hidden)]` を付ける。`GraphMismatch` だけは付けない
+(issue #14で意図的と確認済み)。生成コードの `{kind}_try_between` のような
+メソッドが利用者へ返す `Result` のエラー型そのものであり、利用者が
+`match`/`?` で扱う値なので rustdoc で読める必要があるためである。
 
 ## テストの配置
 
