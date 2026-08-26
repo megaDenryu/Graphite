@@ -95,12 +95,17 @@ impl RepositoryRoot {
         with_path_context(fs::read_to_string(&path), &self.relative_display(&path))
     }
 
-    /// `docs/` 配下に実在する全ファイルを、ルート相対の綴りで列挙する。
+    /// `docs/` 配下に実在する索引対象ファイル (`.md`・`.html`) を、ルート相対の
+    /// 綴りで列挙する。
     ///
-    /// 索引 (docs/README.md) との過不足の突き合わせに使う。
+    /// 索引 (docs/README.md) との過不足の突き合わせに使う。索引側
+    /// (`ReferenceTarget::classify`) が `.md`・`.html` しか受理しないため、
+    /// ここで同じ拡張子へ絞らないと、他拡張子のファイルを `docs/` へ置いた
+    /// 時点でどう索引に書いても登録できず検査が恒久的に落ちる。
     pub fn document_files(&self) -> Result<Vec<DocumentPath>, Box<dyn Error>> {
         let mut paths = Vec::new();
-        collect_all_files(self, &self.path.join("docs"), &mut paths)?;
+        self.collect_all_files(&self.path.join("docs"), &mut paths)?;
+        paths.retain(is_indexable_document_file);
         let mut documents: Vec<DocumentPath> = paths
             .iter()
             .map(|path| DocumentPath::from_relative_display(&self.relative_display(path)))
@@ -118,12 +123,12 @@ impl RepositoryRoot {
         let mut candidates = Vec::new();
         push_if_file(&self.path.join("README.md"), &mut candidates);
         push_if_file(&self.path.join("CLAUDE.md"), &mut candidates);
-        collect_all_files(self, &self.path.join("docs"), &mut candidates)?;
+        self.collect_all_files(&self.path.join("docs"), &mut candidates)?;
         for example_directory in subdirectories(self, &self.path.join("examples"))? {
             push_if_file(&example_directory.join("README.md"), &mut candidates);
         }
         for area in ["crates", "xtask", "examples"] {
-            collect_all_files(self, &self.path.join(area), &mut candidates)?;
+            self.collect_all_files(&self.path.join(area), &mut candidates)?;
         }
         candidates.retain(is_scannable_text_file);
         candidates.sort();
@@ -156,6 +161,25 @@ impl RepositoryRoot {
             push_if_exists(&example_directory.join("src"), &mut roots);
         }
         Ok(roots)
+    }
+
+    /// ビルド生成物を除いて、ディレクトリ配下の全ファイルを再帰的に集める。
+    fn collect_all_files(&self, directory: &Path, paths: &mut Vec<PathBuf>) -> Result<(), Box<dyn Error>> {
+        if !directory.is_dir() {
+            return Ok(());
+        }
+        for entry in with_path_context(fs::read_dir(directory), &self.relative_display(directory))? {
+            let path = entry?.path();
+            if path.is_dir() {
+                if path.file_name().and_then(OsStr::to_str) == Some("target") {
+                    continue;
+                }
+                self.collect_all_files(&path, paths)?;
+            } else {
+                paths.push(path);
+            }
+        }
+        Ok(())
     }
 }
 
@@ -193,27 +217,13 @@ fn is_scannable_text_file(path: &PathBuf) -> bool {
     matches!(path.extension().and_then(OsStr::to_str), Some("md" | "rs"))
 }
 
-/// ビルド生成物を除いて、ディレクトリ配下の全ファイルを再帰的に集める。
-fn collect_all_files(
-    root: &RepositoryRoot,
-    directory: &Path,
-    paths: &mut Vec<PathBuf>,
-) -> Result<(), Box<dyn Error>> {
-    if !directory.is_dir() {
-        return Ok(());
-    }
-    for entry in with_path_context(fs::read_dir(directory), &root.relative_display(directory))? {
-        let path = entry?.path();
-        if path.is_dir() {
-            if path.file_name().and_then(OsStr::to_str) == Some("target") {
-                continue;
-            }
-            collect_all_files(root, &path, paths)?;
-        } else {
-            paths.push(path);
-        }
-    }
-    Ok(())
+/// 索引 (docs/README.md) が受理する拡張子 (`.md`・`.html`) だけを通す。
+///
+/// `ReferenceTarget::classify` の受理拡張子と一致させる。ここを広げると、
+/// 索引に登録できない拡張子のファイルが `docs/` へ紛れ込んだ時点で
+/// `check-docs` が恒久的に失敗する。
+fn is_indexable_document_file(path: &PathBuf) -> bool {
+    matches!(path.extension().and_then(OsStr::to_str), Some("md" | "html"))
 }
 
 /// 生成物と compile-fail 用のソースを除いて、Rustファイルを再帰的に集める。

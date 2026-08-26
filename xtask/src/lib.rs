@@ -14,7 +14,6 @@ mod repository_root;
 mod schema_source_file;
 
 use std::error::Error;
-use std::fmt::Write as _;
 
 pub use document_reference::DocumentPath;
 pub use generation_plan::GenerationPlan;
@@ -44,7 +43,7 @@ pub fn verify(root: &RepositoryRoot) -> Result<(), Box<dyn Error>> {
 
 /// `cargo xtask check-docs` 相当: 文書参照の綴りが実在するかを検査する。
 ///
-/// 参照が309件を超える規模になったため、目視での確認は成立しない。検査の範囲と
+/// 参照が数百件の規模になったため、目視での確認は成立しない。検査の範囲と
 /// 限界は `main.rs` の使い方の説明に書いてある。
 pub fn check_documents(root: &RepositoryRoot) -> Result<(), Box<dyn Error>> {
     let scan = ReferenceScan::over(root)?;
@@ -60,13 +59,5 @@ pub fn check_documents(root: &RepositoryRoot) -> Result<(), Box<dyn Error>> {
     if missing.is_empty() && mismatch.is_empty() {
         return Ok(());
     }
-    let mut report = String::new();
-    if !missing.is_empty() {
-        let _ = writeln!(report, "実在しない文書を指す参照が{}件あります:", missing.len());
-        for reference in missing {
-            let _ = writeln!(report, "  {reference}");
-        }
-    }
-    let _ = write!(report, "{mismatch}");
-    Err(report.into())
+    Err(format!("{missing}{mismatch}").into())
 }

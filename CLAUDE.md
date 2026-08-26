@@ -76,12 +76,13 @@ cargo xtask check-docs
   型のstrictnessを具体化した6原則) を必ず参照する
 - ツールの入口は`cargo xtask`へ集約する。現在のコマンドは
   `cargo xtask generate [--check]`と`cargo xtask check-docs`である
-- 文書の配置は3つに分ける。現行の仕様とガイド (生存型文書) は`docs/`直下、
-  Graphite自身を実装・保守する人向けの文書は`docs/development/`、設計史・旧仕様・
-  開発記録は`docs/history/`へ置く
+- 文書の配置は3つに分ける。現行の仕様とガイド (実装に追随して更新し続ける文書) は
+  `docs/`直下、Graphite自身を実装・保守する人向けの文書は`docs/development/`、
+  設計史・旧仕様・開発記録は`docs/history/`へ置く
 - `docs/`配下へファイルを足したら`docs/README.md`の索引へ1行加える。索引に載って
   いない文書を置いてはならない。各文書の冒頭には状態 (Current reference /
-  Current guide / Development document / Historical document) を1行で表示する
+  Current guide / Development document / Historical document。定義は
+  `docs/README.md` を参照) を1行で表示する
 - 文書間の参照の綴りと索引の網羅は`cargo xtask check-docs`が検査する。文書を移動・
   改名したら、このコマンドが通る状態にしてからコミットする
 - `docs/history/`の文書の本文は書き換えない。参照先の綴りの追随だけを行う

@@ -2,10 +2,12 @@
 
 > **Development document** — 索引: `docs/README.md`
 
-この文書は、Graphite 自身のテストが何を担保し、どう実行するのかを定める生存型
-文書である。
+この文書は、Graphite 自身のテストが何を担保し、どう実行するのかを定める文書で
+あり、実装が変わるたびに追随して更新する。
 
 ## 実行
+
+以下はリポジトリルート (ワークスペースの `Cargo.toml` があるディレクトリ) で実行する。
 
 ```powershell
 cargo build 2> build_errors.txt; Get-Content build_errors.txt -Head 50
@@ -26,7 +28,7 @@ cargo xtask check-docs
   宣言し、通常のRust生成ファイルを読み込む同等テストと、`graph!` リテラルの
   テストである。
 - `crates/graphite/tests/compile_fail.rs` + `tests/ui/*.rs` —
-  [`trybuild`](https://docs.rs/trybuild) によるコンパイルエラー系テストである。
+  [`trybuild`](https://docs.rs/trybuild) によるコンパイルエラーの検査テストである。
   未宣言ノード型を端点に指定した場合、不正な `where each` 指定、`graph!` で
   存在しないエッジ種別を書いた場合、ノードキーの重複、宣言単位のエラー回復を
   検査する。stderr の再生成は

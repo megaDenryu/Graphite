@@ -3,7 +3,8 @@
 > **Development document** — 索引: `docs/README.md`
 
 この文書は、schema生成コードが `crates/graphite/tests/orgchart_handwritten.rs`
-の手書きテンプレートと異なる設計判断をした箇所を記録する生存型文書である。
+の手書きテンプレートと異なる設計判断をした箇所を記録する文書であり、実装が
+変わるたびに追随して更新する。
 
 schema生成コードは基本的に `orgchart_handwritten.rs` と同じ形を生成するが、
 「任意のノード型・エッジ型の組み合わせ」へ一般化する過程で次の7点が手書き版と

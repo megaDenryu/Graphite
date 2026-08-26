@@ -3,7 +3,8 @@
 > **Development document** — 索引: `docs/README.md`
 
 この文書は、Graphite を構成する4つのクレートが何を担い、なぜ分かれているのかを
-定める生存型文書である。Graphite を使うだけなら読む必要はない。
+定める文書であり、実装が変わるたびに追随して更新する。Graphite を使うだけなら
+読む必要はない。
 
 ## 4つのクレート
 
@@ -11,7 +12,7 @@
 crates/graphite/         # ランタイムクレート。利用者が唯一 depend するクレート
 crates/graphite-codegen/ # schemaの構文解析・検証・指紋・Rust生成を担う純粋層
 crates/graphite-macros/  # コンパイル時検証・指紋照合とgraph!/flow!を担うproc-macroクレート
-xtask/                   # 生成ファイルの探索・読み書き・差分検査を担う開発用入口
+xtask/                   # 生成ファイルの探索・読み書き・差分検査、文書参照と索引の検査(check-docs)を担う開発用入口
 ```
 
 ## proc-macro クレートを分ける理由
@@ -36,7 +37,8 @@ Graphite ではさらに2つの分割を加えている。マクロが生成す�
   行う純粋層である。
 - `graphite-macros` はコンパイル時の schema 検査と指紋照合、および `graph!` と
   `flow!` の展開を行う。
-- `xtask` は宣言元の探索、生成先の検査、生成ファイルの読み書きと差分検査を行う。
+- `xtask` は宣言元の探索、生成先の検査、生成ファイルの読み書きと差分検査、文書参照と
+  索引の検査 (`cargo xtask check-docs`) を行う。
 - `graphite` はグラフの実行時型を持ち、利用者が依存する入口としてマクロを
   再公開する。
 
