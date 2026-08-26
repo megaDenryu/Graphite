@@ -48,17 +48,27 @@ graphite::graph_schema! {
 
 ## ディレクトリ構成
 
-| ファイル | 行数目安 | 役割 |
-|---|---|---|
-| `src/schema.rs` | 約60行 | `graph_schema!` によるスキーマ宣言 + `graph!` リテラルのショーケース (固定の小さなパイプライン) |
-| `src/parser.rs` | 約240行 | `pipeline.txt` の簡易行形式パーサ (行番号付きエラー) |
-| `src/builder.rs` | 約100行 | パース結果から `BuildPipeline` グラフを構築 (成果物ノードの暗黙生成を含む) |
-| `src/analysis.rs` | 約380行 | ドメイン検証・実行計画 (波)・クリティカルパスの計算ロジック |
-| `src/report.rs` | 約190行 | CLI 出力の整形 (表・mermaid) |
-| `src/lib.rs` | 数行 | 上記モジュールを re-export するライブラリクレート (統合テストから使うため) |
-| `src/main.rs` | 約110行 | CLI エントリポイント (サブコマンド振り分け) |
-| `pipeline.txt` | - | 同梱のサンプルパイプライン定義 (20タスク・23アーティファクト) |
-| `tests/integration.rs` | 約190行 | 統合テスト |
+| ファイル | 役割 |
+|---|---|
+| `src/schema.rs` | `graph_schema!` によるスキーマ宣言 + `graph!` リテラルのショーケース (固定の小さなパイプライン) |
+| `src/parser.rs` | `pipeline.txt` の行の種別判定 |
+| `src/parser/parsed_pipeline.rs` | パース結果の型 (`ParsedTask`/`ParsedEdge`/`ParsedPipeline`) |
+| `src/parser/parse_error.rs` | 行番号付きのパースエラー |
+| `src/parser/task_line.rs` | `task` 行のパース |
+| `src/parser/edge_line.rs` | `produces`/`consumes` 行のパース |
+| `src/builder.rs` | パース結果から `BuildPipeline` グラフを構築 (成果物ノードの暗黙生成を含む) |
+| `src/analysis.rs` | 検証・実行計画・クリティカルパスの公開面をまとめる入口 |
+| `src/analysis/task_dependency_graph.rs` | タスク依存グラフの射影 (`consumes ∘ produces⁻¹`) |
+| `src/analysis/domain_issue.rs` | ドメイン違反の種類と表示 |
+| `src/analysis/validation.rs` | 孤児成果物・produce競合・循環依存の検出 |
+| `src/analysis/plan.rs` | 並列実行可能な「波」への分割 |
+| `src/analysis/critical_path.rs` | クリティカルパス (重み付き最長経路) の計算 |
+| `src/report.rs` | CLI の表形式出力 |
+| `src/report/graph_diagram.rs` | mermaid flowchart 出力 |
+| `src/lib.rs` | 上記モジュールを re-export するライブラリクレート (統合テストから使うため) |
+| `src/main.rs` | CLI エントリポイント (サブコマンド振り分け) |
+| `pipeline.txt` | 同梱のサンプルパイプライン定義 (20タスク・23アーティファクト) |
+| `tests/bundled_pipeline.rs`・`tests/domain_violation.rs`・`tests/parser_errors.rs`・`tests/known_schedule.rs` | 統合テスト |
 
 ## 使い方
 
@@ -95,7 +105,7 @@ $ cargo run -q -- validate broken_cycle.txt
 ```
 
 孤児成果物・produce競合も同様に `[番号] 種別: 詳細` の形式で1行ずつ報告する
-(`src/analysis.rs::DomainIssue` の `Display` 実装)。
+(`src/analysis/domain_issue.rs` の `Display` 実装)。
 
 ### `plan` の実行例
 
@@ -154,8 +164,8 @@ flowchart TD
 `Task` は矩形 (`["..."]`)、`Artifact` は円柱形 (`[("...")]`、「保存された
 成果物」を表す慣用のノード形状) で描き分けている。`consumes` は可読性を
 優先し、矢印を `Artifact -> Task` 方向 (成果物がタスクへ流れ込む向き) に
-描いている (スキーマ上の `from`/`to` の向きとは逆。詳細は `src/report.rs`
-のコメント参照)。
+描いている (スキーマ上の `from`/`to` の向きとは逆。詳細は
+`src/report/graph_diagram.rs` のコメント参照)。
 
 ## `pipeline.txt` の文法
 
@@ -169,7 +179,7 @@ task <名前>: <コマンド...> (<秒数>s)      タスク定義
 `Artifact` ノードは専用の宣言行を持たず、`produces`/`consumes` 行に現れた
 パスの集合から `src/builder.rs` が暗黙的に生成する (成果物ごとに宣言行を
 書かせるのは冗長なため)。パースエラーは行番号付きで報告される
-(`src/parser.rs` の `ParseError`)。
+(`src/parser/parse_error.rs` の `ParseError`)。
 
 ## Graphite を使う意味
 
@@ -207,7 +217,7 @@ task <名前>: <コマンド...> (<秒数>s)      タスク定義
   俯瞰して初めて判定できる (1本のエッジだけを見ても分からない)。
   `g.produces_iter()`/`g.consumes_iter()` が無ければ、内部の
   `HashMap<K, Vec<V>>` を手でフラット化するイテレータをアプリ側に毎回書く
-  ことになる。ここでは `analysis.rs` の `validate`/`task_dependency_graph`
+  ことになる。ここでは `analysis` の `validate`/`task_dependency_graph`
   がこれをそのまま使い、artifactごとの producer/consumer 集合を
   `HashMap<&ArtifactId, Vec<&TaskId>>` へ畳み込むだけで済んでいる。
 - **`g.task_ids()` による全件列挙**: `plan`/`critical-path` は
@@ -239,7 +249,7 @@ cargo test
 ```
 
 - 各モジュール内の単体テスト (`parser`/`builder`/`analysis`/`report`/`schema`)
-- `tests/integration.rs`:
+- `tests/` の4本:
   - 同梱 `pipeline.txt` がボリューム要件 (20タスク・15アーティファクト以上)
     を満たし、図式適合・ドメイン違反ゼロで波計画・クリティカルパスを計算
     できること
