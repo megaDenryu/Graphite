@@ -1,5 +1,5 @@
 // このファイルは Graphite が生成したため手編集しないこと。
-// 生成元: examples/reactive-cells/src/schema.rs:78
+// 生成元: src/schema.rs:78
 // 再生成: パッケージのディレクトリで `cargo graphite generate` を実行する
 //         (Graphite リポジトリ自身の開発では `cargo xtask generate`)。
 

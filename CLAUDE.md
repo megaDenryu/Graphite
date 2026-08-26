@@ -33,7 +33,7 @@ crates/graphite/         # ランタイムクレート。利用者が唯一 depe
 crates/graphite-codegen/ # schemaの構文解析・検証・指紋・Rust生成を担う純粋層
 crates/graphite-macros/  # コンパイル時検証・指紋照合と graph!/flow! を担うproc-macroクレート
 crates/graphite-cli/     # 生成コア(宣言の探索・生成計画・読み書きと差分検査)と cargo-graphite バイナリ
-xtask/                   # Graphite リポジトリ自身の開発用入口。ワークスペース全体の走査と文書検査
+xtask/                   # Graphite リポジトリ自身の開発用入口。全パッケージの生成と文書検査
 ```
 
 `graphite-macros` はなぜ分離が必要か: proc-macro クレート (`proc-macro = true`) は
@@ -45,9 +45,10 @@ xtask/                   # Graphite リポジトリ自身の開発用入口。�
 `graphite-cli`だけへ閉じ込める。
 
 生成の入口は2つある。外部crate向けの`cargo graphite generate`と、Graphite自身の
-`cargo xtask generate`である。この2つで違うのは走査開始点だけであり (前者は
-パッケージ直下の`src`・`tests`、後者はワークスペース全体)、抽出・生成計画・
-書き込み・差分検査は`graphite-cli`の`GenerationTree`を通して共有する。
+`cargo xtask generate`である。この2つで違うのは対象にするパッケージの数だけであり
+(前者は実行した場所のパッケージ1つ、後者は`crates/*`と`examples/*`の全部)、
+どちらも1パッケージにつき1つの`GenerationTree`をパッケージルートを基準に作る。
+抽出・生成計画・書き込み・差分検査は`graphite-cli`の`GenerationTree`を通して共有する。
 生成ファイルの案内コメントと指紋エラーの文言を入口ごとに書き分けてはならない。
 書き分けると、一方が書いたファイルをもう一方が古いと判定する。
 

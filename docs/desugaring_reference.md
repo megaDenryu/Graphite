@@ -198,7 +198,7 @@ moduleは利用者が書いた `pub mod Commerce { include!(...); }` そのも�
 
 ```rust
 // このファイルは Graphite が生成したため手編集しないこと。
-// 生成元: crates/graphite/tests/edge_roles.rs:27
+// 生成元: tests/edge_roles.rs:27
 // 再生成: パッケージのディレクトリで `cargo graphite generate` を実行する
 //         (Graphite リポジトリ自身の開発では `cargo xtask generate`)。
 
@@ -2639,7 +2639,8 @@ cargo xtask generate
 cargo xtask generate --check
 ```
 
-2つの入口で違うのは走査開始点だけである。詳細は `docs/code_generation.md` を参照する。
+2つの入口で違うのは対象にするパッケージの数だけであり、どちらもパッケージルートを
+基準に走査する。詳細は `docs/code_generation.md` を参照する。
 
 `generate` は全宣言を読んで生成ファイルを更新する。`--check` は書き換えずに、
 生成本文全体をバイト単位で比較し、不足・差分・宣言の無い孤児ファイルをエラーに
@@ -2658,7 +2659,7 @@ cargo xtask generate --check
 ### 26.5 IDE導線
 
 利用コードから公開APIへ定義ジャンプすると、生成ファイルの実装行へ着地する。
-生成ファイル先頭の「生成元」コメントが元DSLのリポジトリ相対パスと行を記録して
+生成ファイル先頭の「生成元」コメントが元DSLのパッケージ相対パスと行を記録して
 いるので、そこから宣言へ戻れる。実測記録は `docs/development/ide_support_spec.md` §1.15 に
 ある。
 
@@ -2666,8 +2667,8 @@ cargo xtask generate --check
 利用コードの purchase_as_buyer()
     ↓ 定義へ移動
 crates/graphite/tests/generated/edge_roles_commerce.rs の実装行
-    ↓ ファイル先頭の「生成元」コメント
-crates/graphite/tests/edge_roles.rs:27 の schema 宣言
+    ↓ ファイル先頭の「生成元」コメント (パッケージ相対)
+crates/graphite/ の tests/edge_roles.rs:27 にある schema 宣言
 ```
 
 `graph!` の名前付きラッパーだけは例外で、呼び出し箇所ローカル型のため生成ファイルへ

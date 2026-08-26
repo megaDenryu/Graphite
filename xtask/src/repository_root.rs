@@ -4,21 +4,21 @@ use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use graphite_cli::{relative_display, with_path_context, GenerationTree};
+use graphite_cli::{relative_display, with_path_context, PackageRoot};
 
 use crate::document_reference::DocumentPath;
+use crate::repository_package::RepositoryPackage;
 
 /// 生成と文書検査の基準となるリポジトリルート。
 ///
-/// 生成の走査開始点 (`crates/*/src`・`crates/*/tests`・`examples/*/src`) を
-/// 決めて `GenerationTree` を組み立てるのがこの型の役目であり、schema宣言の
-/// 抽出・生成計画・書き込み・検査そのものは `graphite-cli` が担う。
+/// 生成の対象になるパッケージ (`crates/*`・`examples/*`) を列挙するのがこの型の
+/// 役目であり、走査開始点の決め方と、schema宣言の抽出・生成計画・書き込み・検査
+/// そのものは `graphite-cli` が担う。
 ///
 /// 注意: 綴りと表示はこの型のメソッドへ閉じる。呼び出し側が裸の `PathBuf` を
 /// 組み立てると、宣言元との相対関係が場所ごとにずれる。
 pub struct RepositoryRoot {
     path: PathBuf,
-    tree: GenerationTree,
 }
 
 impl RepositoryRoot {
@@ -37,13 +37,34 @@ impl RepositoryRoot {
     /// 使う。
     pub fn at(path: PathBuf) -> Result<Self, Box<dyn Error>> {
         ensure_workspace_root(&path)?;
-        let tree = GenerationTree::new(path.clone(), scan_roots(&path)?);
-        Ok(Self { path, tree })
+        Ok(Self { path })
     }
 
-    /// 生成コアへ渡す走査対象。抽出・計画・検査は `graphite-cli` が行う。
-    pub fn generation_tree(&self) -> &GenerationTree {
-        &self.tree
+    /// 生成の対象になるパッケージ (`crates/*`・`examples/*`) を綴り順で列挙する。
+    ///
+    /// 1パッケージにつき1つの走査対象を作るのは、外部crate向けの
+    /// `cargo graphite generate` が作るものと基準ディレクトリを揃えるためである。
+    /// リポジトリルートを基準にした1つの走査対象で全パッケージをまとめて処理すると、
+    /// 生成ファイルへ書く宣言元の綴りが両入口で食い違う。
+    pub fn generation_packages(&self) -> Result<Vec<RepositoryPackage>, Box<dyn Error>> {
+        let mut packages = Vec::new();
+        for area in ["crates", "examples"] {
+            for directory in subdirectories(&self.path, &self.path.join(area))? {
+                if !directory.join("Cargo.toml").is_file() {
+                    continue;
+                }
+                let spelling = self.relative_display(&directory);
+                packages.push(RepositoryPackage::new(spelling, PackageRoot::at(directory)?));
+            }
+        }
+        if packages.is_empty() {
+            return Err(format!(
+                "生成の対象になるパッケージが crates/ と examples/ の下に1件もありません(現在: {})",
+                self.path.display()
+            )
+            .into());
+        }
+        Ok(packages)
     }
 
     /// ワークスペースの外に置いた検証用パッケージの場所。
@@ -148,23 +169,6 @@ fn ensure_workspace_root(path: &Path) -> Result<(), Box<dyn Error>> {
     }
 }
 
-/// schema探索・生成ファイル探索の両方が使う走査開始ディレクトリの一覧。
-///
-/// 走査対象は workspace 全体 (`crates/*/src`・`crates/*/tests`・
-/// `examples/*/src`) であり、`docs/code_generation.md` の生成先の記述と
-/// 一致させている。
-fn scan_roots(path: &Path) -> Result<Vec<PathBuf>, Box<dyn Error>> {
-    let mut roots = Vec::new();
-    for crate_directory in subdirectories(path, &path.join("crates"))? {
-        push_if_directory(&crate_directory.join("src"), &mut roots);
-        push_if_directory(&crate_directory.join("tests"), &mut roots);
-    }
-    for example_directory in subdirectories(path, &path.join("examples"))? {
-        push_if_directory(&example_directory.join("src"), &mut roots);
-    }
-    Ok(roots)
-}
-
 /// 指定ディレクトリの直下のディレクトリ一覧 (存在しなければ空)。
 fn subdirectories(base: &Path, directory: &Path) -> Result<Vec<PathBuf>, Box<dyn Error>> {
     if !directory.exists() {
@@ -179,12 +183,6 @@ fn subdirectories(base: &Path, directory: &Path) -> Result<Vec<PathBuf>, Box<dyn
     }
     found.sort();
     Ok(found)
-}
-
-fn push_if_directory(path: &Path, roots: &mut Vec<PathBuf>) {
-    if path.is_dir() {
-        roots.push(path.to_path_buf());
-    }
 }
 
 fn push_if_file(path: &Path, paths: &mut Vec<PathBuf>) {

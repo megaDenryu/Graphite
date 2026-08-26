@@ -56,7 +56,9 @@ cargo xtask generate
 cargo xtask generate --check
 ```
 
-2つの入口で違うのは走査開始点だけである。`cargo graphite`はパッケージ直下の`src`と`tests`を走査し、`cargo xtask`はワークスペース全体 (`crates/*/src`・`crates/*/tests`・`examples/*/src`) を走査する。schema宣言の抽出・生成計画・書き込み・差分検査は`graphite-cli`が両方へ提供する同じ処理である (クレートの分け方は `docs/development/crate_architecture.md` 参照)。
+2つの入口で違うのは走査開始点だけである。どちらもパッケージ直下の`src`と`tests`を走査し、宣言元の綴りをそのパッケージルートからの相対で記録する。違うのは対象にするパッケージの数だけで、`cargo graphite`は実行した場所のパッケージ1つを、`cargo xtask`は`crates/*`と`examples/*`の全パッケージを順に処理する。schema宣言の抽出・生成計画・書き込み・差分検査は`graphite-cli`が両方へ提供する同じ処理である (クレートの分け方は `docs/development/crate_architecture.md` 参照)。
+
+基準ディレクトリを両方ともパッケージルートに揃えているため、同じパッケージをどちらの入口で生成しても本文はバイト単位で一致する。この一致は`xtask/tests/entry_point_agreement.rs`が`cargo test`の中で実測する。
 
 外部crateからの経路が壊れていないことは`cargo xtask check-external`が実走で検査する。検査対象は`verification/external-crate`であり、ワークスペースの外に置いてある。
 
