@@ -3,12 +3,13 @@
 //! 純粋層 (`graphite-codegen`) が作った本文をファイルへ書き出し、作業ツリーとの
 //! 差分を検査するところまでを担う。走査開始点の決め方だけが入口ごとに違い、
 //! 抽出・計画・書き込み・検査は `GenerationTree` を通して共有する。入口は
-//! Graphite リポジトリ自身の `xtask` である (`cargo graphite` の入口は後続で足す)。
+//! `cargo graphite` (`main.rs`) と Graphite リポジトリ自身の `xtask` の2つである。
 
 mod generated_target_path;
 mod generation_plan;
 mod generation_tree;
 mod io_context;
+mod package_root;
 mod relative_display;
 mod schema_source_file;
 
@@ -18,6 +19,7 @@ use crate::generation_plan::GenerationPlan;
 
 pub use generation_tree::GenerationTree;
 pub use io_context::with_path_context;
+pub use package_root::PackageRoot;
 pub use relative_display::relative_display;
 
 /// 全schema宣言から `GenerationPlan` を組み立てる。
