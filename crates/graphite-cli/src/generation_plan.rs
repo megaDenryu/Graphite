@@ -83,7 +83,7 @@ impl GenerationPlan {
                 .collect::<Vec<_>>()
                 .join("\n");
             sections.push(format!(
-                "生成ファイルが古いか存在しません。リポジトリルートで `cargo xtask generate` を実行してください:\n{paths}"
+                "生成ファイルが古いか存在しません。パッケージのディレクトリで `cargo graphite generate` を実行してください (Graphite リポジトリ自身の開発では `cargo xtask generate`):\n{paths}"
             ));
         }
 

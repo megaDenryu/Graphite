@@ -1,6 +1,7 @@
 // このファイルは Graphite が生成したため手編集しないこと。
 // 生成元: crates/graphite/tests/role_query.rs:45
-// 再生成: リポジトリルートで `cargo xtask generate` を実行する。
+// 再生成: パッケージのディレクトリで `cargo graphite generate` を実行する
+//         (Graphite リポジトリ自身の開発では `cargo xtask generate`)。
 
 #[allow(unused_imports)]
 use super::*;

@@ -25,11 +25,16 @@ pub(crate) fn 生成ファイルの本文(
     let formatted = prettyplease::unparse(&generated);
     // 再生成コマンドの実行場所は絶対パスで書かない。ここに機械固有のパスを
     // 埋めると、別の作業環境で生成した内容が一致せず `--check` が落ちる。
+    //
+    // 注意: 案内する再生成コマンドは、どの入口から生成しても同じ文言にする。
+    // 入口ごとに書き分けると、`cargo graphite generate` が書いたファイルを
+    // `cargo xtask generate --check` が古いと判定する (逆も同じ)。
     let site = site.display();
     Ok(format!(
         "// このファイルは Graphite が生成したため手編集しないこと。\n\
          // 生成元: {site}\n\
-         // 再生成: リポジトリルートで `cargo xtask generate` を実行する。\n\n\
+         // 再生成: パッケージのディレクトリで `cargo graphite generate` を実行する\n\
+         //         (Graphite リポジトリ自身の開発では `cargo xtask generate`)。\n\n\
          {formatted}"
     ))
 }

@@ -1,4 +1,4 @@
-error[E0080]: evaluation panicked: Graphite schema の生成ファイルが古いため、リポジトリルートで cargo xtask generate を実行してください
+error[E0080]: evaluation panicked: Graphite schema の生成ファイルが古いため、パッケージのディレクトリで cargo graphite generate を実行してください (Graphite リポジトリ自身の開発では cargo xtask generate)
   --> tests/ui/stale_generated_schema.rs:8:1
    |
  8 | / graphite::graph_schema! {

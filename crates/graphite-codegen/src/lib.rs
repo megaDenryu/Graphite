@@ -136,13 +136,14 @@ mod tests {
         let first = parse_tracked_schema(input.clone()).unwrap();
         let second = parse_tracked_schema(input).unwrap();
         // 固定値は生成物の意図しない変化を検出するための錨である。生成器を
-        // 意図して変えたときは `cargo xtask generate` の差分と併せて更新する。
+        // 意図して変えたときは `cargo xtask generate` の差分と併せて更新する
+        // (生成ファイルの先頭に書く案内コメントの文言もこの値に含まれる)。
         let site = DeclarationSite::new("tests/schema.rs".to_string(), 10);
         let rendered = first.render_module_source(&site).unwrap();
         assert_eq!(rendered, second.render_module_source(&site).unwrap());
         assert_eq!(
             fnv1a(rendered.as_bytes(), 0xcbf29ce484222325),
-            3374020952845429145
+            13966225688556792524
         );
     }
 }

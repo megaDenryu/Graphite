@@ -194,19 +194,20 @@ schema名は利用者が決める。同じ名前のRustのモジュールを利�
 `schema Commerce` は `Commerce` という名前のRust moduleを展開しない。schema名の
 moduleは利用者が書いた `pub mod Commerce { include!(...); }` そのものであり、その
 本文が生成ファイルである。生成ファイルの先頭は次の形になる
-(`crates/graphite/tests/generated/edge_roles_commerce.rs:1-11`)。
+(`crates/graphite/tests/generated/edge_roles_commerce.rs:1-12`)。
 
 ```rust
 // このファイルは Graphite が生成したため手編集しないこと。
 // 生成元: crates/graphite/tests/edge_roles.rs:27
-// 再生成: リポジトリルートで `cargo xtask generate` を実行する。
+// 再生成: パッケージのディレクトリで `cargo graphite generate` を実行する
+//         (Graphite リポジトリ自身の開発では `cargo xtask generate`)。
 
 #[allow(unused_imports)]
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    2989501799219349444u64, 7255621562707497463u64, 5755820933598649166u64,
-    8070068216230268690u64,
+    10697115368782407328u64, 2608266299376936611u64, 9754844789010380434u64,
+    3042117034582590502u64,
 ];
 ```
 
@@ -224,19 +225,19 @@ moduleを囲む親のモジュール (宣言を書いたファイル) に展開�
 **5. 構築時の処理**
 
 `graph_schema!` が展開するのは、指紋を照合する `const` ブロック1つだけである。
-展開するトークンのテンプレートは `crates/graphite-macros/src/lib.rs:92-104` に
+展開するトークンのテンプレートは `crates/graphite-macros/src/lib.rs:93-105` に
 ある。`Commerce` schemaへ適用した展開結果は次の形になる (テンプレートの `#変数` を
 実際の値で埋めたものであり、生成器の出力そのものではない)。
 
 ```rust
 const _: () = {
     let actual = Commerce::__GRAPHITE_SCHEMA_FINGERPRINT;
-    if !(actual[0] == 2989501799219349444u64
-        && actual[1] == 7255621562707497463u64
-        && actual[2] == 5755820933598649166u64
-        && actual[3] == 8070068216230268690u64)
+    if !(actual[0] == 10697115368782407328u64
+        && actual[1] == 2608266299376936611u64
+        && actual[2] == 9754844789010380434u64
+        && actual[3] == 3042117034582590502u64)
     {
-        panic!("Graphite schema の生成ファイルが古いため、リポジトリルートで cargo xtask generate を実行してください");
+        panic!("Graphite schema の生成ファイルが古いため、パッケージのディレクトリで cargo graphite generate を実行してください (Graphite リポジトリ自身の開発では cargo xtask generate)");
     }
 };
 ```

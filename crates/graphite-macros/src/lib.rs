@@ -74,7 +74,8 @@ use syn::parse::Parser;
 /// 宣言と同じファイルには
 /// `pub mod OrgChart { include!("generated/org_chart.rs"); }` を置く
 /// (moduleへ付ける属性は `docs/code_generation.md` が定める2行で固定する)。
-/// 生成ファイルはリポジトリルートで `cargo xtask generate` を実行して更新する。
+/// 生成ファイルはパッケージのディレクトリで `cargo graphite generate` を実行して
+/// 更新する (Graphite リポジトリ自身の開発では `cargo xtask generate`)。
 /// 公開APIの実装はこの通常の Rust ファイルだけに存在する。
 #[proc_macro]
 pub fn graph_schema(input: TokenStream) -> TokenStream {
@@ -98,7 +99,7 @@ pub fn graph_schema(input: TokenStream) -> TokenStream {
                 && actual[2] == #third
                 && actual[3] == #fourth)
             {
-                panic!("Graphite schema の生成ファイルが古いため、リポジトリルートで cargo xtask generate を実行してください");
+                panic!("Graphite schema の生成ファイルが古いため、パッケージのディレクトリで cargo graphite generate を実行してください (Graphite リポジトリ自身の開発では cargo xtask generate)");
             }
         };
     }
