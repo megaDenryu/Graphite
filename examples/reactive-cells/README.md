@@ -20,7 +20,7 @@ cargo run
 
 ## 1. 敵の紹介 — observer パターン (コールバック購読) のグリッチ・無限ループ・非決定性
 
-`src/antipattern.rs` の `NaiveCell` は、リアクティブな値を実装する際の
+`src/antipattern/naive_cell.rs` の `NaiveCell` は、リアクティブな値を実装する際の
 最もよくあるパターンそのもの: 「値を持ち、値が変わったら購読者
 (subscriber) へコールバックで通知する」だけのセル。
 
@@ -58,7 +58,7 @@ impl NaiveCell {
 間違った値を見ることになる。
 
 ### (b) 無限ループ
-`src/antipattern.rs::build_infinite_loop_demo` は `x`/`y` が互いを
+`src/antipattern/infinite_loop_demo.rs::build_infinite_loop_demo` は `x`/`y` が互いを
 購読し合う (`x`が変わったら`y`を更新し、`y`が変わったら`x`を更新する)
 だけの2セルを作る。循環に気づく仕組みは一切無いので、`x.set(2.0)` を
 呼ぶと notify が同期的に往復し続ける。実際に無限に回すとスタック
@@ -153,7 +153,7 @@ graphite::graph!(Sheet {
 (`subtotal → discount_amount → adjustment`、`subtotal → tax →
 adjustment`) を含む見積シートで `unit_price` を変更しても、
 `adjustment` はちょうど1回だけ再計算される
-(`src/engine.rs` のテスト「ダイヤモンド依存でもadjustmentはちょうど
+(`src/engine/tests/recompute_scope.rs` のテスト「ダイヤモンド依存でもadjustmentはちょうど
 1回だけ再計算される」で数値まで検算済み)。登録順という概念自体が
 存在しない (`topo_order` は依存構造だけから決まる) ので (c) の非決定性
 も原理的に発生しない。循環は `graph!`/`Sheet::create` ではなく
@@ -172,7 +172,7 @@ adjustment`) を含む見積シートで `unit_price` を変更しても、
 | 購読 (subscribe)・通知 (notify) | (存在しない — 不要になる) | `Engine::set_input` が影響範囲を一括で処理する |
 | 正しい再計算順序の保証 | `topological_sort()` | `Engine::topological_order()` (構築時に1回だけ計算) |
 | 影響範囲の特定 (dirty checking) | `reachable_from(id)` | `Engine::set_input` 内の `affected` 集合 |
-| glitch (矛盾した中間状態) | 原理的に発生しない (トポロジカル順が保証) | `tests/integration.rs`「ダイヤモンド依存を通る更新でも…」 |
+| glitch (矛盾した中間状態) | 原理的に発生しない (トポロジカル順が保証) | `tests/recomputation.rs`「ダイヤモンド依存を通る更新でも…」 |
 | 循環依存の実行時クラッシュ | `CycleError` (構築前に拒否) | `Engine::new` が `Err(CycleError)` を返す |
 | effect (副作用の実行) | (このexampleの範囲外) | — (`RecomputeStep` の列を読むのがeffectの代わり) |
 
@@ -195,13 +195,23 @@ adjustment`) を含む見積シートで `unit_price` を変更しても、
 
 | モジュール | 内容 |
 |---|---|
-| `src/antipattern.rs` | 敵: `NaiveCell` (observer パターン) とダイヤモンド依存・循環購読のデモ |
+| `src/antipattern.rs` | 敵の3つの問題を並べる入口 (下の3ファイルを公開する) |
+| `src/antipattern/naive_cell.rs` | observer パターンの素朴なセル `NaiveCell` |
+| `src/antipattern/diamond_demo.rs` | ダイヤモンド依存のグリッチと登録順依存のデモ |
+| `src/antipattern/infinite_loop_demo.rs` | 循環購読が止まらないことのデモ |
 | `src/schema.rs` | `Cell`/`Formula` ノード型と `graph_schema!` 宣言 |
 | `src/fixtures.rs` | `graph!` リテラルによる具体的な依存グラフ (`default_sheet`/`cyclic_demo_sheet`) |
-| `src/engine.rs` | 再計算エンジン (`topological_sort`/`reachable_from` を使う) |
+| `src/engine.rs` | 再計算エンジン本体 (`Engine` 型・構築・`set_input` による伝播) |
+| `src/engine/dependency_projection.rs` | 3種の依存エッジを1つの汎用グラフへ射影する |
+| `src/engine/formula_wiring.rs` | `Formula` が要求するエッジ本数との整合性検査 |
+| `src/engine/evaluation.rs` | セル1つの式を評価して値を求める |
+| `src/engine/recompute_step.rs` | 再計算1件分の記録 `RecomputeStep` |
 | `src/report.rs` | `main.rs` 向けの読み物風出力ヘルパー |
-| `src/main.rs` | 上記を通して読む物語 (`cargo run`) |
-| `tests/integration.rs` | 公開APIだけを使ったend-to-endテスト |
+| `src/main.rs` | 章を並べる物語の進行 (`cargo run`) |
+| `src/antipattern_chapter.rs` | 第1章: 敵の実演 |
+| `src/sheet_chapter.rs` | 第2章: 依存グラフの宣言とエンジン構築・循環の拒否 |
+| `src/propagation_chapter.rs` | 第3章: 入力の設定と伝播・影響範囲の絞り込み |
+| `tests/recomputation.rs`・`tests/cycle_rejection.rs`・`tests/observer_comparison.rs` | 公開APIだけを使ったend-to-endテスト |
 
 ## モデリングガイド§5の適用例 — Subの被減数/減数を辺種別に昇格
 
@@ -228,7 +238,7 @@ edge Rhs = (operand: Cell) -> (operation: Cell) where unique pair; // 非可換 
 
 これに合わせて `Formula` からも `CellId` を完全に取り除き、「どの演算か」
 (`Input`/`Mul`/`Sub`/`Sum`) だけを持つ形にした。演算対象の具体的なセルは
-`Engine::eval_formula` (`src/engine.rs`) が、そのセルを終点とする
+`Engine::eval_formula` (`src/engine/evaluation.rs`) が、そのセルを終点とする
 `Feeds`/`Lhs`/`Rhs` エッジをその都度絞り込んで直接読む。「どのセルが
 どのセルに依存するか」という**同一性+接続性を持つ情報**
 (`docs/modeling_guide.md` §1) はグラフだけが持つようになり、`Formula`
@@ -245,7 +255,7 @@ edge Rhs = (operand: Cell) -> (operation: Cell) where unique pair; // 非可換 
 `validate_formula_wiring` として検査しパニックする — 循環検出
 (`CycleError`) と同じく「schema/graph! は構造の整合性だけを見る、それ以外
 の性質はドメイン (再計算エンジン) が要求する制約」という責務分離
-(`src/engine.rs` 参照)。
+(`src/engine/formula_wiring.rs` 参照)。
 
 ## 実装の割り切り
 
