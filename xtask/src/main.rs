@@ -1,4 +1,5 @@
-//! `cargo xtask generate [--check]` と `cargo xtask check-docs` のコマンドライン入口。
+//! `cargo xtask generate [--check]`・`cargo xtask check-external`・
+//! `cargo xtask check-docs` のコマンドライン入口。
 //!
 //! 実処理は `lib.rs` (`xtask` ライブラリ) に集約する。ここは引数解析と
 //! プロセス終了コードだけを担う。
@@ -16,10 +17,12 @@ fn main() {
 }
 
 /// `generate` は生成ファイルを更新し、`generate --check` は差分をエラーにし、
-/// `check-docs` は文書参照と索引を検査する。
+/// `check-external` は外部 crate からの生成経路を実走で検査し、`check-docs` は
+/// 文書参照と索引を検査する。
 enum Command {
     Generate,
     Check,
+    CheckExternalCrate,
     CheckDocuments,
 }
 
@@ -30,6 +33,7 @@ const USAGE: &str = "\
 使い方: リポジトリルートで次のいずれかを実行してください
   cargo xtask generate            生成ファイルを更新する
   cargo xtask generate --check    生成ファイルの差分と孤児をエラーにする
+  cargo xtask check-external      ワークスペースの外の検証用パッケージで、生成の差分検査とビルドとテストを実行する
   cargo xtask check-docs          文書参照の綴りの実在と docs/README.md 索引の網羅を検査する
 
 check-docs が検査しないもの:
@@ -44,6 +48,7 @@ impl Command {
         match arguments {
             [command] if command == "generate" => Ok(Self::Generate),
             [command, option] if command == "generate" && option == "--check" => Ok(Self::Check),
+            [command] if command == "check-external" => Ok(Self::CheckExternalCrate),
             [command] if command == "check-docs" => Ok(Self::CheckDocuments),
             _ => Err(USAGE.into()),
         }
@@ -58,6 +63,7 @@ fn run() -> Result<(), Box<dyn Error>> {
     match command {
         Command::Generate => xtask::generate(&root),
         Command::Check => xtask::verify(&root),
+        Command::CheckExternalCrate => xtask::check_external_crate(&root),
         Command::CheckDocuments => xtask::check_documents(&root),
     }
 }

@@ -1,0 +1,9 @@
+[package]
+name = "graphite-external-verification"
+version = "0.1.0"
+edition = "2021"
+description = "Graphite のワークスペースの外にある crate から schema を使えることを実走で確かめる検証用パッケージ"
+publish = false
+
+[dependencies]
+graphite = { path = "../../crates/graphite" }

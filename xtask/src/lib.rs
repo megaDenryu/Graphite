@@ -8,6 +8,7 @@
 
 mod document_index;
 mod document_reference;
+mod external_verification;
 mod reference_scan;
 mod repository_root;
 
@@ -17,6 +18,7 @@ pub use document_reference::DocumentPath;
 pub use repository_root::RepositoryRoot;
 
 use crate::document_index::DocumentIndex;
+use crate::external_verification::ExternalVerificationPackage;
 use crate::reference_scan::ReferenceScan;
 
 /// `cargo xtask generate` 相当: 期待する生成ファイルを更新する。
@@ -27,6 +29,14 @@ pub fn generate(root: &RepositoryRoot) -> Result<(), Box<dyn Error>> {
 /// `cargo xtask generate --check` 相当: 差分と孤児生成ファイルをエラーにする。
 pub fn verify(root: &RepositoryRoot) -> Result<(), Box<dyn Error>> {
     graphite_cli::verify(root.generation_tree())
+}
+
+/// `cargo xtask check-external` 相当: 外部 crate からの生成経路を実走で検査する。
+///
+/// 生成の差分検査は `cargo graphite generate --check` と同じ経路を通り、続けて
+/// 検証用パッケージのビルドとテストを実行する。
+pub fn check_external_crate(root: &RepositoryRoot) -> Result<(), Box<dyn Error>> {
+    ExternalVerificationPackage::at(root.external_verification_directory()).check()
 }
 
 /// `cargo xtask check-docs` 相当: 文書参照の綴りが実在するかを検査する。

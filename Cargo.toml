@@ -7,6 +7,10 @@ members = [
     "crates/graphite-macros",
     "xtask",
 ]
+# 外部 crate からの生成経路を実走で検証するパッケージ。ワークスペースの中に
+# 入れてしまうと `cargo xtask` が使え、走査開始点も crates/*/src になるため、
+# 検証したい条件そのものが失われる。
+exclude = ["verification/external-crate"]
 
 [workspace.dependencies]
 petgraph = "0.6"
