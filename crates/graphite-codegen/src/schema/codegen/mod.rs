@@ -142,7 +142,7 @@ pub(crate) fn generate_module_body(
     // schema 全体に属する生成物 (`Graph`・`Builder`・`Violation`) は
     // `schema Name` の宣言を指す。種別ごとの生成物は `NodeInfo`/`EdgeInfo` が
     // 持つ、その種別の宣言への参照を指す。
-    let schema宣言元への参照 = 宣言元の綴り.宣言への参照(&schema.宣言の形());
+    let スキーマ宣言元への参照 = 宣言元の綴り.宣言への参照(&schema.宣言の形());
 
     let node_infos: Vec<NodeInfo> = schema
         .ノード定義の列()
@@ -173,13 +173,13 @@ pub(crate) fn generate_module_body(
         &node_infos,
         &edge_infos,
         schema.違反定義の列(),
-        &schema宣言元への参照,
+        &スキーマ宣言元への参照,
     );
     let schema_struct_def = gen_schema_struct(
         &graph_ident,
         &node_infos,
         &edge_infos,
-        &schema宣言元への参照,
+        &スキーマ宣言元への参照,
     );
     let schema_impl = gen_schema_impl(
         &graph_ident,
@@ -192,7 +192,7 @@ pub(crate) fn generate_module_body(
         &builder_ident,
         &node_infos,
         &edge_infos,
-        &schema宣言元への参照,
+        &スキーマ宣言元への参照,
     );
     let builder_impl = gen_builder_impl(&予約表, &node_infos, &edge_infos);
     let insertable_trait_def = gen_insertable_traits(

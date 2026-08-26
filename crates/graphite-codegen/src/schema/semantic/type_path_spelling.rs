@@ -7,7 +7,7 @@ use syn::Path;
 /// 注意: 型引数 (`Foo<Bar>`) は綴りに含めない。宣言の形は生成物の doc から
 /// 宣言元を指すための表示であり、再び構文解析される用途を持たないため、
 /// パスの要素の並びだけで足りる。
-pub(super) fn 型パスの綴り(パス: &Path) -> String {
+pub(super) fn 型パスの綴りを組み立てる(パス: &Path) -> String {
     let 先頭のコロン = if パス.leading_colon.is_some() {
         "::"
     } else {
@@ -32,16 +32,16 @@ mod tests {
 
     #[test]
     fn 修飾のないパスはそのままの綴りになる() {
-        assert_eq!(型パスの綴り(&パス("ExternalNodeId")), "ExternalNodeId");
+        assert_eq!(型パスの綴りを組み立てる(&パス("ExternalNodeId")), "ExternalNodeId");
     }
 
     #[test]
     fn 多段のパスはコロン2つで繋いだ綴りになる() {
-        assert_eq!(型パスの綴り(&パス("super::既存のID")), "super::既存のID");
+        assert_eq!(型パスの綴りを組み立てる(&パス("super::既存のID")), "super::既存のID");
     }
 
     #[test]
     fn 先頭のコロン2つを保った綴りになる() {
-        assert_eq!(型パスの綴り(&パス("::std::string::String")), "::std::string::String");
+        assert_eq!(型パスの綴りを組み立てる(&パス("::std::string::String")), "::std::string::String");
     }
 }

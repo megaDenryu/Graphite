@@ -15,7 +15,7 @@ pub(crate) fn gen_schema_struct(
     schema_name: &Ident,
     nodes: &[NodeInfo<'_>],
     edges: &[EdgeInfo<'_>],
-    schema宣言元への参照: &宣言元への参照,
+    スキーマ宣言元への参照: &宣言元への参照,
 ) -> TokenStream {
     let stamp_field = construction_stamp_field_ident(schema_name.span());
     let node_fields = nodes.iter().map(|n| {
@@ -69,7 +69,7 @@ pub(crate) fn gen_schema_struct(
     quote! {
         /// 凍結済み図式グラフ。構築後の構造は不変で、ノード値と辺の積み荷だけを
         /// `&mut Graph` を要求する種別APIから更新できる。
-        #schema宣言元への参照
+        #スキーマ宣言元への参照
         pub struct #schema_name {
             #(#node_fields,)*
             #(#edge_fields,)*

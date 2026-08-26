@@ -14,7 +14,7 @@ use super::cardinality::{
 use super::endpoint_pairing::{端点対のキーの形, 端点対の重複可否};
 use super::node_definition::ノード定義番号;
 use super::public_id_type::公開ID型;
-use super::type_path_spelling::型パスの綴り;
+use super::type_path_spelling::型パスの綴りを組み立てる;
 use crate::naming::generated_id_ident;
 use crate::schema::syntax::{EdgeDecl, EdgePayload, EdgeShape};
 
@@ -246,7 +246,7 @@ impl 辺定義 {
             Some(積み荷) => format!(
                 "-[{}: {}]{角括弧より後ろ}",
                 積み荷.役割名,
-                型パスの綴り(&積み荷.型パス)
+                型パスの綴りを組み立てる(&積み荷.型パス)
             ),
             None if self.有向か() => "->".to_string(),
             None => "--".to_string(),

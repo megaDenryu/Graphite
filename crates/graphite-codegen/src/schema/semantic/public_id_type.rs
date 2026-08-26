@@ -3,7 +3,7 @@
 use proc_macro2::Ident;
 use syn::{Path, PathSegment};
 
-use super::type_path_spelling::型パスの綴り;
+use super::type_path_spelling::型パスの綴りを組み立てる;
 
 /// 宣言を省略した既定生成ID、または `(id: 型パス)` で明示された既存ID型。
 ///
@@ -61,7 +61,7 @@ impl 公開ID型 {
             Self::スキーマが生成するID型 { .. } => None,
             Self::利用者が宣言した既存のID型 {
                 生成module内から見たパス,
-            } => Some(型パスの綴り(生成module内から見たパス)),
+            } => Some(型パスの綴りを組み立てる(生成module内から見たパス)),
         }
     }
 
