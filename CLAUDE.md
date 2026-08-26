@@ -60,6 +60,9 @@ cargo test
 # 追跡可能なschema Rustコードを生成・検査
 cargo xtask generate
 cargo xtask generate --check
+
+# 文書参照の綴りの実在と docs/README.md 索引の網羅を検査
+cargo xtask check-docs
 ```
 
 **ビルドコマンドは必ず** `cargo build 2> build_errors.txt; Get-Content build_errors.txt -Head 50`
@@ -72,7 +75,7 @@ cargo xtask generate --check
 - 新機能・API設計で判断に迷ったら `docs/design_principles.md` (Rust的な精神・
   型のstrictnessを具体化した6原則) を必ず参照する
 - ツールの入口は`cargo xtask`へ集約する。現在のコマンドは
-  `cargo xtask generate [--check]`である
+  `cargo xtask generate [--check]`と`cargo xtask check-docs`である
 - 生存型文書は`docs/`へ置き、READMEから参照する。`dev_history_*.md`は
   過去の経緯を保存するログ型文書として扱う
 

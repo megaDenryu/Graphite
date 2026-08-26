@@ -4,6 +4,7 @@ use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::document_reference::DocumentPath;
 use crate::generated_target_path::GeneratedTargetPath;
 use crate::io_context::with_path_context;
 use crate::schema_source_file::SchemaSourceFile;
@@ -83,6 +84,47 @@ impl RepositoryRoot {
         Ok(files)
     }
 
+    /// `docs/` 配下の文書がその綴りで実在するか。
+    pub fn document_exists(&self, document: &DocumentPath) -> bool {
+        self.path.join(document.spelling()).is_file()
+    }
+
+    /// `docs/` 配下に実在する全ファイルを、ルート相対の綴りで列挙する。
+    ///
+    /// 索引 (docs/README.md) との過不足の突き合わせに使う。
+    pub fn document_files(&self) -> Result<Vec<DocumentPath>, Box<dyn Error>> {
+        let mut paths = Vec::new();
+        collect_all_files(self, &self.path.join("docs"), &mut paths)?;
+        let mut documents: Vec<DocumentPath> = paths
+            .iter()
+            .map(|path| DocumentPath::from_relative_display(&self.relative_display(path)))
+            .collect();
+        documents.sort();
+        Ok(documents)
+    }
+
+    /// 文書参照を書きうるファイルを、順序を固定して列挙する。
+    ///
+    /// 走査対象は `README.md`・`CLAUDE.md`・`docs/` 配下の Markdown・
+    /// `examples/*/README.md`・`crates`/`xtask`/`examples` 配下の Rust ファイル
+    /// である。生成ファイルも rustdoc に文書参照を持つため除外しない。
+    pub fn document_reference_sources(&self) -> Result<Vec<PathBuf>, Box<dyn Error>> {
+        let mut candidates = Vec::new();
+        push_if_file(&self.path.join("README.md"), &mut candidates);
+        push_if_file(&self.path.join("CLAUDE.md"), &mut candidates);
+        collect_all_files(self, &self.path.join("docs"), &mut candidates)?;
+        for example_directory in subdirectories(self, &self.path.join("examples"))? {
+            push_if_file(&example_directory.join("README.md"), &mut candidates);
+        }
+        for area in ["crates", "xtask", "examples"] {
+            collect_all_files(self, &self.path.join(area), &mut candidates)?;
+        }
+        candidates.retain(is_scannable_text_file);
+        candidates.sort();
+        candidates.dedup();
+        Ok(candidates)
+    }
+
     /// 単体テスト専用: 実ファイルシステムを介さずに構築する。
     #[cfg(test)]
     pub(crate) fn for_tests(path: PathBuf) -> Self {
@@ -130,6 +172,42 @@ fn push_if_exists(path: &Path, roots: &mut Vec<PathBuf>) {
     if path.is_dir() {
         roots.push(path.to_path_buf());
     }
+}
+
+fn push_if_file(path: &Path, paths: &mut Vec<PathBuf>) {
+    if path.is_file() {
+        paths.push(path.to_path_buf());
+    }
+}
+
+/// 文書参照の出典として読むのは Markdown と Rust のソースだけである。
+///
+/// `design_journal.html` のような添付は、参照を書く場所として扱わない。
+fn is_scannable_text_file(path: &PathBuf) -> bool {
+    matches!(path.extension().and_then(OsStr::to_str), Some("md" | "rs"))
+}
+
+/// ビルド生成物を除いて、ディレクトリ配下の全ファイルを再帰的に集める。
+fn collect_all_files(
+    root: &RepositoryRoot,
+    directory: &Path,
+    paths: &mut Vec<PathBuf>,
+) -> Result<(), Box<dyn Error>> {
+    if !directory.is_dir() {
+        return Ok(());
+    }
+    for entry in with_path_context(fs::read_dir(directory), &root.relative_display(directory))? {
+        let path = entry?.path();
+        if path.is_dir() {
+            if path.file_name().and_then(OsStr::to_str) == Some("target") {
+                continue;
+            }
+            collect_all_files(root, &path, paths)?;
+        } else {
+            paths.push(path);
+        }
+    }
+    Ok(())
 }
 
 /// 生成物と compile-fail 用のソースを除いて、Rustファイルを再帰的に集める。
