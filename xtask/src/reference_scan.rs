@@ -66,7 +66,7 @@ impl<'root> ReferenceScan<'root> {
 /// 注意: 抜き出すのは区間の全体であり、`docs/` を部分文字列として切り出さない。
 /// 切り出すと、別リポジトリを正しく指した綴りと、先頭が欠けたまま自リポジトリを
 /// 指してしまう綴りを区別できない。
-fn tokens_in(line: &str) -> Vec<&str> {
+pub(crate) fn tokens_in(line: &str) -> Vec<&str> {
     let mut tokens: Vec<&str> = line.split('`').skip(1).step_by(2).collect();
     let mut rest = line;
     while let Some(start) = rest.find("](") {

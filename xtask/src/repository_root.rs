@@ -89,6 +89,12 @@ impl RepositoryRoot {
         self.path.join(document.spelling()).is_file()
     }
 
+    /// 索引ファイル (docs/README.md) の本文を読む。
+    pub fn document_index_text(&self) -> Result<String, Box<dyn Error>> {
+        let path = self.path.join("docs").join("README.md");
+        with_path_context(fs::read_to_string(&path), &self.relative_display(&path))
+    }
+
     /// `docs/` 配下に実在する全ファイルを、ルート相対の綴りで列挙する。
     ///
     /// 索引 (docs/README.md) との過不足の突き合わせに使う。

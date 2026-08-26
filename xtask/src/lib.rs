@@ -4,6 +4,7 @@
 //! ここへ集約する。`xtask/tests/` の統合テストはこのライブラリを経由して
 //! `cargo xtask generate --check` 相当を `cargo test` から検査する。
 
+mod document_index;
 mod document_reference;
 mod generated_target_path;
 mod generation_plan;
@@ -19,6 +20,7 @@ pub use document_reference::DocumentPath;
 pub use generation_plan::GenerationPlan;
 pub use repository_root::RepositoryRoot;
 
+use crate::document_index::DocumentIndex;
 use crate::reference_scan::ReferenceScan;
 
 /// 全schema宣言から `GenerationPlan` を組み立てる。
@@ -46,18 +48,25 @@ pub fn verify(root: &RepositoryRoot) -> Result<(), Box<dyn Error>> {
 /// 限界は `main.rs` の使い方の説明に書いてある。
 pub fn check_documents(root: &RepositoryRoot) -> Result<(), Box<dyn Error>> {
     let scan = ReferenceScan::over(root)?;
+    let existing = root.document_files()?;
+    let mismatch = DocumentIndex::read_from(root)?.compare_with(&existing);
     let missing = scan.missing_targets();
     println!(
-        "文書参照 {}件を検査しました(別リポジトリを指す参照 {}件は検査対象外)",
+        "文書参照 {}件と docs 配下の {}ファイルを検査しました(別リポジトリを指す参照 {}件は検査対象外)",
         scan.reference_count(),
+        existing.len(),
         scan.external_reference_count()
     );
-    if missing.is_empty() {
+    if missing.is_empty() && mismatch.is_empty() {
         return Ok(());
     }
-    let mut report = format!("実在しない文書を指す参照が{}件あります:\n", missing.len());
-    for reference in missing {
-        let _ = writeln!(report, "  {reference}");
+    let mut report = String::new();
+    if !missing.is_empty() {
+        let _ = writeln!(report, "実在しない文書を指す参照が{}件あります:", missing.len());
+        for reference in missing {
+            let _ = writeln!(report, "  {reference}");
+        }
     }
+    let _ = write!(report, "{mismatch}");
     Err(report.into())
 }
