@@ -250,6 +250,6 @@ edge Rhs = (operand: Cell) -> (operation: Cell) where unique pair; // 非可換 
 ## 実装の割り切り
 
 `Engine::set_input` は計算セル (`Formula::Input` 以外) への直接代入を
-契約違反としてパニックする (`docs/design_principles.md` 原則2)。計算
+契約違反としてパニックする (`docs/development/design_principles.md` 原則2)。計算
 セルの値は依存元セルの更新から常に自動的に決まるべきであり、これを
 破ると依存グラフと値ストアが不整合になる。

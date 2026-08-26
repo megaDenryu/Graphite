@@ -106,7 +106,7 @@ impl Org {
 
 - スパン規約: `fn boss` の ident はラベルの出現トークンそのまま (従来どおり)。
   導出名が消えたため、**ラベルの F2 rename は完全カスケードになる**
-  (`docs/ide_support_spec.md` §1.5 の境界条件がエッジについて無関係になる)。
+  (`docs/development/ide_support_spec.md` §1.5 の境界条件がエッジについて無関係になる)。
 
 ### 3.3 変更しないもの
 
@@ -122,4 +122,4 @@ impl Org {
 - examples 4 本 (hello-graph は §3 クックブックのエッジ節と README チートシートを
   新語彙で書き直し。関数数はむしろ減るはず)
 - README (root) の使用例・API 説明
-- `docs/ide_support_spec.md` は実装後に定義ジャンプを再計測して追記
+- `docs/development/ide_support_spec.md` は実装後に定義ジャンプを再計測して追記

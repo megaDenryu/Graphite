@@ -12,7 +12,7 @@ static 構築印カウンタ: AtomicU64 = AtomicU64::new(0);
 /// 実行時に検出するために使う。`graph_schema!` が生成する `Builder::new()` が
 /// これを呼び、同じ builder から生まれる `Graph` と全ての名前付き位置へ同じ値を
 /// 埋め込む。`bind` はこの値を照合し、一致しなければ契約違反として
-/// `panic!` する (`# Panics` の考え方は `docs/design_principles.md` 原則2 —
+/// `panic!` する (`# Panics` の考え方は `docs/development/design_principles.md` 原則2 —
 /// この違反は builder/Graph の取り違えという呼び出し規約違反であり、通常の
 /// ドメインエラーではない)。採番の順序に意味はなく重複しなければよいため
 /// `Relaxed` で十分。加算は `checked_add` で行い、カウンタが `u64` の上限に

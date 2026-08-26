@@ -95,7 +95,7 @@ workspace + 2クレート + rust-toolchain.toml (1.94.0) + CLAUDE.md + agents/sk
 
 > 型についてはstrictであることなど？
 
-→ **6原則**として `docs/design_principles.md` に固定化 (CLAUDE.mdから参照):
+→ **6原則**として `docs/development/design_principles.md` に固定化 (CLAUDE.mdから参照):
 1. 型のstrictness — stringly-typed API禁止。キーはnewtypeで運ぶ
 2. パニックは契約違反のみ。対になる `try_` を必ず用意。docに `# Panics` 節
 3. std命名規約準拠 (`try_`・`_with_key`・`impl Iterator`)
@@ -132,5 +132,5 @@ workspace + 2クレート + rust-toolchain.toml (1.94.0) + CLAUDE.md + agents/sk
 - **オーケストレータ (Fable/Opus) は実装しない**。実装・テスト・git操作・競合解消は Sonnet 5 (effort: high) サブエージェントに委譲 (ユーザー明示指示)
 - ビルドは `cargo build 2> build_errors.txt; Get-Content build_errors.txt -Head 50` 形式
 - コミットは日本語
-- 設計判断は `docs/design_principles.md` の6原則に従う
+- 設計判断は `docs/development/design_principles.md` の6原則に従う
 - 詳細は `CLAUDE.md` / `.claude/agents/impl.md` / `.claude/skills/proc-macro-dev/SKILL.md`

@@ -18,7 +18,7 @@
 //!
 //! ## 宣言単位のエラー回復との関係
 //!
-//! 参照: `docs/ide_support_spec.md` の「G4: エラー回復展開」節。
+//! 参照: `docs/development/ide_support_spec.md` の「G4: エラー回復展開」節。
 //!
 //! `SchemaInput` 全体ではなく `&[NodeDecl]`/`&[EdgeDecl]` というスライスを
 //! 受け取るシグネチャにしているのは、この module の配線がパース回復で「壊れた

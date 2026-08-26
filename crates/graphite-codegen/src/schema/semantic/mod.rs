@@ -8,7 +8,7 @@
 //! 決めると、コード生成層が意味を判断する場所へ戻ってしまうためである。
 //!
 //! `proc_macro2::Ident` と `syn::Path` の保持は許す。これらは「利用者が書いた
-//! 名前」そのものであり、span を保つことが IDE 支援 (`docs/ide_support_spec.md`)
+//! 名前」そのものであり、span を保つことが IDE 支援 (`docs/development/ide_support_spec.md`)
 //! に必要だからである。
 //!
 //! 生成名 (内部ストレージのフィールド名・索引名・違反 variant 名・アクセサ名)

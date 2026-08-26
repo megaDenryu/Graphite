@@ -8,7 +8,7 @@ use crate::schema::codegen::node_names::NodeInfo;
 
 /// ノード種別1つ分の種別API (`Graph` のメソッド) を生成する。
 ///
-/// IDE 支援 (`docs/ide_support_spec.md` §1.9, G3 ポリシー) のため、生成する
+/// IDE 支援 (`docs/development/ide_support_spec.md` §1.9, G3 ポリシー) のため、生成する
 /// メソッド名にはノード型そのもののトークンのスパンを持たせる
 /// (`accessor_ident` がノード型トークンのスパンを引き継いでいる)。
 pub(crate) fn gen_node_kind_api_methods(node: &NodeInfo) -> TokenStream {

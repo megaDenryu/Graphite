@@ -70,4 +70,4 @@ dev_history 参照。
   「`label:` の右は関係型。矢印内が積み荷」という v3 の読みに全面更新。
   §2.5 (脱糖の実像) の格納モデル説明は不変 (内部表現は変わらない)
 - README (root) の構文説明
-- docs/ide_support_spec.md — 実装後にラベル・型トークンの定義ジャンプを再計測
+- docs/development/ide_support_spec.md — 実装後にラベル・型トークンの定義ジャンプを再計測

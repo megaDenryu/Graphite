@@ -20,7 +20,7 @@
    隠された nominal」であり、Rust の哲学 (無名 struct 型は存在しない) にも
    ユーザーの美学にも反する。利用側では `BossAttrs` という「どこにも書かれていない
    名前」が突然現れ、「{ since: i32 } に名前ないの? 何こいつ?」となる。
-2. **rename 取り残しの根治 (G7-(a) の全面採用)**: `docs/ide_support_spec.md`
+2. **rename 取り残しの根治 (G7-(a) の全面採用)**: `docs/development/ide_support_spec.md`
    §1.5 の通り、隠された生成名 `{Label}Attrs` はケース変換を挟むため rust-analyzer
    の rename がカスケードできない。属性型がユーザー自身のトークンになれば、
    この問題クラスごと消滅する (ラベルの rename は型に触れず、型の rename は

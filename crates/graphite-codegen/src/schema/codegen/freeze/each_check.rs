@@ -6,7 +6,7 @@ use quote::quote;
 use crate::schema::codegen::edge_names::EdgeInfo;
 
 /// `where each <参照名>: ..` の IDE 支援専用ゼロコスト検査文
-/// (`docs/ide_support_spec.md` §1.9)。
+/// (`docs/development/ide_support_spec.md` §1.9)。
 ///
 /// `<参照名>` は名前付きフィールドの辺値型の役割名フィールドへ参照させる。
 pub(crate) fn gen_each_type_check(edge: &EdgeInfo<'_>) -> TokenStream {

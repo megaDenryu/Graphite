@@ -29,7 +29,7 @@ use crate::schema::semantic::ノードの探索計画;
 /// できないため、値の型さえ分かれば正しい内部ストレージへ振り分けられる
 /// **総称メソッド**が要る。この trait 境界を介した単相化がそれを実現する
 /// (実行時のリフレクション・型判別・`dyn` ディスパッチは一切無い。
-/// `docs/design_principles.md` 原則5: ゼロコスト志向)。
+/// `docs/development/design_principles.md` 原則5: ゼロコスト志向)。
 ///
 /// ## 読み取り側をここへ置かない理由
 ///
@@ -47,7 +47,7 @@ use crate::schema::semantic::ノードの探索計画;
 /// IDを作る操作は自動生成IDだけが実装する `{Schema}DefaultId` に置く。
 /// `{Schema}Node` はノード専用の型境界を保つマーカートレイトである。
 ///
-/// ## 命名判断 (`docs/design_principles.md` 原則3: std 命名規約準拠)
+/// ## 命名判断 (`docs/development/design_principles.md` 原則3: std 命名規約準拠)
 ///
 /// **内部 trait 名は `{Schema}Node` とした**。生成 module に移した後も
 /// `node Node;` や `edge Edge = ..;` と生成基盤名が衝突する可能性を増やさず、
@@ -74,7 +74,7 @@ pub(crate) fn gen_node_trait_and_impls(
         let internal_position = n.internal_position_ident();
         let named_position = n.named_position_ident();
         let stamp_field = construction_stamp_field_ident(ty.span());
-        // IDE 支援 (`docs/ide_support_spec.md` §1.9, G3 ポリシー): このノード
+        // IDE 支援 (`docs/development/ide_support_spec.md` §1.9, G3 ポリシー): このノード
         // 型への `{Schema}Node`/`{Schema}Insertable` impl が生やすメソッド名は
         // `n.type_ident` (ノード型そのもののトークン) のスパンを持たせる。
         // トレイト定義自体 (下の `pub trait #node_trait_ident { .. }`) は
@@ -154,7 +154,7 @@ pub(crate) fn gen_edge_trait_and_impls(
         let value_type = quote! { #kind };
         // 必須ではないが (このメソッドはユーザーが直接呼ぶ想定ではない)、
         // 他の生成メソッドとの一貫性のため `edge.kind` のスパンを付ける
-        // (`docs/ide_support_spec.md` §1.9 の指示: 余裕があれば付けてよい)。
+        // (`docs/development/ide_support_spec.md` §1.9 の指示: 余裕があれば付けてよい)。
         let common_impl = gen_insertable_and_named_impl(InsertableNamedSpec {
             insertable_trait_ident,
             builder_ident,

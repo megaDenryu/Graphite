@@ -410,7 +410,7 @@ pub struct GraphInput {
     pub items: Vec<GraphItem>,
 }
 
-/// 項目単位で回復パースした結果 (`docs/ide_support_spec.md` G4b)。
+/// 項目単位で回復パースした結果 (`docs/development/ide_support_spec.md` G4b)。
 pub struct GraphParse {
     pub graph: GraphInput,
     /// 個々の項目のパースに失敗した箇所を蓄積したもの。空なら全項目が

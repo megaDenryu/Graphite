@@ -9,6 +9,9 @@ Graphite の DSL (`graph_schema!` / `graph!`) を書くとき、VSCode 上で参
 
 ## 1. 現状マトリクス
 
+本節は 2026-07-14 時点の rust-analyzer 実測記録である。以降の節が定める規範
+(§1.9 / G3 / G4) は現行であり、生成コードが根拠として名指ししている。
+
 | 操作 | 結果 | 備考 |
 |---|---|---|
 | 使用側の型名 (`Employee {..}`) → 定義 | ✅ 精密 | schema 内 `node Employee` の `Employee` トークンに着地 |

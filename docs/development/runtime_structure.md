@@ -1,8 +1,8 @@
 # ランタイムクレートの内部構造 (`crates/graphite/src`)
 
 `crates/graphite` の実行時コードがどの概念をどのファイルへ置いているかを記録する。
-公開APIの使い方は README を、生成コードとの対応は `docs/desugaring_reference.md` を
-参照する。ここは「どこに何があるか」と「何が何に依存してよいか」だけを扱う。
+公開APIの使い方は各型の rustdoc と README の「どれを使えばよいか」を、生成コードとの
+対応は `docs/desugaring_reference.md` を参照する。ここは「どこに何があるか」と「何が何に依存してよいか」だけを扱う。
 
 ## 4つの実行時概念と、それぞれが現役である理由
 

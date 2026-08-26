@@ -975,7 +975,7 @@ mod graph_literal_tests {
         ));
     }
 
-    // 項目G1 (`docs/ide_support_spec.md`): `graph!` の展開をキーごとの
+    // 項目G1 (`docs/development/ide_support_spec.md`): `graph!` の展開をキーごとの
     // `let` 束縛方式に変更した際の回帰テスト2件。
 
     #[test]

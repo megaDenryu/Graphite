@@ -20,7 +20,7 @@
 //! - `../../../Bullet/docs/rust_graph_extension_sketch.md`
 //! - `../../../Bullet/docs/graph_design_sketches.md`
 //!
-//! ## 宣言単位のエラー回復展開 (項目G4、`docs/ide_support_spec.md` 参照)
+//! ## 宣言単位のエラー回復展開 (項目G4、`docs/development/ide_support_spec.md` 参照)
 //!
 //! schema 側と `graph!` 側は共に「宣言 / 項目」
 //! 単位の回復パーサ (`graphite_codegen` の `SchemaInput::parse_recovering` /

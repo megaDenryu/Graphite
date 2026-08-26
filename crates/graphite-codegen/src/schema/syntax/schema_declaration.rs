@@ -15,7 +15,7 @@ pub struct SchemaInput {
     pub edges: Vec<EdgeDecl>,
 }
 
-/// 宣言単位で回復パースした結果 (`docs/ide_support_spec.md` G4a)。
+/// 宣言単位で回復パースした結果 (`docs/development/ide_support_spec.md` G4a)。
 pub struct SchemaParse {
     pub schema: SchemaInput,
     /// 個々の宣言のパースに失敗した箇所を蓄積したもの。空なら全宣言が

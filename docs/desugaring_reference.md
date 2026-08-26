@@ -1805,7 +1805,7 @@ where
 (`crates/graphite/src/schema_runtime/construction_stamp.rs:5-29`)。`Builder::new()` が1つ発行し、その `Builder`
 から生まれる `Graph` と全ての名前付き位置へ同じ値を刻む。`bind` は不一致を
 `panic!` にする。これは呼び出し規約の違反であり通常のドメインエラーではないため、
-パニックにしている (`docs/design_principles.md` 原則2)。
+パニックにしている (`docs/development/design_principles.md` 原則2)。
 
 **6. 完成済みGraphの内部保存**
 
@@ -2601,7 +2601,7 @@ cargo xtask generate --check
 
 利用コードから公開APIへ定義ジャンプすると、生成ファイルの実装行へ着地する。
 生成ファイル先頭の「生成元」コメントが元DSLのリポジトリ相対パスと行を記録して
-いるので、そこから宣言へ戻れる。実測記録は `docs/ide_support_spec.md` §1.15 に
+いるので、そこから宣言へ戻れる。実測記録は `docs/development/ide_support_spec.md` §1.15 に
 ある。
 
 ```text
@@ -2627,7 +2627,7 @@ crates/graphite/tests/edge_roles.rs:27 の schema 宣言
 | 利用側から見て通ること | 独立したワークスペースを持つ例7本 | 例ごとに `cd examples/<名前>` してから `cargo test` |
 | 拒否すべき構文が拒否されること | `trybuild` によるコンパイル失敗の確認テスト (`crates/graphite/tests/ui/`)。期待する診断は実際に採取した `.stderr` と突き合わせる | `cargo test --workspace` |
 | 確保契約 | 確保回数を数えるグローバル割り当て器による実測 (§24.3) | `cargo test --test allocation_contract` |
-| IDE導線 | 誤った引数数で呼び出して `E0061` を起こし、rustcの「note: method defined here」の着地行を確認する | `docs/ide_support_spec.md` §1.15 の記録 |
+| IDE導線 | 誤った引数数で呼び出して `E0061` を起こし、rustcの「note: method defined here」の着地行を確認する | `docs/development/ide_support_spec.md` §1.15 の記録 |
 
 時間を計るベンチマークは意図的に置いていない。理由は §24.3 に書いた。
 
@@ -2642,6 +2642,6 @@ crates/graphite/tests/edge_roles.rs:27 の schema 宣言
 | `docs/graph_splice.md` | スプライス構文と `extend` の統一 |
 | `docs/bulk_construction.md` | 一括構築API |
 | `docs/code_generation.md` | 生成の規約 (正本) |
-| `docs/ide_support_spec.md` | IDE支援の仕様と実測 |
-| `docs/design_principles.md` | 設計6原則 |
+| `docs/development/ide_support_spec.md` | IDE支援の仕様と実測 |
+| `docs/development/design_principles.md` | 設計6原則 |
 | `docs/modeling_guide.md` | グラフで書くか構造体で書くかの判断基準 |

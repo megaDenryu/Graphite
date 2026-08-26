@@ -27,7 +27,7 @@
 //! 静的な項と異なり名前を持たないため `let` 束縛は作らず、戻り値の `Id` 列も
 //! 捨てる (`docs/graph_splice.md` §1)。
 //!
-//! ## 展開形 (項目G1、`docs/ide_support_spec.md` 参照)
+//! ## 展開形 (項目G1、`docs/development/ide_support_spec.md` 参照)
 //!
 //! ノードキー・エッジキーはその場で文字列化せず、キーごとに 1 つの `let`
 //! 束縛を作り、以後は識別子参照で運ぶ。これにより rust-analyzer 上でキーの
@@ -67,7 +67,7 @@
 //! `b` というノードキーを書いたときに生成する `let b = ..;` が builder を
 //! 隠してしまう衝突を避けるため。
 //!
-//! ## エラー回復との関係 (項目G4b、`docs/ide_support_spec.md` 参照)
+//! ## エラー回復との関係 (項目G4b、`docs/development/ide_support_spec.md` 参照)
 //!
 //! `lib.rs` は `instance_dsl::GraphInput::parse_recovering` で項目単位の
 //! 回復パースを行い、パースに失敗した項目を除いた残りをここに渡す。
@@ -294,7 +294,7 @@ fn generate_items(
     })
 }
 
-/// `has_parse_errors`: G4b (`docs/ide_support_spec.md` 参照)。呼び出し元
+/// `has_parse_errors`: G4b (`docs/development/ide_support_spec.md` 参照)。呼び出し元
 /// (`lib.rs`) が項目単位の回復パースで1件以上のパースエラーを蓄積していた
 /// 場合に `true` を渡す。このとき「エッジ端点が未宣言」という検証エラーは
 /// 出さず、その辺を生成対象から除外する (壊れた項目由来の二次

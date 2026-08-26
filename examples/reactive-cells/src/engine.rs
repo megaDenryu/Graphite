@@ -86,7 +86,7 @@ impl Engine {
     /// 検証対象外 (端点存在と `unique pair` だけを見る、`src/fixtures.rs`
     /// 参照) なので、`Formula` とエッジの整合性はドメイン側 (ここ) の
     /// 責務として構築時に検査する (呼び出し規約違反はパニック、
-    /// `docs/design_principles.md` 原則2)。
+    /// `docs/development/design_principles.md` 原則2)。
     pub fn new(graph: Sheet::Graph) -> Result<Self, CycleError<CellId>> {
         Self::validate_formula_wiring(&graph);
 
@@ -185,7 +185,7 @@ impl Engine {
     ///
     /// # Panics
     /// `id` がこのエンジンの `Sheet` に存在しないキーの場合パニックする
-    /// (呼び出し規約違反。`docs/design_principles.md` 原則2 — graphite
+    /// (呼び出し規約違反。`docs/development/design_principles.md` 原則2 — graphite
     /// ランタイムのビュー `of` と同じ契約)。
     pub fn value(&self, id: &CellId) -> f64 {
         *self

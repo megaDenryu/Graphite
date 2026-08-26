@@ -72,7 +72,7 @@ cargo xtask check-docs
 ## リポジトリ固有のルール
 
 - **コミットメッセージは日本語**
-- 新機能・API設計で判断に迷ったら `docs/design_principles.md` (Rust的な精神・
+- 新機能・API設計で判断に迷ったら `docs/development/design_principles.md` (Rust的な精神・
   型のstrictnessを具体化した6原則) を必ず参照する
 - ツールの入口は`cargo xtask`へ集約する。現在のコマンドは
   `cargo xtask generate [--check]`と`cargo xtask check-docs`である

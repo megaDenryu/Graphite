@@ -86,7 +86,7 @@ Org::Graph::create(|__graphite_b| {
 `__graphite_edge_{Schema}!` を**完全に削除**する。
 
 - attrs アーム: ペイロードが式渡しになったため不要 (これで proc-macro → macro_rules
-  の二段展開が消え、`docs/ide_support_spec.md` §1.7 の「graph! リテラル内の属性
+  の二段展開が消え、`docs/development/ide_support_spec.md` §1.7 の「graph! リテラル内の属性
   フィールドが定義ジャンプ不能」問題が構造的に解消する見込み。実装後に実測)。
 - check アーム (未知ラベル診断): rustc の method-not-found に任せる
   (`no method named 'no_such_label' found for &mut OrgBuilder` + 類似名の
@@ -112,5 +112,5 @@ Org::Graph::create(|__graphite_b| {
   dialogue-engine (graph! の主要ユーザー)
 - README (root): graph! の構文説明、「同一ファイル制約」に関する記述の削除
   (クリーンに: 制約が消えたので言及ごと消す)
-- docs/ide_support_spec.md: G5 節を「v3 で制約自体が消滅」と更新。§1.7 の
+- docs/development/ide_support_spec.md: G5 節を「v3 で制約自体が消滅」と更新。§1.7 の
   二段展開制約も実測後に更新

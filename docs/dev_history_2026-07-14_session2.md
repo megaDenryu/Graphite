@@ -12,7 +12,7 @@
 
 rust-analyzer の definition/references プロバイダを直接叩き、`targetSelectionRange`
 (F12 の着地点) まで確認するという計測手法を確立した。結果は
-`docs/ide_support_spec.md` の「1. 現状マトリクス」に固定。要点:
+`docs/development/ide_support_spec.md` の「1. 現状マトリクス」に固定。要点:
 
 - **スパン保存は既存実装がほぼ正解を出していた**。使用側→schema への定義ジャンプ
   (型名・アクセサ・`try_*` 派生名・属性フィールド) は全てトークン単位で精密。
@@ -23,7 +23,7 @@ rust-analyzer の definition/references プロバイダを直接叩き、`target
 
 ## 2. 仕様策定と実装 (G1〜G6)
 
-`docs/ide_support_spec.md` を新設し G1〜G6 として仕様化。本セッションで G1〜G4 を実装した。
+`docs/development/ide_support_spec.md` を新設し G1〜G6 として仕様化。本セッションで G1〜G4 を実装した。
 
 ### G1: graph! ノードキーの let 束縛化 (コミット `1268cba`)
 展開を `let tanaka = EmployeeId("tanaka".to_string()); __graphite_b.employee(tanaka.clone(), ..)` 方式に変更。
@@ -126,7 +126,7 @@ v2 実装直後の実測 (§3.5 末尾) で「`graph!` リテラル内の属性�
   メソッド名を機械導出していたが、型名自体が構文から消えたため不可能に
   なった、というより本質的には「マクロが型推論をエミュレートするのを
   やめて rustc に投げる」という設計転換)。
-- 効果 (実測済み、`docs/ide_support_spec.md` §1.7/§1.8):
+- 効果 (実測済み、`docs/development/ide_support_spec.md` §1.7/§1.8):
   - 二段マクロ展開が構造的に消滅したことで、`since`/`BossEdge`/`boss` の
     定義ジャンプが復活 (v2 で失っていた導線の復旧)。
   - `graph_schema!`/`graph!` の同一ファイル制約 (旧 G5) も同時に消滅。

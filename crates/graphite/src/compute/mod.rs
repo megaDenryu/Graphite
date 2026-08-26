@@ -112,7 +112,7 @@ impl<V> ComputeGraph<V> {
     ///
     /// # Panics
     /// `key` がこのグラフに存在しないキーの場合 (呼び出し規約違反。
-    /// `docs/design_principles.md` 原則2)。
+    /// `docs/development/design_principles.md` 原則2)。
     pub fn get(&mut self, key: &str) -> &V {
         assert!(
             self.ノード表.キーを含むか(key),
@@ -135,7 +135,7 @@ impl<V> ComputeGraph<V> {
     /// - `key` がこのグラフに存在しないキーの場合。
     /// - `key` が入力ノードではない (計算ノードである) 場合 — 計算ノードの
     ///   値は依存元ノードの更新から常に自動的に決まるべきであり、直接代入は
-    ///   依存構造と値ストアの不整合を招く契約違反 (`docs/design_principles.md`
+    ///   依存構造と値ストアの不整合を招く契約違反 (`docs/development/design_principles.md`
     ///   原則2、`reactive-cells` の `Engine::set_input` と同じ整理)。
     pub fn set_input(&mut self, key: &str, value: V) {
         match self.ノード表.キーを照会する(key) {

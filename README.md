@@ -108,7 +108,7 @@ proc-macro クレート (`proc-macro = true`) は手続き型マクロ = コン�
 `graphite::flow!` として re-export されたものを使う。
 
 `crates/graphite` の内部がどの実行時概念をどのファイルへ置いているかは
-`docs/runtime_structure.md` に記録しています。
+`docs/development/runtime_structure.md` に記録しています。
 
 `graph_schema!`/`graph!` の辺は**宣言**(構築時に検証されるデータの繋がり)
 ですが、`graphite::flow!` の矢印 `-[関数式]->` は**実行**です — `x -[f]->
@@ -413,7 +413,7 @@ schema生成コードの総称 `insert_named`/`add_named` メソッド
 
 ノードキー・辺キーはその場で文字列化するのではなく、キーごとに `let` 束縛を
 1つ作り、以後はその識別子への参照として運びます (IDE サポート項目G1、
-`docs/ide_support_spec.md` 参照)。展開結果はおおよそ次の形になります:
+`docs/development/ide_support_spec.md` 参照)。展開結果はおおよそ次の形になります:
 
 ```rust
 OrgChart::Graph::create_named(|__graphite_b, __graphite_permit| {
@@ -717,7 +717,7 @@ cargo xtask generate --check
 ですが、`.vscode/settings.json` の `rust-analyzer.linkedProjects` で明示的に
 リンクしているため、VSCode で開けば通常のクレートと同様に rust-analyzer の
 解析対象になります。今後 example を追加したときは `linkedProjects` に 1 行
-足すことを運用ルールとします。詳細は `docs/ide_support_spec.md` を参照して
+足すことを運用ルールとします。詳細は `docs/development/ide_support_spec.md` を参照して
 ください。
 
 ## 手書きテンプレートとの差異
@@ -738,7 +738,7 @@ schema生成コードは基本的に`orgchart_handwritten.rs`と同じ形を生�
    始点/終点ノード型が異なりうる (例: `A -> B` と `C -> D` が両方 each
    違反を起こしうる) ため、辺ごとに専用バリアントを生成することで型を
    `String` に落とさず固定できるようにしています (「型の strictness」
-   原則。`docs/design_principles.md` 原則1 参照)。例:
+   原則。`docs/development/design_principles.md` 原則1 参照)。例:
    `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1;` からは
    `BelongsToEmployeeEachViolation { source: EmployeeId, count: usize }` /
    `BelongsToUnknownSource { edge: BelongsToId, source: EmployeeId }` /
@@ -815,7 +815,7 @@ schema生成コードは基本的に`orgchart_handwritten.rs`と同じ形を生�
   `graph!` を使うには `#[macro_export]` 等の追加対応が必要)、かつ
   `graph!` (proc-macro) → ハンドシェイク (macro_rules) という二段展開が
   rust-analyzer の定義ジャンプを妨げる副作用もありました
-  (`docs/ide_support_spec.md` §1.7)。v3 でリテラルの属性ペイロードを
+  (`docs/development/ide_support_spec.md` §1.7)。v3 でリテラルの属性ペイロードを
   `-[label = 式]->` という式渡しに変えたことでハンドシェイク自体が不要になり、
   完全に廃止しました。未知ラベルは `graph!` が生成する
   `__graphite_b.{label}(..)` 呼び出しが素の rustc method-not-found (E0599) に
