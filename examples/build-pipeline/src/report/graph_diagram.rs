@@ -91,17 +91,15 @@ mod tests {
     #[test]
     fn mermaid出力にノードと辺が含まれる() {
         let g = graph_from(
-            "task build: cargo build (10s)
+            "\
+task build: cargo build (10s)
 build produces target/a
 task test: cargo test (5s)
 test consumes target/a
 ",
         );
         let out = mermaid(&g);
-        assert!(out.starts_with(
-            "flowchart TD
-"
-        ));
+        assert!(out.starts_with("flowchart TD\n"));
         assert!(out.contains("T_build["));
         assert!(out.contains("A_target_a[("));
         assert!(out.contains("T_build -->|produces| A_target_a"));

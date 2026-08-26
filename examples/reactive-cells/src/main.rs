@@ -15,5 +15,6 @@ fn main() {
     antipattern_chapter::demonstrate_observer_problems();
     let mut engine = sheet_chapter::declare_sheet_and_build_engine();
     propagation_chapter::demonstrate_propagation(&mut engine);
+    propagation_chapter::demonstrate_reachable_only_recalculation(&mut engine);
     sheet_chapter::demonstrate_cycle_rejection();
 }

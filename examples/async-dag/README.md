@@ -132,6 +132,8 @@ a は起動できない)」と読む。これは実行順序 (トポロジカル
   シミュレーションなので `std::thread` で十分。
 - `src/engine/execution_report.rs` — 実行の記録 (`ExecutionRecord`/
   `ExecutionReport`)。
+- `src/engine/tests.rs` — `run_waves` の依存順序遵守・直列実行との速度比較
+  を固定する単体テスト。
 - `src/main.rs` — 上記を順に実行するデモ CLI。
 
 ### `cargo run` の実行例
@@ -186,15 +188,17 @@ wave 5: [healthcheck] (この波の所要時間 = 28ms)
 cargo test
 ```
 
-15件 (単体テスト5件 + `tests/` の4本に10件):
+15件 (単体テスト5件 + `tests/` の4本に10件)。カテゴリ (ファイル名は括弧内):
 
-- 本編グラフの波数・各波の内容 (手計算した期待値との一致)
-- 全サービスがちょうど1つの波に現れること (循環無し・欠落無しの確認)
+- 本編グラフの波数・各波の内容 (手計算した期待値との一致。
+  全サービスがちょうど1つの波に現れること=循環無し・欠落無しの確認を含む。
+  `wave_composition.rs`)
 - 循環依存サンプルが `has_cycle()`/`compute_waves()` の両方で検出され、
   具体的な循環パス (`CycleError.cycle`) が得られること
+  (`cycle_rejection.rs`)
 - `run_waves` の実行ログから、依存先 (`prerequisite`) が依存元
   (`dependent`) より先に完了していることを `g.depends_on_iter()` の
-  全ペアについて検証すること
-- 並列実行が直列実行より実測で速いこと
+  全ペアについて検証すること、および並列実行が直列実行より実測で
+  速いこと (`execution_order.rs`)
 - 未知の依存先を参照すると `DependsOnUnknownTarget` 違反になること
-  (図式適合検査)
+  (図式適合検査。`schema_conformance.rs`)

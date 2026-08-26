@@ -99,7 +99,8 @@ Get-ChildItem crates\graphite\src -Recurse -Filter *.rs |
 
 1. `impl Graph<N, E, K>` を複数ファイルへ散らすこと。`graph/mod.rs` だけに置く
    (例外は `structure_graph.rs` の `impl Graph<(), (), K>` 1つ)。同様に
-   `impl 有向トポロジー` は `graph/topology/mod.rs` だけに置く。
+   `impl 有向トポロジー` は `graph/topology/mod.rs` だけに置く。この禁止は
+   `crates/graphite` に限る。`examples/` では責務名を持つ impl 分割を許容する。
 2. アルゴリズムを自由関数にすること。アルゴリズムは「`&有向トポロジー` を
    コンストラクタで受ける型のメソッド」にする。
 3. 私有フィールドの可視性を緩めて外の自由関数から触れるようにすること。
