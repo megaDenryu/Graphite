@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    13708232843505775534u64, 16750954102772261953u64, 13944629199413145996u64,
-    456334618644036840u64,
+    17503674311805345012u64, 8026416620468188899u64, 2501223811697693006u64,
+    13275752325398431986u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct 人物Id(pub String);
@@ -18,13 +18,13 @@ pub struct 購入Id(pub String);
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct 友人Id(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __人物InternalPosition(usize);
+struct __人物InternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __商品InternalPosition(usize);
+struct __商品InternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __購入InternalPosition(usize);
+struct __購入InternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __友人InternalPosition(usize);
+struct __友人InternalPosition(graphite::TablePosition);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __人物NamedPosition(__人物InternalPosition, u64);
@@ -556,7 +556,9 @@ impl 世界Insertable for super::人物 {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __人物NamedPosition(
-            __人物InternalPosition(b.__graphite_node_人物.len()),
+            __人物InternalPosition(
+                graphite::TablePosition(b.__graphite_node_人物.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -750,7 +752,9 @@ impl 世界Insertable for super::商品 {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __商品NamedPosition(
-            __商品InternalPosition(b.__graphite_node_商品.len()),
+            __商品InternalPosition(
+                graphite::TablePosition(b.__graphite_node_商品.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -864,7 +868,7 @@ impl 世界Insertable for 購入 {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __購入NamedPosition(
-            __購入InternalPosition(b.購入.len()),
+            __購入InternalPosition(graphite::TablePosition(b.購入.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -915,7 +919,7 @@ impl 世界Insertable for 友人 {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __友人NamedPosition(
-            __友人InternalPosition(b.友人.len()),
+            __友人InternalPosition(graphite::TablePosition(b.友人.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1162,7 +1166,7 @@ impl Builder {
                         });
                 }
                 let internal_edge_position = __購入InternalPosition(
-                    __graphite_購入.len(),
+                    graphite::TablePosition(__graphite_購入.len()),
                 );
                 __graphite_購入_by_pair
                     .insert((from_position, to_position), internal_edge_position);
@@ -1238,7 +1242,7 @@ impl Builder {
                         });
                 }
                 let internal_edge_position = __友人InternalPosition(
-                    __graphite_友人.len(),
+                    graphite::TablePosition(__graphite_友人.len()),
                 );
                 __graphite_友人_by_pair
                     .insert(
@@ -1275,7 +1279,9 @@ impl Builder {
             (0..__graphite_node_人物.len())
                 .map(|position| {
                     購入_from_index
-                        .remove(&__人物InternalPosition(position))
+                        .remove(
+                            &__人物InternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -1284,7 +1290,9 @@ impl Builder {
             (0..__graphite_node_商品.len())
                 .map(|position| {
                     購入_to_index
-                        .remove(&__商品InternalPosition(position))
+                        .remove(
+                            &__商品InternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -1293,7 +1301,9 @@ impl Builder {
             (0..__graphite_node_人物.len())
                 .map(|position| {
                     友人_index
-                        .remove(&__人物InternalPosition(position))
+                        .remove(
+                            &__人物InternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),

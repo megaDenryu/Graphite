@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    5493338329728179204u64, 14576753777245647741u64, 16784101247189973794u64,
-    5615453322457266454u64,
+    17148409557744016707u64, 4002737975842997886u64, 15518565262442700493u64,
+    6506132226478591473u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SpeakerId(pub String);
@@ -16,11 +16,11 @@ pub struct LineId(pub String);
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ChoiceId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __SpeakerInternalPosition(usize);
+struct __SpeakerInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __LineInternalPosition(usize);
+struct __LineInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __ChoiceInternalPosition(usize);
+struct __ChoiceInternalPosition(graphite::TablePosition);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __SpeakerNamedPosition(__SpeakerInternalPosition, u64);
@@ -377,7 +377,9 @@ impl DialogueInsertable for super::Speaker {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __SpeakerNamedPosition(
-            __SpeakerInternalPosition(b.__graphite_node_speaker.len()),
+            __SpeakerInternalPosition(
+                graphite::TablePosition(b.__graphite_node_speaker.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -528,7 +530,9 @@ impl DialogueInsertable for super::Line {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __LineNamedPosition(
-            __LineInternalPosition(b.__graphite_node_line.len()),
+            __LineInternalPosition(
+                graphite::TablePosition(b.__graphite_node_line.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -640,7 +644,7 @@ impl DialogueInsertable for Choice {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __ChoiceNamedPosition(
-            __ChoiceInternalPosition(b.choice.len()),
+            __ChoiceInternalPosition(graphite::TablePosition(b.choice.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -874,7 +878,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __ChoiceInternalPosition(
-                    __graphite_choice.len(),
+                    graphite::TablePosition(__graphite_choice.len()),
                 );
                 __graphite_choice_by_pair
                     .entry((from_position, to_position))
@@ -906,7 +910,9 @@ impl Builder {
             (0..__graphite_node_speaker.len())
                 .map(|position| {
                     choice_from_index
-                        .remove(&__SpeakerInternalPosition(position))
+                        .remove(
+                            &__SpeakerInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -915,7 +921,9 @@ impl Builder {
             (0..__graphite_node_line.len())
                 .map(|position| {
                     choice_to_index
-                        .remove(&__LineInternalPosition(position))
+                        .remove(
+                            &__LineInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),

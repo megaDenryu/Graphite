@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    9720322184601480826u64, 11455302048508525717u64, 12072404857185111788u64,
-    17924675770916053168u64,
+    8589592126875526766u64, 9836752763228277499u64, 5439246706806984380u64,
+    8784210473907865344u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PersonId(pub String);
@@ -18,13 +18,13 @@ pub struct PurchaseId(pub String);
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SubscriptionId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __PersonInternalPosition(usize);
+struct __PersonInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __ProductInternalPosition(usize);
+struct __ProductInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __PurchaseInternalPosition(usize);
+struct __PurchaseInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __SubscriptionInternalPosition(usize);
+struct __SubscriptionInternalPosition(graphite::TablePosition);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __PersonNamedPosition(__PersonInternalPosition, u64);
@@ -607,7 +607,9 @@ impl CommerceInsertable for super::Person {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __PersonNamedPosition(
-            __PersonInternalPosition(b.__graphite_node_person.len()),
+            __PersonInternalPosition(
+                graphite::TablePosition(b.__graphite_node_person.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -813,7 +815,9 @@ impl CommerceInsertable for super::Product {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __ProductNamedPosition(
-            __ProductInternalPosition(b.__graphite_node_product.len()),
+            __ProductInternalPosition(
+                graphite::TablePosition(b.__graphite_node_product.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -938,7 +942,7 @@ impl CommerceInsertable for Purchase {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __PurchaseNamedPosition(
-            __PurchaseInternalPosition(b.purchase.len()),
+            __PurchaseInternalPosition(graphite::TablePosition(b.purchase.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -989,7 +993,9 @@ impl CommerceInsertable for Subscription {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __SubscriptionNamedPosition(
-            __SubscriptionInternalPosition(b.subscription.len()),
+            __SubscriptionInternalPosition(
+                graphite::TablePosition(b.subscription.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1246,7 +1252,7 @@ impl Builder {
                         });
                 }
                 let internal_edge_position = __PurchaseInternalPosition(
-                    __graphite_purchase.len(),
+                    graphite::TablePosition(__graphite_purchase.len()),
                 );
                 __graphite_purchase_by_pair
                     .insert((from_position, to_position), internal_edge_position);
@@ -1351,7 +1357,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __SubscriptionInternalPosition(
-                    __graphite_subscription.len(),
+                    graphite::TablePosition(__graphite_subscription.len()),
                 );
                 __graphite_subscription_by_pair
                     .entry((from_position, to_position))
@@ -1404,7 +1410,9 @@ impl Builder {
             (0..__graphite_node_person.len())
                 .map(|position| {
                     purchase_from_index
-                        .remove(&__PersonInternalPosition(position))
+                        .remove(
+                            &__PersonInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -1413,7 +1421,9 @@ impl Builder {
             (0..__graphite_node_product.len())
                 .map(|position| {
                     purchase_to_index
-                        .remove(&__ProductInternalPosition(position))
+                        .remove(
+                            &__ProductInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -1422,7 +1432,9 @@ impl Builder {
             (0..__graphite_node_person.len())
                 .map(|position| {
                     subscription_from_index
-                        .remove(&__PersonInternalPosition(position))
+                        .remove(
+                            &__PersonInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -1431,7 +1443,9 @@ impl Builder {
             (0..__graphite_node_product.len())
                 .map(|position| {
                     subscription_to_index
-                        .remove(&__ProductInternalPosition(position))
+                        .remove(
+                            &__ProductInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),

@@ -6,13 +6,13 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    8722105356369125473u64, 13173378942746626254u64, 14856085849632803491u64,
-    8317261482656962775u64,
+    17482824746139825058u64, 5073956048645158329u64, 15487621947358228532u64,
+    2384497665447419424u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WidgetId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __WidgetInternalPosition(usize);
+struct __WidgetInternalPosition(graphite::TablePosition);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __WidgetNamedPosition(__WidgetInternalPosition, u64);
@@ -178,7 +178,9 @@ impl WidgetGraphInsertable for super::Widget {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __WidgetNamedPosition(
-            __WidgetInternalPosition(b.__graphite_node_widget.len()),
+            __WidgetInternalPosition(
+                graphite::TablePosition(b.__graphite_node_widget.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();

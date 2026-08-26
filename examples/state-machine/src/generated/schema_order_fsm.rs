@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    2982262032317128879u64, 16757710220567542854u64, 7492656159750809213u64,
-    9248850924208383441u64,
+    1046630645366771842u64, 14305915831069618425u64, 9892583826107892940u64,
+    14713721443045293560u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct OrderStateId(pub String);
@@ -24,19 +24,19 @@ pub struct CancelId(pub String);
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RefundId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __OrderStateInternalPosition(usize);
+struct __OrderStateInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __SubmitInternalPosition(usize);
+struct __SubmitInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __PayInternalPosition(usize);
+struct __PayInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __ShipInternalPosition(usize);
+struct __ShipInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __DeliverInternalPosition(usize);
+struct __DeliverInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __CancelInternalPosition(usize);
+struct __CancelInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __RefundInternalPosition(usize);
+struct __RefundInternalPosition(graphite::TablePosition);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __OrderStateNamedPosition(__OrderStateInternalPosition, u64);
@@ -1200,7 +1200,9 @@ impl OrderFsmInsertable for super::OrderState {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __OrderStateNamedPosition(
-            __OrderStateInternalPosition(b.__graphite_node_order_state.len()),
+            __OrderStateInternalPosition(
+                graphite::TablePosition(b.__graphite_node_order_state.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1698,7 +1700,7 @@ impl OrderFsmInsertable for Submit {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __SubmitNamedPosition(
-            __SubmitInternalPosition(b.submit.len()),
+            __SubmitInternalPosition(graphite::TablePosition(b.submit.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1749,7 +1751,7 @@ impl OrderFsmInsertable for Pay {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __PayNamedPosition(
-            __PayInternalPosition(b.pay.len()),
+            __PayInternalPosition(graphite::TablePosition(b.pay.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1800,7 +1802,7 @@ impl OrderFsmInsertable for Ship {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __ShipNamedPosition(
-            __ShipInternalPosition(b.ship.len()),
+            __ShipInternalPosition(graphite::TablePosition(b.ship.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1851,7 +1853,7 @@ impl OrderFsmInsertable for Deliver {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __DeliverNamedPosition(
-            __DeliverInternalPosition(b.deliver.len()),
+            __DeliverInternalPosition(graphite::TablePosition(b.deliver.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1902,7 +1904,7 @@ impl OrderFsmInsertable for Cancel {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __CancelNamedPosition(
-            __CancelInternalPosition(b.cancel.len()),
+            __CancelInternalPosition(graphite::TablePosition(b.cancel.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1953,7 +1955,7 @@ impl OrderFsmInsertable for Refund {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __RefundNamedPosition(
-            __RefundInternalPosition(b.refund.len()),
+            __RefundInternalPosition(graphite::TablePosition(b.refund.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -2205,7 +2207,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __SubmitInternalPosition(
-                    __graphite_submit.len(),
+                    graphite::TablePosition(__graphite_submit.len()),
                 );
                 __graphite_submit_by_pair
                     .entry((from_position, to_position))
@@ -2289,7 +2291,9 @@ impl Builder {
                 from_position,
                 to_position,
             ) {
-                let internal_edge_position = __PayInternalPosition(__graphite_pay.len());
+                let internal_edge_position = __PayInternalPosition(
+                    graphite::TablePosition(__graphite_pay.len()),
+                );
                 __graphite_pay_by_pair
                     .entry((from_position, to_position))
                     .or_default()
@@ -2373,7 +2377,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __ShipInternalPosition(
-                    __graphite_ship.len(),
+                    graphite::TablePosition(__graphite_ship.len()),
                 );
                 __graphite_ship_by_pair
                     .entry((from_position, to_position))
@@ -2458,7 +2462,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __DeliverInternalPosition(
-                    __graphite_deliver.len(),
+                    graphite::TablePosition(__graphite_deliver.len()),
                 );
                 __graphite_deliver_by_pair
                     .entry((from_position, to_position))
@@ -2543,7 +2547,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __CancelInternalPosition(
-                    __graphite_cancel.len(),
+                    graphite::TablePosition(__graphite_cancel.len()),
                 );
                 __graphite_cancel_by_pair
                     .entry((from_position, to_position))
@@ -2629,7 +2633,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __RefundInternalPosition(
-                    __graphite_refund.len(),
+                    graphite::TablePosition(__graphite_refund.len()),
                 );
                 __graphite_refund_by_pair
                     .entry((from_position, to_position))
@@ -2683,7 +2687,11 @@ impl Builder {
             (0..__graphite_node_order_state.len())
                 .map(|position| {
                     submit_from_index
-                        .remove(&__OrderStateInternalPosition(position))
+                        .remove(
+                            &__OrderStateInternalPosition(
+                                graphite::TablePosition(position),
+                            ),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2692,7 +2700,11 @@ impl Builder {
             (0..__graphite_node_order_state.len())
                 .map(|position| {
                     submit_to_index
-                        .remove(&__OrderStateInternalPosition(position))
+                        .remove(
+                            &__OrderStateInternalPosition(
+                                graphite::TablePosition(position),
+                            ),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2701,7 +2713,11 @@ impl Builder {
             (0..__graphite_node_order_state.len())
                 .map(|position| {
                     pay_from_index
-                        .remove(&__OrderStateInternalPosition(position))
+                        .remove(
+                            &__OrderStateInternalPosition(
+                                graphite::TablePosition(position),
+                            ),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2710,7 +2726,11 @@ impl Builder {
             (0..__graphite_node_order_state.len())
                 .map(|position| {
                     pay_to_index
-                        .remove(&__OrderStateInternalPosition(position))
+                        .remove(
+                            &__OrderStateInternalPosition(
+                                graphite::TablePosition(position),
+                            ),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2719,7 +2739,11 @@ impl Builder {
             (0..__graphite_node_order_state.len())
                 .map(|position| {
                     ship_from_index
-                        .remove(&__OrderStateInternalPosition(position))
+                        .remove(
+                            &__OrderStateInternalPosition(
+                                graphite::TablePosition(position),
+                            ),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2728,7 +2752,11 @@ impl Builder {
             (0..__graphite_node_order_state.len())
                 .map(|position| {
                     ship_to_index
-                        .remove(&__OrderStateInternalPosition(position))
+                        .remove(
+                            &__OrderStateInternalPosition(
+                                graphite::TablePosition(position),
+                            ),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2737,7 +2765,11 @@ impl Builder {
             (0..__graphite_node_order_state.len())
                 .map(|position| {
                     deliver_from_index
-                        .remove(&__OrderStateInternalPosition(position))
+                        .remove(
+                            &__OrderStateInternalPosition(
+                                graphite::TablePosition(position),
+                            ),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2746,7 +2778,11 @@ impl Builder {
             (0..__graphite_node_order_state.len())
                 .map(|position| {
                     deliver_to_index
-                        .remove(&__OrderStateInternalPosition(position))
+                        .remove(
+                            &__OrderStateInternalPosition(
+                                graphite::TablePosition(position),
+                            ),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2755,7 +2791,11 @@ impl Builder {
             (0..__graphite_node_order_state.len())
                 .map(|position| {
                     cancel_from_index
-                        .remove(&__OrderStateInternalPosition(position))
+                        .remove(
+                            &__OrderStateInternalPosition(
+                                graphite::TablePosition(position),
+                            ),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2764,7 +2804,11 @@ impl Builder {
             (0..__graphite_node_order_state.len())
                 .map(|position| {
                     cancel_to_index
-                        .remove(&__OrderStateInternalPosition(position))
+                        .remove(
+                            &__OrderStateInternalPosition(
+                                graphite::TablePosition(position),
+                            ),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2773,7 +2817,11 @@ impl Builder {
             (0..__graphite_node_order_state.len())
                 .map(|position| {
                     refund_from_index
-                        .remove(&__OrderStateInternalPosition(position))
+                        .remove(
+                            &__OrderStateInternalPosition(
+                                graphite::TablePosition(position),
+                            ),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2782,7 +2830,11 @@ impl Builder {
             (0..__graphite_node_order_state.len())
                 .map(|position| {
                     refund_to_index
-                        .remove(&__OrderStateInternalPosition(position))
+                        .remove(
+                            &__OrderStateInternalPosition(
+                                graphite::TablePosition(position),
+                            ),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),

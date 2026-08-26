@@ -112,7 +112,7 @@ pub(crate) fn gen_undirected_edge_freeze_block(
             }
             if let (Some(first_position), Some(second_position)) = (first_position, second_position) {
                 #unique_pair_check
-                let internal_edge_position = #edge_position(#storage.len());
+                let internal_edge_position = #edge_position(graphite::TablePosition(#storage.len()));
                 #pair_insert
                 #index.entry(first_position).or_default().push(internal_edge_position);
                 if second_position != first_position {

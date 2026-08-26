@@ -6,17 +6,17 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    9967124478417784588u64, 16487025904172121679u64, 86658007553271486u64,
-    12324130438783020554u64,
+    6014986878476587500u64, 6199135868213734803u64, 12832681802080626410u64,
+    2898659002093030350u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct 人物Id(pub String);
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct 関係Id(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __人物InternalPosition(usize);
+struct __人物InternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __関係InternalPosition(usize);
+struct __関係InternalPosition(graphite::TablePosition);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __人物NamedPosition(__人物InternalPosition, u64);
@@ -350,7 +350,9 @@ impl 世界Insertable for super::人物 {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __人物NamedPosition(
-            __人物InternalPosition(b.__graphite_node_人物.len()),
+            __人物InternalPosition(
+                graphite::TablePosition(b.__graphite_node_人物.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -517,7 +519,7 @@ impl 世界Insertable for 関係 {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __関係NamedPosition(
-            __関係InternalPosition(b.関係.len()),
+            __関係InternalPosition(graphite::TablePosition(b.関係.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -740,7 +742,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __関係InternalPosition(
-                    __graphite_関係.len(),
+                    graphite::TablePosition(__graphite_関係.len()),
                 );
                 __graphite_関係_by_pair
                     .entry((from_position, to_position))
@@ -773,7 +775,9 @@ impl Builder {
             (0..__graphite_node_人物.len())
                 .map(|position| {
                     関係_from_index
-                        .remove(&__人物InternalPosition(position))
+                        .remove(
+                            &__人物InternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -782,7 +786,9 @@ impl Builder {
             (0..__graphite_node_人物.len())
                 .map(|position| {
                     関係_to_index
-                        .remove(&__人物InternalPosition(position))
+                        .remove(
+                            &__人物InternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),

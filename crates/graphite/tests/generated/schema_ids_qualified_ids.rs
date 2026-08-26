@@ -6,15 +6,15 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    18408057504168464979u64, 16544567998126664006u64, 15733681859339877109u64,
-    14755270211034826089u64,
+    12147001169263669071u64, 16539494886525216914u64, 17671537396193176453u64,
+    3259210513988713425u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct KnowsId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __PersonInternalPosition(usize);
+struct __PersonInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __KnowsInternalPosition(usize);
+struct __KnowsInternalPosition(graphite::TablePosition);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __PersonNamedPosition(__PersonInternalPosition, u64);
@@ -331,7 +331,9 @@ impl QualifiedIdsInsertable for super::Person {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __PersonNamedPosition(
-            __PersonInternalPosition(b.__graphite_node_person.len()),
+            __PersonInternalPosition(
+                graphite::TablePosition(b.__graphite_node_person.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -483,7 +485,7 @@ impl QualifiedIdsInsertable for Knows {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __KnowsNamedPosition(
-            __KnowsInternalPosition(b.knows.len()),
+            __KnowsInternalPosition(graphite::TablePosition(b.knows.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -706,7 +708,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __KnowsInternalPosition(
-                    __graphite_knows.len(),
+                    graphite::TablePosition(__graphite_knows.len()),
                 );
                 __graphite_knows_by_pair
                     .entry((from_position, to_position))
@@ -738,7 +740,9 @@ impl Builder {
             (0..__graphite_node_person.len())
                 .map(|position| {
                     knows_from_index
-                        .remove(&__PersonInternalPosition(position))
+                        .remove(
+                            &__PersonInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -747,7 +751,9 @@ impl Builder {
             (0..__graphite_node_person.len())
                 .map(|position| {
                     knows_to_index
-                        .remove(&__PersonInternalPosition(position))
+                        .remove(
+                            &__PersonInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),

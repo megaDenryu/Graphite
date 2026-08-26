@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    708608751656943449u64, 6089672630819047242u64, 17413170137178534987u64,
-    2198178284481791431u64,
+    2996708223348003908u64, 12876513878557547599u64, 18373386806690589230u64,
+    9709876180857858514u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PersonId(pub String);
@@ -24,19 +24,19 @@ pub struct ReviewedById(pub String);
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FriendsId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __PersonInternalPosition(usize);
+struct __PersonInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __TeamInternalPosition(usize);
+struct __TeamInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __BelongsToInternalPosition(usize);
+struct __BelongsToInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __BossInternalPosition(usize);
+struct __BossInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __ReportsInternalPosition(usize);
+struct __ReportsInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __ReviewedByInternalPosition(usize);
+struct __ReviewedByInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __FriendsInternalPosition(usize);
+struct __FriendsInternalPosition(graphite::TablePosition);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __PersonNamedPosition(__PersonInternalPosition, u64);
@@ -1066,7 +1066,9 @@ impl OrgInsertable for super::Person {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __PersonNamedPosition(
-            __PersonInternalPosition(b.__graphite_node_person.len()),
+            __PersonInternalPosition(
+                graphite::TablePosition(b.__graphite_node_person.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1472,7 +1474,9 @@ impl OrgInsertable for super::Team {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __TeamNamedPosition(
-            __TeamInternalPosition(b.__graphite_node_team.len()),
+            __TeamInternalPosition(
+                graphite::TablePosition(b.__graphite_node_team.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1586,7 +1590,7 @@ impl OrgInsertable for BelongsTo {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __BelongsToNamedPosition(
-            __BelongsToInternalPosition(b.belongs_to.len()),
+            __BelongsToInternalPosition(graphite::TablePosition(b.belongs_to.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1637,7 +1641,7 @@ impl OrgInsertable for Boss {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __BossNamedPosition(
-            __BossInternalPosition(b.boss.len()),
+            __BossInternalPosition(graphite::TablePosition(b.boss.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1688,7 +1692,7 @@ impl OrgInsertable for Reports {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __ReportsNamedPosition(
-            __ReportsInternalPosition(b.reports.len()),
+            __ReportsInternalPosition(graphite::TablePosition(b.reports.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1739,7 +1743,7 @@ impl OrgInsertable for ReviewedBy {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __ReviewedByNamedPosition(
-            __ReviewedByInternalPosition(b.reviewed_by.len()),
+            __ReviewedByInternalPosition(graphite::TablePosition(b.reviewed_by.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1790,7 +1794,7 @@ impl OrgInsertable for Friends {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __FriendsNamedPosition(
-            __FriendsInternalPosition(b.friends.len()),
+            __FriendsInternalPosition(graphite::TablePosition(b.friends.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -2044,7 +2048,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __BelongsToInternalPosition(
-                    __graphite_belongs_to.len(),
+                    graphite::TablePosition(__graphite_belongs_to.len()),
                 );
                 __graphite_belongs_to_by_pair
                     .entry((from_position, to_position))
@@ -2129,7 +2133,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __BossInternalPosition(
-                    __graphite_boss.len(),
+                    graphite::TablePosition(__graphite_boss.len()),
                 );
                 __graphite_boss_by_pair
                     .entry((from_position, to_position))
@@ -2223,7 +2227,7 @@ impl Builder {
                         });
                 }
                 let internal_edge_position = __ReportsInternalPosition(
-                    __graphite_reports.len(),
+                    graphite::TablePosition(__graphite_reports.len()),
                 );
                 __graphite_reports_by_pair
                     .insert((from_position, to_position), internal_edge_position);
@@ -2285,7 +2289,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __ReviewedByInternalPosition(
-                    __graphite_reviewed_by.len(),
+                    graphite::TablePosition(__graphite_reviewed_by.len()),
                 );
                 __graphite_reviewed_by_by_pair
                     .entry((from_position, to_position))
@@ -2363,7 +2367,7 @@ impl Builder {
                         });
                 }
                 let internal_edge_position = __FriendsInternalPosition(
-                    __graphite_friends.len(),
+                    graphite::TablePosition(__graphite_friends.len()),
                 );
                 __graphite_friends_by_pair
                     .insert(
@@ -2400,7 +2404,9 @@ impl Builder {
             (0..__graphite_node_person.len())
                 .map(|position| {
                     belongs_to_from_index
-                        .remove(&__PersonInternalPosition(position))
+                        .remove(
+                            &__PersonInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2409,7 +2415,9 @@ impl Builder {
             (0..__graphite_node_team.len())
                 .map(|position| {
                     belongs_to_to_index
-                        .remove(&__TeamInternalPosition(position))
+                        .remove(
+                            &__TeamInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2418,7 +2426,9 @@ impl Builder {
             (0..__graphite_node_person.len())
                 .map(|position| {
                     boss_from_index
-                        .remove(&__PersonInternalPosition(position))
+                        .remove(
+                            &__PersonInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2427,7 +2437,9 @@ impl Builder {
             (0..__graphite_node_person.len())
                 .map(|position| {
                     boss_to_index
-                        .remove(&__PersonInternalPosition(position))
+                        .remove(
+                            &__PersonInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2436,7 +2448,9 @@ impl Builder {
             (0..__graphite_node_person.len())
                 .map(|position| {
                     reports_from_index
-                        .remove(&__PersonInternalPosition(position))
+                        .remove(
+                            &__PersonInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2445,7 +2459,9 @@ impl Builder {
             (0..__graphite_node_person.len())
                 .map(|position| {
                     reports_to_index
-                        .remove(&__PersonInternalPosition(position))
+                        .remove(
+                            &__PersonInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2454,7 +2470,9 @@ impl Builder {
             (0..__graphite_node_person.len())
                 .map(|position| {
                     reviewed_by_from_index
-                        .remove(&__PersonInternalPosition(position))
+                        .remove(
+                            &__PersonInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2463,7 +2481,9 @@ impl Builder {
             (0..__graphite_node_person.len())
                 .map(|position| {
                     reviewed_by_to_index
-                        .remove(&__PersonInternalPosition(position))
+                        .remove(
+                            &__PersonInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2472,7 +2492,9 @@ impl Builder {
             (0..__graphite_node_person.len())
                 .map(|position| {
                     friends_index
-                        .remove(&__PersonInternalPosition(position))
+                        .remove(
+                            &__PersonInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),

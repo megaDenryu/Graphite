@@ -74,7 +74,9 @@
 
 - `graph/` は他のどのモジュールにも依存しない。
 - `compute/` は `graph/` に依存する (依存構造の検証に汎用Graphを使う)。逆向きは無い。
-- `schema_runtime/` は `graph/`・`compute/` に依存しない。
+- `schema_runtime/` は `graph/`・`compute/` に依存しない。`role_index.rs` は
+  `keyed_table.rs` の `TablePosition` に依存する (役割索引が読み出す内部位置は
+  `KeyedTable` が発行するものと同じ型)。
 - `keyed_table.rs`・`unordered_pair.rs` は何にも依存しない。
 
 **`petgraph` を名指しできるのは `graph/topology/` 配下だけである。** `graph/` 直下は
@@ -120,13 +122,13 @@ Get-ChildItem crates\graphite\src -Recurse -Filter *.rs |
 
 ## 生成コードが依存する再公開
 
-生成コードは `::graphite::` 直下の綴りを出力する。次の13件は移動しても必ず
+生成コードは `::graphite::` 直下の綴りを出力する。次の14件は移動しても必ず
 `lib.rs` から再公開し続ける。`次の構築印を発行する` を落とすと全ての生成コードが壊れる。
 
-`KeyedTable` / `UnorderedPair` / `MultipleRoleIndex` / `ExactlyOneRoleIndex` /
-`OptionalRoleIndex` / `DirectedEdgeLiteral` / `UndirectedEdgeLiteral` / `GraphMismatch` /
-`NamedGraphElement` / `NamedInsertPermit` / `FreezableBuilder` / `build_named_graph` /
-`次の構築印を発行する`
+`KeyedTable` / `TablePosition` / `UnorderedPair` / `MultipleRoleIndex` /
+`ExactlyOneRoleIndex` / `OptionalRoleIndex` / `DirectedEdgeLiteral` /
+`UndirectedEdgeLiteral` / `GraphMismatch` / `NamedGraphElement` / `NamedInsertPermit` /
+`FreezableBuilder` / `build_named_graph` / `次の構築印を発行する`
 
 再公開文には `#[doc(hidden)]` を付ける。`GraphMismatch` だけは利用者が受け取る
 エラー型なので付けない。

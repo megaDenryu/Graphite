@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    5095707306597068890u64, 321590054892627895u64, 2428818023491691832u64,
-    2479287258635258572u64,
+    4556646392419144218u64, 14625171556102665639u64, 17843842166113768952u64,
+    9524155786716796348u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SceneId(pub String);
@@ -18,13 +18,13 @@ pub struct ChoiceId(pub String);
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FinaleId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __SceneInternalPosition(usize);
+struct __SceneInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __EndingInternalPosition(usize);
+struct __EndingInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __ChoiceInternalPosition(usize);
+struct __ChoiceInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __FinaleInternalPosition(usize);
+struct __FinaleInternalPosition(graphite::TablePosition);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __SceneNamedPosition(__SceneInternalPosition, u64);
@@ -558,7 +558,9 @@ impl DialogueGraphInsertable for super::Scene {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __SceneNamedPosition(
-            __SceneInternalPosition(b.__graphite_node_scene.len()),
+            __SceneInternalPosition(
+                graphite::TablePosition(b.__graphite_node_scene.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -775,7 +777,9 @@ impl DialogueGraphInsertable for super::Ending {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __EndingNamedPosition(
-            __EndingInternalPosition(b.__graphite_node_ending.len()),
+            __EndingInternalPosition(
+                graphite::TablePosition(b.__graphite_node_ending.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -887,7 +891,7 @@ impl DialogueGraphInsertable for Choice {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __ChoiceNamedPosition(
-            __ChoiceInternalPosition(b.choice.len()),
+            __ChoiceInternalPosition(graphite::TablePosition(b.choice.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -938,7 +942,7 @@ impl DialogueGraphInsertable for Finale {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __FinaleNamedPosition(
-            __FinaleInternalPosition(b.finale.len()),
+            __FinaleInternalPosition(graphite::TablePosition(b.finale.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1181,7 +1185,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __ChoiceInternalPosition(
-                    __graphite_choice.len(),
+                    graphite::TablePosition(__graphite_choice.len()),
                 );
                 __graphite_choice_by_pair
                     .entry((from_position, to_position))
@@ -1246,7 +1250,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __FinaleInternalPosition(
-                    __graphite_finale.len(),
+                    graphite::TablePosition(__graphite_finale.len()),
                 );
                 __graphite_finale_by_pair
                     .entry((from_position, to_position))
@@ -1299,7 +1303,9 @@ impl Builder {
             (0..__graphite_node_scene.len())
                 .map(|position| {
                     choice_from_index
-                        .remove(&__SceneInternalPosition(position))
+                        .remove(
+                            &__SceneInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -1308,7 +1314,9 @@ impl Builder {
             (0..__graphite_node_scene.len())
                 .map(|position| {
                     choice_to_index
-                        .remove(&__SceneInternalPosition(position))
+                        .remove(
+                            &__SceneInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -1317,7 +1325,9 @@ impl Builder {
             (0..__graphite_node_scene.len())
                 .map(|position| {
                     finale_from_index
-                        .remove(&__SceneInternalPosition(position))
+                        .remove(
+                            &__SceneInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -1326,7 +1336,9 @@ impl Builder {
             (0..__graphite_node_ending.len())
                 .map(|position| {
                     finale_to_index
-                        .remove(&__EndingInternalPosition(position))
+                        .remove(
+                            &__EndingInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),

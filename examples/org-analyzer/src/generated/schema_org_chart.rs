@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    6367406608021337447u64, 14146506182838278024u64, 16925481545693134801u64,
-    4926259699451473373u64,
+    7394361690493849644u64, 5050865722630966175u64, 1423159577298144950u64,
+    6613890582500481722u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EmployeeId(pub String);
@@ -24,19 +24,19 @@ pub struct AssignedId(pub String);
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SponsorsId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __EmployeeInternalPosition(usize);
+struct __EmployeeInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __DepartmentInternalPosition(usize);
+struct __DepartmentInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __ProjectInternalPosition(usize);
+struct __ProjectInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __BelongsToInternalPosition(usize);
+struct __BelongsToInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __BossInternalPosition(usize);
+struct __BossInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __AssignedInternalPosition(usize);
+struct __AssignedInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __SponsorsInternalPosition(usize);
+struct __SponsorsInternalPosition(graphite::TablePosition);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __EmployeeNamedPosition(__EmployeeInternalPosition, u64);
@@ -987,7 +987,9 @@ impl OrgChartInsertable for super::Employee {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __EmployeeNamedPosition(
-            __EmployeeInternalPosition(b.__graphite_node_employee.len()),
+            __EmployeeInternalPosition(
+                graphite::TablePosition(b.__graphite_node_employee.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1261,7 +1263,9 @@ impl OrgChartInsertable for super::Department {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __DepartmentNamedPosition(
-            __DepartmentInternalPosition(b.__graphite_node_department.len()),
+            __DepartmentInternalPosition(
+                graphite::TablePosition(b.__graphite_node_department.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1426,7 +1430,9 @@ impl OrgChartInsertable for super::Project {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __ProjectNamedPosition(
-            __ProjectInternalPosition(b.__graphite_node_project.len()),
+            __ProjectInternalPosition(
+                graphite::TablePosition(b.__graphite_node_project.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1554,7 +1560,7 @@ impl OrgChartInsertable for BelongsTo {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __BelongsToNamedPosition(
-            __BelongsToInternalPosition(b.belongs_to.len()),
+            __BelongsToInternalPosition(graphite::TablePosition(b.belongs_to.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1605,7 +1611,7 @@ impl OrgChartInsertable for Boss {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __BossNamedPosition(
-            __BossInternalPosition(b.boss.len()),
+            __BossInternalPosition(graphite::TablePosition(b.boss.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1656,7 +1662,7 @@ impl OrgChartInsertable for Assigned {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __AssignedNamedPosition(
-            __AssignedInternalPosition(b.assigned.len()),
+            __AssignedInternalPosition(graphite::TablePosition(b.assigned.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1707,7 +1713,7 @@ impl OrgChartInsertable for Sponsors {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __SponsorsNamedPosition(
-            __SponsorsInternalPosition(b.sponsors.len()),
+            __SponsorsInternalPosition(graphite::TablePosition(b.sponsors.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1971,7 +1977,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __BelongsToInternalPosition(
-                    __graphite_belongs_to.len(),
+                    graphite::TablePosition(__graphite_belongs_to.len()),
                 );
                 __graphite_belongs_to_by_pair
                     .entry((from_position, to_position))
@@ -2056,7 +2062,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __BossInternalPosition(
-                    __graphite_boss.len(),
+                    graphite::TablePosition(__graphite_boss.len()),
                 );
                 __graphite_boss_by_pair
                     .entry((from_position, to_position))
@@ -2142,7 +2148,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __AssignedInternalPosition(
-                    __graphite_assigned.len(),
+                    graphite::TablePosition(__graphite_assigned.len()),
                 );
                 __graphite_assigned_by_pair
                     .entry((from_position, to_position))
@@ -2207,7 +2213,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __SponsorsInternalPosition(
-                    __graphite_sponsors.len(),
+                    graphite::TablePosition(__graphite_sponsors.len()),
                 );
                 __graphite_sponsors_by_pair
                     .entry((from_position, to_position))
@@ -2260,7 +2266,11 @@ impl Builder {
             (0..__graphite_node_employee.len())
                 .map(|position| {
                     belongs_to_from_index
-                        .remove(&__EmployeeInternalPosition(position))
+                        .remove(
+                            &__EmployeeInternalPosition(
+                                graphite::TablePosition(position),
+                            ),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2269,7 +2279,11 @@ impl Builder {
             (0..__graphite_node_department.len())
                 .map(|position| {
                     belongs_to_to_index
-                        .remove(&__DepartmentInternalPosition(position))
+                        .remove(
+                            &__DepartmentInternalPosition(
+                                graphite::TablePosition(position),
+                            ),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2278,7 +2292,11 @@ impl Builder {
             (0..__graphite_node_employee.len())
                 .map(|position| {
                     boss_from_index
-                        .remove(&__EmployeeInternalPosition(position))
+                        .remove(
+                            &__EmployeeInternalPosition(
+                                graphite::TablePosition(position),
+                            ),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2287,7 +2305,11 @@ impl Builder {
             (0..__graphite_node_employee.len())
                 .map(|position| {
                     boss_to_index
-                        .remove(&__EmployeeInternalPosition(position))
+                        .remove(
+                            &__EmployeeInternalPosition(
+                                graphite::TablePosition(position),
+                            ),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2296,7 +2318,11 @@ impl Builder {
             (0..__graphite_node_employee.len())
                 .map(|position| {
                     assigned_from_index
-                        .remove(&__EmployeeInternalPosition(position))
+                        .remove(
+                            &__EmployeeInternalPosition(
+                                graphite::TablePosition(position),
+                            ),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2305,7 +2331,9 @@ impl Builder {
             (0..__graphite_node_project.len())
                 .map(|position| {
                     assigned_to_index
-                        .remove(&__ProjectInternalPosition(position))
+                        .remove(
+                            &__ProjectInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2314,7 +2342,11 @@ impl Builder {
             (0..__graphite_node_department.len())
                 .map(|position| {
                     sponsors_from_index
-                        .remove(&__DepartmentInternalPosition(position))
+                        .remove(
+                            &__DepartmentInternalPosition(
+                                graphite::TablePosition(position),
+                            ),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2323,7 +2355,9 @@ impl Builder {
             (0..__graphite_node_project.len())
                 .map(|position| {
                     sponsors_to_index
-                        .remove(&__ProjectInternalPosition(position))
+                        .remove(
+                            &__ProjectInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),

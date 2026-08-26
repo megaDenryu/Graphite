@@ -6,17 +6,17 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    3943974244354000377u64, 2237153179102795534u64, 16642672125601081459u64,
-    1196869239246215543u64,
+    3500761188421637376u64, 11232695631658892581u64, 1801213000581454842u64,
+    10820630690792309230u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BelongsToId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __PersonInternalPosition(usize);
+struct __PersonInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __DepartmentInternalPosition(usize);
+struct __DepartmentInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __BelongsToInternalPosition(usize);
+struct __BelongsToInternalPosition(graphite::TablePosition);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __PersonNamedPosition(__PersonInternalPosition, u64);
@@ -395,7 +395,9 @@ impl OrgChartInsertable for super::Person {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __PersonNamedPosition(
-            __PersonInternalPosition(b.__graphite_node_person.len()),
+            __PersonInternalPosition(
+                graphite::TablePosition(b.__graphite_node_person.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -531,7 +533,9 @@ impl OrgChartInsertable for super::Department {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __DepartmentNamedPosition(
-            __DepartmentInternalPosition(b.__graphite_node_department.len()),
+            __DepartmentInternalPosition(
+                graphite::TablePosition(b.__graphite_node_department.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -630,7 +634,7 @@ impl OrgChartInsertable for BelongsTo {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __BelongsToNamedPosition(
-            __BelongsToInternalPosition(b.belongs_to.len()),
+            __BelongsToInternalPosition(graphite::TablePosition(b.belongs_to.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -868,7 +872,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __BelongsToInternalPosition(
-                    __graphite_belongs_to.len(),
+                    graphite::TablePosition(__graphite_belongs_to.len()),
                 );
                 __graphite_belongs_to_by_pair
                     .entry((from_position, to_position))
@@ -921,7 +925,9 @@ impl Builder {
             (0..__graphite_node_person.len())
                 .map(|position| {
                     belongs_to_from_index
-                        .remove(&__PersonInternalPosition(position))
+                        .remove(
+                            &__PersonInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -930,7 +936,11 @@ impl Builder {
             (0..__graphite_node_department.len())
                 .map(|position| {
                     belongs_to_to_index
-                        .remove(&__DepartmentInternalPosition(position))
+                        .remove(
+                            &__DepartmentInternalPosition(
+                                graphite::TablePosition(position),
+                            ),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),

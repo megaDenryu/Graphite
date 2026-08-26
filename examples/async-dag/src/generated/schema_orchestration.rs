@@ -6,17 +6,17 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    16015843509058686284u64, 15743759221653014919u64, 6179411562215837062u64,
-    8061130947514968970u64,
+    6589183874192449320u64, 14539033295477262175u64, 12713513342889286238u64,
+    8388149290710359738u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ServiceId(pub String);
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DependsOnId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __ServiceInternalPosition(usize);
+struct __ServiceInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __DependsOnInternalPosition(usize);
+struct __DependsOnInternalPosition(graphite::TablePosition);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __ServiceNamedPosition(__ServiceInternalPosition, u64);
@@ -349,7 +349,9 @@ impl OrchestrationInsertable for super::Service {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __ServiceNamedPosition(
-            __ServiceInternalPosition(b.__graphite_node_service.len()),
+            __ServiceInternalPosition(
+                graphite::TablePosition(b.__graphite_node_service.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -520,7 +522,7 @@ impl OrchestrationInsertable for DependsOn {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __DependsOnNamedPosition(
-            __DependsOnInternalPosition(b.depends_on.len()),
+            __DependsOnInternalPosition(graphite::TablePosition(b.depends_on.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -761,7 +763,7 @@ impl Builder {
                         });
                 }
                 let internal_edge_position = __DependsOnInternalPosition(
-                    __graphite_depends_on.len(),
+                    graphite::TablePosition(__graphite_depends_on.len()),
                 );
                 __graphite_depends_on_by_pair
                     .insert((from_position, to_position), internal_edge_position);
@@ -791,7 +793,9 @@ impl Builder {
             (0..__graphite_node_service.len())
                 .map(|position| {
                     depends_on_from_index
-                        .remove(&__ServiceInternalPosition(position))
+                        .remove(
+                            &__ServiceInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -800,7 +804,9 @@ impl Builder {
             (0..__graphite_node_service.len())
                 .map(|position| {
                     depends_on_to_index
-                        .remove(&__ServiceInternalPosition(position))
+                        .remove(
+                            &__ServiceInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),

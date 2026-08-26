@@ -12,6 +12,22 @@
 use std::collections::HashMap;
 use std::hash::Hash;
 
+/// `KeyedTable` 内の挿入順の位置。その表の構造を変更しない間だけ安定し、
+/// その表の中でだけ意味を持つ (別の表の位置・辺の位置・配列の添字とは
+/// 取り違えられない)。`graph_schema!` の生成コードが凍結済みグラフの薄い
+/// 参照値を構築・復元するために使う。役割索引 ([`crate::MultipleRoleIndex`]
+/// 等) もこの型で位置を受け取り、同じドメイン概念を1つの型に揃える。
+///
+/// フィールドは `pub` だが、生成コードは `graph_schema!` を展開した
+/// 利用者クレート側にあり `graphite` クレートの外から構築・分解する必要が
+/// あるため (`pub(crate)` では届かない)。利用者からは [`KeyedTable::position`]
+/// 等の再公開元メソッドに付けた `#[doc(hidden)]` で隠す。生値 (`usize`) へ
+/// 戻すのは `KeyedTable`・役割索引の内部 (`Vec` 添字アクセス) に限る。
+#[doc(hidden)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct TablePosition(pub usize);
+
 /// キー付き要素表。内部は「挿入順の本体 `Vec<(K, V)>`」+「キー→添字の
 /// `HashMap<K, usize>`」の組。
 ///
@@ -78,15 +94,15 @@ where
     /// キーから挿入順の内部位置を求める。`graph_schema!` の生成コードが
     /// 凍結済みグラフの薄い参照値を構築するために使う。
     #[doc(hidden)]
-    pub fn position(&self, key: &K) -> Option<usize> {
-        self.index.get(key).copied()
+    pub fn position(&self, key: &K) -> Option<TablePosition> {
+        self.index.get(key).copied().map(TablePosition)
     }
 
     /// 内部位置からキーと値を読み出す。内部位置は表の構造を変更しない間だけ
     /// 安定するため、凍結済みグラフの生成コードだけが使う。
     #[doc(hidden)]
-    pub fn get_at(&self, position: usize) -> Option<(&K, &V)> {
-        self.entries.get(position).map(|(key, value)| (key, value))
+    pub fn get_at(&self, position: TablePosition) -> Option<(&K, &V)> {
+        self.entries.get(position.0).map(|(key, value)| (key, value))
     }
 
     /// キーから値を可変借用する。構造を変更せず値だけを更新する。
@@ -98,8 +114,8 @@ where
 
     /// 内部位置を挿入順に列挙する。
     #[doc(hidden)]
-    pub fn positions(&self) -> std::ops::Range<usize> {
-        0..self.entries.len()
+    pub fn positions(&self) -> impl Iterator<Item = TablePosition> + Clone {
+        (0..self.entries.len()).map(TablePosition)
     }
 
     /// 全キーを走査するイテレータ。挿入順を保持する (仕様、上記構造体

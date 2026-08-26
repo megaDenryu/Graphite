@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    11790603187545708424u64, 16904477885548598967u64, 2600448347193125662u64,
-    5111711321215140306u64,
+    14811729309707423349u64, 10295306348238286478u64, 15966561246731166735u64,
+    5865656057218939891u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AuthorId(pub String);
@@ -16,11 +16,11 @@ pub struct ArticleId(pub String);
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WroteId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __AuthorInternalPosition(usize);
+struct __AuthorInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __ArticleInternalPosition(usize);
+struct __ArticleInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __WroteInternalPosition(usize);
+struct __WroteInternalPosition(graphite::TablePosition);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __AuthorNamedPosition(__AuthorInternalPosition, u64);
@@ -414,7 +414,9 @@ impl DeclarationOrderInsertable for super::Author {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __AuthorNamedPosition(
-            __AuthorInternalPosition(b.__graphite_node_author.len()),
+            __AuthorInternalPosition(
+                graphite::TablePosition(b.__graphite_node_author.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -569,7 +571,9 @@ impl DeclarationOrderInsertable for super::Article {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __ArticleNamedPosition(
-            __ArticleInternalPosition(b.__graphite_node_article.len()),
+            __ArticleInternalPosition(
+                graphite::TablePosition(b.__graphite_node_article.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -681,7 +685,7 @@ impl DeclarationOrderInsertable for Wrote {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __WroteNamedPosition(
-            __WroteInternalPosition(b.wrote.len()),
+            __WroteInternalPosition(graphite::TablePosition(b.wrote.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -928,7 +932,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __WroteInternalPosition(
-                    __graphite_wrote.len(),
+                    graphite::TablePosition(__graphite_wrote.len()),
                 );
                 __graphite_wrote_by_pair
                     .entry((from_position, to_position))
@@ -1003,7 +1007,9 @@ impl Builder {
             (0..__graphite_node_author.len())
                 .map(|position| {
                     wrote_from_index
-                        .remove(&__AuthorInternalPosition(position))
+                        .remove(
+                            &__AuthorInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -1012,7 +1018,9 @@ impl Builder {
             (0..__graphite_node_article.len())
                 .map(|position| {
                     wrote_to_index
-                        .remove(&__ArticleInternalPosition(position))
+                        .remove(
+                            &__ArticleInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),

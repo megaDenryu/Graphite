@@ -6,17 +6,17 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    12066949783077929486u64, 11473085093819576749u64, 3398508733696009480u64,
-    12132904750683512332u64,
+    1560452155107391644u64, 197814665615565235u64, 11294605319008468458u64,
+    16687217049735548470u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PersonId(pub String);
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RelationId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __PersonInternalPosition(usize);
+struct __PersonInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __RelationInternalPosition(usize);
+struct __RelationInternalPosition(graphite::TablePosition);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __PersonNamedPosition(__PersonInternalPosition, u64);
@@ -336,7 +336,9 @@ impl SocialInsertable for super::Person {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __PersonNamedPosition(
-            __PersonInternalPosition(b.__graphite_node_person.len()),
+            __PersonInternalPosition(
+                graphite::TablePosition(b.__graphite_node_person.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -508,7 +510,7 @@ impl SocialInsertable for Relation {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __RelationNamedPosition(
-            __RelationInternalPosition(b.relation.len()),
+            __RelationInternalPosition(graphite::TablePosition(b.relation.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -731,7 +733,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __RelationInternalPosition(
-                    __graphite_relation.len(),
+                    graphite::TablePosition(__graphite_relation.len()),
                 );
                 __graphite_relation_by_pair
                     .entry((from_position, to_position))
@@ -763,7 +765,9 @@ impl Builder {
             (0..__graphite_node_person.len())
                 .map(|position| {
                     relation_from_index
-                        .remove(&__PersonInternalPosition(position))
+                        .remove(
+                            &__PersonInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -772,7 +776,9 @@ impl Builder {
             (0..__graphite_node_person.len())
                 .map(|position| {
                     relation_to_index
-                        .remove(&__PersonInternalPosition(position))
+                        .remove(
+                            &__PersonInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),

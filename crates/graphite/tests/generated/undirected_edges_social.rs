@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    15579287522058040072u64, 16232034428811727941u64, 5025457505550883562u64,
-    15763812783687437006u64,
+    18150482661205478275u64, 15846713430508204138u64, 17082960757853307541u64,
+    2923350083487536593u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PersonId(pub String);
@@ -16,11 +16,11 @@ pub struct FriendsId(pub String);
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WireId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __PersonInternalPosition(usize);
+struct __PersonInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __FriendsInternalPosition(usize);
+struct __FriendsInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __WireInternalPosition(usize);
+struct __WireInternalPosition(graphite::TablePosition);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __PersonNamedPosition(__PersonInternalPosition, u64);
@@ -472,7 +472,9 @@ impl SocialInsertable for super::Person {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __PersonNamedPosition(
-            __PersonInternalPosition(b.__graphite_node_person.len()),
+            __PersonInternalPosition(
+                graphite::TablePosition(b.__graphite_node_person.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -684,7 +686,7 @@ impl SocialInsertable for Friends {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __FriendsNamedPosition(
-            __FriendsInternalPosition(b.friends.len()),
+            __FriendsInternalPosition(graphite::TablePosition(b.friends.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -735,7 +737,7 @@ impl SocialInsertable for Wire {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __WireNamedPosition(
-            __WireInternalPosition(b.wire.len()),
+            __WireInternalPosition(graphite::TablePosition(b.wire.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -976,7 +978,7 @@ impl Builder {
                         });
                 }
                 let internal_edge_position = __FriendsInternalPosition(
-                    __graphite_friends.len(),
+                    graphite::TablePosition(__graphite_friends.len()),
                 );
                 __graphite_friends_by_pair
                     .insert(
@@ -1047,7 +1049,7 @@ impl Builder {
                 second_position,
             ) {
                 let internal_edge_position = __WireInternalPosition(
-                    __graphite_wire.len(),
+                    graphite::TablePosition(__graphite_wire.len()),
                 );
                 __graphite_wire_by_pair
                     .entry(graphite::UnorderedPair::new(first_position, second_position))
@@ -1084,7 +1086,9 @@ impl Builder {
             (0..__graphite_node_person.len())
                 .map(|position| {
                     friends_index
-                        .remove(&__PersonInternalPosition(position))
+                        .remove(
+                            &__PersonInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -1093,7 +1097,9 @@ impl Builder {
             (0..__graphite_node_person.len())
                 .map(|position| {
                     wire_index
-                        .remove(&__PersonInternalPosition(position))
+                        .remove(
+                            &__PersonInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),

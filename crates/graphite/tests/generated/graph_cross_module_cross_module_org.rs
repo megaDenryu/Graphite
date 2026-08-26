@@ -6,21 +6,21 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    15900230153164510043u64, 14693967441772801890u64, 16465895578334016921u64,
-    9937862377647629733u64,
+    4004156079965333791u64, 14426059456258853526u64, 12676008598449206325u64,
+    2756311379786707409u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BelongsToId(pub String);
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BossId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __EmployeeInternalPosition(usize);
+struct __EmployeeInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __DepartmentInternalPosition(usize);
+struct __DepartmentInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __BelongsToInternalPosition(usize);
+struct __BelongsToInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __BossInternalPosition(usize);
+struct __BossInternalPosition(graphite::TablePosition);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __EmployeeNamedPosition(__EmployeeInternalPosition, u64);
@@ -578,7 +578,9 @@ impl CrossModuleOrgInsertable for super::Employee {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __EmployeeNamedPosition(
-            __EmployeeInternalPosition(b.__graphite_node_employee.len()),
+            __EmployeeInternalPosition(
+                graphite::TablePosition(b.__graphite_node_employee.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -779,7 +781,9 @@ impl CrossModuleOrgInsertable for super::Department {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __DepartmentNamedPosition(
-            __DepartmentInternalPosition(b.__graphite_node_department.len()),
+            __DepartmentInternalPosition(
+                graphite::TablePosition(b.__graphite_node_department.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -878,7 +882,7 @@ impl CrossModuleOrgInsertable for BelongsTo {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __BelongsToNamedPosition(
-            __BelongsToInternalPosition(b.belongs_to.len()),
+            __BelongsToInternalPosition(graphite::TablePosition(b.belongs_to.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -934,7 +938,7 @@ impl CrossModuleOrgInsertable for Boss {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __BossNamedPosition(
-            __BossInternalPosition(b.boss.len()),
+            __BossInternalPosition(graphite::TablePosition(b.boss.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1181,7 +1185,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __BelongsToInternalPosition(
-                    __graphite_belongs_to.len(),
+                    graphite::TablePosition(__graphite_belongs_to.len()),
                 );
                 __graphite_belongs_to_by_pair
                     .entry((from_position, to_position))
@@ -1266,7 +1270,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __BossInternalPosition(
-                    __graphite_boss.len(),
+                    graphite::TablePosition(__graphite_boss.len()),
                 );
                 __graphite_boss_by_pair
                     .entry((from_position, to_position))
@@ -1320,7 +1324,11 @@ impl Builder {
             (0..__graphite_node_employee.len())
                 .map(|position| {
                     belongs_to_from_index
-                        .remove(&__EmployeeInternalPosition(position))
+                        .remove(
+                            &__EmployeeInternalPosition(
+                                graphite::TablePosition(position),
+                            ),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -1329,7 +1337,11 @@ impl Builder {
             (0..__graphite_node_department.len())
                 .map(|position| {
                     belongs_to_to_index
-                        .remove(&__DepartmentInternalPosition(position))
+                        .remove(
+                            &__DepartmentInternalPosition(
+                                graphite::TablePosition(position),
+                            ),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -1338,7 +1350,11 @@ impl Builder {
             (0..__graphite_node_employee.len())
                 .map(|position| {
                     boss_from_index
-                        .remove(&__EmployeeInternalPosition(position))
+                        .remove(
+                            &__EmployeeInternalPosition(
+                                graphite::TablePosition(position),
+                            ),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -1347,7 +1363,11 @@ impl Builder {
             (0..__graphite_node_employee.len())
                 .map(|position| {
                     boss_to_index
-                        .remove(&__EmployeeInternalPosition(position))
+                        .remove(
+                            &__EmployeeInternalPosition(
+                                graphite::TablePosition(position),
+                            ),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),

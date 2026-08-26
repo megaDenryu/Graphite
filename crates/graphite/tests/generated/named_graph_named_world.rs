@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    17904407051783580123u64, 8464096608941168326u64, 8515935388130593373u64,
-    13219577805489715825u64,
+    13251149481099709847u64, 7983699033592599798u64, 2896311780032284097u64,
+    251226767053855093u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PersonId(pub String);
@@ -18,13 +18,13 @@ pub struct PurchaseId(pub String);
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct KnowsId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __PersonInternalPosition(usize);
+struct __PersonInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __ItemInternalPosition(usize);
+struct __ItemInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __PurchaseInternalPosition(usize);
+struct __PurchaseInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __KnowsInternalPosition(usize);
+struct __KnowsInternalPosition(graphite::TablePosition);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __PersonNamedPosition(__PersonInternalPosition, u64);
@@ -551,7 +551,9 @@ impl NamedWorldInsertable for super::Person {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __PersonNamedPosition(
-            __PersonInternalPosition(b.__graphite_node_person.len()),
+            __PersonInternalPosition(
+                graphite::TablePosition(b.__graphite_node_person.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -772,7 +774,9 @@ impl NamedWorldInsertable for super::Item {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __ItemNamedPosition(
-            __ItemInternalPosition(b.__graphite_node_item.len()),
+            __ItemInternalPosition(
+                graphite::TablePosition(b.__graphite_node_item.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -884,7 +888,7 @@ impl NamedWorldInsertable for Purchase {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __PurchaseNamedPosition(
-            __PurchaseInternalPosition(b.purchase.len()),
+            __PurchaseInternalPosition(graphite::TablePosition(b.purchase.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -935,7 +939,7 @@ impl NamedWorldInsertable for Knows {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __KnowsNamedPosition(
-            __KnowsInternalPosition(b.knows.len()),
+            __KnowsInternalPosition(graphite::TablePosition(b.knows.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1174,7 +1178,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __PurchaseInternalPosition(
-                    __graphite_purchase.len(),
+                    graphite::TablePosition(__graphite_purchase.len()),
                 );
                 __graphite_purchase_by_pair
                     .entry((from_position, to_position))
@@ -1239,7 +1243,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __KnowsInternalPosition(
-                    __graphite_knows.len(),
+                    graphite::TablePosition(__graphite_knows.len()),
                 );
                 __graphite_knows_by_pair
                     .entry((from_position, to_position))
@@ -1271,7 +1275,9 @@ impl Builder {
             (0..__graphite_node_person.len())
                 .map(|position| {
                     purchase_from_index
-                        .remove(&__PersonInternalPosition(position))
+                        .remove(
+                            &__PersonInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -1280,7 +1286,9 @@ impl Builder {
             (0..__graphite_node_item.len())
                 .map(|position| {
                     purchase_to_index
-                        .remove(&__ItemInternalPosition(position))
+                        .remove(
+                            &__ItemInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -1289,7 +1297,9 @@ impl Builder {
             (0..__graphite_node_person.len())
                 .map(|position| {
                     knows_from_index
-                        .remove(&__PersonInternalPosition(position))
+                        .remove(
+                            &__PersonInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -1298,7 +1308,9 @@ impl Builder {
             (0..__graphite_node_person.len())
                 .map(|position| {
                     knows_to_index
-                        .remove(&__PersonInternalPosition(position))
+                        .remove(
+                            &__PersonInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),

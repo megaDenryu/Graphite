@@ -6,6 +6,8 @@
 
 use std::ops::Range;
 
+use crate::keyed_table::TablePosition;
+
 /// 多重度制約のない役割索引を、役割ごとの範囲と連続した辺位置列で保持する。
 #[doc(hidden)]
 pub struct MultipleRoleIndex<P> {
@@ -29,9 +31,9 @@ impl<P> MultipleRoleIndex<P> {
     }
 
     #[doc(hidden)]
-    pub fn get(&self, position: usize) -> &[P] {
+    pub fn get(&self, position: TablePosition) -> &[P] {
         self.ranges
-            .get(position)
+            .get(position.0)
             .map(|range| &self.positions[range.clone()])
             .unwrap_or(&[])
     }
@@ -59,8 +61,8 @@ impl<P> ExactlyOneRoleIndex<P> {
     }
 
     #[doc(hidden)]
-    pub fn get(&self, position: usize) -> &P {
-        &self.0[position]
+    pub fn get(&self, position: TablePosition) -> &P {
+        &self.0[position.0]
     }
 }
 
@@ -85,7 +87,7 @@ impl<P> OptionalRoleIndex<P> {
     }
 
     #[doc(hidden)]
-    pub fn get(&self, position: usize) -> Option<&P> {
-        self.0.get(position).and_then(Option::as_ref)
+    pub fn get(&self, position: TablePosition) -> Option<&P> {
+        self.0.get(position.0).and_then(Option::as_ref)
     }
 }

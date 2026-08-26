@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    469293705188663183u64, 12567421596375934256u64, 17265502767319544273u64,
-    5792194180486845837u64,
+    7483340841758638896u64, 18327796261436340095u64, 344871916874867030u64,
+    13871303959967253410u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SensorId(pub String);
@@ -16,11 +16,11 @@ pub struct ReadingId(pub String);
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MeasuredId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __SensorInternalPosition(usize);
+struct __SensorInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __ReadingInternalPosition(usize);
+struct __ReadingInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __MeasuredInternalPosition(usize);
+struct __MeasuredInternalPosition(graphite::TablePosition);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __SensorNamedPosition(__SensorInternalPosition, u64);
@@ -406,7 +406,9 @@ impl MeasurementInsertable for super::Sensor {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __SensorNamedPosition(
-            __SensorInternalPosition(b.__graphite_node_sensor.len()),
+            __SensorInternalPosition(
+                graphite::TablePosition(b.__graphite_node_sensor.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -560,7 +562,9 @@ impl MeasurementInsertable for super::Reading {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __ReadingNamedPosition(
-            __ReadingInternalPosition(b.__graphite_node_reading.len()),
+            __ReadingInternalPosition(
+                graphite::TablePosition(b.__graphite_node_reading.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -674,7 +678,7 @@ impl MeasurementInsertable for Measured {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __MeasuredNamedPosition(
-            __MeasuredInternalPosition(b.measured.len()),
+            __MeasuredInternalPosition(graphite::TablePosition(b.measured.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -908,7 +912,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __MeasuredInternalPosition(
-                    __graphite_measured.len(),
+                    graphite::TablePosition(__graphite_measured.len()),
                 );
                 __graphite_measured_by_pair
                     .entry((from_position, to_position))
@@ -941,7 +945,9 @@ impl Builder {
             (0..__graphite_node_sensor.len())
                 .map(|position| {
                     measured_from_index
-                        .remove(&__SensorInternalPosition(position))
+                        .remove(
+                            &__SensorInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -950,7 +956,9 @@ impl Builder {
             (0..__graphite_node_reading.len())
                 .map(|position| {
                     measured_to_index
-                        .remove(&__ReadingInternalPosition(position))
+                        .remove(
+                            &__ReadingInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),

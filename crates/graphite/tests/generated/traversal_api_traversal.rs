@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    12594138106550153160u64, 7095442158994726587u64, 4776757054102079814u64,
-    3096082395697215794u64,
+    2390679431758203756u64, 9631175040940765815u64, 15761920802152593070u64,
+    9127356853236581378u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PersonId(pub String);
@@ -22,17 +22,17 @@ pub struct 関係Id(pub String);
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FriendsId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __PersonInternalPosition(usize);
+struct __PersonInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __ProductInternalPosition(usize);
+struct __ProductInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __PurchaseInternalPosition(usize);
+struct __PurchaseInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __MentorInternalPosition(usize);
+struct __MentorInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __関係InternalPosition(usize);
+struct __関係InternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __FriendsInternalPosition(usize);
+struct __FriendsInternalPosition(graphite::TablePosition);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __PersonNamedPosition(__PersonInternalPosition, u64);
@@ -866,7 +866,9 @@ impl TraversalInsertable for super::Person {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __PersonNamedPosition(
-            __PersonInternalPosition(b.__graphite_node_person.len()),
+            __PersonInternalPosition(
+                graphite::TablePosition(b.__graphite_node_person.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1197,7 +1199,9 @@ impl TraversalInsertable for super::Product {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __ProductNamedPosition(
-            __ProductInternalPosition(b.__graphite_node_product.len()),
+            __ProductInternalPosition(
+                graphite::TablePosition(b.__graphite_node_product.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1311,7 +1315,7 @@ impl TraversalInsertable for Purchase {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __PurchaseNamedPosition(
-            __PurchaseInternalPosition(b.purchase.len()),
+            __PurchaseInternalPosition(graphite::TablePosition(b.purchase.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1362,7 +1366,7 @@ impl TraversalInsertable for Mentor {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __MentorNamedPosition(
-            __MentorInternalPosition(b.mentor.len()),
+            __MentorInternalPosition(graphite::TablePosition(b.mentor.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1413,7 +1417,7 @@ impl TraversalInsertable for 関係 {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __関係NamedPosition(
-            __関係InternalPosition(b.関係.len()),
+            __関係InternalPosition(graphite::TablePosition(b.関係.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1464,7 +1468,7 @@ impl TraversalInsertable for Friends {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __FriendsNamedPosition(
-            __FriendsInternalPosition(b.friends.len()),
+            __FriendsInternalPosition(graphite::TablePosition(b.friends.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1713,7 +1717,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __PurchaseInternalPosition(
-                    __graphite_purchase.len(),
+                    graphite::TablePosition(__graphite_purchase.len()),
                 );
                 __graphite_purchase_by_pair
                     .entry((from_position, to_position))
@@ -1777,7 +1781,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __MentorInternalPosition(
-                    __graphite_mentor.len(),
+                    graphite::TablePosition(__graphite_mentor.len()),
                 );
                 __graphite_mentor_by_pair
                     .entry((from_position, to_position))
@@ -1870,7 +1874,7 @@ impl Builder {
                         });
                 }
                 let internal_edge_position = __関係InternalPosition(
-                    __graphite_関係.len(),
+                    graphite::TablePosition(__graphite_関係.len()),
                 );
                 __graphite_関係_by_pair
                     .insert((from_position, to_position), internal_edge_position);
@@ -1945,7 +1949,7 @@ impl Builder {
                         });
                 }
                 let internal_edge_position = __FriendsInternalPosition(
-                    __graphite_friends.len(),
+                    graphite::TablePosition(__graphite_friends.len()),
                 );
                 __graphite_friends_by_pair
                     .insert(
@@ -1982,7 +1986,9 @@ impl Builder {
             (0..__graphite_node_person.len())
                 .map(|position| {
                     purchase_from_index
-                        .remove(&__PersonInternalPosition(position))
+                        .remove(
+                            &__PersonInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -1991,7 +1997,9 @@ impl Builder {
             (0..__graphite_node_product.len())
                 .map(|position| {
                     purchase_to_index
-                        .remove(&__ProductInternalPosition(position))
+                        .remove(
+                            &__ProductInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2000,7 +2008,9 @@ impl Builder {
             (0..__graphite_node_person.len())
                 .map(|position| {
                     mentor_from_index
-                        .remove(&__PersonInternalPosition(position))
+                        .remove(
+                            &__PersonInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2009,7 +2019,9 @@ impl Builder {
             (0..__graphite_node_person.len())
                 .map(|position| {
                     mentor_to_index
-                        .remove(&__PersonInternalPosition(position))
+                        .remove(
+                            &__PersonInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2018,7 +2030,9 @@ impl Builder {
             (0..__graphite_node_person.len())
                 .map(|position| {
                     関係_from_index
-                        .remove(&__PersonInternalPosition(position))
+                        .remove(
+                            &__PersonInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2027,7 +2041,9 @@ impl Builder {
             (0..__graphite_node_person.len())
                 .map(|position| {
                     関係_to_index
-                        .remove(&__PersonInternalPosition(position))
+                        .remove(
+                            &__PersonInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2036,7 +2052,9 @@ impl Builder {
             (0..__graphite_node_person.len())
                 .map(|position| {
                     friends_index
-                        .remove(&__PersonInternalPosition(position))
+                        .remove(
+                            &__PersonInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),

@@ -6,27 +6,27 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    4328813914147459203u64, 13681076023694172400u64, 18232380849001692541u64,
-    960727565665891681u64,
+    17761536899025280382u64, 8636721827332490715u64, 2668009691180429800u64,
+    248920181675838812u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AutomaticNodeId(pub String);
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AutomaticLinkId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __ExternalNodeInternalPosition(usize);
+struct __ExternalNodeInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __AutomaticNodeInternalPosition(usize);
+struct __AutomaticNodeInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __BooleanNodeInternalPosition(usize);
+struct __BooleanNodeInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __ExternalLinkInternalPosition(usize);
+struct __ExternalLinkInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __ExternalIncomingInternalPosition(usize);
+struct __ExternalIncomingInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __ExternalFriendInternalPosition(usize);
+struct __ExternalFriendInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __AutomaticLinkInternalPosition(usize);
+struct __AutomaticLinkInternalPosition(graphite::TablePosition);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __ExternalNodeNamedPosition(__ExternalNodeInternalPosition, u64);
@@ -925,7 +925,9 @@ impl MixedIdsInsertable for super::ExternalNode {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __ExternalNodeNamedPosition(
-            __ExternalNodeInternalPosition(b.__graphite_node_external_node.len()),
+            __ExternalNodeInternalPosition(
+                graphite::TablePosition(b.__graphite_node_external_node.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1207,7 +1209,9 @@ impl MixedIdsInsertable for super::AutomaticNode {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __AutomaticNodeNamedPosition(
-            __AutomaticNodeInternalPosition(b.__graphite_node_automatic_node.len()),
+            __AutomaticNodeInternalPosition(
+                graphite::TablePosition(b.__graphite_node_automatic_node.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1383,7 +1387,9 @@ impl MixedIdsInsertable for super::BooleanNode {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __BooleanNodeNamedPosition(
-            __BooleanNodeInternalPosition(b.__graphite_node_boolean_node.len()),
+            __BooleanNodeInternalPosition(
+                graphite::TablePosition(b.__graphite_node_boolean_node.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1468,7 +1474,9 @@ impl MixedIdsInsertable for ExternalLink {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __ExternalLinkNamedPosition(
-            __ExternalLinkInternalPosition(b.external_link.len()),
+            __ExternalLinkInternalPosition(
+                graphite::TablePosition(b.external_link.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1506,7 +1514,9 @@ impl MixedIdsInsertable for ExternalIncoming {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __ExternalIncomingNamedPosition(
-            __ExternalIncomingInternalPosition(b.external_incoming.len()),
+            __ExternalIncomingInternalPosition(
+                graphite::TablePosition(b.external_incoming.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1544,7 +1554,9 @@ impl MixedIdsInsertable for ExternalFriend {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __ExternalFriendNamedPosition(
-            __ExternalFriendInternalPosition(b.external_friend.len()),
+            __ExternalFriendInternalPosition(
+                graphite::TablePosition(b.external_friend.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1582,7 +1594,9 @@ impl MixedIdsInsertable for AutomaticLink {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __AutomaticLinkNamedPosition(
-            __AutomaticLinkInternalPosition(b.automatic_link.len()),
+            __AutomaticLinkInternalPosition(
+                graphite::TablePosition(b.automatic_link.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1871,7 +1885,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __ExternalLinkInternalPosition(
-                    __graphite_external_link.len(),
+                    graphite::TablePosition(__graphite_external_link.len()),
                 );
                 __graphite_external_link_by_pair
                     .entry((from_position, to_position))
@@ -1956,7 +1970,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __ExternalIncomingInternalPosition(
-                    __graphite_external_incoming.len(),
+                    graphite::TablePosition(__graphite_external_incoming.len()),
                 );
                 __graphite_external_incoming_by_pair
                     .entry((from_position, to_position))
@@ -2043,7 +2057,7 @@ impl Builder {
                 second_position,
             ) {
                 let internal_edge_position = __ExternalFriendInternalPosition(
-                    __graphite_external_friend.len(),
+                    graphite::TablePosition(__graphite_external_friend.len()),
                 );
                 __graphite_external_friend_by_pair
                     .entry(graphite::UnorderedPair::new(first_position, second_position))
@@ -2111,7 +2125,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __AutomaticLinkInternalPosition(
-                    __graphite_automatic_link.len(),
+                    graphite::TablePosition(__graphite_automatic_link.len()),
                 );
                 __graphite_automatic_link_by_pair
                     .entry((from_position, to_position))
@@ -2143,7 +2157,11 @@ impl Builder {
             (0..__graphite_node_external_node.len())
                 .map(|position| {
                     external_link_from_index
-                        .remove(&__ExternalNodeInternalPosition(position))
+                        .remove(
+                            &__ExternalNodeInternalPosition(
+                                graphite::TablePosition(position),
+                            ),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2152,7 +2170,11 @@ impl Builder {
             (0..__graphite_node_external_node.len())
                 .map(|position| {
                     external_link_to_index
-                        .remove(&__ExternalNodeInternalPosition(position))
+                        .remove(
+                            &__ExternalNodeInternalPosition(
+                                graphite::TablePosition(position),
+                            ),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2161,7 +2183,11 @@ impl Builder {
             (0..__graphite_node_external_node.len())
                 .map(|position| {
                     external_incoming_from_index
-                        .remove(&__ExternalNodeInternalPosition(position))
+                        .remove(
+                            &__ExternalNodeInternalPosition(
+                                graphite::TablePosition(position),
+                            ),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2170,7 +2196,11 @@ impl Builder {
             (0..__graphite_node_external_node.len())
                 .map(|position| {
                     external_incoming_to_index
-                        .remove(&__ExternalNodeInternalPosition(position))
+                        .remove(
+                            &__ExternalNodeInternalPosition(
+                                graphite::TablePosition(position),
+                            ),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2179,7 +2209,11 @@ impl Builder {
             (0..__graphite_node_external_node.len())
                 .map(|position| {
                     external_friend_index
-                        .remove(&__ExternalNodeInternalPosition(position))
+                        .remove(
+                            &__ExternalNodeInternalPosition(
+                                graphite::TablePosition(position),
+                            ),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2188,7 +2222,11 @@ impl Builder {
             (0..__graphite_node_automatic_node.len())
                 .map(|position| {
                     automatic_link_from_index
-                        .remove(&__AutomaticNodeInternalPosition(position))
+                        .remove(
+                            &__AutomaticNodeInternalPosition(
+                                graphite::TablePosition(position),
+                            ),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2197,7 +2235,11 @@ impl Builder {
             (0..__graphite_node_automatic_node.len())
                 .map(|position| {
                     automatic_link_to_index
-                        .remove(&__AutomaticNodeInternalPosition(position))
+                        .remove(
+                            &__AutomaticNodeInternalPosition(
+                                graphite::TablePosition(position),
+                            ),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),

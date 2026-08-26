@@ -153,7 +153,7 @@ pub(crate) fn gen_directed_edge_freeze_block(
             }
             if let (Some(from_position), Some(to_position)) = (from_position, to_position) {
                 #unique_pair_check
-                let internal_edge_position = #edge_position(#storage.len());
+                let internal_edge_position = #edge_position(graphite::TablePosition(#storage.len()));
                 #pair_insert
                 #from_index.entry(from_position).or_default().push(internal_edge_position);
                 #to_index.entry(to_position).or_default().push(internal_edge_position);

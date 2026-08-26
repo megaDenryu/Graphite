@@ -31,6 +31,9 @@ pub use unordered_pair::UnorderedPair;
 pub use schema_runtime::GraphMismatch;
 
 #[doc(hidden)]
+pub use keyed_table::TablePosition;
+
+#[doc(hidden)]
 pub use schema_runtime::{
     build_named_graph, DirectedEdgeLiteral, ExactlyOneRoleIndex, FreezableBuilder,
     MultipleRoleIndex, NamedGraphElement, NamedInsertPermit, OptionalRoleIndex,

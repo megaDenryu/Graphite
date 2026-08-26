@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    8880197125670528349u64, 1718856059486310236u64, 15445868277295692339u64,
-    12319924216825124503u64,
+    7662879273844107587u64, 12638185038750404022u64, 2079120866478086985u64,
+    14491760924337291997u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NodeAId(pub String);
@@ -22,17 +22,17 @@ pub struct AtMostOneId(pub String);
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ExactlyOneId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __NodeAInternalPosition(usize);
+struct __NodeAInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __NodeBInternalPosition(usize);
+struct __NodeBInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __UnconstrainedInternalPosition(usize);
+struct __UnconstrainedInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __UnconstrainedNoPayloadInternalPosition(usize);
+struct __UnconstrainedNoPayloadInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __AtMostOneInternalPosition(usize);
+struct __AtMostOneInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __ExactlyOneInternalPosition(usize);
+struct __ExactlyOneInternalPosition(graphite::TablePosition);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __NodeANamedPosition(__NodeAInternalPosition, u64);
@@ -938,7 +938,9 @@ impl RevQueryInsertable for super::NodeA {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __NodeANamedPosition(
-            __NodeAInternalPosition(b.__graphite_node_node_a.len()),
+            __NodeAInternalPosition(
+                graphite::TablePosition(b.__graphite_node_node_a.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1272,7 +1274,9 @@ impl RevQueryInsertable for super::NodeB {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __NodeBNamedPosition(
-            __NodeBInternalPosition(b.__graphite_node_node_b.len()),
+            __NodeBInternalPosition(
+                graphite::TablePosition(b.__graphite_node_node_b.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1424,7 +1428,9 @@ impl RevQueryInsertable for Unconstrained {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __UnconstrainedNamedPosition(
-            __UnconstrainedInternalPosition(b.unconstrained.len()),
+            __UnconstrainedInternalPosition(
+                graphite::TablePosition(b.unconstrained.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1480,7 +1486,9 @@ impl RevQueryInsertable for UnconstrainedNoPayload {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __UnconstrainedNoPayloadNamedPosition(
-            __UnconstrainedNoPayloadInternalPosition(b.unconstrained_no_payload.len()),
+            __UnconstrainedNoPayloadInternalPosition(
+                graphite::TablePosition(b.unconstrained_no_payload.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1536,7 +1544,7 @@ impl RevQueryInsertable for AtMostOne {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __AtMostOneNamedPosition(
-            __AtMostOneInternalPosition(b.at_most_one.len()),
+            __AtMostOneInternalPosition(graphite::TablePosition(b.at_most_one.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1587,7 +1595,7 @@ impl RevQueryInsertable for ExactlyOne {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __ExactlyOneNamedPosition(
-            __ExactlyOneInternalPosition(b.exactly_one.len()),
+            __ExactlyOneInternalPosition(graphite::TablePosition(b.exactly_one.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1844,7 +1852,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __UnconstrainedInternalPosition(
-                    __graphite_unconstrained.len(),
+                    graphite::TablePosition(__graphite_unconstrained.len()),
                 );
                 __graphite_unconstrained_by_pair
                     .entry((from_position, to_position))
@@ -1915,7 +1923,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __UnconstrainedNoPayloadInternalPosition(
-                    __graphite_unconstrained_no_payload.len(),
+                    graphite::TablePosition(__graphite_unconstrained_no_payload.len()),
                 );
                 __graphite_unconstrained_no_payload_by_pair
                     .entry((from_position, to_position))
@@ -1979,7 +1987,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __AtMostOneInternalPosition(
-                    __graphite_at_most_one.len(),
+                    graphite::TablePosition(__graphite_at_most_one.len()),
                 );
                 __graphite_at_most_one_by_pair
                     .entry((from_position, to_position))
@@ -2064,7 +2072,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __ExactlyOneInternalPosition(
-                    __graphite_exactly_one.len(),
+                    graphite::TablePosition(__graphite_exactly_one.len()),
                 );
                 __graphite_exactly_one_by_pair
                     .entry((from_position, to_position))
@@ -2118,7 +2126,9 @@ impl Builder {
             (0..__graphite_node_node_a.len())
                 .map(|position| {
                     unconstrained_from_index
-                        .remove(&__NodeAInternalPosition(position))
+                        .remove(
+                            &__NodeAInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2127,7 +2137,9 @@ impl Builder {
             (0..__graphite_node_node_b.len())
                 .map(|position| {
                     unconstrained_to_index
-                        .remove(&__NodeBInternalPosition(position))
+                        .remove(
+                            &__NodeBInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2136,7 +2148,9 @@ impl Builder {
             (0..__graphite_node_node_a.len())
                 .map(|position| {
                     unconstrained_no_payload_from_index
-                        .remove(&__NodeAInternalPosition(position))
+                        .remove(
+                            &__NodeAInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2145,7 +2159,9 @@ impl Builder {
             (0..__graphite_node_node_b.len())
                 .map(|position| {
                     unconstrained_no_payload_to_index
-                        .remove(&__NodeBInternalPosition(position))
+                        .remove(
+                            &__NodeBInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2154,7 +2170,9 @@ impl Builder {
             (0..__graphite_node_node_a.len())
                 .map(|position| {
                     at_most_one_from_index
-                        .remove(&__NodeAInternalPosition(position))
+                        .remove(
+                            &__NodeAInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2163,7 +2181,9 @@ impl Builder {
             (0..__graphite_node_node_b.len())
                 .map(|position| {
                     at_most_one_to_index
-                        .remove(&__NodeBInternalPosition(position))
+                        .remove(
+                            &__NodeBInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2172,7 +2192,9 @@ impl Builder {
             (0..__graphite_node_node_a.len())
                 .map(|position| {
                     exactly_one_from_index
-                        .remove(&__NodeAInternalPosition(position))
+                        .remove(
+                            &__NodeAInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -2181,7 +2203,9 @@ impl Builder {
             (0..__graphite_node_node_b.len())
                 .map(|position| {
                     exactly_one_to_index
-                        .remove(&__NodeBInternalPosition(position))
+                        .remove(
+                            &__NodeBInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),

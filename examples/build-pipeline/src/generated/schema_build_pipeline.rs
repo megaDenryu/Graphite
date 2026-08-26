@@ -6,19 +6,19 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    11784268197445887975u64, 17965954525260708670u64, 13535747827116111369u64,
-    473975324943714445u64,
+    14062363214688290431u64, 10183297083612690350u64, 5254880447947502465u64,
+    4973777336275925061u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConsumesId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __TaskInternalPosition(usize);
+struct __TaskInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __ArtifactInternalPosition(usize);
+struct __ArtifactInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __ProducesInternalPosition(usize);
+struct __ProducesInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __ConsumesInternalPosition(usize);
+struct __ConsumesInternalPosition(graphite::TablePosition);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __TaskNamedPosition(__TaskInternalPosition, u64);
@@ -551,7 +551,9 @@ impl BuildPipelineInsertable for super::Task {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __TaskNamedPosition(
-            __TaskInternalPosition(b.__graphite_node_task.len()),
+            __TaskInternalPosition(
+                graphite::TablePosition(b.__graphite_node_task.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -730,7 +732,9 @@ impl BuildPipelineInsertable for super::Artifact {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __ArtifactNamedPosition(
-            __ArtifactInternalPosition(b.__graphite_node_artifact.len()),
+            __ArtifactInternalPosition(
+                graphite::TablePosition(b.__graphite_node_artifact.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -843,7 +847,7 @@ impl BuildPipelineInsertable for Produces {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __ProducesNamedPosition(
-            __ProducesInternalPosition(b.produces.len()),
+            __ProducesInternalPosition(graphite::TablePosition(b.produces.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -881,7 +885,7 @@ impl BuildPipelineInsertable for Consumes {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __ConsumesNamedPosition(
-            __ConsumesInternalPosition(b.consumes.len()),
+            __ConsumesInternalPosition(graphite::TablePosition(b.consumes.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1138,7 +1142,7 @@ impl Builder {
                         });
                 }
                 let internal_edge_position = __ProducesInternalPosition(
-                    __graphite_produces.len(),
+                    graphite::TablePosition(__graphite_produces.len()),
                 );
                 __graphite_produces_by_pair
                     .insert((from_position, to_position), internal_edge_position);
@@ -1209,7 +1213,7 @@ impl Builder {
                         });
                 }
                 let internal_edge_position = __ConsumesInternalPosition(
-                    __graphite_consumes.len(),
+                    graphite::TablePosition(__graphite_consumes.len()),
                 );
                 __graphite_consumes_by_pair
                     .insert((from_position, to_position), internal_edge_position);
@@ -1239,7 +1243,9 @@ impl Builder {
             (0..__graphite_node_task.len())
                 .map(|position| {
                     produces_from_index
-                        .remove(&__TaskInternalPosition(position))
+                        .remove(
+                            &__TaskInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -1248,7 +1254,11 @@ impl Builder {
             (0..__graphite_node_artifact.len())
                 .map(|position| {
                     produces_to_index
-                        .remove(&__ArtifactInternalPosition(position))
+                        .remove(
+                            &__ArtifactInternalPosition(
+                                graphite::TablePosition(position),
+                            ),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -1257,7 +1267,9 @@ impl Builder {
             (0..__graphite_node_task.len())
                 .map(|position| {
                     consumes_from_index
-                        .remove(&__TaskInternalPosition(position))
+                        .remove(
+                            &__TaskInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -1266,7 +1278,11 @@ impl Builder {
             (0..__graphite_node_artifact.len())
                 .map(|position| {
                     consumes_to_index
-                        .remove(&__ArtifactInternalPosition(position))
+                        .remove(
+                            &__ArtifactInternalPosition(
+                                graphite::TablePosition(position),
+                            ),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),

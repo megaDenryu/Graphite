@@ -6,15 +6,15 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    2002486097672486083u64, 2620378717909171698u64, 2505792337281692481u64,
-    16029055033143817789u64,
+    891112838449020681u64, 17319964482069476464u64, 3695114057792110915u64,
+    15393856286737916519u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ApprovesId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __PersonInternalPosition(usize);
+struct __PersonInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __ApprovesInternalPosition(usize);
+struct __ApprovesInternalPosition(graphite::TablePosition);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __PersonNamedPosition(__PersonInternalPosition, u64);
@@ -334,7 +334,9 @@ impl ApprovalFlowInsertable for super::Person {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __PersonNamedPosition(
-            __PersonInternalPosition(b.__graphite_node_person.len()),
+            __PersonInternalPosition(
+                graphite::TablePosition(b.__graphite_node_person.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -491,7 +493,7 @@ impl ApprovalFlowInsertable for Approves {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __ApprovesNamedPosition(
-            __ApprovesInternalPosition(b.approves.len()),
+            __ApprovesInternalPosition(graphite::TablePosition(b.approves.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -719,7 +721,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __ApprovesInternalPosition(
-                    __graphite_approves.len(),
+                    graphite::TablePosition(__graphite_approves.len()),
                 );
                 __graphite_approves_by_pair
                     .entry((from_position, to_position))
@@ -751,7 +753,9 @@ impl Builder {
             (0..__graphite_node_person.len())
                 .map(|position| {
                     approves_from_index
-                        .remove(&__PersonInternalPosition(position))
+                        .remove(
+                            &__PersonInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -760,7 +764,9 @@ impl Builder {
             (0..__graphite_node_person.len())
                 .map(|position| {
                     approves_to_index
-                        .remove(&__PersonInternalPosition(position))
+                        .remove(
+                            &__PersonInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),

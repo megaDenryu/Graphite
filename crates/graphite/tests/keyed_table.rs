@@ -1,6 +1,6 @@
 //! キー付き要素表の挿入・検索・走査・内部位置の契約を検査する。
 
-use graphite::KeyedTable;
+use graphite::{KeyedTable, TablePosition};
 
 #[test]
 fn insert_と_get() {
@@ -53,7 +53,10 @@ fn 内部位置から同じ要素を参照できる() {
 
     let position = table.position(&"b".to_string()).unwrap();
     assert_eq!(table.get_at(position), Some((&"b".to_string(), &2)));
-    assert_eq!(table.positions().collect::<Vec<_>>(), vec![0, 1]);
+    assert_eq!(
+        table.positions().collect::<Vec<_>>(),
+        vec![TablePosition(0), TablePosition(1)]
+    );
 }
 
 #[test]
@@ -64,5 +67,5 @@ fn get_mutは値だけを更新する() {
     *table.get_mut(&"a".to_string()).unwrap() = 2;
 
     assert_eq!(table.get(&"a".to_string()), Some(&2));
-    assert_eq!(table.position(&"a".to_string()), Some(0));
+    assert_eq!(table.position(&"a".to_string()), Some(TablePosition(0)));
 }

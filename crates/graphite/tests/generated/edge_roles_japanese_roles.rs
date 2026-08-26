@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    4817742514348685026u64, 4500645392887506221u64, 12205488000220501692u64,
-    4164227386690338696u64,
+    3768278566487226281u64, 14783650605310605246u64, 15081325271615256743u64,
+    13058048417270690771u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PersonId(pub String);
@@ -16,11 +16,11 @@ pub struct ItemId(pub String);
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct OwnershipId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __PersonInternalPosition(usize);
+struct __PersonInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __ItemInternalPosition(usize);
+struct __ItemInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __OwnershipInternalPosition(usize);
+struct __OwnershipInternalPosition(graphite::TablePosition);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __PersonNamedPosition(__PersonInternalPosition, u64);
@@ -394,7 +394,9 @@ impl JapaneseRolesInsertable for super::Person {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __PersonNamedPosition(
-            __PersonInternalPosition(b.__graphite_node_person.len()),
+            __PersonInternalPosition(
+                graphite::TablePosition(b.__graphite_node_person.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -544,7 +546,9 @@ impl JapaneseRolesInsertable for super::Item {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __ItemNamedPosition(
-            __ItemInternalPosition(b.__graphite_node_item.len()),
+            __ItemInternalPosition(
+                graphite::TablePosition(b.__graphite_node_item.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -658,7 +662,7 @@ impl JapaneseRolesInsertable for Ownership {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __OwnershipNamedPosition(
-            __OwnershipInternalPosition(b.ownership.len()),
+            __OwnershipInternalPosition(graphite::TablePosition(b.ownership.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -901,7 +905,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __OwnershipInternalPosition(
-                    __graphite_ownership.len(),
+                    graphite::TablePosition(__graphite_ownership.len()),
                 );
                 __graphite_ownership_by_pair
                     .entry((from_position, to_position))
@@ -954,7 +958,9 @@ impl Builder {
             (0..__graphite_node_person.len())
                 .map(|position| {
                     ownership_from_index
-                        .remove(&__PersonInternalPosition(position))
+                        .remove(
+                            &__PersonInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
@@ -963,7 +969,9 @@ impl Builder {
             (0..__graphite_node_item.len())
                 .map(|position| {
                     ownership_to_index
-                        .remove(&__ItemInternalPosition(position))
+                        .remove(
+                            &__ItemInternalPosition(graphite::TablePosition(position)),
+                        )
                         .unwrap_or_default()
                 })
                 .collect(),
