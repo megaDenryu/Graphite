@@ -68,126 +68,19 @@
 //!   が内製する。「再利用できる部分は再利用し、既存の型に無理に押し込むと
 //!   歪みが生じる部分は内製する」という判断そのもの。
 
+mod builder;
+mod dependency_structure;
 mod error;
 mod node_kind;
 mod node_table;
 
 use std::collections::{HashMap, HashSet};
 
-use crate::Graph;
-
+pub use builder::ComputeGraphBuilder;
 pub use error::ComputeGraphError;
 
-use node_kind::{ノード種別, 値を求める関数};
+use dependency_structure::依存構造;
 use node_table::{キーの照会結果, 計算ノード表};
-
-/// [`ComputeGraph::builder`] が返す構築用 builder。
-///
-/// `input`/`computed` でノードを積み、[`Self::freeze`] で凍結する
-/// (`docs/graph_design_sketches.md` 決定2 — クロージャスコープではなく
-/// 値としての builder → freeze だが、「構築中の型」と「構築後の型」を
-/// 分けるという要点は同じ)。
-pub struct ComputeGraphBuilder<V> {
-    entries: Vec<(String, ノード種別<V>)>,
-    input_values: HashMap<String, V>,
-}
-
-impl<V> ComputeGraphBuilder<V> {
-    fn new() -> Self {
-        Self {
-            entries: Vec::new(),
-            input_values: HashMap::new(),
-        }
-    }
-
-    /// 入力ノードを1つ積む。`key` が重複した場合のエラーは [`Self::freeze`]
-    /// まで遅延する ([`ComputeGraphError::Graph`] の
-    /// [`crate::GraphError::DuplicateKey`])。
-    pub fn input(&mut self, key: impl Into<String>, value: V) -> &mut Self {
-        let key = key.into();
-        self.input_values.insert(key.clone(), value);
-        self.entries.push((key, ノード種別::入力ノード));
-        self
-    }
-
-    /// 計算ノードを1つ積む。`deps` は評価時に `f` へ渡される位置引数の並び
-    /// そのもの (`args[0]` = `deps` の0番目)。`deps` が参照するキーが未宣言
-    /// だった場合のエラーは [`Self::freeze`] まで遅延する
-    /// ([`ComputeGraphError::Graph`] の [`crate::GraphError::UnknownEndpoint`])。
-    pub fn computed<D, S>(
-        &mut self,
-        key: impl Into<String>,
-        deps: D,
-        f: impl Fn(&[&V]) -> V + 'static,
-    ) -> &mut Self
-    where
-        D: IntoIterator<Item = S>,
-        S: Into<String>,
-    {
-        let 依存キー列: Vec<String> = deps.into_iter().map(Into::into).collect();
-        self.entries.push((
-            key.into(),
-            ノード種別::計算ノード {
-                依存キー列,
-                値を求める: 値を求める関数::関数から生成する(f),
-            },
-        ));
-        self
-    }
-
-    /// 凍結して [`ComputeGraph`] を作る。
-    ///
-    /// 検証順序: まずキー重複・未宣言依存 ([`crate::Graph::from_edges`] へ
-    /// 委譲)、次に循環 ([`crate::Graph::topological_sort`] へ委譲、パスつき
-    /// `CycleError`)。凍結後は全ての計算ノードを dirty (未計算) 状態で始める
-    /// — 「遅延: [`ComputeGraph::get`] するまで何も計算しない」がこの
-    /// 初期状態そのもの。
-    pub fn freeze(self) -> Result<ComputeGraph<V>, ComputeGraphError> {
-        let Self {
-            entries,
-            input_values,
-        } = self;
-
-        let node_keys: Vec<String> = entries.iter().map(|(key, _)| key.clone()).collect();
-        let edges: Vec<(String, String)> = entries
-            .iter()
-            .filter_map(|(key, kind)| match kind {
-                ノード種別::計算ノード {
-                    依存キー列, ..
-                } => Some((key, 依存キー列)),
-                ノード種別::入力ノード => None,
-            })
-            .flat_map(|(key, deps)| deps.iter().map(move |dep| (dep.clone(), key.clone())))
-            .collect();
-
-        let dependency_graph: Graph<(), (), String> =
-            Graph::from_edges(node_keys, edges).map_err(ComputeGraphError::Graph)?;
-
-        let topo_order: Vec<String> = dependency_graph
-            .topological_sort()
-            .map_err(ComputeGraphError::Cycle)?
-            .into_iter()
-            .cloned()
-            .collect();
-
-        let topo_index: HashMap<String, usize> = topo_order
-            .iter()
-            .enumerate()
-            .map(|(i, key)| (key.clone(), i))
-            .collect();
-
-        let ノード表 = 計算ノード表::宣言列から生成する(entries);
-        let dirty: HashSet<String> = ノード表.計算ノードのキー列().cloned().collect();
-
-        Ok(ComputeGraph {
-            ノード表,
-            values: input_values,
-            dirty,
-            dependency_graph,
-            topo_index,
-        })
-    }
-}
 
 /// 遅延実行・差分再計算する計算グラフ (モジュール doc 参照)。
 ///
@@ -207,20 +100,32 @@ pub struct ComputeGraph<V> {
     /// 初期状態を含む)。入力ノードは決してこの集合に入らない
     /// (値は直接書き込まれるので「古い」という概念がない)。
     dirty: HashSet<String>,
-    /// 依存構造そのもの ([`crate::Graph::reachable_from`] による dirty 伝播
-    /// 専用。評価時の位置引数の並びは計算ノード表の依存キー列が真実であり、
-    /// こちらは使わない — モジュール doc 「既存機構の再利用 vs 内製」参照)。
-    dependency_graph: Graph<(), (), String>,
-    /// [`ComputeGraphBuilder::freeze`] で1回だけ計算したトポロジカル順序の
-    /// 位置索引。依存構造は構築後不変なので、更新のたびに再計算する必要は
-    /// ない。
-    topo_index: HashMap<String, usize>,
+    /// 依存構造そのもの (dirty 伝播とトポロジカル位置の問い合わせ専用。評価時の
+    /// 位置引数の並びは計算ノード表の依存キー列が真実であり、こちらは使わない —
+    /// モジュール doc 「既存機構の再利用 vs 内製」参照)。
+    依存構造: 依存構造,
 }
 
 impl<V> ComputeGraph<V> {
     /// 構築用 builder を作る。
     pub fn builder() -> ComputeGraphBuilder<V> {
-        ComputeGraphBuilder::new()
+        ComputeGraphBuilder::空のbuilderから始める()
+    }
+
+    /// 凍結を通った部品から計算グラフを組み立てる、この型の唯一の私有
+    /// コンストラクタ。全ての計算ノードは未再計算の状態で始まる。
+    pub(in crate::compute) fn 部品から組み立てる(
+        ノード表: 計算ノード表<V>,
+        依存構造: 依存構造,
+        入力値: HashMap<String, V>,
+    ) -> Self {
+        let dirty = ノード表.計算ノードのキー列().cloned().collect();
+        Self {
+            ノード表,
+            values: 入力値,
+            dirty,
+            依存構造,
+        }
     }
 
     /// `key` の現在値を返す。dirty な祖先 (`key` 自身を含む) だけを
@@ -261,12 +166,7 @@ impl<V> ComputeGraph<V> {
         // 影響範囲 (keyを含む) をreachable_fromで絞り、key自身を除いた
         // 影響先だけをdirtyにする (keyの新しい値は直接書き込むので
         // 「再計算が必要」ではない)。
-        let affected: Vec<String> = self
-            .dependency_graph
-            .reachable_from(&key.to_string())
-            .into_iter()
-            .cloned()
-            .collect();
+        let affected: Vec<String> = self.依存構造.影響を受けるキー列(key);
 
         self.values.insert(key.to_string(), value);
         for affected_key in affected {
@@ -292,7 +192,7 @@ impl<V> ComputeGraph<V> {
         let mut seen: HashSet<String> = HashSet::new();
         self.collect_dirty_closure(key, &mut seen, &mut to_eval);
 
-        to_eval.sort_by_key(|k| self.topo_index[k]);
+        to_eval.sort_by_key(|k| self.依存構造.トポロジカル位置(k));
 
         for k in to_eval {
             self.evaluate(&k);
