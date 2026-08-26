@@ -3,12 +3,15 @@
 //! この配下だけが `petgraph` を名指しする。キーの世界 (`crate::graph` 直下) は
 //! [`ノード位置`] を通してのみトポロジーへ触れる。
 
+pub(in crate::graph) mod cycle_search;
 pub(in crate::graph) mod position;
+mod simple_cycle_extraction;
 
 use petgraph::graph::DiGraph;
 use petgraph::visit::EdgeRef;
 use petgraph::Direction;
 
+pub(in crate::graph) use cycle_search::{循環の探索, 閉路の位置列};
 pub(in crate::graph) use position::ノード位置;
 
 /// ノード値 `N`・辺値 `E` を持つ有向グラフの形そのもの。ユーザーキーは持たない。
@@ -106,20 +109,10 @@ impl<N, E> 有向トポロジー<N, E> {
         })
     }
 
-    pub(in crate::graph) fn 循環があるか(&self) -> bool {
-        petgraph::algo::is_cyclic_directed(&self.内部グラフ)
-    }
-
-    pub(in crate::graph) fn 強連結成分の一覧(&self) -> Vec<Vec<ノード位置>> {
-        petgraph::algo::tarjan_scc(&self.内部グラフ)
-            .into_iter()
-            .map(|成分| {
-                成分
-                    .into_iter()
-                    .map(ノード位置::内部添字から生成する)
-                    .collect()
-            })
-            .collect()
+    /// `petgraph` のアルゴリズムへ渡すための内部表現。この配下の探索モジュール
+    /// だけが使い、トポロジーの外へは出さない。
+    pub(in crate::graph::topology) fn 内部グラフ(&self) -> &DiGraph<N, E> {
+        &self.内部グラフ
     }
 
     /// 全体のトポロジカル順序。循環があるときは `None`。
