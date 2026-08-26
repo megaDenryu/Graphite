@@ -98,8 +98,10 @@ test consumes target/a
 ",
         );
         let out = mermaid(&g);
-        assert!(out.starts_with("flowchart TD
-"));
+        assert!(out.starts_with(
+            "flowchart TD
+"
+        ));
         assert!(out.contains("T_build["));
         assert!(out.contains("A_target_a[("));
         assert!(out.contains("T_build -->|produces| A_target_a"));

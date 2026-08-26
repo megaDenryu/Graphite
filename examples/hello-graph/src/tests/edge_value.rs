@@ -3,8 +3,8 @@
 //! `graph!` を通さずに名前付きフィールドで直接構築できることを示す
 //! (§2.5「辺は名前付きフィールドの構造体として実在する」の実測)。
 
-use crate::Org::{BelongsTo, Boss, PersonId, TeamId};
 use crate::BossEdge;
+use crate::Org::{BelongsTo, Boss, PersonId, TeamId};
 
 #[test]
 fn 名前付きフィールドの辺値はマクロ外でも普通に構築できる() {

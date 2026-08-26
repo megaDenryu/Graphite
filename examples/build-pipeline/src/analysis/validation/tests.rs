@@ -1,9 +1,9 @@
 //! 3種のドメイン違反それぞれを、最小の壊れたパイプラインで検出できることを固定する。
 
 use crate::analysis::*;
-use crate::schema::BuildPipeline;
 use crate::builder::build_graph;
 use crate::parser::parse;
+use crate::schema::BuildPipeline;
 
 fn graph_from(input: &str) -> BuildPipeline::Graph {
     let parsed = parse(input).unwrap();

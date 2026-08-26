@@ -1,8 +1,8 @@
 //! 並列実行が依存順序を守ること、および直列実行より速いことを固定する。
 
 use super::{run_serial, run_waves};
-use crate::schema::ServiceId;
 use crate::depgraph::compute_waves;
+use crate::schema::ServiceId;
 use crate::schema::{Orchestration, Service};
 
 #[test]

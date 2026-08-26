@@ -44,7 +44,8 @@ pub fn section3() {
 
     // --- 構築 (3通りの書き方) ---
     println!("--- 構築 ---");
-    let g: Org::Graph = literal_construction::インライン式でgraphリテラルを組み立てる();
+    let g: Org::Graph =
+        literal_construction::インライン式でgraphリテラルを組み立てる();
     literal_construction::外部変数を渡してgraphリテラルを組み立てる();
     literal_construction::外部で作ったエッジ属性をgraphリテラルに渡す();
     builder_construction::builderの型名メソッドで組み立てる();

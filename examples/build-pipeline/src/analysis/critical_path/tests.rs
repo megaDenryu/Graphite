@@ -1,10 +1,10 @@
 //! 手計算できる小さな題材で、最長経路・合計時間・循環時の失敗を固定する。
 
-use crate::analysis::*;
-use crate::schema::{BuildPipeline, TaskId};
 use crate::analysis::plan;
+use crate::analysis::*;
 use crate::builder::build_graph;
 use crate::parser::parse;
+use crate::schema::{BuildPipeline, TaskId};
 
 fn graph_from(input: &str) -> BuildPipeline::Graph {
     let parsed = parse(input).unwrap();
