@@ -1899,7 +1899,7 @@ schema module内の既定IDを使うノード値型または辺値型である�
 (`crates/graphite-macros/src/instance_codegen.rs:200-208`)。
 
 ```rust
-            検証済み残り項::スプライス(spread) => {
+            辺かスプライスの項::スプライス(spread) => {
                 // 統一 `extend` への脱糖 (`docs/graph_splice.md` §1/§2)。
                 // スプライスの要素は名前を持たないため `let` 束縛は作らず、
                 // 戻り値のキー列もその場で捨てる (式文として実行するのみ)。

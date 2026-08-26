@@ -83,7 +83,7 @@ use proc_macro2::{Ident, TokenStream};
 use quote::{quote, quote_spanned};
 
 use crate::instance_dsl::EdgeDirection;
-use crate::instance_semantic::{検証済みグラフリテラル, 検証済み残り項};
+use crate::instance_semantic::{検証済みグラフリテラル, 辺かスプライスの項};
 use graphite_codegen::naming::{
     graph_type_ident, named_binding_position_ident, named_graph_wrapper_ident,
     named_wrapper_parameter_ident,
@@ -99,9 +99,9 @@ struct GeneratedItems {
 fn generate_items(model: &検証済みグラフリテラル, schema_name: &Ident) -> GeneratedItems {
     // 項目G1 (`docs/graph_splice.md` §1 で拡張): 「全ノード → (全エッジ +
     // 全スプライスを記述順)」の2段への並べ替えは `instance_semantic` が既に
-    // 確定させている (`model.ノード項の列()` → `model.残り項の列()` の順に
-    // 回すだけでよい)。`rest_calls` はエッジとスプライスの両方を、元の記述順
-    // のまま (`検証済み残り項の列` が保持する順) 保持する。
+    // 確定させている (`model.ノード項の列()` → `model.辺とスプライスの項の列()`
+    // の順に回すだけでよい)。`rest_calls` はエッジとスプライスの両方を、元の
+    // 記述順のまま (`辺とスプライスの項の列` が保持する順) 保持する。
     let mut node_calls: Vec<TokenStream> = Vec::new();
     let mut rest_calls: Vec<TokenStream> = Vec::new();
     let mut named_keys: Vec<Ident> = Vec::new();
@@ -136,9 +136,9 @@ fn generate_items(model: &検証済みグラフリテラル, schema_name: &Ident
         named_positions.push(named_position);
     }
 
-    for item in model.残り項の列() {
+    for item in model.辺とスプライスの項の列() {
         match item {
-            検証済み残り項::辺(edge) => {
+            辺かスプライスの項::辺(edge) => {
                 // スパン規約: エッジ関連の識別子・キーはすべて書かれた出現の
                 // トークンをそのまま使う。
                 let key_ident = edge.key.clone();
@@ -197,7 +197,7 @@ fn generate_items(model: &検証済みグラフリテラル, schema_name: &Ident
                 named_keys.push(key_ident);
                 named_positions.push(named_position);
             }
-            検証済み残り項::スプライス(spread) => {
+            辺かスプライスの項::スプライス(spread) => {
                 // 統一 `extend` への脱糖 (`docs/graph_splice.md` §1/§2)。
                 // スプライスの要素は名前を持たないため `let` 束縛は作らず、
                 // 戻り値のキー列もその場で捨てる (式文として実行するのみ)。
