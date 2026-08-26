@@ -63,7 +63,7 @@ use OrgChart::{
 
 /// 導出エッジの例: `graph_schema!` が生成した `OrgChart` へ、保存されない
 /// 計算結果を返す普通のメソッドを追記できることを示す
-/// (`docs/graph_design_sketches.md` 決定「保存エッジ=フィールド、
+/// (`../Bullet/docs/graph_design_sketches.md` 決定「保存エッジ=フィールド、
 /// 導出エッジ=getter」)。公開クエリ API だけで導出クエリを書ける。
 /// schema module 内の私有ストレージと索引へ親 module からはアクセスできない。
 impl OrgChart::Graph {

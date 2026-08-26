@@ -2,7 +2,7 @@
 //!
 //! [`Engine`] は不変な依存グラフ ([`crate::schema::Sheet`]、`graph_schema!`
 //! が生成した型) と、可変な「今の値」(`HashMap<CellId, f64>`) を分けて
-//! 持つ (`docs/graph_design_sketches.md` 決定2)。[`Engine::set_input`] が
+//! 持つ (`../Bullet/docs/graph_design_sketches.md` 決定2)。[`Engine::set_input`] が
 //! 1回呼ばれるたびに:
 //!
 //! 1. `graphite::Graph::reachable_from` で「この入力の変更で影響を受ける

@@ -7,7 +7,7 @@ use std::collections::{HashMap, HashSet};
 
 /// 計算グラフの可変な部分。依存構造が構築後不変なのに対し、こちらだけが動く
 /// (`reactive-cells` の `Engine` が不変な依存グラフ + 可変な値ストアを分けるのと
-/// 同じ整理、`docs/graph_design_sketches.md` 決定2)。
+/// 同じ整理、`../Bullet/docs/graph_design_sketches.md` 決定2)。
 pub(in crate::compute) struct 評価状態<V> {
     /// 現在の値。入力ノードは常に存在する。計算ノードは一度でも評価されると
     /// エントリができ、以後未再計算になっても値は残ったまま (古い値として

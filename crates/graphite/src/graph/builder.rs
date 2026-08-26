@@ -11,7 +11,7 @@ use super::Graph;
 /// クロージャの外に参照を持ち出すことはできない (借用検査器が保証)。
 /// 凍結 ([`Graph::create`] 内部で呼ばれる) までは多重度等の検査を一切
 /// 行わない — 「構築中の型」と「構築後の型」を分ける、というのが
-/// `docs/graph_design_sketches.md` 決定2/決定4 の要点。
+/// `../Bullet/docs/graph_design_sketches.md` 決定2/決定4 の要点。
 pub struct GraphBuilder<N, E, K> {
     nodes: Vec<(K, N)>,
     edges: Vec<(K, K, E)>,

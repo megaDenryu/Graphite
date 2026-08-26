@@ -8,7 +8,7 @@ Graphite はもともと Bullet リポジトリ (Vertex言語) のセッショ�
 
 ## 0. 系譜 (Graphite誕生の前段)
 
-Bullet の `docs/graph_design_sketches.md` (グラフ型の設計決定1〜6) の末尾に
+Bullet の `../Bullet/docs/graph_design_sketches.md` (グラフ型の設計決定1〜6) の末尾に
 「既存言語(Rust)の拡張として作れないか」という問いがあり、セッションでユーザーから:
 
 > グラフデザインスケッチ.mdみたいなのを読んでください。rustの拡張にする案について、深堀したいです。今の言語はいろいろrustから機能を引いたものもありますが、グラフ以外の機能はあまり関心がないです。なので何をするだけならrustを拡張する形で実現できるか知りたいです。今の言語は今の言語で置いておき、新たに別のプロジェクトを始める土台として考える感じです。
@@ -26,7 +26,7 @@ Bullet の `docs/graph_design_sketches.md` (グラフ型の設計決定1〜6) �
 
 > そうですね。ではその方向性で、新たな言語？かライブラリ？なのかわからないですがその枠組みのスケッチのmdを新しく作って欲しい。それから、ほかにVertexの機能でrust拡張に追加できそうなものがあればそれも知りたい。
 
-→ Bullet の `docs/rust_graph_extension_sketch.md` を作成 (Graphite設計の一次資料)。
+→ Bullet の `../Bullet/docs/rust_graph_extension_sketch.md` を作成 (Graphite設計の一次資料)。
 Vertex機能の棚卸し結果: 良い候補 = パイプ演算子 (pipe-trait相当で足りる) / 精密型 (newtype+create()のResult検証パターン) / 状態機械 (typestateの方が強い) / アリーナ (bumpalo等で解決済み)。悪い候補 = 値型継承 (Rust哲学への逆行) / gradual typing・phase並行・アリーナ意味論 (脱糖で済まず実行意味論の追加が必要) / DTO規律 (引き算は足し算で再現できない)。
 
 ---

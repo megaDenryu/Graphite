@@ -12,7 +12,7 @@
 //! | 遷移表そのもの | `schema` 宣言 + `graph!` リテラル (`fsm::build`) |
 //!
 //! 状態は全部同じノード型 `OrderState` のインスタンス (ノード同一性は
-//! ユーザーキーが担う — `docs/graph_design_sketches.md` 決定1)。イベントは
+//! ユーザーキーが担う — `../Bullet/docs/graph_design_sketches.md` 決定1)。イベントは
 //! `OrderState -> OrderState` の自己ループ的な辺種別として宣言する。
 //! `where each before: 0..1` は「ある状態から、あるイベントで遷移できる
 //! 先は高々1つ」という FSM の決定性そのものを型に持たせている。始点ノードが

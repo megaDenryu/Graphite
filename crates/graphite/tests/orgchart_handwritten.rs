@@ -10,7 +10,7 @@
 //! 最新の生成コードの形は `crates/graphite/tests/orgchart_macro.rs` 側を
 //! 参照すること。
 //!
-//! 元になるスキーマ (`docs/rust_graph_extension_sketch.md` の「水準2相当」節):
+//! 元になるスキーマ (`../Bullet/docs/rust_graph_extension_sketch.md` の「水準2相当」節):
 //!
 //! ```text
 //! graphite::graph_schema! {
@@ -35,7 +35,7 @@
 //! であり、`OrgChart` は `Employee`/`Department` という 2 種のノード型と
 //! `belongs_to`/`boss`/`reports` という 3 種のエッジ型 (それぞれ多重度も
 //! 属性の有無も違う) を持つ、水準2相当の**異種混在**スキーマである。
-//! `docs/graph_design_sketches.md` の「水準1の限界」節がまさにこの形で
+//! `../Bullet/docs/graph_design_sketches.md` の「水準1の限界」節がまさにこの形で
 //! 「`Graph<T>` はノードは T のどれかとしか言えず、辺ごとに違う多重度・
 //! 端点種別の制約を表現できない」と指摘している通り、1 つの同種
 //! `Graph<N, E, K>` インスタンスにこれを押し込もうとすると、ノード型を
@@ -145,7 +145,7 @@ impl StdError for SchemaViolation {}
 
 // ---------------------------------------------------------------------
 // OrgChart 本体 — フィールドは非公開、公開は create と各アクセサのみ
-// (スマートコンストラクタ。docs/graph_design_sketches.md 決定5)
+// (スマートコンストラクタ。../Bullet/docs/graph_design_sketches.md 決定5)
 // ---------------------------------------------------------------------
 
 /// `schema OrgChart { .. }` に対応する凍結済み図式グラフ。
@@ -168,7 +168,7 @@ impl OrgChart {
     ///
     /// `for<'b> FnOnce(&'b mut OrgChartBuilder)` により、builder への
     /// 参照をクロージャの外に持ち出すことは借用検査器が静的に拒否する
-    /// (`docs/rust_graph_extension_sketch.md` の builder→freeze節、
+    /// (`../Bullet/docs/rust_graph_extension_sketch.md` の builder→freeze節、
     /// `std::thread::scope` と同型の保証)。
     pub fn create<F>(f: F) -> Result<Self, SchemaViolation>
     where

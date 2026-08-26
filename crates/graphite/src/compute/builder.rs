@@ -11,7 +11,7 @@ use super::ComputeGraph;
 /// [`ComputeGraph::builder`] が返す構築用 builder。
 ///
 /// `input`/`computed` でノードを積み、[`Self::freeze`] で凍結する
-/// (`docs/graph_design_sketches.md` 決定2 — クロージャスコープではなく
+/// (`../Bullet/docs/graph_design_sketches.md` 決定2 — クロージャスコープではなく
 /// 値としての builder → freeze だが、「構築中の型」と「構築後の型」を
 /// 分けるという要点は同じ)。
 pub struct ComputeGraphBuilder<V> {

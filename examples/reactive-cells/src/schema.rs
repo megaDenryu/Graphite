@@ -60,7 +60,7 @@ pub enum Formula {
 
 /// スプレッドシートのセル。値そのものは持たない — 値は
 /// [`crate::engine::Engine`] が別途 `HashMap<CellId, f64>` として持つ
-/// (`docs/graph_design_sketches.md` 決定2: グラフは構築後不変。可変な
+/// (`../Bullet/docs/graph_design_sketches.md` 決定2: グラフは構築後不変。可変な
 /// 「今の値」を不変な依存構造から分離する)。
 #[derive(Debug, Clone, PartialEq)]
 pub struct Cell {
