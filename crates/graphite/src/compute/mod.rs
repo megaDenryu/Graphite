@@ -38,72 +38,44 @@
 //!   別の関心事である。
 //! - **キーは名前 (`String`)。**
 //! - **pull 型の遅延 + 差分。** [`ComputeGraph::set_input`] は値の書き込みと
-//!   dirty 伝播 (`reachable_from` 相当) のみを行い、実際の再計算は一切行わない。
-//!   [`ComputeGraph::get`] が「dirty な祖先だけ」をトポロジカル順に各 1 回
-//!   再計算する (glitch-free)。トポロジカル順序は [`ComputeGraphBuilder::freeze`]
-//!   で 1 回だけ計算しキャッシュする (依存構造は構築後不変なので、更新の
-//!   たびに再計算する必要はない)。
+//!   未再計算印の伝播のみを行い、実際の再計算は一切行わない。[`ComputeGraph::get`]
+//!   が「未再計算な祖先だけ」をトポロジカル順に各 1 回再計算する。glitch-free に
+//!   なる理由は `recomputation.rs` に書いた。
 //!
-//! ## 既存機構の再利用 vs 内製
+//! ## 部品の分担
 //!
-//! - **再利用: 循環検出・キー重複・未宣言依存の検証、トポロジカル順序の
-//!   計算。** [`ComputeGraphBuilder::freeze`] は依存キー列と `(依存元, 依存先)`
-//!   の辺列を [`crate::Graph::from_edges`] に渡すだけで、キー重複
-//!   ([`crate::GraphError::DuplicateKey`])・未宣言依存への辺
-//!   ([`crate::GraphError::UnknownEndpoint`]) の検証がそのまま手に入る。
-//!   続けて [`crate::Graph::topological_sort`] を呼べば、循環検出
-//!   ([`crate::CycleError`]、循環パスつき) とトポロジカル順序の計算を
-//!   1 回で済ませられる。これは `reactive-cells` の `Engine::new` が
-//!   `graphite::Graph` へ依存グラフを射影して同じ2操作に委譲しているのと
-//!   全く同じパターンであり、車輪の再発明を避けられる。
-//! - **内製: 依存元の値の保持・位置引数への変換・dirty 集合の管理。**
-//!   `crate::Graph<N, E, K>` はノード値 `N` を1種類の型に固定する設計
-//!   (`docs/graph_design_sketches.md` 決定1/決定2 をそのまま輸入したもの)
-//!   であり、「入力ノードは値のみ・計算ノードは依存キー列+関数を持つ」という
-//!   異種混合のノードは表現できない。加えて評価時に依存値を**宣言順の
-//!   位置引数**として渡す必要があり、`Graph` の `in_neighbors`/`out_neighbors`
-//!   は順序を保証しない (内部実装が `petgraph` の近傍イテレータに委譲して
-//!   いるため)。そのため各計算ノードの依存キー列は `ComputeGraph` 側に
-//!   `Vec<String>` として直接持たせ、dirty 集合の管理・評価も `ComputeGraph`
-//!   が内製する。「再利用できる部分は再利用し、既存の型に無理に押し込むと
-//!   歪みが生じる部分は内製する」という判断そのもの。
+//! - 計算ノード表 (`node_table.rs`) — キーからノード種別・依存キー列・計算を引く
+//! - 依存構造 (`dependency_structure.rs`) — 凍結時に検証して確定した依存グラフと
+//!   トポロジカル位置。既存の [`crate::Graph`] を再利用する範囲もここに書いた
+//! - 評価状態 (`evaluation_state.rs`) — 現在値と未再計算集合。可変なのはここだけ
+//! - 再計算器 (`recomputation.rs`) — 上の3つを借りて再計算を1回分実行する
 
 mod builder;
 mod dependency_structure;
 mod error;
+mod evaluation_state;
 mod node_kind;
 mod node_table;
+mod recomputation;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 pub use builder::ComputeGraphBuilder;
 pub use error::ComputeGraphError;
 
 use dependency_structure::依存構造;
+use evaluation_state::評価状態;
 use node_table::{キーの照会結果, 計算ノード表};
+use recomputation::再計算器;
 
 /// 遅延実行・差分再計算する計算グラフ (モジュール doc 参照)。
 ///
-/// 構築後は依存構造 (どのノードがどのノードに依存するか) は不変。可変なのは
-/// 「今の値」と「dirty (未計算/古い) かどうか」の2つだけ (`reactive-cells`
-/// の `Engine` が不変な依存グラフ + 可変な値ストアを分けるのと同じ整理、
-/// `docs/graph_design_sketches.md` 決定2)。
+/// 構築後は計算ノード表と依存構造 (どのノードがどのノードに依存するか) が不変で、
+/// 可変なのは評価状態 (今の値と、未再計算かどうか) だけ。
 pub struct ComputeGraph<V> {
     ノード表: 計算ノード表<V>,
-    /// 現在の値。入力ノードは常に存在する。計算ノードは一度でも評価されると
-    /// エントリができ、以後 dirty になっても値は残ったまま (次に
-    /// [`Self::get`] されるまでの間、古い値として参照可能だが `dirty` が
-    /// `true` の間は [`Self::get`] 経由でしか読めないので古い値が漏れることは
-    /// ない)。
-    values: HashMap<String, V>,
-    /// 計算ノードのうち、依存元の変更以降まだ再評価していないもの (未評価の
-    /// 初期状態を含む)。入力ノードは決してこの集合に入らない
-    /// (値は直接書き込まれるので「古い」という概念がない)。
-    dirty: HashSet<String>,
-    /// 依存構造そのもの (dirty 伝播とトポロジカル位置の問い合わせ専用。評価時の
-    /// 位置引数の並びは計算ノード表の依存キー列が真実であり、こちらは使わない —
-    /// モジュール doc 「既存機構の再利用 vs 内製」参照)。
     依存構造: 依存構造,
+    評価状態: 評価状態<V>,
 }
 
 impl<V> ComputeGraph<V> {
@@ -113,22 +85,28 @@ impl<V> ComputeGraph<V> {
     }
 
     /// 凍結を通った部品から計算グラフを組み立てる、この型の唯一の私有
-    /// コンストラクタ。全ての計算ノードは未再計算の状態で始まる。
+    /// コンストラクタ。全ての計算ノードは未再計算の状態で始まる — 「遅延:
+    /// [`Self::get`] するまで何も計算しない」がこの初期状態そのもの。
     pub(in crate::compute) fn 部品から組み立てる(
         ノード表: 計算ノード表<V>,
         依存構造: 依存構造,
         入力値: HashMap<String, V>,
     ) -> Self {
-        let dirty = ノード表.計算ノードのキー列().cloned().collect();
+        let 評価状態 = 評価状態::入力値と未再計算のキー列から生成する(
+            入力値,
+            ノード表
+                .計算ノードのキー列()
+                .cloned()
+                .collect::<Vec<String>>(),
+        );
         Self {
             ノード表,
-            values: 入力値,
-            dirty,
             依存構造,
+            評価状態,
         }
     }
 
-    /// `key` の現在値を返す。dirty な祖先 (`key` 自身を含む) だけを
+    /// `key` の現在値を返す。未再計算な祖先 (`key` 自身を含む) だけを
     /// トポロジカル順に各1回再計算してから返す (pull 型の遅延評価)。
     ///
     /// # Panics
@@ -139,12 +117,17 @@ impl<V> ComputeGraph<V> {
             self.ノード表.キーを含むか(key),
             "get: 未知のキーです: {key:?}"
         );
-        self.recompute_if_needed(key);
-        &self.values[key]
+        再計算器::部品を借りて始める(
+            &self.ノード表,
+            &self.依存構造,
+            &mut self.評価状態,
+        )
+        .必要なら実行する(key);
+        self.評価状態.現在値(key)
     }
 
     /// 入力ノード `key` に新しい値を書き込み、影響を受ける計算ノードを
-    /// dirty にする (再計算そのものは行わない — 差分は「書き込み + dirty
+    /// 未再計算にする (再計算そのものは行わない — 差分は「書き込み + 未再計算印の
     /// 伝播」のみで完結し、実際の再計算は次の [`Self::get`] まで遅延する)。
     ///
     /// # Panics
@@ -163,72 +146,9 @@ impl<V> ComputeGraph<V> {
             キーの照会結果::入力ノード => {}
         }
 
-        // 影響範囲 (keyを含む) をreachable_fromで絞り、key自身を除いた
-        // 影響先だけをdirtyにする (keyの新しい値は直接書き込むので
-        // 「再計算が必要」ではない)。
-        let affected: Vec<String> = self.依存構造.影響を受けるキー列(key);
-
-        self.values.insert(key.to_string(), value);
-        for affected_key in affected {
-            if affected_key != key {
-                self.dirty.insert(affected_key);
-            }
-        }
-    }
-
-    /// `key` が dirty なら、その dirty な祖先 (`key` 自身を含む) をすべて
-    /// トポロジカル順に評価し、`dirty` から取り除く。`key` が既に clean なら
-    /// 何もしない (このグラフの不変条件: clean なノードの依存は全て clean —
-    /// [`Self::set_input`] が入力の変更と同時にその descendant 全体を dirty
-    /// 化するので、ある依存が dirty になった瞬間そのノードも必ず一緒に
-    /// dirty 化されている。よって clean なノードに触れた時点でその祖先を
-    /// 遡る必要はない)。
-    fn recompute_if_needed(&mut self, key: &str) {
-        if !self.dirty.contains(key) {
-            return;
-        }
-
-        let mut to_eval: Vec<String> = Vec::new();
-        let mut seen: HashSet<String> = HashSet::new();
-        self.collect_dirty_closure(key, &mut seen, &mut to_eval);
-
-        to_eval.sort_by_key(|k| self.依存構造.トポロジカル位置(k));
-
-        for k in to_eval {
-            self.evaluate(&k);
-        }
-    }
-
-    /// `key` から依存を遡って dirty な祖先集合 (`key` 自身を含む) を集める。
-    /// `seen` は多重経路 (ダイヤモンド依存) での重複走査を防ぐメモ化集合。
-    /// clean なノードに到達したら (上の不変条件により) それ以上遡らない。
-    fn collect_dirty_closure(&self, key: &str, seen: &mut HashSet<String>, out: &mut Vec<String>) {
-        if !seen.insert(key.to_string()) {
-            return;
-        }
-        if !self.dirty.contains(key) {
-            return;
-        }
-        for dep in self.ノード表.依存キー列(key) {
-            self.collect_dirty_closure(dep, seen, out);
-        }
-        out.push(key.to_string());
-    }
-
-    /// `key` (計算ノードであるはず) を評価し、値を書き込んで clean にする。
-    fn evaluate(&mut self, key: &str) {
-        let args: Vec<&V> = self
-            .ノード表
-            .依存キー列(key)
-            .iter()
-            .map(|dep| &self.values[dep])
-            .collect();
-        let new_value = match self.ノード表.依存値から計算する(key, &args) {
-            Some(value) => value,
-            None => return,
-        };
-        self.values.insert(key.to_string(), new_value);
-        self.dirty.remove(key);
+        let 影響先 = self.依存構造.影響を受けるキー列(key);
+        self.評価状態
+            .入力値を書き込んで影響先を未再計算にする(key, value, 影響先);
     }
 }
 
@@ -237,6 +157,7 @@ mod tests {
     use super::*;
     use crate::GraphError;
     use std::cell::RefCell;
+    use std::collections::HashSet;
     use std::rc::Rc;
 
     /// `key` の評価回数を数えるカウンタ付きの計算ノードを積む。
