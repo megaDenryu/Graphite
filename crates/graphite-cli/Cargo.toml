@@ -2,7 +2,7 @@
 name = "graphite-cli"
 version = "0.1.0"
 edition = "2021"
-description = "Graphite schema から通常のRustソースを生成する道具。cargo graphite generate の実体であり、xtask も同じ生成コアを使う"
+description = "Graphite schema から通常のRustソースを生成する道具。cargo graphite generate の実体であり、xtask も同じ生成の中核を使う"
 
 [[bin]]
 name = "cargo-graphite"

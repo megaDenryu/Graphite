@@ -52,7 +52,8 @@ impl PackageRoot {
         Ok(Self { path, tree })
     }
 
-    /// 生成コアへ渡す走査対象。抽出・計画・検査は `generate`・`verify` が行う。
+    /// 生成の中核へ渡す走査対象。schema宣言の抽出・生成計画・検査は
+    /// `generate`・`verify` が行う。
     pub fn generation_tree(&self) -> &GenerationTree {
         &self.tree
     }

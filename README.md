@@ -214,8 +214,9 @@ schema を変えて生成し忘れると、指紋が合わず通常の `cargo bu
 ## 導入方法
 
 crates.io へは未公開です。`crates/graphite/Cargo.toml` に `license` フィールドが無く、
-`cargo publish` の要求を満たしません。下記のライセンスの状態を先に読んでください。
-そのため、いずれの使い方でもこのリポジトリを clone するか Git 依存で参照します。
+`cargo publish` の要求を満たさないためです。そのため、いずれの使い方でもこの
+リポジトリを clone するか Git 依存で参照します。ライセンスの状態は下記の
+「ライセンス」に書いてあるので、使う前に読んでください。
 
 ### schema を使わない場合
 
@@ -230,7 +231,8 @@ graphite = { git = "https://github.com/megaDenryu/Graphite" }
 ### schema を使う場合
 
 `graph_schema!` は実装を展開せず、生成された通常の Rust ファイルとの指紋の一致を
-検査します。そのため、生成器を1つ入れる必要があります。
+検査します。そのため、生成器を1つ入れる必要があります。任意の作業ディレクトリで
+実行します。
 
 ```powershell
 git clone https://github.com/megaDenryu/Graphite

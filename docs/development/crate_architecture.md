@@ -12,7 +12,7 @@
 crates/graphite/         # ランタイムクレート。利用者が唯一 depend するクレート
 crates/graphite-codegen/ # schemaの構文解析・検証・指紋・Rust生成を担う純粋層
 crates/graphite-macros/  # コンパイル時検証・指紋照合とgraph!/flow!を担うproc-macroクレート
-crates/graphite-cli/     # 生成コア(宣言の探索・生成計画・ファイルの読み書きと差分検査)と cargo-graphite バイナリ
+crates/graphite-cli/     # 生成の中核(宣言の探索・生成計画・ファイルの読み書きと差分検査)と cargo-graphite バイナリ
 xtask/                   # Graphite リポジトリ自身の開発用入口。全パッケージの生成と、文書参照と索引の検査(check-docs)
 ```
 

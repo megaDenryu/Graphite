@@ -14,7 +14,8 @@
 //! schema の公開APIは通常の Rust ファイルとして生成する。`graph_schema!`
 //! は宣言を検証して生成ファイルの指紋と照合するだけで、型と実装を展開しない
 //! (規約は `docs/code_generation.md`)。構文解析・検証・生成は
-//! `graphite-codegen` にあり、ファイルの読み書きは `xtask` が行う。
+//! `graphite-codegen` にあり、ファイルの読み書きは `graphite-cli` と、それを
+//! 呼ぶ `xtask` が行う。
 //!
 //! 設計の一次資料:
 //! - `../../../Bullet/docs/rust_graph_extension_sketch.md`

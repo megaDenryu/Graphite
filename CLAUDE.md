@@ -32,7 +32,7 @@ Graphite の設計判断のほとんどはここで既に検討済みです。�
 crates/graphite/         # ランタイムクレート。利用者が唯一 depend するクレート
 crates/graphite-codegen/ # schemaの構文解析・検証・指紋・Rust生成を担う純粋層
 crates/graphite-macros/  # コンパイル時検証・指紋照合と graph!/flow! を担うproc-macroクレート
-crates/graphite-cli/     # 生成コア(宣言の探索・生成計画・読み書きと差分検査)と cargo-graphite バイナリ
+crates/graphite-cli/     # 生成の中核(宣言の探索・生成計画・読み書きと差分検査)と cargo-graphite バイナリ
 xtask/                   # Graphite リポジトリ自身の開発用入口。全パッケージの生成と文書検査
 ```
 
@@ -48,7 +48,8 @@ xtask/                   # Graphite リポジトリ自身の開発用入口。�
 `cargo xtask generate`である。この2つで違うのは対象にするパッケージの数だけであり
 (前者は実行した場所のパッケージ1つ、後者は`crates/*`と`examples/*`の全部)、
 どちらも1パッケージにつき1つの`GenerationTree`をパッケージルートを基準に作る。
-抽出・生成計画・書き込み・差分検査は`graphite-cli`の`GenerationTree`を通して共有する。
+schema宣言の抽出・生成計画・書き込み・差分検査は`graphite-cli`の`GenerationTree`を
+通して共有する。
 生成ファイルの案内コメントと指紋エラーの文言を入口ごとに書き分けてはならない。
 書き分けると、一方が書いたファイルをもう一方が古いと判定する。
 
@@ -76,10 +77,17 @@ cargo xtask check-docs
 # 外部crateからの生成経路 (verification/external-crate) を実走で検査
 cargo xtask check-external
 
-# 外部crate向けの生成器を入れる (利用者が行う手順。開発中は cargo run で足りる)
+# 外部crate向けの生成器を入れる (利用者が行う手順)。リポジトリルートで実行する
 cargo install --path crates/graphite-cli
+
+# 入れた生成器を使う。生成したい外部パッケージのディレクトリへ移動して実行する
 cargo graphite generate [--check]
 ```
+
+`cargo graphite` はリポジトリルートでは動かない。ルートの `Cargo.toml` は
+`[package]` を持たないワークスペースの定義であり、生成の対象になるパッケージでは
+ないためである。Graphite の開発中に外部crateからの経路を動かして確かめるときは、
+`cargo install` を挟まずに `cargo xtask check-external` を使う。
 
 **ビルドコマンドは必ず** `cargo build 2> build_errors.txt; Get-Content build_errors.txt -Head 50`
 **の形で実行する。** 素の `cargo build` を使うと大量の警告で出力が埋まってレビュー

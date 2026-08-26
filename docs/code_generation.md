@@ -34,7 +34,9 @@ graphite::graph_schema! {
 
 ## 生成コマンド
 
-生成の入口は2つある。`generate`は全宣言を読み、期待する生成ファイルを更新する。`generate --check`はファイルを書き換えず、生成ファイルの不足と差分をエラーにする。どちらの入口でも意味は同じである。
+生成の入口は2つある。外部crate向けの`cargo graphite generate`と、Graphite自身の開発用の`cargo xtask generate`である。
+
+どちらの入口も`generate`と`generate --check`の2つの動作を持ち、動作の意味は入口によらず同じである。`generate`は全宣言を読み、期待する生成ファイルを更新する。`generate --check`はファイルを書き換えず、生成ファイルの不足と差分をエラーにする。
 
 **外部crateから使う場合。** 一度だけ次のコマンドで生成器を入れる。
 
