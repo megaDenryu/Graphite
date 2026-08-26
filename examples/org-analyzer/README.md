@@ -303,13 +303,37 @@ src/
   lib.rs      - モジュール公開 (mainとtestsの両方から使うためlib+bin構成)
   schema.rs   - graph_schema! によるスキーマ定義
   dataset.rs  - LCGベースの決定的合成データ生成器 (異常注入モード含む)
-  analysis.rs - summary / chain / anomalies のロジック
+    name_pool.rs        - 姓・名・部署名・プロジェクト名などの語彙表
+    lcg.rs              - 線形合同法の擬似乱数生成器
+    distribution.rs     - grade・兼務数の偏った分布
+    element_id.rs       - 通し番号から要素キーの綴りを作る
+    generated_org.rs    - 生成結果の型 (組織図と注入異常の記録)
+    anomaly_injection.rs - 既知の異常を辺集合へ埋め込む
+  analysis.rs - summary / chain / anomalies の公開面
+    summary.rs          - 部署別・grade別・プロジェクト別の集計
+    span_of_control.rs  - 直属部下数の統計
+    management_chain.rs - 上司を根まで辿る
+    anomaly.rs          - 構造異常の報告一式
+    boss_anomaly.rs     - 相互上司・循環・部署跨ぎの検出
+    project_anomaly.rs  - 無人・スポンサー無しプロジェクトの検出
   reorg.rs    - 組織改編シミュレーション ("不変+再構築"パターン)
-  report.rs   - 各サブコマンドの表示整形
-  main.rs     - CLIエントリポイント (std::env::argsで自作パース)
+    reorg_report.rs     - reorg の結果の型
+  report.rs   - 各サブコマンドの表示整形の公開面
+    summary.rs / chain.rs / anomaly.rs / reorg.rs - サブコマンドごとの表示
+  options.rs  - コマンドライン引数の解釈と使い方の表示
+  main.rs     - CLIエントリポイント (サブコマンドの振り分け)
 tests/
-  integration.rs - anomalies/chain/reorg/summaryの統合テスト
+  anomaly_detection.rs   - 注入した異常が検出されること
+  dataset_determinism.rs - シードに対する決定性
+  management_chain.rs    - chain の循環打ち切り・停止・未知キー
+  reorg.rs               - 再配置と再構築 (成功パス・violationパス)
+  summary_statistics.rs  - summary の統計値の健全性
 ```
+
+`dataset.rs` (143行) と `reorg.rs` (117行) はコード行で100行を超える。どちらも
+「1つの流れを最後まで通す」関数を1本持っており、途中で切ると生成途中・再構築
+途中の中間状態を外へ晒す断片になるため、切り出せる部分だけを分けたうえで
+流れ自体は統合している (各ファイル冒頭のコメント参照)。
 
 ## Graphite APIで不足を感じた点 (フェーズ5の種として)
 

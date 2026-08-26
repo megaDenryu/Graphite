@@ -4,6 +4,27 @@
 //! 同じ `seed` を渡せば常に同じ組織データが再現される (テスト・デモの再現性の
 //! ため)。`inject_anomalies` を立てると、構造異常検出コマンド (`anomalies`)
 //! が拾うべき既知の異常を意図的に埋め込む。
+//!
+//! 注意: `generate` は1つのシードから1つの組織データを合成しきる1本の流れで
+//! あり、コード行で100行を超える。途中で切ると、社員一覧・部署割当・4種の辺の
+//! 下書きという「生成途中の中間状態」を外へ晒す断片になる。そのため語彙表
+//! (`name_pool`)・擬似乱数 (`lcg`)・分布 (`distribution`)・キーの綴り
+//! (`element_id`)・結果の型 (`generated_org`)・異常の注入
+//! (`anomaly_injection`) を分けたうえで、生成の流れ自体は1つに統合している。
+
+mod anomaly_injection;
+mod distribution;
+mod element_id;
+mod generated_org;
+mod lcg;
+mod name_pool;
+
+use distribution::{weighted_assignment_count, weighted_grade};
+use element_id::{department_id, employee_id, project_id};
+use lcg::Lcg;
+use name_pool::{DEPARTMENT_NAMES, GIVEN_NAMES, PROJECT_NAMES, ROLES, SURNAMES, TITLES_BY_GRADE};
+
+pub use generated_org::{AnomalyPlan, GeneratedOrg};
 
 use crate::schema::{
     Assigned, AssignedEdge, BelongsTo, Boss, BossEdge, Department, DepartmentId, Employee,
@@ -19,190 +40,6 @@ pub const PROJECT_COUNT: usize = 15;
 
 /// 管理職とみなす最低 grade (係長相当以上)。`analysis.rs` からも参照する。
 pub const MANAGER_GRADE_THRESHOLD: u8 = 3;
-
-const SURNAMES: &[&str] = &[
-    "佐藤",
-    "鈴木",
-    "高橋",
-    "田中",
-    "伊藤",
-    "渡辺",
-    "山本",
-    "中村",
-    "小林",
-    "加藤",
-    "吉田",
-    "山田",
-    "佐々木",
-    "山口",
-    "松本",
-    "井上",
-    "木村",
-    "林",
-    "斎藤",
-    "清水",
-    "山崎",
-    "森",
-    "池田",
-    "橋本",
-    "阿部",
-    "石川",
-    "前田",
-    "藤田",
-    "後藤",
-    "岡田",
-];
-
-const GIVEN_NAMES: &[&str] = &[
-    "翔太", "陽菜", "大輝", "結衣", "健太", "美咲", "拓也", "彩", "亮", "真央", "悠斗", "沙織",
-    "直樹", "花子", "健一", "誠", "由美", "浩二", "麻衣", "隆", "恵子", "淳", "千尋", "康平",
-    "夏美", "雄大", "里奈", "俊介", "和也", "泰輔",
-];
-
-/// 8 要素固定 (`DEPARTMENT_COUNT` と一致)。
-const DEPARTMENT_NAMES: [&str; DEPARTMENT_COUNT] = [
-    "営業部",
-    "開発部",
-    "人事部",
-    "経理部",
-    "マーケティング部",
-    "総務部",
-    "法務部",
-    "カスタマーサポート部",
-];
-
-/// 15 要素固定 (`PROJECT_COUNT` と一致)。
-const PROJECT_NAMES: [&str; PROJECT_COUNT] = [
-    "次世代基幹システム刷新",
-    "モバイルアプリリニューアル",
-    "顧客管理システム移行",
-    "海外市場拡販",
-    "新卒採用強化",
-    "経費精算自動化",
-    "ブランド刷新キャンペーン",
-    "オフィス移転",
-    "コンプライアンス体制整備",
-    "サポート窓口AI化",
-    "サプライチェーン最適化",
-    "社内データ基盤構築",
-    "新製品ローンチ",
-    "働き方改革推進",
-    "セキュリティ監査対応",
-];
-
-const TITLES_BY_GRADE: [&str; 5] = ["一般社員", "主任", "係長", "課長", "部長"];
-
-const ROLES: &[&str] = &[
-    "開発",
-    "設計",
-    "PM",
-    "QA",
-    "要件定義",
-    "運用",
-    "企画",
-    "デザイン",
-    "調整",
-    "レビュー",
-];
-
-/// Numerical Recipes 系の定数を使った線形合同法 (LCG)。
-/// `state_{n+1} = state_n * A + C (mod 2^64)`。外部乱数クレート禁止という
-/// 制約のもとで「同じ seed なら同じ組織になる」再現性だけを目的にした最小実装
-/// であり、暗号用途などの品質は求めていない。
-struct Lcg {
-    state: u64,
-}
-
-impl Lcg {
-    fn new(seed: u64) -> Self {
-        // seed=0 だと初期状態が単調になりやすいので撹拌しておく。
-        Self {
-            state: seed ^ 0x9E37_79B9_7F4A_7C15,
-        }
-    }
-
-    fn next_u64(&mut self) -> u64 {
-        self.state = self
-            .state
-            .wrapping_mul(6_364_136_223_846_793_005)
-            .wrapping_add(1_442_695_040_888_963_407);
-        self.state
-    }
-
-    /// `[0, n)` の一様乱数。上位ビットを使うことで LCG 下位ビットの周期性の
-    /// 影響を避ける。
-    fn next_range(&mut self, n: usize) -> usize {
-        debug_assert!(n > 0);
-        ((self.next_u64() >> 33) % n as u64) as usize
-    }
-
-    /// `[lo, hi]` (両端含む) の一様乱数。
-    fn next_range_inclusive(&mut self, lo: i64, hi: i64) -> i64 {
-        lo + self.next_range((hi - lo + 1) as usize) as i64
-    }
-
-    /// `numerator / denominator` の確率で `true`。
-    fn chance(&mut self, numerator: usize, denominator: usize) -> bool {
-        self.next_range(denominator) < numerator
-    }
-}
-
-/// 意図的に注入した構造異常の「正解」記録。`anomalies` コマンドの検出結果と
-/// 突き合わせるテスト用データ。
-#[derive(Debug, Clone)]
-pub struct AnomalyPlan {
-    /// 相互上司ペア (A の boss が B かつ B の boss が A)。
-    pub mutual_pair: (EmployeeId, EmployeeId),
-    /// 上司関係の循環 (3人。`cycle[0]` の boss は `cycle[1]`、
-    /// `cycle[1]` の boss は `cycle[2]`、`cycle[2]` の boss は `cycle[0]`)。
-    pub cycle: Vec<EmployeeId>,
-    /// どの部署からもスポンサーされないよう強制したプロジェクト。
-    pub sponsorless_project: ProjectId,
-    /// 誰もアサインされないよう強制したプロジェクト。
-    pub unstaffed_project: ProjectId,
-}
-
-/// 生成された組織データ一式。
-pub struct GeneratedOrg {
-    pub chart: OrgChart::Graph,
-    /// `inject_anomalies` が有効なときだけ `Some`。
-    pub anomaly_plan: Option<AnomalyPlan>,
-}
-
-fn employee_id(index: usize) -> EmployeeId {
-    EmployeeId(format!("E{:03}", index + 1))
-}
-
-fn department_id(index: usize) -> DepartmentId {
-    DepartmentId(format!("D{:02}", index + 1))
-}
-
-fn project_id(index: usize) -> ProjectId {
-    ProjectId(format!("P{:02}", index + 1))
-}
-
-/// grade 分布 (1〜5)。現場の人数が多いピラミッド型組織を模す。
-fn weighted_grade(rng: &mut Lcg) -> u8 {
-    let roll = rng.next_range(100);
-    match roll {
-        0..=39 => 1,
-        40..=64 => 2,
-        65..=84 => 3,
-        85..=94 => 4,
-        _ => 5,
-    }
-}
-
-/// 1人あたりの兼務プロジェクト数 (0〜3)。
-fn weighted_assignment_count(rng: &mut Lcg) -> usize {
-    let roll = rng.next_range(100);
-    match roll {
-        0..=29 => 0,
-        30..=69 => 1,
-        70..=89 => 2,
-        _ => 3,
-    }
-}
 
 /// シードから組織データを合成する。
 ///
@@ -320,41 +157,11 @@ pub fn generate(seed: u64, inject_anomalies: bool) -> GeneratedOrg {
 
     // --- 異常注入 (--inject-anomalies) --------------------------------
     let anomaly_plan = if inject_anomalies {
-        // 1. 相互上司ペア: E001 <-> E002 (両者の既存 boss 辺を上書き)
-        let mutual_a = employee_id(0);
-        let mutual_b = employee_id(1);
-        boss_edges.retain(|(from, _, _)| *from != mutual_a && *from != mutual_b);
-        boss_edges.push((mutual_a.clone(), mutual_b.clone(), BossEdge { since: 2021 }));
-        boss_edges.push((mutual_b.clone(), mutual_a.clone(), BossEdge { since: 2020 }));
-
-        // 2. 上司循環: E003 -> E004 -> E005 -> E003
-        let cycle: Vec<EmployeeId> = vec![employee_id(2), employee_id(3), employee_id(4)];
-        boss_edges.retain(|(from, _, _)| !cycle.contains(from));
-        for k in 0..cycle.len() {
-            let next = cycle[(k + 1) % cycle.len()].clone();
-            boss_edges.push((
-                cycle[k].clone(),
-                next,
-                BossEdge {
-                    since: 2019 + k as i32,
-                },
-            ));
-        }
-
-        // 3. スポンサー無しプロジェクト強制: P01 を指す sponsors 辺を全て除去
-        let sponsorless_project = project_id(0);
-        sponsors_edges.retain(|(_, p)| *p != sponsorless_project);
-
-        // 4. 無人プロジェクト強制: P02 を指す assigned 辺を全て除去
-        let unstaffed_project = project_id(1);
-        assigned_edges.retain(|(_, p, _)| *p != unstaffed_project);
-
-        Some(AnomalyPlan {
-            mutual_pair: (mutual_a, mutual_b),
-            cycle,
-            sponsorless_project,
-            unstaffed_project,
-        })
+        Some(anomaly_injection::inject_anomalies(
+            &mut boss_edges,
+            &mut assigned_edges,
+            &mut sponsors_edges,
+        ))
     } else {
         None
     };

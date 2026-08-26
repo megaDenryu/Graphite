@@ -18,34 +18,20 @@
 //! 「可変 API が存在しないので、参照が壊れたら気づかず放置される」のでは
 //! なく「再構築 = 一括検証」なので**壊れていれば必ずその場で `Err` になる**、
 //! という Graphite の設計意図を実地で確認できる。
+//!
+//! 注意: `simulate_reorg` は「全要素をスカラーへ展開し、対象部署を除いて
+//! 丸ごと組み直す」1本の流れであり、コード行で100行を超える。途中で切ると
+//! 再構築途中のノード集合・辺集合という中間状態を外へ晒す断片になるため、
+//! 結果の型 (`reorg_report`) だけを分け、流れ自体は1つに統合している。
+
+mod reorg_report;
+
+pub use reorg_report::{ReorgOutcome, ReorgReport};
 
 use crate::schema::{
     Assigned, AssignedEdge, AssignedId, BelongsTo, BelongsToId, Boss, BossEdge, BossId, Department,
     DepartmentId, Employee, EmployeeId, OrgChart, Project, ProjectId, Sponsors, SponsorsId,
 };
-
-/// `reorg` コマンドの結果。
-///
-/// `OrgChart` は `Debug` を派生していない (schema struct は素の Rust 可視性
-/// 規則のためマクロが derive を付けていない) ので、この struct 自体にも
-/// `#[derive(Debug)]` は付けられない。表示は `report.rs::print_reorg` が
-/// 個別に行う。
-pub struct ReorgReport {
-    pub removed_department: DepartmentId,
-    pub removed_department_name: String,
-    /// 再配置された社員 `(社員キー, 移動先部署キー)` の一覧
-    /// (決定的な順序: 元の所属を社員キー順にソートしてラウンドロビンで割当)。
-    pub reassigned: Vec<(EmployeeId, DepartmentId)>,
-    pub outcome: ReorgOutcome,
-}
-
-pub enum ReorgOutcome {
-    /// 再構築に成功した新しい組織図。
-    Success(Box<OrgChart::Graph>),
-    /// `freeze` 検証が検出した違反。
-    Violated(OrgChart::Violation),
-}
-
 /// 指定した部署を廃止するシミュレーションを実行する。
 /// 部署キーが存在しなければ `None`。
 pub fn simulate_reorg(org: &OrgChart::Graph, target: &DepartmentId) -> Option<ReorgReport> {
