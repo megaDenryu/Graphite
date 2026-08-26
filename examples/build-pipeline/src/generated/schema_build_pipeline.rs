@@ -7,9 +7,12 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    17042905339929178511u64, 8905530070458688262u64, 6474964121283827073u64,
-    17604770973997348229u64,
+    12456524193842528639u64, 12876387633989192666u64, 15124353700391347869u64,
+    1329001106070162161u64,
 ];
+/// `Consumes` 辺の公開ID。
+///
+/// 宣言: `src/schema.rs` の `edge Consumes = (task: Task) -> (artifact: Artifact) where unique pair`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConsumesId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -32,6 +35,9 @@ pub struct __ProducesNamedPosition(__ProducesInternalPosition, u64);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __ConsumesNamedPosition(__ConsumesInternalPosition, u64);
+/// 構築時に組み立てる `Produces` 辺の値。
+///
+/// 宣言: `src/schema.rs` の `edge Produces(id: ProducesId) = (task: Task) -> (artifact: Artifact) where unique pair`
 #[derive(Clone, PartialEq)]
 pub struct Produces {
     pub task: TaskId,
@@ -52,6 +58,9 @@ impl std::fmt::Debug for Produces {
         f.write_str(stringify!(Produces))
     }
 }
+/// 構築時に組み立てる `Consumes` 辺の値。
+///
+/// 宣言: `src/schema.rs` の `edge Consumes = (task: Task) -> (artifact: Artifact) where unique pair`
 #[derive(Clone, PartialEq)]
 pub struct Consumes {
     pub task: TaskId,
@@ -82,6 +91,9 @@ struct __ConsumesRecord {
     task: __TaskInternalPosition,
     artifact: __ArtifactInternalPosition,
 }
+/// 凍結時の図式適合検査が見つけた違反。
+///
+/// 宣言: `src/schema.rs` の `schema BuildPipeline`
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
@@ -174,6 +186,8 @@ impl std::fmt::Debug for Violation {
 impl std::error::Error for Violation {}
 /// 凍結済み図式グラフ。構築後の構造は不変で、ノード値と辺の積み荷だけを
 /// `&mut Graph` を要求する種別APIから更新できる。
+///
+/// 宣言: `src/schema.rs` の `schema BuildPipeline`
 pub struct Graph {
     __graphite_node_task: graphite::KeyedTable<TaskId, super::Task>,
     __graphite_node_artifact: graphite::KeyedTable<ArtifactId, super::Artifact>,
@@ -206,6 +220,8 @@ pub struct Graph {
 }
 impl Graph {
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `src/schema.rs` の `node Task(id: TaskId)`
     pub fn task_by_id<'graph>(&'graph self, id: &TaskId) -> Option<TaskRef<'graph>> {
         let internal_position = __TaskInternalPosition(
             self.__graphite_node_task.position(id)?,
@@ -216,14 +232,20 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `node Task(id: TaskId)`
     pub fn task_value_mut(&mut self, id: &TaskId) -> Option<&mut super::Task> {
         self.__graphite_node_task.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `src/schema.rs` の `node Task(id: TaskId)`
     pub fn task_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph TaskId> {
         self.__graphite_node_task.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `src/schema.rs` の `node Task(id: TaskId)`
     pub fn task_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = TaskRef<'graph>> + 'graph {
@@ -235,10 +257,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `src/schema.rs` の `node Task(id: TaskId)`
     pub fn task_len(&self) -> usize {
         self.__graphite_node_task.len()
     }
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `src/schema.rs` の `node Artifact(id: ArtifactId)`
     pub fn artifact_by_id<'graph>(
         &'graph self,
         id: &ArtifactId,
@@ -252,6 +278,8 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `node Artifact(id: ArtifactId)`
     pub fn artifact_value_mut(
         &mut self,
         id: &ArtifactId,
@@ -259,12 +287,16 @@ impl Graph {
         self.__graphite_node_artifact.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `src/schema.rs` の `node Artifact(id: ArtifactId)`
     pub fn artifact_ids<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = &'graph ArtifactId> {
         self.__graphite_node_artifact.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `src/schema.rs` の `node Artifact(id: ArtifactId)`
     pub fn artifact_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = ArtifactRef<'graph>> + 'graph {
@@ -276,10 +308,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `src/schema.rs` の `node Artifact(id: ArtifactId)`
     pub fn artifact_len(&self) -> usize {
         self.__graphite_node_artifact.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Produces(id: ProducesId) = (task: Task) -> (artifact: Artifact) where unique pair`
     pub fn produces_by_id<'graph>(
         &'graph self,
         id: &ProducesId,
@@ -290,12 +326,16 @@ impl Graph {
         })
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Produces(id: ProducesId) = (task: Task) -> (artifact: Artifact) where unique pair`
     pub fn produces_ids<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = &'graph ProducesId> {
         self.produces.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Produces(id: ProducesId) = (task: Task) -> (artifact: Artifact) where unique pair`
     pub fn produces_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = ProducesRef<'graph>> + 'graph {
@@ -307,10 +347,14 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Produces(id: ProducesId) = (task: Task) -> (artifact: Artifact) where unique pair`
     pub fn produces_len(&self) -> usize {
         self.produces.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Consumes = (task: Task) -> (artifact: Artifact) where unique pair`
     pub fn consumes_by_id<'graph>(
         &'graph self,
         id: &ConsumesId,
@@ -321,12 +365,16 @@ impl Graph {
         })
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Consumes = (task: Task) -> (artifact: Artifact) where unique pair`
     pub fn consumes_ids<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = &'graph ConsumesId> {
         self.consumes.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Consumes = (task: Task) -> (artifact: Artifact) where unique pair`
     pub fn consumes_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = ConsumesRef<'graph>> + 'graph {
@@ -338,6 +386,8 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Consumes = (task: Task) -> (artifact: Artifact) where unique pair`
     pub fn consumes_len(&self) -> usize {
         self.consumes.len()
     }
@@ -378,6 +428,8 @@ impl Graph {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `src/schema.rs` の `edge Produces(id: ProducesId) = (task: Task) -> (artifact: Artifact) where unique pair`
 #[derive(Clone, Copy)]
 pub struct ProducesRef<'graph> {
     graph: &'graph Graph,
@@ -433,6 +485,8 @@ impl<'graph> std::fmt::Debug for ProducesRef<'graph> {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `src/schema.rs` の `edge Consumes = (task: Task) -> (artifact: Artifact) where unique pair`
 #[derive(Clone, Copy)]
 pub struct ConsumesRef<'graph> {
     graph: &'graph Graph,
@@ -490,6 +544,8 @@ impl<'graph> std::fmt::Debug for ConsumesRef<'graph> {
     }
 }
 /// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+///
+/// 宣言: `src/schema.rs` の `schema BuildPipeline`
 pub struct Builder {
     __graphite_node_task: Vec<(TaskId, super::Task)>,
     __graphite_node_artifact: Vec<(ArtifactId, super::Artifact)>,
@@ -582,7 +638,9 @@ impl graphite::NamedGraphElement<Graph> for __TaskNamedPosition {
     }
 }
 impl BuildPipelineNode for super::Task {}
-///完成済みグラフ上の `Task` ノード個体。
+/// 完成済みグラフ上の `Task` ノード個体。
+///
+/// 宣言: `src/schema.rs` の `node Task(id: TaskId)`
 #[derive(Clone, Copy)]
 pub struct TaskRef<'graph> {
     graph: &'graph Graph,
@@ -609,6 +667,8 @@ impl<'graph> TaskRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Produces(id: ProducesId) = (task: Task) -> (artifact: Artifact) where unique pair`
     pub fn produces_as_task(self) -> impl Iterator<Item = ProducesRef<'graph>> + 'graph {
         let positions = self.graph.produces_from_index.get(self.internal_position.0);
         positions
@@ -619,7 +679,9 @@ impl<'graph> TaskRef<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Produces(id: ProducesId) = (task: Task) -> (artifact: Artifact) where unique pair`
     pub fn produces_try_between(
         self,
         other: ArtifactRef<'graph>,
@@ -644,7 +706,9 @@ impl<'graph> TaskRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::produces_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::produces_try_between`] を使う。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Produces(id: ProducesId) = (task: Task) -> (artifact: Artifact) where unique pair`
     pub fn produces_between(
         self,
         other: ArtifactRef<'graph>,
@@ -658,6 +722,8 @@ impl<'graph> TaskRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Consumes = (task: Task) -> (artifact: Artifact) where unique pair`
     pub fn consumes_as_task(self) -> impl Iterator<Item = ConsumesRef<'graph>> + 'graph {
         let positions = self.graph.consumes_from_index.get(self.internal_position.0);
         positions
@@ -668,7 +734,9 @@ impl<'graph> TaskRef<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Consumes = (task: Task) -> (artifact: Artifact) where unique pair`
     pub fn consumes_try_between(
         self,
         other: ArtifactRef<'graph>,
@@ -693,7 +761,9 @@ impl<'graph> TaskRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::consumes_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::consumes_try_between`] を使う。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Consumes = (task: Task) -> (artifact: Artifact) where unique pair`
     pub fn consumes_between(
         self,
         other: ArtifactRef<'graph>,
@@ -763,7 +833,9 @@ impl graphite::NamedGraphElement<Graph> for __ArtifactNamedPosition {
     }
 }
 impl BuildPipelineNode for super::Artifact {}
-///完成済みグラフ上の `Artifact` ノード個体。
+/// 完成済みグラフ上の `Artifact` ノード個体。
+///
+/// 宣言: `src/schema.rs` の `node Artifact(id: ArtifactId)`
 #[derive(Clone, Copy)]
 pub struct ArtifactRef<'graph> {
     graph: &'graph Graph,
@@ -790,6 +862,8 @@ impl<'graph> ArtifactRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Produces(id: ProducesId) = (task: Task) -> (artifact: Artifact) where unique pair`
     pub fn produces_as_artifact(
         self,
     ) -> impl Iterator<Item = ProducesRef<'graph>> + 'graph {
@@ -804,6 +878,8 @@ impl<'graph> ArtifactRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Consumes = (task: Task) -> (artifact: Artifact) where unique pair`
     pub fn consumes_as_artifact(
         self,
     ) -> impl Iterator<Item = ConsumesRef<'graph>> + 'graph {

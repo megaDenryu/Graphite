@@ -27,8 +27,10 @@ pub(crate) fn gen_undirected_edge_reference_type(
     let node_reference = edge.from_node.reference_ident();
     let node_position = edge.from_node.internal_position_ident();
     let endpoints_ident = Ident::new("endpoints", kind_span);
+    let 宣言元への参照 = &edge.宣言元への参照;
     quote! {
         /// 完成済みグラフ上の無向辺個体。
+        #宣言元への参照
         #[derive(Clone, Copy)]
         pub struct #reference<'graph> {
             graph: &'graph #graph_ident,

@@ -25,9 +25,11 @@ pub(crate) fn gen_role_traversal_method(
         EachSide::Source => &edge.index_field_ident,
         EachSide::Target => &edge.to_index_field_ident,
     };
+    let 宣言元への参照 = &edge.宣言元への参照;
     match cardinality {
         RoleCardinality::Exact => quote! {
             /// この役割に接続する唯一の辺を O(1)、追加確保なしで返す。
+            #宣言元への参照
             pub fn #method(self) -> #edge_reference<'graph> {
                 #edge_reference {
                     graph: self.graph,
@@ -37,6 +39,7 @@ pub(crate) fn gen_role_traversal_method(
         },
         RoleCardinality::Optional => quote! {
             /// この役割に接続する高々1本の辺を O(1)、追加確保なしで返す。
+            #宣言元への参照
             pub fn #method(self) -> Option<#edge_reference<'graph>> {
                 self.graph.#index.get(self.internal_position.0).copied()
                     .map(|internal_position| #edge_reference { graph: self.graph, internal_position })
@@ -45,6 +48,7 @@ pub(crate) fn gen_role_traversal_method(
         RoleCardinality::Multiple => quote! {
             /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
             /// 問い合わせ時に結果 `Vec` を確保しない。
+            #宣言元への参照
             pub fn #method(self) -> impl Iterator<Item = #edge_reference<'graph>> + 'graph {
                 let positions = self.graph.#index.get(self.internal_position.0);
                 positions.iter().copied().map(move |internal_position| #edge_reference {

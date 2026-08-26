@@ -7,11 +7,17 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    13973416088071532679u64, 8475457213188230478u64, 7792159078528778341u64,
-    122886907765868305u64,
+    7034005210616407275u64, 12841320114650562594u64, 10177239937494079517u64,
+    7054417621798112897u64,
 ];
+/// `人物` ノードの公開ID。
+///
+/// 宣言: `tests/schema_namespace.rs` の `node 人物`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct 人物Id(pub String);
+/// `関係` 辺の公開ID。
+///
+/// 宣言: `tests/schema_namespace.rs` の `edge 関係 = (始点: 人物) -[明細: 取引情報]-> (終点: 人物)`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct 関係Id(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -24,6 +30,9 @@ pub struct __人物NamedPosition(__人物InternalPosition, u64);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __関係NamedPosition(__関係InternalPosition, u64);
+/// 構築時に組み立てる `関係` 辺の値。
+///
+/// 宣言: `tests/schema_namespace.rs` の `edge 関係 = (始点: 人物) -[明細: 取引情報]-> (終点: 人物)`
 #[derive(Clone, PartialEq)]
 pub struct 関係 {
     pub 始点: 人物Id,
@@ -58,6 +67,9 @@ struct __関係Record {
     終点: __人物InternalPosition,
     明細: 取引情報,
 }
+/// 凍結時の図式適合検査が見つけた違反。
+///
+/// 宣言: `tests/schema_namespace.rs` の `schema 世界`
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
@@ -103,6 +115,8 @@ impl std::fmt::Debug for Violation {
 impl std::error::Error for Violation {}
 /// 凍結済み図式グラフ。構築後の構造は不変で、ノード値と辺の積み荷だけを
 /// `&mut Graph` を要求する種別APIから更新できる。
+///
+/// 宣言: `tests/schema_namespace.rs` の `schema 世界`
 pub struct Graph {
     __graphite_node_人物: graphite::KeyedTable<人物Id, super::人物>,
     関係: graphite::KeyedTable<関係Id, __関係Record>,
@@ -123,6 +137,8 @@ pub struct Graph {
 }
 impl Graph {
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `node 人物`
     pub fn 人物_by_id<'graph>(
         &'graph self,
         id: &人物Id,
@@ -136,14 +152,20 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `node 人物`
     pub fn 人物_value_mut(&mut self, id: &人物Id) -> Option<&mut super::人物> {
         self.__graphite_node_人物.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `node 人物`
     pub fn 人物_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph 人物Id> {
         self.__graphite_node_人物.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `node 人物`
     pub fn 人物_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = 人物Ref<'graph>> + 'graph {
@@ -155,10 +177,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `node 人物`
     pub fn 人物_len(&self) -> usize {
         self.__graphite_node_人物.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `edge 関係 = (始点: 人物) -[明細: 取引情報]-> (終点: 人物)`
     pub fn 関係_by_id<'graph>(
         &'graph self,
         id: &関係Id,
@@ -169,14 +195,20 @@ impl Graph {
         })
     }
     /// 辺の構造を保ったまま積み荷だけを可変借用する。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `edge 関係 = (始点: 人物) -[明細: 取引情報]-> (終点: 人物)`
     pub fn 関係_payload_mut(&mut self, id: &関係Id) -> Option<&mut 取引情報> {
         self.関係.get_mut(id).map(|record: &mut __関係Record| &mut record.明細)
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `edge 関係 = (始点: 人物) -[明細: 取引情報]-> (終点: 人物)`
     pub fn 関係_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph 関係Id> {
         self.関係.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `edge 関係 = (始点: 人物) -[明細: 取引情報]-> (終点: 人物)`
     pub fn 関係_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = 関係Ref<'graph>> + 'graph {
@@ -188,6 +220,8 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `edge 関係 = (始点: 人物) -[明細: 取引情報]-> (終点: 人物)`
     pub fn 関係_len(&self) -> usize {
         self.関係.len()
     }
@@ -228,6 +262,8 @@ impl Graph {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `tests/schema_namespace.rs` の `edge 関係 = (始点: 人物) -[明細: 取引情報]-> (終点: 人物)`
 #[derive(Clone, Copy)]
 pub struct 関係Ref<'graph> {
     graph: &'graph Graph,
@@ -291,6 +327,8 @@ impl<'graph> std::fmt::Debug for 関係Ref<'graph> {
     }
 }
 /// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+///
+/// 宣言: `tests/schema_namespace.rs` の `schema 世界`
 pub struct Builder {
     __graphite_node_人物: Vec<(人物Id, super::人物)>,
     関係: Vec<(関係Id, 関係)>,
@@ -394,7 +432,9 @@ impl 世界DefaultId for super::人物 {
     }
 }
 impl 世界Node for super::人物 {}
-///完成済みグラフ上の `人物` ノード個体。
+/// 完成済みグラフ上の `人物` ノード個体。
+///
+/// 宣言: `tests/schema_namespace.rs` の `node 人物`
 #[derive(Clone, Copy)]
 pub struct 人物Ref<'graph> {
     graph: &'graph Graph,
@@ -421,6 +461,8 @@ impl<'graph> 人物Ref<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `edge 関係 = (始点: 人物) -[明細: 取引情報]-> (終点: 人物)`
     pub fn 関係_as_始点(self) -> impl Iterator<Item = 関係Ref<'graph>> + 'graph {
         let positions = self.graph.関係_from_index.get(self.internal_position.0);
         positions
@@ -433,6 +475,8 @@ impl<'graph> 人物Ref<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `edge 関係 = (始点: 人物) -[明細: 取引情報]-> (終点: 人物)`
     pub fn 関係_as_終点(self) -> impl Iterator<Item = 関係Ref<'graph>> + 'graph {
         let positions = self.graph.関係_to_index.get(self.internal_position.0);
         positions
@@ -443,7 +487,9 @@ impl<'graph> 人物Ref<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `edge 関係 = (始点: 人物) -[明細: 取引情報]-> (終点: 人物)`
     pub fn 関係_try_between(
         self,
         other: 人物Ref<'graph>,
@@ -474,7 +520,9 @@ impl<'graph> 人物Ref<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::関係_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::関係_try_between`] を使う。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `edge 関係 = (始点: 人物) -[明細: 取引情報]-> (終点: 人物)`
     pub fn 関係_between(
         self,
         other: 人物Ref<'graph>,

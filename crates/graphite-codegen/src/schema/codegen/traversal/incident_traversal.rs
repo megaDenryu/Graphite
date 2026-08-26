@@ -11,8 +11,10 @@ pub(crate) fn gen_incident_traversal_method(edge: &EdgeInfo<'_>) -> TokenStream 
     let method = incident_method_ident(edge.kind);
     let edge_reference = edge.reference_ident();
     let index = &edge.index_field_ident;
+    let 宣言元への参照 = &edge.宣言元への参照;
     quote! {
         /// 接続辺を O(1) で参照し、追加確保なしで挿入順に走査する。
+        #宣言元への参照
         pub fn #method(self) -> impl Iterator<Item = #edge_reference<'graph>> + 'graph {
             let positions = self.graph.#index.get(self.internal_position.0);
             positions.iter().copied().map(move |internal_position| #edge_reference {

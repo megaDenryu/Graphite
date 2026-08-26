@@ -7,19 +7,37 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    17937605584944403987u64, 9886741467238815808u64, 10304067669742668997u64,
-    12432523673901148329u64,
+    1050681397304745628u64, 14071316291043229305u64, 7621196281672177634u64,
+    4991461474677713358u64,
 ];
+/// `NodeA` ノードの公開ID。
+///
+/// 宣言: `tests/role_query.rs` の `node NodeA`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NodeAId(pub String);
+/// `NodeB` ノードの公開ID。
+///
+/// 宣言: `tests/role_query.rs` の `node NodeB`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NodeBId(pub String);
+/// `Unconstrained` 辺の公開ID。
+///
+/// 宣言: `tests/role_query.rs` の `edge Unconstrained = (source: NodeA) -[weight: Weight]-> (target: NodeB)`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UnconstrainedId(pub String);
+/// `UnconstrainedNoPayload` 辺の公開ID。
+///
+/// 宣言: `tests/role_query.rs` の `edge UnconstrainedNoPayload = (source: NodeA) -> (target: NodeB)`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UnconstrainedNoPayloadId(pub String);
+/// `AtMostOne` 辺の公開ID。
+///
+/// 宣言: `tests/role_query.rs` の `edge AtMostOne = (src: NodeA) -> (dst: NodeB) where each dst: 0..1`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AtMostOneId(pub String);
+/// `ExactlyOne` 辺の公開ID。
+///
+/// 宣言: `tests/role_query.rs` の `edge ExactlyOne = (src: NodeA) -[weight: Weight]-> (dst: NodeB) where each dst: 1`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ExactlyOneId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -55,6 +73,9 @@ pub struct __AtMostOneNamedPosition(__AtMostOneInternalPosition, u64);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __ExactlyOneNamedPosition(__ExactlyOneInternalPosition, u64);
+/// 構築時に組み立てる `Unconstrained` 辺の値。
+///
+/// 宣言: `tests/role_query.rs` の `edge Unconstrained = (source: NodeA) -[weight: Weight]-> (target: NodeB)`
 #[derive(Clone, PartialEq)]
 pub struct Unconstrained {
     pub source: NodeAId,
@@ -83,6 +104,9 @@ impl std::fmt::Debug for Unconstrained {
         f.write_str(stringify!(Unconstrained))
     }
 }
+/// 構築時に組み立てる `UnconstrainedNoPayload` 辺の値。
+///
+/// 宣言: `tests/role_query.rs` の `edge UnconstrainedNoPayload = (source: NodeA) -> (target: NodeB)`
 #[derive(Clone, PartialEq)]
 pub struct UnconstrainedNoPayload {
     pub source: NodeAId,
@@ -106,6 +130,9 @@ impl std::fmt::Debug for UnconstrainedNoPayload {
             .finish()
     }
 }
+/// 構築時に組み立てる `AtMostOne` 辺の値。
+///
+/// 宣言: `tests/role_query.rs` の `edge AtMostOne = (src: NodeA) -> (dst: NodeB) where each dst: 0..1`
 #[derive(Clone, PartialEq)]
 pub struct AtMostOne {
     pub src: NodeAId,
@@ -126,6 +153,9 @@ impl std::fmt::Debug for AtMostOne {
         f.debug_tuple(stringify!(AtMostOne)).field(&self.src).field(&self.dst).finish()
     }
 }
+/// 構築時に組み立てる `ExactlyOne` 辺の値。
+///
+/// 宣言: `tests/role_query.rs` の `edge ExactlyOne = (src: NodeA) -[weight: Weight]-> (dst: NodeB) where each dst: 1`
 #[derive(Clone, PartialEq)]
 pub struct ExactlyOne {
     pub src: NodeAId,
@@ -176,6 +206,9 @@ struct __ExactlyOneRecord {
     dst: __NodeBInternalPosition,
     weight: Weight,
 }
+/// 凍結時の図式適合検査が見つけた違反。
+///
+/// 宣言: `tests/role_query.rs` の `schema RevQuery`
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
@@ -323,6 +356,8 @@ impl std::fmt::Debug for Violation {
 impl std::error::Error for Violation {}
 /// 凍結済み図式グラフ。構築後の構造は不変で、ノード値と辺の積み荷だけを
 /// `&mut Graph` を要求する種別APIから更新できる。
+///
+/// 宣言: `tests/role_query.rs` の `schema RevQuery`
 pub struct Graph {
     __graphite_node_node_a: graphite::KeyedTable<NodeAId, super::NodeA>,
     __graphite_node_node_b: graphite::KeyedTable<NodeBId, super::NodeB>,
@@ -386,6 +421,8 @@ pub struct Graph {
 }
 impl Graph {
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/role_query.rs` の `node NodeA`
     pub fn node_a_by_id<'graph>(&'graph self, id: &NodeAId) -> Option<NodeARef<'graph>> {
         let internal_position = __NodeAInternalPosition(
             self.__graphite_node_node_a.position(id)?,
@@ -396,14 +433,20 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `node NodeA`
     pub fn node_a_value_mut(&mut self, id: &NodeAId) -> Option<&mut super::NodeA> {
         self.__graphite_node_node_a.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `node NodeA`
     pub fn node_a_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph NodeAId> {
         self.__graphite_node_node_a.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/role_query.rs` の `node NodeA`
     pub fn node_a_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = NodeARef<'graph>> + 'graph {
@@ -415,10 +458,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `tests/role_query.rs` の `node NodeA`
     pub fn node_a_len(&self) -> usize {
         self.__graphite_node_node_a.len()
     }
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/role_query.rs` の `node NodeB`
     pub fn node_b_by_id<'graph>(&'graph self, id: &NodeBId) -> Option<NodeBRef<'graph>> {
         let internal_position = __NodeBInternalPosition(
             self.__graphite_node_node_b.position(id)?,
@@ -429,14 +476,20 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `node NodeB`
     pub fn node_b_value_mut(&mut self, id: &NodeBId) -> Option<&mut super::NodeB> {
         self.__graphite_node_node_b.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `node NodeB`
     pub fn node_b_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph NodeBId> {
         self.__graphite_node_node_b.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/role_query.rs` の `node NodeB`
     pub fn node_b_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = NodeBRef<'graph>> + 'graph {
@@ -448,10 +501,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `tests/role_query.rs` の `node NodeB`
     pub fn node_b_len(&self) -> usize {
         self.__graphite_node_node_b.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge Unconstrained = (source: NodeA) -[weight: Weight]-> (target: NodeB)`
     pub fn unconstrained_by_id<'graph>(
         &'graph self,
         id: &UnconstrainedId,
@@ -464,6 +521,8 @@ impl Graph {
         })
     }
     /// 辺の構造を保ったまま積み荷だけを可変借用する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge Unconstrained = (source: NodeA) -[weight: Weight]-> (target: NodeB)`
     pub fn unconstrained_payload_mut(
         &mut self,
         id: &UnconstrainedId,
@@ -473,12 +532,16 @@ impl Graph {
             .map(|record: &mut __UnconstrainedRecord| &mut record.weight)
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge Unconstrained = (source: NodeA) -[weight: Weight]-> (target: NodeB)`
     pub fn unconstrained_ids<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = &'graph UnconstrainedId> {
         self.unconstrained.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge Unconstrained = (source: NodeA) -[weight: Weight]-> (target: NodeB)`
     pub fn unconstrained_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = UnconstrainedRef<'graph>> + 'graph {
@@ -490,10 +553,14 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge Unconstrained = (source: NodeA) -[weight: Weight]-> (target: NodeB)`
     pub fn unconstrained_len(&self) -> usize {
         self.unconstrained.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge UnconstrainedNoPayload = (source: NodeA) -> (target: NodeB)`
     pub fn unconstrained_no_payload_by_id<'graph>(
         &'graph self,
         id: &UnconstrainedNoPayloadId,
@@ -506,12 +573,16 @@ impl Graph {
         })
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge UnconstrainedNoPayload = (source: NodeA) -> (target: NodeB)`
     pub fn unconstrained_no_payload_ids<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = &'graph UnconstrainedNoPayloadId> {
         self.unconstrained_no_payload.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge UnconstrainedNoPayload = (source: NodeA) -> (target: NodeB)`
     pub fn unconstrained_no_payload_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = UnconstrainedNoPayloadRef<'graph>> + 'graph {
@@ -523,10 +594,14 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge UnconstrainedNoPayload = (source: NodeA) -> (target: NodeB)`
     pub fn unconstrained_no_payload_len(&self) -> usize {
         self.unconstrained_no_payload.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge AtMostOne = (src: NodeA) -> (dst: NodeB) where each dst: 0..1`
     pub fn at_most_one_by_id<'graph>(
         &'graph self,
         id: &AtMostOneId,
@@ -539,12 +614,16 @@ impl Graph {
         })
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge AtMostOne = (src: NodeA) -> (dst: NodeB) where each dst: 0..1`
     pub fn at_most_one_ids<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = &'graph AtMostOneId> {
         self.at_most_one.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge AtMostOne = (src: NodeA) -> (dst: NodeB) where each dst: 0..1`
     pub fn at_most_one_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = AtMostOneRef<'graph>> + 'graph {
@@ -556,10 +635,14 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge AtMostOne = (src: NodeA) -> (dst: NodeB) where each dst: 0..1`
     pub fn at_most_one_len(&self) -> usize {
         self.at_most_one.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge ExactlyOne = (src: NodeA) -[weight: Weight]-> (dst: NodeB) where each dst: 1`
     pub fn exactly_one_by_id<'graph>(
         &'graph self,
         id: &ExactlyOneId,
@@ -572,18 +655,24 @@ impl Graph {
         })
     }
     /// 辺の構造を保ったまま積み荷だけを可変借用する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge ExactlyOne = (src: NodeA) -[weight: Weight]-> (dst: NodeB) where each dst: 1`
     pub fn exactly_one_payload_mut(&mut self, id: &ExactlyOneId) -> Option<&mut Weight> {
         self.exactly_one
             .get_mut(id)
             .map(|record: &mut __ExactlyOneRecord| &mut record.weight)
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge ExactlyOne = (src: NodeA) -[weight: Weight]-> (dst: NodeB) where each dst: 1`
     pub fn exactly_one_ids<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = &'graph ExactlyOneId> {
         self.exactly_one.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge ExactlyOne = (src: NodeA) -[weight: Weight]-> (dst: NodeB) where each dst: 1`
     pub fn exactly_one_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = ExactlyOneRef<'graph>> + 'graph {
@@ -595,6 +684,8 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge ExactlyOne = (src: NodeA) -[weight: Weight]-> (dst: NodeB) where each dst: 1`
     pub fn exactly_one_len(&self) -> usize {
         self.exactly_one.len()
     }
@@ -635,6 +726,8 @@ impl Graph {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `tests/role_query.rs` の `edge Unconstrained = (source: NodeA) -[weight: Weight]-> (target: NodeB)`
 #[derive(Clone, Copy)]
 pub struct UnconstrainedRef<'graph> {
     graph: &'graph Graph,
@@ -698,6 +791,8 @@ impl<'graph> std::fmt::Debug for UnconstrainedRef<'graph> {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `tests/role_query.rs` の `edge UnconstrainedNoPayload = (source: NodeA) -> (target: NodeB)`
 #[derive(Clone, Copy)]
 pub struct UnconstrainedNoPayloadRef<'graph> {
     graph: &'graph Graph,
@@ -755,6 +850,8 @@ impl<'graph> std::fmt::Debug for UnconstrainedNoPayloadRef<'graph> {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `tests/role_query.rs` の `edge AtMostOne = (src: NodeA) -> (dst: NodeB) where each dst: 0..1`
 #[derive(Clone, Copy)]
 pub struct AtMostOneRef<'graph> {
     graph: &'graph Graph,
@@ -812,6 +909,8 @@ impl<'graph> std::fmt::Debug for AtMostOneRef<'graph> {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `tests/role_query.rs` の `edge ExactlyOne = (src: NodeA) -[weight: Weight]-> (dst: NodeB) where each dst: 1`
 #[derive(Clone, Copy)]
 pub struct ExactlyOneRef<'graph> {
     graph: &'graph Graph,
@@ -875,6 +974,8 @@ impl<'graph> std::fmt::Debug for ExactlyOneRef<'graph> {
     }
 }
 /// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+///
+/// 宣言: `tests/role_query.rs` の `schema RevQuery`
 pub struct Builder {
     __graphite_node_node_a: Vec<(NodeAId, super::NodeA)>,
     __graphite_node_node_b: Vec<(NodeBId, super::NodeB)>,
@@ -982,7 +1083,9 @@ impl RevQueryDefaultId for super::NodeA {
     }
 }
 impl RevQueryNode for super::NodeA {}
-///完成済みグラフ上の `NodeA` ノード個体。
+/// 完成済みグラフ上の `NodeA` ノード個体。
+///
+/// 宣言: `tests/role_query.rs` の `node NodeA`
 #[derive(Clone, Copy)]
 pub struct NodeARef<'graph> {
     graph: &'graph Graph,
@@ -1009,6 +1112,8 @@ impl<'graph> NodeARef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge Unconstrained = (source: NodeA) -[weight: Weight]-> (target: NodeB)`
     pub fn unconstrained_as_source(
         self,
     ) -> impl Iterator<Item = UnconstrainedRef<'graph>> + 'graph {
@@ -1024,7 +1129,9 @@ impl<'graph> NodeARef<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge Unconstrained = (source: NodeA) -[weight: Weight]-> (target: NodeB)`
     pub fn unconstrained_try_between(
         self,
         other: NodeBRef<'graph>,
@@ -1055,7 +1162,9 @@ impl<'graph> NodeARef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::unconstrained_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::unconstrained_try_between`] を使う。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge Unconstrained = (source: NodeA) -[weight: Weight]-> (target: NodeB)`
     pub fn unconstrained_between(
         self,
         other: NodeBRef<'graph>,
@@ -1070,6 +1179,8 @@ impl<'graph> NodeARef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge UnconstrainedNoPayload = (source: NodeA) -> (target: NodeB)`
     pub fn unconstrained_no_payload_as_source(
         self,
     ) -> impl Iterator<Item = UnconstrainedNoPayloadRef<'graph>> + 'graph {
@@ -1085,7 +1196,9 @@ impl<'graph> NodeARef<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge UnconstrainedNoPayload = (source: NodeA) -> (target: NodeB)`
     pub fn unconstrained_no_payload_try_between(
         self,
         other: NodeBRef<'graph>,
@@ -1116,7 +1229,9 @@ impl<'graph> NodeARef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::unconstrained_no_payload_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::unconstrained_no_payload_try_between`] を使う。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge UnconstrainedNoPayload = (source: NodeA) -> (target: NodeB)`
     pub fn unconstrained_no_payload_between(
         self,
         other: NodeBRef<'graph>,
@@ -1131,6 +1246,8 @@ impl<'graph> NodeARef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge AtMostOne = (src: NodeA) -> (dst: NodeB) where each dst: 0..1`
     pub fn at_most_one_as_src(
         self,
     ) -> impl Iterator<Item = AtMostOneRef<'graph>> + 'graph {
@@ -1143,7 +1260,9 @@ impl<'graph> NodeARef<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge AtMostOne = (src: NodeA) -> (dst: NodeB) where each dst: 0..1`
     pub fn at_most_one_try_between(
         self,
         other: NodeBRef<'graph>,
@@ -1174,7 +1293,9 @@ impl<'graph> NodeARef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::at_most_one_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::at_most_one_try_between`] を使う。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge AtMostOne = (src: NodeA) -> (dst: NodeB) where each dst: 0..1`
     pub fn at_most_one_between(
         self,
         other: NodeBRef<'graph>,
@@ -1189,6 +1310,8 @@ impl<'graph> NodeARef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge ExactlyOne = (src: NodeA) -[weight: Weight]-> (dst: NodeB) where each dst: 1`
     pub fn exactly_one_as_src(
         self,
     ) -> impl Iterator<Item = ExactlyOneRef<'graph>> + 'graph {
@@ -1201,7 +1324,9 @@ impl<'graph> NodeARef<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge ExactlyOne = (src: NodeA) -[weight: Weight]-> (dst: NodeB) where each dst: 1`
     pub fn exactly_one_try_between(
         self,
         other: NodeBRef<'graph>,
@@ -1232,7 +1357,9 @@ impl<'graph> NodeARef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::exactly_one_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::exactly_one_try_between`] を使う。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge ExactlyOne = (src: NodeA) -[weight: Weight]-> (dst: NodeB) where each dst: 1`
     pub fn exactly_one_between(
         self,
         other: NodeBRef<'graph>,
@@ -1318,7 +1445,9 @@ impl RevQueryDefaultId for super::NodeB {
     }
 }
 impl RevQueryNode for super::NodeB {}
-///完成済みグラフ上の `NodeB` ノード個体。
+/// 完成済みグラフ上の `NodeB` ノード個体。
+///
+/// 宣言: `tests/role_query.rs` の `node NodeB`
 #[derive(Clone, Copy)]
 pub struct NodeBRef<'graph> {
     graph: &'graph Graph,
@@ -1345,6 +1474,8 @@ impl<'graph> NodeBRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge Unconstrained = (source: NodeA) -[weight: Weight]-> (target: NodeB)`
     pub fn unconstrained_as_target(
         self,
     ) -> impl Iterator<Item = UnconstrainedRef<'graph>> + 'graph {
@@ -1359,6 +1490,8 @@ impl<'graph> NodeBRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge UnconstrainedNoPayload = (source: NodeA) -> (target: NodeB)`
     pub fn unconstrained_no_payload_as_target(
         self,
     ) -> impl Iterator<Item = UnconstrainedNoPayloadRef<'graph>> + 'graph {
@@ -1375,6 +1508,8 @@ impl<'graph> NodeBRef<'graph> {
             })
     }
     /// この役割に接続する高々1本の辺を O(1)、追加確保なしで返す。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge AtMostOne = (src: NodeA) -> (dst: NodeB) where each dst: 0..1`
     pub fn at_most_one_as_dst(self) -> Option<AtMostOneRef<'graph>> {
         self.graph
             .at_most_one_to_index
@@ -1386,6 +1521,8 @@ impl<'graph> NodeBRef<'graph> {
             })
     }
     /// この役割に接続する唯一の辺を O(1)、追加確保なしで返す。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge ExactlyOne = (src: NodeA) -[weight: Weight]-> (dst: NodeB) where each dst: 1`
     pub fn exactly_one_as_dst(self) -> ExactlyOneRef<'graph> {
         ExactlyOneRef {
             graph: self.graph,

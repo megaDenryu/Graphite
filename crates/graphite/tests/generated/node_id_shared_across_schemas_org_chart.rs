@@ -7,9 +7,12 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    5135998060487824920u64, 3106158079116086585u64, 16249029528023512138u64,
-    14902573304257488414u64,
+    11307484904839733897u64, 2209083261973990956u64, 17724300342354868031u64,
+    4551591011770306691u64,
 ];
+/// `BelongsTo` 辺の公開ID。
+///
+/// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge BelongsTo = (person: Person) -> (department: Department) where each person: 0..1`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BelongsToId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -27,6 +30,9 @@ pub struct __DepartmentNamedPosition(__DepartmentInternalPosition, u64);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __BelongsToNamedPosition(__BelongsToInternalPosition, u64);
+/// 構築時に組み立てる `BelongsTo` 辺の値。
+///
+/// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge BelongsTo = (person: Person) -> (department: Department) where each person: 0..1`
 #[derive(Clone, PartialEq)]
 pub struct BelongsTo {
     pub person: PersonId,
@@ -55,6 +61,9 @@ struct __BelongsToRecord {
     person: __PersonInternalPosition,
     department: __DepartmentInternalPosition,
 }
+/// 凍結時の図式適合検査が見つけた違反。
+///
+/// 宣言: `tests/node_id_shared_across_schemas.rs` の `schema OrgChart`
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
@@ -113,6 +122,8 @@ impl std::fmt::Debug for Violation {
 impl std::error::Error for Violation {}
 /// 凍結済み図式グラフ。構築後の構造は不変で、ノード値と辺の積み荷だけを
 /// `&mut Graph` を要求する種別APIから更新できる。
+///
+/// 宣言: `tests/node_id_shared_across_schemas.rs` の `schema OrgChart`
 pub struct Graph {
     __graphite_node_person: graphite::KeyedTable<PersonId, super::Person>,
     __graphite_node_department: graphite::KeyedTable<DepartmentId, super::Department>,
@@ -134,6 +145,8 @@ pub struct Graph {
 }
 impl Graph {
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `node Person(id: PersonId)`
     pub fn person_by_id<'graph>(
         &'graph self,
         id: &PersonId,
@@ -147,14 +160,20 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `node Person(id: PersonId)`
     pub fn person_value_mut(&mut self, id: &PersonId) -> Option<&mut super::Person> {
         self.__graphite_node_person.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `node Person(id: PersonId)`
     pub fn person_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph PersonId> {
         self.__graphite_node_person.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `node Person(id: PersonId)`
     pub fn person_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = PersonRef<'graph>> + 'graph {
@@ -166,10 +185,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `node Person(id: PersonId)`
     pub fn person_len(&self) -> usize {
         self.__graphite_node_person.len()
     }
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `node Department(id: DepartmentId)`
     pub fn department_by_id<'graph>(
         &'graph self,
         id: &DepartmentId,
@@ -183,6 +206,8 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `node Department(id: DepartmentId)`
     pub fn department_value_mut(
         &mut self,
         id: &DepartmentId,
@@ -190,12 +215,16 @@ impl Graph {
         self.__graphite_node_department.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `node Department(id: DepartmentId)`
     pub fn department_ids<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = &'graph DepartmentId> {
         self.__graphite_node_department.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `node Department(id: DepartmentId)`
     pub fn department_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = DepartmentRef<'graph>> + 'graph {
@@ -207,10 +236,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `node Department(id: DepartmentId)`
     pub fn department_len(&self) -> usize {
         self.__graphite_node_department.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge BelongsTo = (person: Person) -> (department: Department) where each person: 0..1`
     pub fn belongs_to_by_id<'graph>(
         &'graph self,
         id: &BelongsToId,
@@ -221,12 +254,16 @@ impl Graph {
         })
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge BelongsTo = (person: Person) -> (department: Department) where each person: 0..1`
     pub fn belongs_to_ids<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = &'graph BelongsToId> {
         self.belongs_to.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge BelongsTo = (person: Person) -> (department: Department) where each person: 0..1`
     pub fn belongs_to_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = BelongsToRef<'graph>> + 'graph {
@@ -238,6 +275,8 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge BelongsTo = (person: Person) -> (department: Department) where each person: 0..1`
     pub fn belongs_to_len(&self) -> usize {
         self.belongs_to.len()
     }
@@ -278,6 +317,8 @@ impl Graph {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge BelongsTo = (person: Person) -> (department: Department) where each person: 0..1`
 #[derive(Clone, Copy)]
 pub struct BelongsToRef<'graph> {
     graph: &'graph Graph,
@@ -335,6 +376,8 @@ impl<'graph> std::fmt::Debug for BelongsToRef<'graph> {
     }
 }
 /// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+///
+/// 宣言: `tests/node_id_shared_across_schemas.rs` の `schema OrgChart`
 pub struct Builder {
     __graphite_node_person: Vec<(PersonId, super::Person)>,
     __graphite_node_department: Vec<(DepartmentId, super::Department)>,
@@ -426,7 +469,9 @@ impl graphite::NamedGraphElement<Graph> for __PersonNamedPosition {
     }
 }
 impl OrgChartNode for super::Person {}
-///完成済みグラフ上の `Person` ノード個体。
+/// 完成済みグラフ上の `Person` ノード個体。
+///
+/// 宣言: `tests/node_id_shared_across_schemas.rs` の `node Person(id: PersonId)`
 #[derive(Clone, Copy)]
 pub struct PersonRef<'graph> {
     graph: &'graph Graph,
@@ -452,6 +497,8 @@ impl<'graph> PersonRef<'graph> {
             .1
     }
     /// この役割に接続する高々1本の辺を O(1)、追加確保なしで返す。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge BelongsTo = (person: Person) -> (department: Department) where each person: 0..1`
     pub fn belongs_to_as_person(self) -> Option<BelongsToRef<'graph>> {
         self.graph
             .belongs_to_from_index
@@ -462,7 +509,9 @@ impl<'graph> PersonRef<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge BelongsTo = (person: Person) -> (department: Department) where each person: 0..1`
     pub fn belongs_to_try_between(
         self,
         other: DepartmentRef<'graph>,
@@ -493,7 +542,9 @@ impl<'graph> PersonRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::belongs_to_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::belongs_to_try_between`] を使う。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge BelongsTo = (person: Person) -> (department: Department) where each person: 0..1`
     pub fn belongs_to_between(
         self,
         other: DepartmentRef<'graph>,
@@ -564,7 +615,9 @@ impl graphite::NamedGraphElement<Graph> for __DepartmentNamedPosition {
     }
 }
 impl OrgChartNode for super::Department {}
-///完成済みグラフ上の `Department` ノード個体。
+/// 完成済みグラフ上の `Department` ノード個体。
+///
+/// 宣言: `tests/node_id_shared_across_schemas.rs` の `node Department(id: DepartmentId)`
 #[derive(Clone, Copy)]
 pub struct DepartmentRef<'graph> {
     graph: &'graph Graph,
@@ -591,6 +644,8 @@ impl<'graph> DepartmentRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge BelongsTo = (person: Person) -> (department: Department) where each person: 0..1`
     pub fn belongs_to_as_department(
         self,
     ) -> impl Iterator<Item = BelongsToRef<'graph>> + 'graph {

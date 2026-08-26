@@ -7,11 +7,17 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    4151295339179173757u64, 3403994502927273108u64, 10488141562894489211u64,
-    8899571619109037391u64,
+    11070449533699381343u64, 14589893563679700064u64, 10749971945199771769u64,
+    18019479751748654245u64,
 ];
+/// `Service` ノードの公開ID。
+///
+/// 宣言: `src/schema.rs` の `node Service`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ServiceId(pub String);
+/// `DependsOn` 辺の公開ID。
+///
+/// 宣言: `src/schema.rs` の `edge DependsOn = (dependent: Service) -> (dependency: Service) where unique pair`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DependsOnId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -24,6 +30,9 @@ pub struct __ServiceNamedPosition(__ServiceInternalPosition, u64);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __DependsOnNamedPosition(__DependsOnInternalPosition, u64);
+/// 構築時に組み立てる `DependsOn` 辺の値。
+///
+/// 宣言: `src/schema.rs` の `edge DependsOn = (dependent: Service) -> (dependency: Service) where unique pair`
 #[derive(Clone, PartialEq)]
 pub struct DependsOn {
     pub dependent: ServiceId,
@@ -55,6 +64,9 @@ struct __DependsOnRecord {
     dependent: __ServiceInternalPosition,
     dependency: __ServiceInternalPosition,
 }
+/// 凍結時の図式適合検査が見つけた違反。
+///
+/// 宣言: `src/schema.rs` の `schema Orchestration`
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
@@ -110,6 +122,8 @@ impl std::fmt::Debug for Violation {
 impl std::error::Error for Violation {}
 /// 凍結済み図式グラフ。構築後の構造は不変で、ノード値と辺の積み荷だけを
 /// `&mut Graph` を要求する種別APIから更新できる。
+///
+/// 宣言: `src/schema.rs` の `schema Orchestration`
 pub struct Graph {
     __graphite_node_service: graphite::KeyedTable<ServiceId, super::Service>,
     depends_on: graphite::KeyedTable<DependsOnId, __DependsOnRecord>,
@@ -130,6 +144,8 @@ pub struct Graph {
 }
 impl Graph {
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `src/schema.rs` の `node Service`
     pub fn service_by_id<'graph>(
         &'graph self,
         id: &ServiceId,
@@ -143,14 +159,20 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `node Service`
     pub fn service_value_mut(&mut self, id: &ServiceId) -> Option<&mut super::Service> {
         self.__graphite_node_service.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `src/schema.rs` の `node Service`
     pub fn service_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph ServiceId> {
         self.__graphite_node_service.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `src/schema.rs` の `node Service`
     pub fn service_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = ServiceRef<'graph>> + 'graph {
@@ -162,10 +184,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `src/schema.rs` の `node Service`
     pub fn service_len(&self) -> usize {
         self.__graphite_node_service.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `src/schema.rs` の `edge DependsOn = (dependent: Service) -> (dependency: Service) where unique pair`
     pub fn depends_on_by_id<'graph>(
         &'graph self,
         id: &DependsOnId,
@@ -176,12 +202,16 @@ impl Graph {
         })
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge DependsOn = (dependent: Service) -> (dependency: Service) where unique pair`
     pub fn depends_on_ids<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = &'graph DependsOnId> {
         self.depends_on.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `src/schema.rs` の `edge DependsOn = (dependent: Service) -> (dependency: Service) where unique pair`
     pub fn depends_on_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = DependsOnRef<'graph>> + 'graph {
@@ -193,6 +223,8 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge DependsOn = (dependent: Service) -> (dependency: Service) where unique pair`
     pub fn depends_on_len(&self) -> usize {
         self.depends_on.len()
     }
@@ -233,6 +265,8 @@ impl Graph {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `src/schema.rs` の `edge DependsOn = (dependent: Service) -> (dependency: Service) where unique pair`
 #[derive(Clone, Copy)]
 pub struct DependsOnRef<'graph> {
     graph: &'graph Graph,
@@ -290,6 +324,8 @@ impl<'graph> std::fmt::Debug for DependsOnRef<'graph> {
     }
 }
 /// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+///
+/// 宣言: `src/schema.rs` の `schema Orchestration`
 pub struct Builder {
     __graphite_node_service: Vec<(ServiceId, super::Service)>,
     depends_on: Vec<(DependsOnId, DependsOn)>,
@@ -398,7 +434,9 @@ impl OrchestrationDefaultId for super::Service {
     }
 }
 impl OrchestrationNode for super::Service {}
-///完成済みグラフ上の `Service` ノード個体。
+/// 完成済みグラフ上の `Service` ノード個体。
+///
+/// 宣言: `src/schema.rs` の `node Service`
 #[derive(Clone, Copy)]
 pub struct ServiceRef<'graph> {
     graph: &'graph Graph,
@@ -425,6 +463,8 @@ impl<'graph> ServiceRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `src/schema.rs` の `edge DependsOn = (dependent: Service) -> (dependency: Service) where unique pair`
     pub fn depends_on_as_dependent(
         self,
     ) -> impl Iterator<Item = DependsOnRef<'graph>> + 'graph {
@@ -439,6 +479,8 @@ impl<'graph> ServiceRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `src/schema.rs` の `edge DependsOn = (dependent: Service) -> (dependency: Service) where unique pair`
     pub fn depends_on_as_dependency(
         self,
     ) -> impl Iterator<Item = DependsOnRef<'graph>> + 'graph {
@@ -451,7 +493,9 @@ impl<'graph> ServiceRef<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge DependsOn = (dependent: Service) -> (dependency: Service) where unique pair`
     pub fn depends_on_try_between(
         self,
         other: ServiceRef<'graph>,
@@ -476,7 +520,9 @@ impl<'graph> ServiceRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::depends_on_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::depends_on_try_between`] を使う。
+    ///
+    /// 宣言: `src/schema.rs` の `edge DependsOn = (dependent: Service) -> (dependency: Service) where unique pair`
     pub fn depends_on_between(
         self,
         other: ServiceRef<'graph>,

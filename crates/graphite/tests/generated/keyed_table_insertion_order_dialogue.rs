@@ -7,13 +7,22 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    6205495154744170985u64, 10572960664880946538u64, 4326759483971146215u64,
-    15536238120190972971u64,
+    17354122510948086773u64, 10450315027066350296u64, 17337203135111179051u64,
+    3738973561999414575u64,
 ];
+/// `Speaker` ノードの公開ID。
+///
+/// 宣言: `tests/keyed_table_insertion_order.rs` の `node Speaker`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SpeakerId(pub String);
+/// `Line` ノードの公開ID。
+///
+/// 宣言: `tests/keyed_table_insertion_order.rs` の `node Line`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LineId(pub String);
+/// `Choice` 辺の公開ID。
+///
+/// 宣言: `tests/keyed_table_insertion_order.rs` の `edge Choice = (speaker: Speaker) -> (line: Line)`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ChoiceId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -31,6 +40,9 @@ pub struct __LineNamedPosition(__LineInternalPosition, u64);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __ChoiceNamedPosition(__ChoiceInternalPosition, u64);
+/// 構築時に組み立てる `Choice` 辺の値。
+///
+/// 宣言: `tests/keyed_table_insertion_order.rs` の `edge Choice = (speaker: Speaker) -> (line: Line)`
 #[derive(Clone, PartialEq)]
 pub struct Choice {
     pub speaker: SpeakerId,
@@ -56,6 +68,9 @@ struct __ChoiceRecord {
     speaker: __SpeakerInternalPosition,
     line: __LineInternalPosition,
 }
+/// 凍結時の図式適合検査が見つけた違反。
+///
+/// 宣言: `tests/keyed_table_insertion_order.rs` の `schema Dialogue`
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
@@ -105,6 +120,8 @@ impl std::fmt::Debug for Violation {
 impl std::error::Error for Violation {}
 /// 凍結済み図式グラフ。構築後の構造は不変で、ノード値と辺の積み荷だけを
 /// `&mut Graph` を要求する種別APIから更新できる。
+///
+/// 宣言: `tests/keyed_table_insertion_order.rs` の `schema Dialogue`
 pub struct Graph {
     __graphite_node_speaker: graphite::KeyedTable<SpeakerId, super::Speaker>,
     __graphite_node_line: graphite::KeyedTable<LineId, super::Line>,
@@ -126,6 +143,8 @@ pub struct Graph {
 }
 impl Graph {
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/keyed_table_insertion_order.rs` の `node Speaker`
     pub fn speaker_by_id<'graph>(
         &'graph self,
         id: &SpeakerId,
@@ -139,14 +158,20 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `tests/keyed_table_insertion_order.rs` の `node Speaker`
     pub fn speaker_value_mut(&mut self, id: &SpeakerId) -> Option<&mut super::Speaker> {
         self.__graphite_node_speaker.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/keyed_table_insertion_order.rs` の `node Speaker`
     pub fn speaker_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph SpeakerId> {
         self.__graphite_node_speaker.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/keyed_table_insertion_order.rs` の `node Speaker`
     pub fn speaker_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = SpeakerRef<'graph>> + 'graph {
@@ -158,10 +183,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `tests/keyed_table_insertion_order.rs` の `node Speaker`
     pub fn speaker_len(&self) -> usize {
         self.__graphite_node_speaker.len()
     }
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/keyed_table_insertion_order.rs` の `node Line`
     pub fn line_by_id<'graph>(&'graph self, id: &LineId) -> Option<LineRef<'graph>> {
         let internal_position = __LineInternalPosition(
             self.__graphite_node_line.position(id)?,
@@ -172,14 +201,20 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `tests/keyed_table_insertion_order.rs` の `node Line`
     pub fn line_value_mut(&mut self, id: &LineId) -> Option<&mut super::Line> {
         self.__graphite_node_line.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/keyed_table_insertion_order.rs` の `node Line`
     pub fn line_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph LineId> {
         self.__graphite_node_line.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/keyed_table_insertion_order.rs` の `node Line`
     pub fn line_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = LineRef<'graph>> + 'graph {
@@ -191,10 +226,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `tests/keyed_table_insertion_order.rs` の `node Line`
     pub fn line_len(&self) -> usize {
         self.__graphite_node_line.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/keyed_table_insertion_order.rs` の `edge Choice = (speaker: Speaker) -> (line: Line)`
     pub fn choice_by_id<'graph>(
         &'graph self,
         id: &ChoiceId,
@@ -205,10 +244,14 @@ impl Graph {
         })
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/keyed_table_insertion_order.rs` の `edge Choice = (speaker: Speaker) -> (line: Line)`
     pub fn choice_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph ChoiceId> {
         self.choice.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/keyed_table_insertion_order.rs` の `edge Choice = (speaker: Speaker) -> (line: Line)`
     pub fn choice_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = ChoiceRef<'graph>> + 'graph {
@@ -220,6 +263,8 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `tests/keyed_table_insertion_order.rs` の `edge Choice = (speaker: Speaker) -> (line: Line)`
     pub fn choice_len(&self) -> usize {
         self.choice.len()
     }
@@ -260,6 +305,8 @@ impl Graph {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `tests/keyed_table_insertion_order.rs` の `edge Choice = (speaker: Speaker) -> (line: Line)`
 #[derive(Clone, Copy)]
 pub struct ChoiceRef<'graph> {
     graph: &'graph Graph,
@@ -317,6 +364,8 @@ impl<'graph> std::fmt::Debug for ChoiceRef<'graph> {
     }
 }
 /// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+///
+/// 宣言: `tests/keyed_table_insertion_order.rs` の `schema Dialogue`
 pub struct Builder {
     __graphite_node_speaker: Vec<(SpeakerId, super::Speaker)>,
     __graphite_node_line: Vec<(LineId, super::Line)>,
@@ -421,7 +470,9 @@ impl DialogueDefaultId for super::Speaker {
     }
 }
 impl DialogueNode for super::Speaker {}
-///完成済みグラフ上の `Speaker` ノード個体。
+/// 完成済みグラフ上の `Speaker` ノード個体。
+///
+/// 宣言: `tests/keyed_table_insertion_order.rs` の `node Speaker`
 #[derive(Clone, Copy)]
 pub struct SpeakerRef<'graph> {
     graph: &'graph Graph,
@@ -448,6 +499,8 @@ impl<'graph> SpeakerRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/keyed_table_insertion_order.rs` の `edge Choice = (speaker: Speaker) -> (line: Line)`
     pub fn choice_as_speaker(self) -> impl Iterator<Item = ChoiceRef<'graph>> + 'graph {
         let positions = self.graph.choice_from_index.get(self.internal_position.0);
         positions
@@ -458,7 +511,9 @@ impl<'graph> SpeakerRef<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `tests/keyed_table_insertion_order.rs` の `edge Choice = (speaker: Speaker) -> (line: Line)`
     pub fn choice_try_between(
         self,
         other: LineRef<'graph>,
@@ -489,7 +544,9 @@ impl<'graph> SpeakerRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::choice_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::choice_try_between`] を使う。
+    ///
+    /// 宣言: `tests/keyed_table_insertion_order.rs` の `edge Choice = (speaker: Speaker) -> (line: Line)`
     pub fn choice_between(
         self,
         other: LineRef<'graph>,
@@ -574,7 +631,9 @@ impl DialogueDefaultId for super::Line {
     }
 }
 impl DialogueNode for super::Line {}
-///完成済みグラフ上の `Line` ノード個体。
+/// 完成済みグラフ上の `Line` ノード個体。
+///
+/// 宣言: `tests/keyed_table_insertion_order.rs` の `node Line`
 #[derive(Clone, Copy)]
 pub struct LineRef<'graph> {
     graph: &'graph Graph,
@@ -601,6 +660,8 @@ impl<'graph> LineRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/keyed_table_insertion_order.rs` の `edge Choice = (speaker: Speaker) -> (line: Line)`
     pub fn choice_as_line(self) -> impl Iterator<Item = ChoiceRef<'graph>> + 'graph {
         let positions = self.graph.choice_to_index.get(self.internal_position.0);
         positions

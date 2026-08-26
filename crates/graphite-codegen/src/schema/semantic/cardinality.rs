@@ -73,6 +73,17 @@ impl 役割の多重度制約 {
     pub fn 多重度(&self) -> RoleCardinality {
         self.多重度
     }
+
+    /// `where` 節へ書く `each <役割名>: <多重度>` の綴り。宣言の形を組み立てる
+    /// ときに使う。
+    pub(super) fn where節での綴り(&self) -> String {
+        let 多重度 = match self.指定された範囲.max() {
+            Some(上限) if self.指定された範囲.min() == 上限 => 上限.to_string(),
+            Some(上限) => format!("{}..{}", self.指定された範囲.min(), 上限),
+            None => format!("{}..*", self.指定された範囲.min()),
+        };
+        format!("each {}: {多重度}", self.役割名)
+    }
 }
 
 /// `where each <参照名>: ..` の `<参照名>` がどちら側の端点を指すかを判定する。

@@ -5,6 +5,7 @@ use quote::quote;
 use syn::Ident;
 
 use crate::naming::construction_stamp_field_ident;
+use crate::schema::codegen::declaration_doc::宣言元への参照;
 use crate::schema::codegen::edge_names::EdgeInfo;
 use crate::schema::codegen::node_names::NodeInfo;
 
@@ -12,6 +13,7 @@ pub(crate) fn gen_builder_struct(
     builder_ident: &Ident,
     nodes: &[NodeInfo<'_>],
     edges: &[EdgeInfo<'_>],
+    schema宣言元への参照: &宣言元への参照,
 ) -> TokenStream {
     let stamp_field = construction_stamp_field_ident(builder_ident.span());
     let node_fields = nodes.iter().map(|n| {
@@ -29,6 +31,7 @@ pub(crate) fn gen_builder_struct(
 
     quote! {
         /// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+        #schema宣言元への参照
         pub struct #builder_ident {
             #(#node_fields,)*
             #(#edge_fields,)*

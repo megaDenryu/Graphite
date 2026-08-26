@@ -26,7 +26,11 @@ pub(crate) fn gen_edge_value_structs(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream>
             let constructor = gen_edge_value_constructor(e);
             let literal_impl = gen_edge_value_literal_impl(e);
             let debug_impl = gen_edge_value_debug_impl(e);
+            let struct_doc = format!(" 構築時に組み立てる `{kind}` 辺の値。");
+            let 宣言元への参照 = &e.宣言元への参照;
             quote! {
+                #[doc = #struct_doc]
+                #宣言元への参照
                 #[derive(Clone, PartialEq)]
                 #struct_def
 

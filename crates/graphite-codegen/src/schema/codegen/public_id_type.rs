@@ -46,16 +46,30 @@ pub(crate) fn gen_default_id_types(
     nodes: &[NodeInfo<'_>],
     edges: &[EdgeInfo<'_>],
 ) -> Vec<TokenStream> {
-    nodes
-        .iter()
-        .map(|node| node.id_ty)
-        .chain(edges.iter().map(|edge| edge.id_ty))
-        .filter_map(PublicIdType::generated_ident)
-        .map(|ident| {
-            quote! {
+    let ノードの公開id型 = nodes.iter().map(|node| {
+        (
+            node.id_ty,
+            format!(" `{}` ノードの公開ID。", node.type_ident),
+            &node.宣言元への参照,
+        )
+    });
+    let 辺の公開id型 = edges.iter().map(|edge| {
+        (
+            edge.id_ty,
+            format!(" `{}` 辺の公開ID。", edge.kind),
+            &edge.宣言元への参照,
+        )
+    });
+    ノードの公開id型
+        .chain(辺の公開id型)
+        .filter_map(|(id_ty, doc, 宣言元への参照)| {
+            let ident = id_ty.generated_ident()?;
+            Some(quote! {
+                #[doc = #doc]
+                #宣言元への参照
                 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
                 pub struct #ident(pub String);
-            }
+            })
         })
         .collect()
 }

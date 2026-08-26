@@ -52,4 +52,16 @@ impl ノード定義 {
     pub fn 公開id型(&self) -> &公開ID型 {
         &self.公開id型
     }
+
+    /// このノード宣言の形 (`node Person` / `node Person(id: ExternalId)`)。
+    ///
+    /// 生成物の doc から宣言元を指すための表示であり、DSL 原文の逐語ではなく
+    /// 正規化した宣言形である (末尾の `;` は書かず、明示ID型のパスは生成
+    /// module 内から解決できる形になる)。
+    pub fn 宣言の形(&self) -> String {
+        match self.公開id型.明示された型パスの綴り() {
+            Some(綴り) => format!("node {}(id: {綴り})", self.ノード値型名),
+            None => format!("node {}", self.ノード値型名),
+        }
+    }
 }

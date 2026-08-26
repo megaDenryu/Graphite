@@ -27,6 +27,7 @@ use crate::fingerprint::fingerprint;
 use crate::generated_source::{
     指紋の材料になる整形済み本文, 生成ファイルの本文
 };
+use crate::schema::codegen::宣言元ファイルの綴り;
 use crate::tracked_input::TrackedInput;
 
 pub use declaration_site::DeclarationSite;
@@ -59,8 +60,15 @@ impl TrackedSchema {
     }
 
     /// schema module の通常の Rust ソース本文を生成する。
+    ///
+    /// 生成する公開型・公開メソッドの doc には、宣言元ファイルの綴りと宣言の形を
+    /// 埋める (`schema::codegen::declaration_doc`)。生成ファイルへ着地した利用者が
+    /// hover と rustdoc で宣言元へ戻れるようにするためである。
     pub fn render_module_source(&self, site: &DeclarationSite) -> syn::Result<String> {
-        let body = schema::codegen::generate_module_body(&self.スキーマ定義);
+        let 宣言元の綴り = 宣言元ファイルの綴り::パッケージ相対で分かっている(
+            site.宣言ファイルの綴り().to_string(),
+        );
+        let body = schema::codegen::generate_module_body(&self.スキーマ定義, &宣言元の綴り);
         生成ファイルの本文(&body, self.fingerprint, site)
     }
 }
@@ -82,7 +90,13 @@ pub fn parse_tracked_schema(input: TokenStream) -> Result<TrackedSchema, Vec<syn
         schema::semantic::検証済み構文からスキーマ定義を組み立てる(
             &検証済み構文,
         );
-    let 生成コード = schema::codegen::generate_module_body(&スキーマ定義);
+    // 指紋の材料には宣言元への参照を入れない。指紋を計算するのは
+    // `graph_schema!` であり、マクロは自分が書かれたファイルのパッケージ相対の
+    // 綴りを知らないためである (`schema::codegen::declaration_doc` 参照)。
+    let 生成コード = schema::codegen::generate_module_body(
+        &スキーマ定義,
+        &宣言元ファイルの綴り::分かっていない,
+    );
     let 整形済み本文 = 指紋の材料になる整形済み本文(&生成コード).map_err(|error| vec![error])?;
     let fingerprint = fingerprint(&tracked.generated_path.value(), &整形済み本文);
     Ok(TrackedSchema {
@@ -109,7 +123,10 @@ pub fn expand_inline_for_test(input: TokenStream) -> TokenStream {
                 schema::semantic::検証済み構文からスキーマ定義を組み立てる(
                     &検証済み構文,
                 );
-            let generated = schema::codegen::generate(&スキーマ定義);
+            let generated = schema::codegen::generate(
+                &スキーマ定義,
+                &宣言元ファイルの綴り::分かっていない,
+            );
             quote! { #diagnostics #generated }
         }
         schema::validate::ValidationResult::Rejected(errors) => {
@@ -137,13 +154,85 @@ mod tests {
         let second = parse_tracked_schema(input).unwrap();
         // 固定値は生成物の意図しない変化を検出するための錨である。生成器を
         // 意図して変えたときは `cargo xtask generate` の差分と併せて更新する
-        // (生成ファイルの先頭に書く案内コメントの文言もこの値に含まれる)。
+        // (生成ファイルの先頭に書く案内コメントの文言と、生成物の doc へ書く
+        // 宣言元への参照もこの値に含まれる)。
         let site = DeclarationSite::new("tests/schema.rs".to_string(), 10);
         let rendered = first.render_module_source(&site).unwrap();
         assert_eq!(rendered, second.render_module_source(&site).unwrap());
         assert_eq!(
             fnv1a(rendered.as_bytes(), 0xcbf29ce484222325),
-            13966225688556792524
+            15646268303818210796
+        );
+    }
+
+    #[test]
+    fn 生成物のdocが宣言元のファイルと宣言の形を指す() {
+        let input = quote! {
+            generated = "generated/world.rs";
+            schema World {
+                node Person;
+                edge Knows = (source: Person) -> (target: Person);
+            }
+        };
+        let schema = parse_tracked_schema(input).unwrap();
+        let rendered = schema
+            .render_module_source(&DeclarationSite::new("src/schema.rs".to_string(), 10))
+            .unwrap();
+        assert!(
+            rendered.contains("/// 宣言: `src/schema.rs` の `node Person`"),
+            "ノード種別の生成物は node 宣言を指す"
+        );
+        assert!(
+            rendered.contains(
+                "/// 宣言: `src/schema.rs` の `edge Knows = (source: Person) -> (target: Person)`"
+            ),
+            "辺種別の生成物は edge 宣言を指す"
+        );
+        assert!(
+            rendered.contains("/// 宣言: `src/schema.rs` の `schema World`"),
+            "schema 全体に属する生成物は schema 宣言を指す"
+        );
+        // 行番号を持つのは生成ファイル先頭の案内コメントだけである。doc へも
+        // 書くと、宣言の行が動くだけで全生成ファイルが再生成の対象になる。
+        assert!(
+            rendered
+                .lines()
+                .filter(|行| 行.trim_start().starts_with("/// 宣言:"))
+                .all(|行| !行.contains("src/schema.rs:")),
+            "宣言元への参照の doc には行番号を書かない"
+        );
+    }
+
+    #[test]
+    fn 宣言元が違っても宣言元を書く行のほかは一致する() {
+        let input = quote! {
+            generated = "generated/world.rs";
+            schema World {
+                node Person;
+                edge Knows = (source: Person) -> (target: Person);
+            }
+        };
+        let schema = parse_tracked_schema(input).unwrap();
+        let 甲 = schema
+            .render_module_source(&DeclarationSite::new("src/甲.rs".to_string(), 3))
+            .unwrap();
+        let 乙 = schema
+            .render_module_source(&DeclarationSite::new("src/乙.rs".to_string(), 9))
+            .unwrap();
+        assert!(甲.contains("`src/甲.rs`") && 乙.contains("`src/乙.rs`"));
+        // 宣言元を書かない行が全て一致することは、埋め込む指紋が宣言元に
+        // 左右されないことを含む。指紋を計算する `graph_schema!` は自分の
+        // ファイルのパッケージ相対の綴りを知らないため、指紋が宣言元に
+        // 左右されると生成ファイルの指紋と一致しなくなる。
+        let 宣言元を書かない行 = |本文: &str, 綴り: &str| {
+            本文.lines()
+                .filter(|行| !行.contains(綴り))
+                .map(str::to_string)
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            宣言元を書かない行(&甲, "甲.rs"),
+            宣言元を書かない行(&乙, "乙.rs")
         );
     }
 }

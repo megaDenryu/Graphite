@@ -7,21 +7,42 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    8877629826849250072u64, 10639672867667823995u64, 14861367517559774042u64,
-    12754657865317507262u64,
+    16154694621984903877u64, 2127343597048489250u64, 16293124793283629939u64,
+    5430245208932055031u64,
 ];
+/// `Person` ノードの公開ID。
+///
+/// 宣言: `src/main.rs` の `node Person`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PersonId(pub String);
+/// `Team` ノードの公開ID。
+///
+/// 宣言: `src/main.rs` の `node Team`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TeamId(pub String);
+/// `BelongsTo` 辺の公開ID。
+///
+/// 宣言: `src/main.rs` の `edge BelongsTo = (member: Person) -> (team: Team) where each member: 1`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BelongsToId(pub String);
+/// `Boss` 辺の公開ID。
+///
+/// 宣言: `src/main.rs` の `edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BossId(pub String);
+/// `Reports` 辺の公開ID。
+///
+/// 宣言: `src/main.rs` の `edge Reports = (reporter: Person) -> (recipient: Person) where unique pair`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ReportsId(pub String);
+/// `ReviewedBy` 辺の公開ID。
+///
+/// 宣言: `src/main.rs` の `edge ReviewedBy = (reviewee: Person) -[review: ReviewEdge]-> (reviewer: Person)`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ReviewedById(pub String);
+/// `Friends` 辺の公開ID。
+///
+/// 宣言: `src/main.rs` の `edge Friends = Person -- Person where unique pair`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FriendsId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -59,6 +80,9 @@ pub struct __ReviewedByNamedPosition(__ReviewedByInternalPosition, u64);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __FriendsNamedPosition(__FriendsInternalPosition, u64);
+/// 構築時に組み立てる `BelongsTo` 辺の値。
+///
+/// 宣言: `src/main.rs` の `edge BelongsTo = (member: Person) -> (team: Team) where each member: 1`
 #[derive(Clone, PartialEq)]
 pub struct BelongsTo {
     pub member: PersonId,
@@ -82,6 +106,9 @@ impl std::fmt::Debug for BelongsTo {
             .finish()
     }
 }
+/// 構築時に組み立てる `Boss` 辺の値。
+///
+/// 宣言: `src/main.rs` の `edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1`
 #[derive(Clone, PartialEq)]
 pub struct Boss {
     pub subordinate: PersonId,
@@ -110,6 +137,9 @@ impl std::fmt::Debug for Boss {
         f.write_str(stringify!(Boss))
     }
 }
+/// 構築時に組み立てる `Reports` 辺の値。
+///
+/// 宣言: `src/main.rs` の `edge Reports = (reporter: Person) -> (recipient: Person) where unique pair`
 #[derive(Clone, PartialEq)]
 pub struct Reports {
     pub reporter: PersonId,
@@ -136,6 +166,9 @@ impl std::fmt::Debug for Reports {
             .finish()
     }
 }
+/// 構築時に組み立てる `ReviewedBy` 辺の値。
+///
+/// 宣言: `src/main.rs` の `edge ReviewedBy = (reviewee: Person) -[review: ReviewEdge]-> (reviewer: Person)`
 #[derive(Clone, PartialEq)]
 pub struct ReviewedBy {
     pub reviewee: PersonId,
@@ -164,6 +197,9 @@ impl std::fmt::Debug for ReviewedBy {
         f.write_str(stringify!(ReviewedBy))
     }
 }
+/// 構築時に組み立てる `Friends` 辺の値。
+///
+/// 宣言: `src/main.rs` の `edge Friends = Person -- Person where unique pair`
 #[derive(Clone, PartialEq)]
 pub struct Friends {
     endpoints: graphite::UnorderedPair<PersonId>,
@@ -217,6 +253,9 @@ struct __ReviewedByRecord {
 struct __FriendsRecord {
     endpoints: graphite::UnorderedPair<__PersonInternalPosition>,
 }
+/// 凍結時の図式適合検査が見つけた違反。
+///
+/// 宣言: `src/main.rs` の `schema Org`
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
@@ -388,6 +427,8 @@ impl std::fmt::Debug for Violation {
 impl std::error::Error for Violation {}
 /// 凍結済み図式グラフ。構築後の構造は不変で、ノード値と辺の積み荷だけを
 /// `&mut Graph` を要求する種別APIから更新できる。
+///
+/// 宣言: `src/main.rs` の `schema Org`
 pub struct Graph {
     __graphite_node_person: graphite::KeyedTable<PersonId, super::Person>,
     __graphite_node_team: graphite::KeyedTable<TeamId, super::Team>,
@@ -450,6 +491,8 @@ pub struct Graph {
 }
 impl Graph {
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `src/main.rs` の `node Person`
     pub fn person_by_id<'graph>(
         &'graph self,
         id: &PersonId,
@@ -463,14 +506,20 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `src/main.rs` の `node Person`
     pub fn person_value_mut(&mut self, id: &PersonId) -> Option<&mut super::Person> {
         self.__graphite_node_person.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `src/main.rs` の `node Person`
     pub fn person_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph PersonId> {
         self.__graphite_node_person.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `src/main.rs` の `node Person`
     pub fn person_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = PersonRef<'graph>> + 'graph {
@@ -482,10 +531,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `src/main.rs` の `node Person`
     pub fn person_len(&self) -> usize {
         self.__graphite_node_person.len()
     }
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `src/main.rs` の `node Team`
     pub fn team_by_id<'graph>(&'graph self, id: &TeamId) -> Option<TeamRef<'graph>> {
         let internal_position = __TeamInternalPosition(
             self.__graphite_node_team.position(id)?,
@@ -496,14 +549,20 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `src/main.rs` の `node Team`
     pub fn team_value_mut(&mut self, id: &TeamId) -> Option<&mut super::Team> {
         self.__graphite_node_team.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `src/main.rs` の `node Team`
     pub fn team_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph TeamId> {
         self.__graphite_node_team.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `src/main.rs` の `node Team`
     pub fn team_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = TeamRef<'graph>> + 'graph {
@@ -515,10 +574,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `src/main.rs` の `node Team`
     pub fn team_len(&self) -> usize {
         self.__graphite_node_team.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `src/main.rs` の `edge BelongsTo = (member: Person) -> (team: Team) where each member: 1`
     pub fn belongs_to_by_id<'graph>(
         &'graph self,
         id: &BelongsToId,
@@ -529,12 +592,16 @@ impl Graph {
         })
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `src/main.rs` の `edge BelongsTo = (member: Person) -> (team: Team) where each member: 1`
     pub fn belongs_to_ids<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = &'graph BelongsToId> {
         self.belongs_to.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `src/main.rs` の `edge BelongsTo = (member: Person) -> (team: Team) where each member: 1`
     pub fn belongs_to_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = BelongsToRef<'graph>> + 'graph {
@@ -546,10 +613,14 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `src/main.rs` の `edge BelongsTo = (member: Person) -> (team: Team) where each member: 1`
     pub fn belongs_to_len(&self) -> usize {
         self.belongs_to.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `src/main.rs` の `edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1`
     pub fn boss_by_id<'graph>(&'graph self, id: &BossId) -> Option<BossRef<'graph>> {
         Some(BossRef {
             graph: self,
@@ -557,14 +628,20 @@ impl Graph {
         })
     }
     /// 辺の構造を保ったまま積み荷だけを可変借用する。
+    ///
+    /// 宣言: `src/main.rs` の `edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1`
     pub fn boss_payload_mut(&mut self, id: &BossId) -> Option<&mut BossEdge> {
         self.boss.get_mut(id).map(|record: &mut __BossRecord| &mut record.appointment)
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `src/main.rs` の `edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1`
     pub fn boss_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph BossId> {
         self.boss.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `src/main.rs` の `edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1`
     pub fn boss_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = BossRef<'graph>> + 'graph {
@@ -576,10 +653,14 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `src/main.rs` の `edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1`
     pub fn boss_len(&self) -> usize {
         self.boss.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `src/main.rs` の `edge Reports = (reporter: Person) -> (recipient: Person) where unique pair`
     pub fn reports_by_id<'graph>(
         &'graph self,
         id: &ReportsId,
@@ -590,10 +671,14 @@ impl Graph {
         })
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `src/main.rs` の `edge Reports = (reporter: Person) -> (recipient: Person) where unique pair`
     pub fn reports_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph ReportsId> {
         self.reports.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `src/main.rs` の `edge Reports = (reporter: Person) -> (recipient: Person) where unique pair`
     pub fn reports_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = ReportsRef<'graph>> + 'graph {
@@ -605,10 +690,14 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `src/main.rs` の `edge Reports = (reporter: Person) -> (recipient: Person) where unique pair`
     pub fn reports_len(&self) -> usize {
         self.reports.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `src/main.rs` の `edge ReviewedBy = (reviewee: Person) -[review: ReviewEdge]-> (reviewer: Person)`
     pub fn reviewed_by_by_id<'graph>(
         &'graph self,
         id: &ReviewedById,
@@ -621,6 +710,8 @@ impl Graph {
         })
     }
     /// 辺の構造を保ったまま積み荷だけを可変借用する。
+    ///
+    /// 宣言: `src/main.rs` の `edge ReviewedBy = (reviewee: Person) -[review: ReviewEdge]-> (reviewer: Person)`
     pub fn reviewed_by_payload_mut(
         &mut self,
         id: &ReviewedById,
@@ -630,12 +721,16 @@ impl Graph {
             .map(|record: &mut __ReviewedByRecord| &mut record.review)
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `src/main.rs` の `edge ReviewedBy = (reviewee: Person) -[review: ReviewEdge]-> (reviewer: Person)`
     pub fn reviewed_by_ids<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = &'graph ReviewedById> {
         self.reviewed_by.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `src/main.rs` の `edge ReviewedBy = (reviewee: Person) -[review: ReviewEdge]-> (reviewer: Person)`
     pub fn reviewed_by_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = ReviewedByRef<'graph>> + 'graph {
@@ -647,10 +742,14 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `src/main.rs` の `edge ReviewedBy = (reviewee: Person) -[review: ReviewEdge]-> (reviewer: Person)`
     pub fn reviewed_by_len(&self) -> usize {
         self.reviewed_by.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `src/main.rs` の `edge Friends = Person -- Person where unique pair`
     pub fn friends_by_id<'graph>(
         &'graph self,
         id: &FriendsId,
@@ -661,10 +760,14 @@ impl Graph {
         })
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `src/main.rs` の `edge Friends = Person -- Person where unique pair`
     pub fn friends_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph FriendsId> {
         self.friends.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `src/main.rs` の `edge Friends = Person -- Person where unique pair`
     pub fn friends_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = FriendsRef<'graph>> + 'graph {
@@ -676,6 +779,8 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `src/main.rs` の `edge Friends = Person -- Person where unique pair`
     pub fn friends_len(&self) -> usize {
         self.friends.len()
     }
@@ -716,6 +821,8 @@ impl Graph {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `src/main.rs` の `edge BelongsTo = (member: Person) -> (team: Team) where each member: 1`
 #[derive(Clone, Copy)]
 pub struct BelongsToRef<'graph> {
     graph: &'graph Graph,
@@ -773,6 +880,8 @@ impl<'graph> std::fmt::Debug for BelongsToRef<'graph> {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `src/main.rs` の `edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1`
 #[derive(Clone, Copy)]
 pub struct BossRef<'graph> {
     graph: &'graph Graph,
@@ -836,6 +945,8 @@ impl<'graph> std::fmt::Debug for BossRef<'graph> {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `src/main.rs` の `edge Reports = (reporter: Person) -> (recipient: Person) where unique pair`
 #[derive(Clone, Copy)]
 pub struct ReportsRef<'graph> {
     graph: &'graph Graph,
@@ -893,6 +1004,8 @@ impl<'graph> std::fmt::Debug for ReportsRef<'graph> {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `src/main.rs` の `edge ReviewedBy = (reviewee: Person) -[review: ReviewEdge]-> (reviewer: Person)`
 #[derive(Clone, Copy)]
 pub struct ReviewedByRef<'graph> {
     graph: &'graph Graph,
@@ -956,6 +1069,8 @@ impl<'graph> std::fmt::Debug for ReviewedByRef<'graph> {
     }
 }
 /// 完成済みグラフ上の無向辺個体。
+///
+/// 宣言: `src/main.rs` の `edge Friends = Person -- Person where unique pair`
 #[derive(Clone, Copy)]
 pub struct FriendsRef<'graph> {
     graph: &'graph Graph,
@@ -1002,6 +1117,8 @@ impl<'graph> std::fmt::Debug for FriendsRef<'graph> {
     }
 }
 /// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+///
+/// 宣言: `src/main.rs` の `schema Org`
 pub struct Builder {
     __graphite_node_person: Vec<(PersonId, super::Person)>,
     __graphite_node_team: Vec<(TeamId, super::Team)>,
@@ -1110,7 +1227,9 @@ impl OrgDefaultId for super::Person {
     }
 }
 impl OrgNode for super::Person {}
-///完成済みグラフ上の `Person` ノード個体。
+/// 完成済みグラフ上の `Person` ノード個体。
+///
+/// 宣言: `src/main.rs` の `node Person`
 #[derive(Clone, Copy)]
 pub struct PersonRef<'graph> {
     graph: &'graph Graph,
@@ -1136,6 +1255,8 @@ impl<'graph> PersonRef<'graph> {
             .1
     }
     /// この役割に接続する唯一の辺を O(1)、追加確保なしで返す。
+    ///
+    /// 宣言: `src/main.rs` の `edge BelongsTo = (member: Person) -> (team: Team) where each member: 1`
     pub fn belongs_to_as_member(self) -> BelongsToRef<'graph> {
         BelongsToRef {
             graph: self.graph,
@@ -1145,7 +1266,9 @@ impl<'graph> PersonRef<'graph> {
                 .get(self.internal_position.0),
         }
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `src/main.rs` の `edge BelongsTo = (member: Person) -> (team: Team) where each member: 1`
     pub fn belongs_to_try_between(
         self,
         other: TeamRef<'graph>,
@@ -1176,7 +1299,9 @@ impl<'graph> PersonRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::belongs_to_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::belongs_to_try_between`] を使う。
+    ///
+    /// 宣言: `src/main.rs` の `edge BelongsTo = (member: Person) -> (team: Team) where each member: 1`
     pub fn belongs_to_between(
         self,
         other: TeamRef<'graph>,
@@ -1190,6 +1315,8 @@ impl<'graph> PersonRef<'graph> {
             })
     }
     /// この役割に接続する高々1本の辺を O(1)、追加確保なしで返す。
+    ///
+    /// 宣言: `src/main.rs` の `edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1`
     pub fn boss_as_subordinate(self) -> Option<BossRef<'graph>> {
         self.graph
             .boss_from_index
@@ -1202,6 +1329,8 @@ impl<'graph> PersonRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `src/main.rs` の `edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1`
     pub fn boss_as_superior(self) -> impl Iterator<Item = BossRef<'graph>> + 'graph {
         let positions = self.graph.boss_to_index.get(self.internal_position.0);
         positions
@@ -1212,7 +1341,9 @@ impl<'graph> PersonRef<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `src/main.rs` の `edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1`
     pub fn boss_try_between(
         self,
         other: PersonRef<'graph>,
@@ -1243,7 +1374,9 @@ impl<'graph> PersonRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::boss_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::boss_try_between`] を使う。
+    ///
+    /// 宣言: `src/main.rs` の `edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1`
     pub fn boss_between(
         self,
         other: PersonRef<'graph>,
@@ -1257,6 +1390,8 @@ impl<'graph> PersonRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `src/main.rs` の `edge Reports = (reporter: Person) -> (recipient: Person) where unique pair`
     pub fn reports_as_reporter(
         self,
     ) -> impl Iterator<Item = ReportsRef<'graph>> + 'graph {
@@ -1271,6 +1406,8 @@ impl<'graph> PersonRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `src/main.rs` の `edge Reports = (reporter: Person) -> (recipient: Person) where unique pair`
     pub fn reports_as_recipient(
         self,
     ) -> impl Iterator<Item = ReportsRef<'graph>> + 'graph {
@@ -1283,7 +1420,9 @@ impl<'graph> PersonRef<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `src/main.rs` の `edge Reports = (reporter: Person) -> (recipient: Person) where unique pair`
     pub fn reports_try_between(
         self,
         other: PersonRef<'graph>,
@@ -1308,7 +1447,9 @@ impl<'graph> PersonRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::reports_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::reports_try_between`] を使う。
+    ///
+    /// 宣言: `src/main.rs` の `edge Reports = (reporter: Person) -> (recipient: Person) where unique pair`
     pub fn reports_between(
         self,
         other: PersonRef<'graph>,
@@ -1322,6 +1463,8 @@ impl<'graph> PersonRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `src/main.rs` の `edge ReviewedBy = (reviewee: Person) -[review: ReviewEdge]-> (reviewer: Person)`
     pub fn reviewed_by_as_reviewee(
         self,
     ) -> impl Iterator<Item = ReviewedByRef<'graph>> + 'graph {
@@ -1336,6 +1479,8 @@ impl<'graph> PersonRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `src/main.rs` の `edge ReviewedBy = (reviewee: Person) -[review: ReviewEdge]-> (reviewer: Person)`
     pub fn reviewed_by_as_reviewer(
         self,
     ) -> impl Iterator<Item = ReviewedByRef<'graph>> + 'graph {
@@ -1348,7 +1493,9 @@ impl<'graph> PersonRef<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `src/main.rs` の `edge ReviewedBy = (reviewee: Person) -[review: ReviewEdge]-> (reviewer: Person)`
     pub fn reviewed_by_try_between(
         self,
         other: PersonRef<'graph>,
@@ -1379,7 +1526,9 @@ impl<'graph> PersonRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::reviewed_by_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::reviewed_by_try_between`] を使う。
+    ///
+    /// 宣言: `src/main.rs` の `edge ReviewedBy = (reviewee: Person) -[review: ReviewEdge]-> (reviewer: Person)`
     pub fn reviewed_by_between(
         self,
         other: PersonRef<'graph>,
@@ -1393,6 +1542,8 @@ impl<'graph> PersonRef<'graph> {
             })
     }
     /// 接続辺を O(1) で参照し、追加確保なしで挿入順に走査する。
+    ///
+    /// 宣言: `src/main.rs` の `edge Friends = Person -- Person where unique pair`
     pub fn friends_incident(self) -> impl Iterator<Item = FriendsRef<'graph>> + 'graph {
         let positions = self.graph.friends_index.get(self.internal_position.0);
         positions
@@ -1403,7 +1554,9 @@ impl<'graph> PersonRef<'graph> {
                 internal_position,
             })
     }
-    ///順序なし端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序なし端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `src/main.rs` の `edge Friends = Person -- Person where unique pair`
     pub fn friends_try_between(
         self,
         other: PersonRef<'graph>,
@@ -1433,7 +1586,9 @@ impl<'graph> PersonRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::friends_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::friends_try_between`] を使う。
+    ///
+    /// 宣言: `src/main.rs` の `edge Friends = Person -- Person where unique pair`
     pub fn friends_between(
         self,
         other: PersonRef<'graph>,
@@ -1518,7 +1673,9 @@ impl OrgDefaultId for super::Team {
     }
 }
 impl OrgNode for super::Team {}
-///完成済みグラフ上の `Team` ノード個体。
+/// 完成済みグラフ上の `Team` ノード個体。
+///
+/// 宣言: `src/main.rs` の `node Team`
 #[derive(Clone, Copy)]
 pub struct TeamRef<'graph> {
     graph: &'graph Graph,
@@ -1545,6 +1702,8 @@ impl<'graph> TeamRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `src/main.rs` の `edge BelongsTo = (member: Person) -> (team: Team) where each member: 1`
     pub fn belongs_to_as_team(
         self,
     ) -> impl Iterator<Item = BelongsToRef<'graph>> + 'graph {

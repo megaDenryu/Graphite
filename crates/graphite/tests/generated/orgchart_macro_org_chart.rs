@@ -7,19 +7,37 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    6755687072980436626u64, 3913573862784405255u64, 5431958717016817316u64,
-    12398203119886958040u64,
+    15392189249635864530u64, 5259830115003681941u64, 728608739122490000u64,
+    3015830874584421780u64,
 ];
+/// `Employee` ノードの公開ID。
+///
+/// 宣言: `tests/orgchart_macro.rs` の `node Employee`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EmployeeId(pub String);
+/// `Department` ノードの公開ID。
+///
+/// 宣言: `tests/orgchart_macro.rs` の `node Department`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DepartmentId(pub String);
+/// `BelongsTo` 辺の公開ID。
+///
+/// 宣言: `tests/orgchart_macro.rs` の `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BelongsToId(pub String);
+/// `Boss` 辺の公開ID。
+///
+/// 宣言: `tests/orgchart_macro.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BossId(pub String);
+/// `Reports` 辺の公開ID。
+///
+/// 宣言: `tests/orgchart_macro.rs` の `edge Reports = (reporter: Employee) -> (recipient: Employee) where unique pair`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ReportsId(pub String);
+/// `Leads` 辺の公開ID。
+///
+/// 宣言: `tests/orgchart_macro.rs` の `edge Leads = (leader: Employee) -> (department: Department) where each department: 0..1`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LeadsId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -52,6 +70,9 @@ pub struct __ReportsNamedPosition(__ReportsInternalPosition, u64);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __LeadsNamedPosition(__LeadsInternalPosition, u64);
+/// 構築時に組み立てる `BelongsTo` 辺の値。
+///
+/// 宣言: `tests/orgchart_macro.rs` の `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1`
 #[derive(Clone, PartialEq)]
 pub struct BelongsTo {
     pub employee: EmployeeId,
@@ -78,6 +99,9 @@ impl std::fmt::Debug for BelongsTo {
             .finish()
     }
 }
+/// 構築時に組み立てる `Boss` 辺の値。
+///
+/// 宣言: `tests/orgchart_macro.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
 #[derive(Clone, PartialEq)]
 pub struct Boss {
     pub subordinate: EmployeeId,
@@ -106,6 +130,9 @@ impl std::fmt::Debug for Boss {
         f.write_str(stringify!(Boss))
     }
 }
+/// 構築時に組み立てる `Reports` 辺の値。
+///
+/// 宣言: `tests/orgchart_macro.rs` の `edge Reports = (reporter: Employee) -> (recipient: Employee) where unique pair`
 #[derive(Clone, PartialEq)]
 pub struct Reports {
     pub reporter: EmployeeId,
@@ -132,6 +159,9 @@ impl std::fmt::Debug for Reports {
             .finish()
     }
 }
+/// 構築時に組み立てる `Leads` 辺の値。
+///
+/// 宣言: `tests/orgchart_macro.rs` の `edge Leads = (leader: Employee) -> (department: Department) where each department: 0..1`
 #[derive(Clone, PartialEq)]
 pub struct Leads {
     pub leader: EmployeeId,
@@ -179,6 +209,9 @@ struct __LeadsRecord {
     leader: __EmployeeInternalPosition,
     department: __DepartmentInternalPosition,
 }
+/// 凍結時の図式適合検査が見つけた違反。
+///
+/// 宣言: `tests/orgchart_macro.rs` の `schema OrgChart`
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
@@ -334,6 +367,8 @@ impl std::fmt::Debug for Violation {
 impl std::error::Error for Violation {}
 /// 凍結済み図式グラフ。構築後の構造は不変で、ノード値と辺の積み荷だけを
 /// `&mut Graph` を要求する種別APIから更新できる。
+///
+/// 宣言: `tests/orgchart_macro.rs` の `schema OrgChart`
 pub struct Graph {
     __graphite_node_employee: graphite::KeyedTable<EmployeeId, super::Employee>,
     __graphite_node_department: graphite::KeyedTable<DepartmentId, super::Department>,
@@ -388,6 +423,8 @@ pub struct Graph {
 }
 impl Graph {
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `node Employee`
     pub fn employee_by_id<'graph>(
         &'graph self,
         id: &EmployeeId,
@@ -401,6 +438,8 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `node Employee`
     pub fn employee_value_mut(
         &mut self,
         id: &EmployeeId,
@@ -408,12 +447,16 @@ impl Graph {
         self.__graphite_node_employee.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `node Employee`
     pub fn employee_ids<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = &'graph EmployeeId> {
         self.__graphite_node_employee.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `node Employee`
     pub fn employee_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = EmployeeRef<'graph>> + 'graph {
@@ -425,10 +468,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `node Employee`
     pub fn employee_len(&self) -> usize {
         self.__graphite_node_employee.len()
     }
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `node Department`
     pub fn department_by_id<'graph>(
         &'graph self,
         id: &DepartmentId,
@@ -442,6 +489,8 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `node Department`
     pub fn department_value_mut(
         &mut self,
         id: &DepartmentId,
@@ -449,12 +498,16 @@ impl Graph {
         self.__graphite_node_department.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `node Department`
     pub fn department_ids<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = &'graph DepartmentId> {
         self.__graphite_node_department.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `node Department`
     pub fn department_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = DepartmentRef<'graph>> + 'graph {
@@ -466,10 +519,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `node Department`
     pub fn department_len(&self) -> usize {
         self.__graphite_node_department.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1`
     pub fn belongs_to_by_id<'graph>(
         &'graph self,
         id: &BelongsToId,
@@ -480,12 +537,16 @@ impl Graph {
         })
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1`
     pub fn belongs_to_ids<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = &'graph BelongsToId> {
         self.belongs_to.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1`
     pub fn belongs_to_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = BelongsToRef<'graph>> + 'graph {
@@ -497,10 +558,14 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1`
     pub fn belongs_to_len(&self) -> usize {
         self.belongs_to.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
     pub fn boss_by_id<'graph>(&'graph self, id: &BossId) -> Option<BossRef<'graph>> {
         Some(BossRef {
             graph: self,
@@ -508,14 +573,20 @@ impl Graph {
         })
     }
     /// 辺の構造を保ったまま積み荷だけを可変借用する。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
     pub fn boss_payload_mut(&mut self, id: &BossId) -> Option<&mut BossEdge> {
         self.boss.get_mut(id).map(|record: &mut __BossRecord| &mut record.appointment)
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
     pub fn boss_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph BossId> {
         self.boss.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
     pub fn boss_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = BossRef<'graph>> + 'graph {
@@ -527,10 +598,14 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
     pub fn boss_len(&self) -> usize {
         self.boss.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `edge Reports = (reporter: Employee) -> (recipient: Employee) where unique pair`
     pub fn reports_by_id<'graph>(
         &'graph self,
         id: &ReportsId,
@@ -541,10 +616,14 @@ impl Graph {
         })
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `edge Reports = (reporter: Employee) -> (recipient: Employee) where unique pair`
     pub fn reports_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph ReportsId> {
         self.reports.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `edge Reports = (reporter: Employee) -> (recipient: Employee) where unique pair`
     pub fn reports_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = ReportsRef<'graph>> + 'graph {
@@ -556,10 +635,14 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `edge Reports = (reporter: Employee) -> (recipient: Employee) where unique pair`
     pub fn reports_len(&self) -> usize {
         self.reports.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `edge Leads = (leader: Employee) -> (department: Department) where each department: 0..1`
     pub fn leads_by_id<'graph>(&'graph self, id: &LeadsId) -> Option<LeadsRef<'graph>> {
         Some(LeadsRef {
             graph: self,
@@ -567,10 +650,14 @@ impl Graph {
         })
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `edge Leads = (leader: Employee) -> (department: Department) where each department: 0..1`
     pub fn leads_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph LeadsId> {
         self.leads.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `edge Leads = (leader: Employee) -> (department: Department) where each department: 0..1`
     pub fn leads_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = LeadsRef<'graph>> + 'graph {
@@ -582,6 +669,8 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `edge Leads = (leader: Employee) -> (department: Department) where each department: 0..1`
     pub fn leads_len(&self) -> usize {
         self.leads.len()
     }
@@ -622,6 +711,8 @@ impl Graph {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `tests/orgchart_macro.rs` の `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1`
 #[derive(Clone, Copy)]
 pub struct BelongsToRef<'graph> {
     graph: &'graph Graph,
@@ -679,6 +770,8 @@ impl<'graph> std::fmt::Debug for BelongsToRef<'graph> {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `tests/orgchart_macro.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
 #[derive(Clone, Copy)]
 pub struct BossRef<'graph> {
     graph: &'graph Graph,
@@ -742,6 +835,8 @@ impl<'graph> std::fmt::Debug for BossRef<'graph> {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `tests/orgchart_macro.rs` の `edge Reports = (reporter: Employee) -> (recipient: Employee) where unique pair`
 #[derive(Clone, Copy)]
 pub struct ReportsRef<'graph> {
     graph: &'graph Graph,
@@ -799,6 +894,8 @@ impl<'graph> std::fmt::Debug for ReportsRef<'graph> {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `tests/orgchart_macro.rs` の `edge Leads = (leader: Employee) -> (department: Department) where each department: 0..1`
 #[derive(Clone, Copy)]
 pub struct LeadsRef<'graph> {
     graph: &'graph Graph,
@@ -856,6 +953,8 @@ impl<'graph> std::fmt::Debug for LeadsRef<'graph> {
     }
 }
 /// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+///
+/// 宣言: `tests/orgchart_macro.rs` の `schema OrgChart`
 pub struct Builder {
     __graphite_node_employee: Vec<(EmployeeId, super::Employee)>,
     __graphite_node_department: Vec<(DepartmentId, super::Department)>,
@@ -963,7 +1062,9 @@ impl OrgChartDefaultId for super::Employee {
     }
 }
 impl OrgChartNode for super::Employee {}
-///完成済みグラフ上の `Employee` ノード個体。
+/// 完成済みグラフ上の `Employee` ノード個体。
+///
+/// 宣言: `tests/orgchart_macro.rs` の `node Employee`
 #[derive(Clone, Copy)]
 pub struct EmployeeRef<'graph> {
     graph: &'graph Graph,
@@ -989,6 +1090,8 @@ impl<'graph> EmployeeRef<'graph> {
             .1
     }
     /// この役割に接続する唯一の辺を O(1)、追加確保なしで返す。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1`
     pub fn belongs_to_as_employee(self) -> BelongsToRef<'graph> {
         BelongsToRef {
             graph: self.graph,
@@ -998,7 +1101,9 @@ impl<'graph> EmployeeRef<'graph> {
                 .get(self.internal_position.0),
         }
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1`
     pub fn belongs_to_try_between(
         self,
         other: DepartmentRef<'graph>,
@@ -1029,7 +1134,9 @@ impl<'graph> EmployeeRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::belongs_to_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::belongs_to_try_between`] を使う。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1`
     pub fn belongs_to_between(
         self,
         other: DepartmentRef<'graph>,
@@ -1043,6 +1150,8 @@ impl<'graph> EmployeeRef<'graph> {
             })
     }
     /// この役割に接続する高々1本の辺を O(1)、追加確保なしで返す。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
     pub fn boss_as_subordinate(self) -> Option<BossRef<'graph>> {
         self.graph
             .boss_from_index
@@ -1055,6 +1164,8 @@ impl<'graph> EmployeeRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
     pub fn boss_as_superior(self) -> impl Iterator<Item = BossRef<'graph>> + 'graph {
         let positions = self.graph.boss_to_index.get(self.internal_position.0);
         positions
@@ -1065,7 +1176,9 @@ impl<'graph> EmployeeRef<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
     pub fn boss_try_between(
         self,
         other: EmployeeRef<'graph>,
@@ -1096,7 +1209,9 @@ impl<'graph> EmployeeRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::boss_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::boss_try_between`] を使う。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
     pub fn boss_between(
         self,
         other: EmployeeRef<'graph>,
@@ -1110,6 +1225,8 @@ impl<'graph> EmployeeRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `edge Reports = (reporter: Employee) -> (recipient: Employee) where unique pair`
     pub fn reports_as_reporter(
         self,
     ) -> impl Iterator<Item = ReportsRef<'graph>> + 'graph {
@@ -1124,6 +1241,8 @@ impl<'graph> EmployeeRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `edge Reports = (reporter: Employee) -> (recipient: Employee) where unique pair`
     pub fn reports_as_recipient(
         self,
     ) -> impl Iterator<Item = ReportsRef<'graph>> + 'graph {
@@ -1136,7 +1255,9 @@ impl<'graph> EmployeeRef<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `edge Reports = (reporter: Employee) -> (recipient: Employee) where unique pair`
     pub fn reports_try_between(
         self,
         other: EmployeeRef<'graph>,
@@ -1161,7 +1282,9 @@ impl<'graph> EmployeeRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::reports_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::reports_try_between`] を使う。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `edge Reports = (reporter: Employee) -> (recipient: Employee) where unique pair`
     pub fn reports_between(
         self,
         other: EmployeeRef<'graph>,
@@ -1176,6 +1299,8 @@ impl<'graph> EmployeeRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `edge Leads = (leader: Employee) -> (department: Department) where each department: 0..1`
     pub fn leads_as_leader(self) -> impl Iterator<Item = LeadsRef<'graph>> + 'graph {
         let positions = self.graph.leads_from_index.get(self.internal_position.0);
         positions
@@ -1186,7 +1311,9 @@ impl<'graph> EmployeeRef<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `edge Leads = (leader: Employee) -> (department: Department) where each department: 0..1`
     pub fn leads_try_between(
         self,
         other: DepartmentRef<'graph>,
@@ -1217,7 +1344,9 @@ impl<'graph> EmployeeRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::leads_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::leads_try_between`] を使う。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `edge Leads = (leader: Employee) -> (department: Department) where each department: 0..1`
     pub fn leads_between(
         self,
         other: DepartmentRef<'graph>,
@@ -1302,7 +1431,9 @@ impl OrgChartDefaultId for super::Department {
     }
 }
 impl OrgChartNode for super::Department {}
-///完成済みグラフ上の `Department` ノード個体。
+/// 完成済みグラフ上の `Department` ノード個体。
+///
+/// 宣言: `tests/orgchart_macro.rs` の `node Department`
 #[derive(Clone, Copy)]
 pub struct DepartmentRef<'graph> {
     graph: &'graph Graph,
@@ -1329,6 +1460,8 @@ impl<'graph> DepartmentRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1`
     pub fn belongs_to_as_department(
         self,
     ) -> impl Iterator<Item = BelongsToRef<'graph>> + 'graph {
@@ -1342,6 +1475,8 @@ impl<'graph> DepartmentRef<'graph> {
             })
     }
     /// この役割に接続する高々1本の辺を O(1)、追加確保なしで返す。
+    ///
+    /// 宣言: `tests/orgchart_macro.rs` の `edge Leads = (leader: Employee) -> (department: Department) where each department: 0..1`
     pub fn leads_as_department(self) -> Option<LeadsRef<'graph>> {
         self.graph
             .leads_to_index

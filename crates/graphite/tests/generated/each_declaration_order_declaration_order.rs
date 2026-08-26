@@ -7,13 +7,22 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    13710700635947686275u64, 6078649940915151808u64, 4134419531749492517u64,
-    11353119870625566537u64,
+    12843009966847353181u64, 609326044362201620u64, 14972640884828552223u64,
+    2690529994243094395u64,
 ];
+/// `Author` ノードの公開ID。
+///
+/// 宣言: `tests/each_declaration_order.rs` の `node Author`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AuthorId(pub String);
+/// `Article` ノードの公開ID。
+///
+/// 宣言: `tests/each_declaration_order.rs` の `node Article`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ArticleId(pub String);
+/// `Wrote` 辺の公開ID。
+///
+/// 宣言: `tests/each_declaration_order.rs` の `edge Wrote = (writer: Author) -[byline: Byline]-> (article: Article) where each article: 1, each writer: 0..1`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WroteId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -31,6 +40,9 @@ pub struct __ArticleNamedPosition(__ArticleInternalPosition, u64);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __WroteNamedPosition(__WroteInternalPosition, u64);
+/// 構築時に組み立てる `Wrote` 辺の値。
+///
+/// 宣言: `tests/each_declaration_order.rs` の `edge Wrote = (writer: Author) -[byline: Byline]-> (article: Article) where each article: 1, each writer: 0..1`
 #[derive(Clone, PartialEq)]
 pub struct Wrote {
     pub writer: AuthorId,
@@ -65,6 +77,9 @@ struct __WroteRecord {
     article: __ArticleInternalPosition,
     byline: Byline,
 }
+/// 凍結時の図式適合検査が見つけた違反。
+///
+/// 宣言: `tests/each_declaration_order.rs` の `schema DeclarationOrder`
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
@@ -132,6 +147,8 @@ impl std::fmt::Debug for Violation {
 impl std::error::Error for Violation {}
 /// 凍結済み図式グラフ。構築後の構造は不変で、ノード値と辺の積み荷だけを
 /// `&mut Graph` を要求する種別APIから更新できる。
+///
+/// 宣言: `tests/each_declaration_order.rs` の `schema DeclarationOrder`
 pub struct Graph {
     __graphite_node_author: graphite::KeyedTable<AuthorId, super::Author>,
     __graphite_node_article: graphite::KeyedTable<ArticleId, super::Article>,
@@ -153,6 +170,8 @@ pub struct Graph {
 }
 impl Graph {
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `node Author`
     pub fn author_by_id<'graph>(
         &'graph self,
         id: &AuthorId,
@@ -166,14 +185,20 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `node Author`
     pub fn author_value_mut(&mut self, id: &AuthorId) -> Option<&mut super::Author> {
         self.__graphite_node_author.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `node Author`
     pub fn author_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph AuthorId> {
         self.__graphite_node_author.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `node Author`
     pub fn author_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = AuthorRef<'graph>> + 'graph {
@@ -185,10 +210,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `node Author`
     pub fn author_len(&self) -> usize {
         self.__graphite_node_author.len()
     }
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `node Article`
     pub fn article_by_id<'graph>(
         &'graph self,
         id: &ArticleId,
@@ -202,14 +231,20 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `node Article`
     pub fn article_value_mut(&mut self, id: &ArticleId) -> Option<&mut super::Article> {
         self.__graphite_node_article.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `node Article`
     pub fn article_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph ArticleId> {
         self.__graphite_node_article.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `node Article`
     pub fn article_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = ArticleRef<'graph>> + 'graph {
@@ -221,10 +256,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `node Article`
     pub fn article_len(&self) -> usize {
         self.__graphite_node_article.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `edge Wrote = (writer: Author) -[byline: Byline]-> (article: Article) where each article: 1, each writer: 0..1`
     pub fn wrote_by_id<'graph>(&'graph self, id: &WroteId) -> Option<WroteRef<'graph>> {
         Some(WroteRef {
             graph: self,
@@ -232,14 +271,20 @@ impl Graph {
         })
     }
     /// 辺の構造を保ったまま積み荷だけを可変借用する。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `edge Wrote = (writer: Author) -[byline: Byline]-> (article: Article) where each article: 1, each writer: 0..1`
     pub fn wrote_payload_mut(&mut self, id: &WroteId) -> Option<&mut Byline> {
         self.wrote.get_mut(id).map(|record: &mut __WroteRecord| &mut record.byline)
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `edge Wrote = (writer: Author) -[byline: Byline]-> (article: Article) where each article: 1, each writer: 0..1`
     pub fn wrote_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph WroteId> {
         self.wrote.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `edge Wrote = (writer: Author) -[byline: Byline]-> (article: Article) where each article: 1, each writer: 0..1`
     pub fn wrote_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = WroteRef<'graph>> + 'graph {
@@ -251,6 +296,8 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `edge Wrote = (writer: Author) -[byline: Byline]-> (article: Article) where each article: 1, each writer: 0..1`
     pub fn wrote_len(&self) -> usize {
         self.wrote.len()
     }
@@ -291,6 +338,8 @@ impl Graph {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `tests/each_declaration_order.rs` の `edge Wrote = (writer: Author) -[byline: Byline]-> (article: Article) where each article: 1, each writer: 0..1`
 #[derive(Clone, Copy)]
 pub struct WroteRef<'graph> {
     graph: &'graph Graph,
@@ -354,6 +403,8 @@ impl<'graph> std::fmt::Debug for WroteRef<'graph> {
     }
 }
 /// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+///
+/// 宣言: `tests/each_declaration_order.rs` の `schema DeclarationOrder`
 pub struct Builder {
     __graphite_node_author: Vec<(AuthorId, super::Author)>,
     __graphite_node_article: Vec<(ArticleId, super::Article)>,
@@ -463,7 +514,9 @@ impl DeclarationOrderDefaultId for super::Author {
     }
 }
 impl DeclarationOrderNode for super::Author {}
-///完成済みグラフ上の `Author` ノード個体。
+/// 完成済みグラフ上の `Author` ノード個体。
+///
+/// 宣言: `tests/each_declaration_order.rs` の `node Author`
 #[derive(Clone, Copy)]
 pub struct AuthorRef<'graph> {
     graph: &'graph Graph,
@@ -489,6 +542,8 @@ impl<'graph> AuthorRef<'graph> {
             .1
     }
     /// この役割に接続する高々1本の辺を O(1)、追加確保なしで返す。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `edge Wrote = (writer: Author) -[byline: Byline]-> (article: Article) where each article: 1, each writer: 0..1`
     pub fn wrote_as_writer(self) -> Option<WroteRef<'graph>> {
         self.graph
             .wrote_from_index
@@ -499,7 +554,9 @@ impl<'graph> AuthorRef<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `edge Wrote = (writer: Author) -[byline: Byline]-> (article: Article) where each article: 1, each writer: 0..1`
     pub fn wrote_try_between(
         self,
         other: ArticleRef<'graph>,
@@ -530,7 +587,9 @@ impl<'graph> AuthorRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::wrote_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::wrote_try_between`] を使う。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `edge Wrote = (writer: Author) -[byline: Byline]-> (article: Article) where each article: 1, each writer: 0..1`
     pub fn wrote_between(
         self,
         other: ArticleRef<'graph>,
@@ -620,7 +679,9 @@ impl DeclarationOrderDefaultId for super::Article {
     }
 }
 impl DeclarationOrderNode for super::Article {}
-///完成済みグラフ上の `Article` ノード個体。
+/// 完成済みグラフ上の `Article` ノード個体。
+///
+/// 宣言: `tests/each_declaration_order.rs` の `node Article`
 #[derive(Clone, Copy)]
 pub struct ArticleRef<'graph> {
     graph: &'graph Graph,
@@ -646,6 +707,8 @@ impl<'graph> ArticleRef<'graph> {
             .1
     }
     /// この役割に接続する唯一の辺を O(1)、追加確保なしで返す。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `edge Wrote = (writer: Author) -[byline: Byline]-> (article: Article) where each article: 1, each writer: 0..1`
     pub fn wrote_as_article(self) -> WroteRef<'graph> {
         WroteRef {
             graph: self.graph,

@@ -85,6 +85,7 @@
 //! (参照: `docs/reverse_query.md`)。
 
 mod builder;
+mod declaration_doc;
 mod edge_names;
 mod edge_record;
 mod edge_value;
@@ -109,6 +110,7 @@ use crate::naming::固定生成名の予約表;
 use crate::schema::semantic::スキーマ定義;
 use builder::gen_builder_impl;
 use builder::struct_definition::gen_builder_struct;
+pub(crate) use declaration_doc::宣言元ファイルの綴り;
 use edge_names::{build_edge_info, EdgeInfo};
 use edge_record::gen_edge_record_structs;
 use edge_value::gen_edge_value_structs;
@@ -123,7 +125,10 @@ use public_id_type::gen_default_id_types;
 use reference::gen_edge_reference_types;
 use violation::gen_violation_enum;
 
-pub(crate) fn generate_module_body(schema: &スキーマ定義) -> TokenStream {
+pub(crate) fn generate_module_body(
+    schema: &スキーマ定義,
+    宣言元の綴り: &宣言元ファイルの綴り,
+) -> TokenStream {
     let schema_name = schema.スキーマ名();
     // 固定生成名は衝突検査 (`schema::validate::generated_name_collision`) と
     // 同じ予約表から取り出す。
@@ -134,12 +139,27 @@ pub(crate) fn generate_module_body(schema: &スキーマ定義) -> TokenStream {
     let insertable_trait_ident = 予約表.挿入可能トレイト名().clone();
     let default_id_trait_ident = 予約表.既定id生成トレイト名().clone();
 
-    let node_infos: Vec<NodeInfo> = schema.ノード定義の列().iter().map(NodeInfo::new).collect();
+    // schema 全体に属する生成物 (`Graph`・`Builder`・`Violation`) は
+    // `schema Name` の宣言を指す。種別ごとの生成物は `NodeInfo`/`EdgeInfo` が
+    // 持つ、その種別の宣言への参照を指す。
+    let schema宣言元への参照 = 宣言元の綴り.宣言への参照(&schema.宣言の形());
+
+    let node_infos: Vec<NodeInfo> = schema
+        .ノード定義の列()
+        .iter()
+        .map(|定義| NodeInfo::new(定義, 宣言元の綴り.宣言への参照(&定義.宣言の形())))
+        .collect();
 
     let edge_infos: Vec<EdgeInfo> = schema
         .辺定義の列()
         .iter()
-        .map(|定義| build_edge_info(定義, &node_infos))
+        .map(|定義| {
+            build_edge_info(
+                定義,
+                &node_infos,
+                宣言元の綴り.宣言への参照(&schema.辺の宣言の形(定義)),
+            )
+        })
         .collect();
 
     let default_id_defs = gen_default_id_types(&node_infos, &edge_infos);
@@ -153,8 +173,14 @@ pub(crate) fn generate_module_body(schema: &スキーマ定義) -> TokenStream {
         &node_infos,
         &edge_infos,
         schema.違反定義の列(),
+        &schema宣言元への参照,
     );
-    let schema_struct_def = gen_schema_struct(&graph_ident, &node_infos, &edge_infos);
+    let schema_struct_def = gen_schema_struct(
+        &graph_ident,
+        &node_infos,
+        &edge_infos,
+        &schema宣言元への参照,
+    );
     let schema_impl = gen_schema_impl(
         &graph_ident,
         &violation_ident,
@@ -162,7 +188,12 @@ pub(crate) fn generate_module_body(schema: &スキーマ定義) -> TokenStream {
         &node_infos,
         &edge_infos,
     );
-    let builder_struct_def = gen_builder_struct(&builder_ident, &node_infos, &edge_infos);
+    let builder_struct_def = gen_builder_struct(
+        &builder_ident,
+        &node_infos,
+        &edge_infos,
+        &schema宣言元への参照,
+    );
     let builder_impl = gen_builder_impl(&予約表, &node_infos, &edge_infos);
     let insertable_trait_def = gen_insertable_traits(
         &insertable_trait_ident,
@@ -194,9 +225,9 @@ pub(crate) fn generate_module_body(schema: &スキーマ定義) -> TokenStream {
     }
 }
 
-pub(crate) fn generate(schema: &スキーマ定義) -> TokenStream {
+pub(crate) fn generate(schema: &スキーマ定義, 宣言元の綴り: &宣言元ファイルの綴り) -> TokenStream {
     let schema_name = schema.スキーマ名();
-    let body = generate_module_body(schema);
+    let body = generate_module_body(schema, 宣言元の綴り);
     quote! {
         #[allow(non_snake_case)]
         pub mod #schema_name {

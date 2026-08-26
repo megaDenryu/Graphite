@@ -7,15 +7,27 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    10697115368782407328u64, 2608266299376936611u64, 9754844789010380434u64,
-    3042117034582590502u64,
+    5874037175148090942u64, 15608385234508356237u64, 5177389743803744232u64,
+    7628423289972410580u64,
 ];
+/// `Person` ノードの公開ID。
+///
+/// 宣言: `tests/edge_roles.rs` の `node Person`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PersonId(pub String);
+/// `Product` ノードの公開ID。
+///
+/// 宣言: `tests/edge_roles.rs` の `node Product`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ProductId(pub String);
+/// `Purchase` 辺の公開ID。
+///
+/// 宣言: `tests/edge_roles.rs` の `edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) where each buyer: 1..2, each product: 0..1, unique pair`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PurchaseId(pub String);
+/// `Subscription` 辺の公開ID。
+///
+/// 宣言: `tests/edge_roles.rs` の `edge Subscription = (member: Person) -> (product: Product) where each member: 1..*`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SubscriptionId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -38,6 +50,9 @@ pub struct __PurchaseNamedPosition(__PurchaseInternalPosition, u64);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __SubscriptionNamedPosition(__SubscriptionInternalPosition, u64);
+/// 構築時に組み立てる `Purchase` 辺の値。
+///
+/// 宣言: `tests/edge_roles.rs` の `edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) where each buyer: 1..2, each product: 0..1, unique pair`
 #[derive(Clone, PartialEq)]
 pub struct Purchase {
     pub buyer: PersonId,
@@ -70,6 +85,9 @@ impl std::fmt::Debug for Purchase {
         f.write_str(stringify!(Purchase))
     }
 }
+/// 構築時に組み立てる `Subscription` 辺の値。
+///
+/// 宣言: `tests/edge_roles.rs` の `edge Subscription = (member: Person) -> (product: Product) where each member: 1..*`
 #[derive(Clone, PartialEq)]
 pub struct Subscription {
     pub member: PersonId,
@@ -104,6 +122,9 @@ struct __SubscriptionRecord {
     member: __PersonInternalPosition,
     product: __ProductInternalPosition,
 }
+/// 凍結時の図式適合検査が見つけた違反。
+///
+/// 宣言: `tests/edge_roles.rs` の `schema Commerce`
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
@@ -215,6 +236,8 @@ impl std::fmt::Debug for Violation {
 impl std::error::Error for Violation {}
 /// 凍結済み図式グラフ。構築後の構造は不変で、ノード値と辺の積み荷だけを
 /// `&mut Graph` を要求する種別APIから更新できる。
+///
+/// 宣言: `tests/edge_roles.rs` の `schema Commerce`
 pub struct Graph {
     __graphite_node_person: graphite::KeyedTable<PersonId, super::Person>,
     __graphite_node_product: graphite::KeyedTable<ProductId, super::Product>,
@@ -247,6 +270,8 @@ pub struct Graph {
 }
 impl Graph {
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `node Person`
     pub fn person_by_id<'graph>(
         &'graph self,
         id: &PersonId,
@@ -260,14 +285,20 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `node Person`
     pub fn person_value_mut(&mut self, id: &PersonId) -> Option<&mut super::Person> {
         self.__graphite_node_person.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `node Person`
     pub fn person_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph PersonId> {
         self.__graphite_node_person.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `node Person`
     pub fn person_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = PersonRef<'graph>> + 'graph {
@@ -279,10 +310,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `node Person`
     pub fn person_len(&self) -> usize {
         self.__graphite_node_person.len()
     }
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `node Product`
     pub fn product_by_id<'graph>(
         &'graph self,
         id: &ProductId,
@@ -296,14 +331,20 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `node Product`
     pub fn product_value_mut(&mut self, id: &ProductId) -> Option<&mut super::Product> {
         self.__graphite_node_product.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `node Product`
     pub fn product_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph ProductId> {
         self.__graphite_node_product.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `node Product`
     pub fn product_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = ProductRef<'graph>> + 'graph {
@@ -315,10 +356,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `node Product`
     pub fn product_len(&self) -> usize {
         self.__graphite_node_product.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) where each buyer: 1..2, each product: 0..1, unique pair`
     pub fn purchase_by_id<'graph>(
         &'graph self,
         id: &PurchaseId,
@@ -329,6 +374,8 @@ impl Graph {
         })
     }
     /// 辺の構造を保ったまま積み荷だけを可変借用する。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) where each buyer: 1..2, each product: 0..1, unique pair`
     pub fn purchase_payload_mut(
         &mut self,
         id: &PurchaseId,
@@ -336,12 +383,16 @@ impl Graph {
         self.purchase.get_mut(id).map(|record: &mut __PurchaseRecord| &mut record.info)
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) where each buyer: 1..2, each product: 0..1, unique pair`
     pub fn purchase_ids<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = &'graph PurchaseId> {
         self.purchase.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) where each buyer: 1..2, each product: 0..1, unique pair`
     pub fn purchase_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = PurchaseRef<'graph>> + 'graph {
@@ -353,10 +404,14 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) where each buyer: 1..2, each product: 0..1, unique pair`
     pub fn purchase_len(&self) -> usize {
         self.purchase.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Subscription = (member: Person) -> (product: Product) where each member: 1..*`
     pub fn subscription_by_id<'graph>(
         &'graph self,
         id: &SubscriptionId,
@@ -369,12 +424,16 @@ impl Graph {
         })
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Subscription = (member: Person) -> (product: Product) where each member: 1..*`
     pub fn subscription_ids<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = &'graph SubscriptionId> {
         self.subscription.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Subscription = (member: Person) -> (product: Product) where each member: 1..*`
     pub fn subscription_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = SubscriptionRef<'graph>> + 'graph {
@@ -386,6 +445,8 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Subscription = (member: Person) -> (product: Product) where each member: 1..*`
     pub fn subscription_len(&self) -> usize {
         self.subscription.len()
     }
@@ -426,6 +487,8 @@ impl Graph {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `tests/edge_roles.rs` の `edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) where each buyer: 1..2, each product: 0..1, unique pair`
 #[derive(Clone, Copy)]
 pub struct PurchaseRef<'graph> {
     graph: &'graph Graph,
@@ -489,6 +552,8 @@ impl<'graph> std::fmt::Debug for PurchaseRef<'graph> {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `tests/edge_roles.rs` の `edge Subscription = (member: Person) -> (product: Product) where each member: 1..*`
 #[derive(Clone, Copy)]
 pub struct SubscriptionRef<'graph> {
     graph: &'graph Graph,
@@ -546,6 +611,8 @@ impl<'graph> std::fmt::Debug for SubscriptionRef<'graph> {
     }
 }
 /// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+///
+/// 宣言: `tests/edge_roles.rs` の `schema Commerce`
 pub struct Builder {
     __graphite_node_person: Vec<(PersonId, super::Person)>,
     __graphite_node_product: Vec<(ProductId, super::Product)>,
@@ -651,7 +718,9 @@ impl CommerceDefaultId for super::Person {
     }
 }
 impl CommerceNode for super::Person {}
-///完成済みグラフ上の `Person` ノード個体。
+/// 完成済みグラフ上の `Person` ノード個体。
+///
+/// 宣言: `tests/edge_roles.rs` の `node Person`
 #[derive(Clone, Copy)]
 pub struct PersonRef<'graph> {
     graph: &'graph Graph,
@@ -678,6 +747,8 @@ impl<'graph> PersonRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) where each buyer: 1..2, each product: 0..1, unique pair`
     pub fn purchase_as_buyer(
         self,
     ) -> impl Iterator<Item = PurchaseRef<'graph>> + 'graph {
@@ -690,7 +761,9 @@ impl<'graph> PersonRef<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) where each buyer: 1..2, each product: 0..1, unique pair`
     pub fn purchase_try_between(
         self,
         other: ProductRef<'graph>,
@@ -715,7 +788,9 @@ impl<'graph> PersonRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::purchase_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::purchase_try_between`] を使う。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) where each buyer: 1..2, each product: 0..1, unique pair`
     pub fn purchase_between(
         self,
         other: ProductRef<'graph>,
@@ -730,6 +805,8 @@ impl<'graph> PersonRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Subscription = (member: Person) -> (product: Product) where each member: 1..*`
     pub fn subscription_as_member(
         self,
     ) -> impl Iterator<Item = SubscriptionRef<'graph>> + 'graph {
@@ -742,7 +819,9 @@ impl<'graph> PersonRef<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Subscription = (member: Person) -> (product: Product) where each member: 1..*`
     pub fn subscription_try_between(
         self,
         other: ProductRef<'graph>,
@@ -773,7 +852,9 @@ impl<'graph> PersonRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::subscription_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::subscription_try_between`] を使う。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Subscription = (member: Person) -> (product: Product) where each member: 1..*`
     pub fn subscription_between(
         self,
         other: ProductRef<'graph>,
@@ -859,7 +940,9 @@ impl CommerceDefaultId for super::Product {
     }
 }
 impl CommerceNode for super::Product {}
-///完成済みグラフ上の `Product` ノード個体。
+/// 完成済みグラフ上の `Product` ノード個体。
+///
+/// 宣言: `tests/edge_roles.rs` の `node Product`
 #[derive(Clone, Copy)]
 pub struct ProductRef<'graph> {
     graph: &'graph Graph,
@@ -885,6 +968,8 @@ impl<'graph> ProductRef<'graph> {
             .1
     }
     /// この役割に接続する高々1本の辺を O(1)、追加確保なしで返す。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) where each buyer: 1..2, each product: 0..1, unique pair`
     pub fn purchase_as_product(self) -> Option<PurchaseRef<'graph>> {
         self.graph
             .purchase_to_index
@@ -897,6 +982,8 @@ impl<'graph> ProductRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Subscription = (member: Person) -> (product: Product) where each member: 1..*`
     pub fn subscription_as_product(
         self,
     ) -> impl Iterator<Item = SubscriptionRef<'graph>> + 'graph {

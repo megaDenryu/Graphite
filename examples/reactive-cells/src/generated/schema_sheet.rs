@@ -7,15 +7,27 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    482239076060089768u64, 12734828646537906915u64, 320350502868670534u64,
-    18240326121641809426u64,
+    268278588836625045u64, 15301273537628537330u64, 6851385703665389439u64,
+    9821841771916239579u64,
 ];
+/// `Cell` ノードの公開ID。
+///
+/// 宣言: `src/schema.rs` の `node Cell`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CellId(pub String);
+/// `Feeds` 辺の公開ID。
+///
+/// 宣言: `src/schema.rs` の `edge Feeds = (dependency: Cell) -> (dependent: Cell) where unique pair`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FeedsId(pub String);
+/// `Lhs` 辺の公開ID。
+///
+/// 宣言: `src/schema.rs` の `edge Lhs = (operand: Cell) -> (operation: Cell) where unique pair`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LhsId(pub String);
+/// `Rhs` 辺の公開ID。
+///
+/// 宣言: `src/schema.rs` の `edge Rhs = (operand: Cell) -> (operation: Cell) where unique pair`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RhsId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -38,6 +50,9 @@ pub struct __LhsNamedPosition(__LhsInternalPosition, u64);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __RhsNamedPosition(__RhsInternalPosition, u64);
+/// 構築時に組み立てる `Feeds` 辺の値。
+///
+/// 宣言: `src/schema.rs` の `edge Feeds = (dependency: Cell) -> (dependent: Cell) where unique pair`
 #[derive(Clone, PartialEq)]
 pub struct Feeds {
     pub dependency: CellId,
@@ -64,6 +79,9 @@ impl std::fmt::Debug for Feeds {
             .finish()
     }
 }
+/// 構築時に組み立てる `Lhs` 辺の値。
+///
+/// 宣言: `src/schema.rs` の `edge Lhs = (operand: Cell) -> (operation: Cell) where unique pair`
 #[derive(Clone, PartialEq)]
 pub struct Lhs {
     pub operand: CellId,
@@ -90,6 +108,9 @@ impl std::fmt::Debug for Lhs {
             .finish()
     }
 }
+/// 構築時に組み立てる `Rhs` 辺の値。
+///
+/// 宣言: `src/schema.rs` の `edge Rhs = (operand: Cell) -> (operation: Cell) where unique pair`
 #[derive(Clone, PartialEq)]
 pub struct Rhs {
     pub operand: CellId,
@@ -131,6 +152,9 @@ struct __RhsRecord {
     operand: __CellInternalPosition,
     operation: __CellInternalPosition,
 }
+/// 凍結時の図式適合検査が見つけた違反。
+///
+/// 宣言: `src/schema.rs` の `schema Sheet`
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
@@ -252,6 +276,8 @@ impl std::fmt::Debug for Violation {
 impl std::error::Error for Violation {}
 /// 凍結済み図式グラフ。構築後の構造は不変で、ノード値と辺の積み荷だけを
 /// `&mut Graph` を要求する種別APIから更新できる。
+///
+/// 宣言: `src/schema.rs` の `schema Sheet`
 pub struct Graph {
     __graphite_node_cell: graphite::KeyedTable<CellId, super::Cell>,
     feeds: graphite::KeyedTable<FeedsId, __FeedsRecord>,
@@ -294,6 +320,8 @@ pub struct Graph {
 }
 impl Graph {
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `src/schema.rs` の `node Cell`
     pub fn cell_by_id<'graph>(&'graph self, id: &CellId) -> Option<CellRef<'graph>> {
         let internal_position = __CellInternalPosition(
             self.__graphite_node_cell.position(id)?,
@@ -304,14 +332,20 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `node Cell`
     pub fn cell_value_mut(&mut self, id: &CellId) -> Option<&mut super::Cell> {
         self.__graphite_node_cell.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `src/schema.rs` の `node Cell`
     pub fn cell_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph CellId> {
         self.__graphite_node_cell.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `src/schema.rs` の `node Cell`
     pub fn cell_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = CellRef<'graph>> + 'graph {
@@ -323,10 +357,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `src/schema.rs` の `node Cell`
     pub fn cell_len(&self) -> usize {
         self.__graphite_node_cell.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Feeds = (dependency: Cell) -> (dependent: Cell) where unique pair`
     pub fn feeds_by_id<'graph>(&'graph self, id: &FeedsId) -> Option<FeedsRef<'graph>> {
         Some(FeedsRef {
             graph: self,
@@ -334,10 +372,14 @@ impl Graph {
         })
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Feeds = (dependency: Cell) -> (dependent: Cell) where unique pair`
     pub fn feeds_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph FeedsId> {
         self.feeds.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Feeds = (dependency: Cell) -> (dependent: Cell) where unique pair`
     pub fn feeds_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = FeedsRef<'graph>> + 'graph {
@@ -349,10 +391,14 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Feeds = (dependency: Cell) -> (dependent: Cell) where unique pair`
     pub fn feeds_len(&self) -> usize {
         self.feeds.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Lhs = (operand: Cell) -> (operation: Cell) where unique pair`
     pub fn lhs_by_id<'graph>(&'graph self, id: &LhsId) -> Option<LhsRef<'graph>> {
         Some(LhsRef {
             graph: self,
@@ -360,10 +406,14 @@ impl Graph {
         })
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Lhs = (operand: Cell) -> (operation: Cell) where unique pair`
     pub fn lhs_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph LhsId> {
         self.lhs.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Lhs = (operand: Cell) -> (operation: Cell) where unique pair`
     pub fn lhs_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = LhsRef<'graph>> + 'graph {
@@ -375,10 +425,14 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Lhs = (operand: Cell) -> (operation: Cell) where unique pair`
     pub fn lhs_len(&self) -> usize {
         self.lhs.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Rhs = (operand: Cell) -> (operation: Cell) where unique pair`
     pub fn rhs_by_id<'graph>(&'graph self, id: &RhsId) -> Option<RhsRef<'graph>> {
         Some(RhsRef {
             graph: self,
@@ -386,10 +440,14 @@ impl Graph {
         })
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Rhs = (operand: Cell) -> (operation: Cell) where unique pair`
     pub fn rhs_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph RhsId> {
         self.rhs.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Rhs = (operand: Cell) -> (operation: Cell) where unique pair`
     pub fn rhs_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = RhsRef<'graph>> + 'graph {
@@ -401,6 +459,8 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Rhs = (operand: Cell) -> (operation: Cell) where unique pair`
     pub fn rhs_len(&self) -> usize {
         self.rhs.len()
     }
@@ -441,6 +501,8 @@ impl Graph {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `src/schema.rs` の `edge Feeds = (dependency: Cell) -> (dependent: Cell) where unique pair`
 #[derive(Clone, Copy)]
 pub struct FeedsRef<'graph> {
     graph: &'graph Graph,
@@ -498,6 +560,8 @@ impl<'graph> std::fmt::Debug for FeedsRef<'graph> {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `src/schema.rs` の `edge Lhs = (operand: Cell) -> (operation: Cell) where unique pair`
 #[derive(Clone, Copy)]
 pub struct LhsRef<'graph> {
     graph: &'graph Graph,
@@ -555,6 +619,8 @@ impl<'graph> std::fmt::Debug for LhsRef<'graph> {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `src/schema.rs` の `edge Rhs = (operand: Cell) -> (operation: Cell) where unique pair`
 #[derive(Clone, Copy)]
 pub struct RhsRef<'graph> {
     graph: &'graph Graph,
@@ -612,6 +678,8 @@ impl<'graph> std::fmt::Debug for RhsRef<'graph> {
     }
 }
 /// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+///
+/// 宣言: `src/schema.rs` の `schema Sheet`
 pub struct Builder {
     __graphite_node_cell: Vec<(CellId, super::Cell)>,
     feeds: Vec<(FeedsId, Feeds)>,
@@ -717,7 +785,9 @@ impl SheetDefaultId for super::Cell {
     }
 }
 impl SheetNode for super::Cell {}
-///完成済みグラフ上の `Cell` ノード個体。
+/// 完成済みグラフ上の `Cell` ノード個体。
+///
+/// 宣言: `src/schema.rs` の `node Cell`
 #[derive(Clone, Copy)]
 pub struct CellRef<'graph> {
     graph: &'graph Graph,
@@ -744,6 +814,8 @@ impl<'graph> CellRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Feeds = (dependency: Cell) -> (dependent: Cell) where unique pair`
     pub fn feeds_as_dependency(self) -> impl Iterator<Item = FeedsRef<'graph>> + 'graph {
         let positions = self.graph.feeds_from_index.get(self.internal_position.0);
         positions
@@ -756,6 +828,8 @@ impl<'graph> CellRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Feeds = (dependency: Cell) -> (dependent: Cell) where unique pair`
     pub fn feeds_as_dependent(self) -> impl Iterator<Item = FeedsRef<'graph>> + 'graph {
         let positions = self.graph.feeds_to_index.get(self.internal_position.0);
         positions
@@ -766,7 +840,9 @@ impl<'graph> CellRef<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Feeds = (dependency: Cell) -> (dependent: Cell) where unique pair`
     pub fn feeds_try_between(
         self,
         other: CellRef<'graph>,
@@ -791,7 +867,9 @@ impl<'graph> CellRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::feeds_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::feeds_try_between`] を使う。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Feeds = (dependency: Cell) -> (dependent: Cell) where unique pair`
     pub fn feeds_between(self, other: CellRef<'graph>) -> Option<FeedsRef<'graph>> {
         self.feeds_try_between(other)
             .unwrap_or_else(|error| {
@@ -800,6 +878,8 @@ impl<'graph> CellRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Lhs = (operand: Cell) -> (operation: Cell) where unique pair`
     pub fn lhs_as_operand(self) -> impl Iterator<Item = LhsRef<'graph>> + 'graph {
         let positions = self.graph.lhs_from_index.get(self.internal_position.0);
         positions
@@ -812,6 +892,8 @@ impl<'graph> CellRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Lhs = (operand: Cell) -> (operation: Cell) where unique pair`
     pub fn lhs_as_operation(self) -> impl Iterator<Item = LhsRef<'graph>> + 'graph {
         let positions = self.graph.lhs_to_index.get(self.internal_position.0);
         positions
@@ -822,7 +904,9 @@ impl<'graph> CellRef<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Lhs = (operand: Cell) -> (operation: Cell) where unique pair`
     pub fn lhs_try_between(
         self,
         other: CellRef<'graph>,
@@ -847,7 +931,9 @@ impl<'graph> CellRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::lhs_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::lhs_try_between`] を使う。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Lhs = (operand: Cell) -> (operation: Cell) where unique pair`
     pub fn lhs_between(self, other: CellRef<'graph>) -> Option<LhsRef<'graph>> {
         self.lhs_try_between(other)
             .unwrap_or_else(|error| {
@@ -856,6 +942,8 @@ impl<'graph> CellRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Rhs = (operand: Cell) -> (operation: Cell) where unique pair`
     pub fn rhs_as_operand(self) -> impl Iterator<Item = RhsRef<'graph>> + 'graph {
         let positions = self.graph.rhs_from_index.get(self.internal_position.0);
         positions
@@ -868,6 +956,8 @@ impl<'graph> CellRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Rhs = (operand: Cell) -> (operation: Cell) where unique pair`
     pub fn rhs_as_operation(self) -> impl Iterator<Item = RhsRef<'graph>> + 'graph {
         let positions = self.graph.rhs_to_index.get(self.internal_position.0);
         positions
@@ -878,7 +968,9 @@ impl<'graph> CellRef<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Rhs = (operand: Cell) -> (operation: Cell) where unique pair`
     pub fn rhs_try_between(
         self,
         other: CellRef<'graph>,
@@ -903,7 +995,9 @@ impl<'graph> CellRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::rhs_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::rhs_try_between`] を使う。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Rhs = (operand: Cell) -> (operation: Cell) where unique pair`
     pub fn rhs_between(self, other: CellRef<'graph>) -> Option<RhsRef<'graph>> {
         self.rhs_try_between(other)
             .unwrap_or_else(|error| {

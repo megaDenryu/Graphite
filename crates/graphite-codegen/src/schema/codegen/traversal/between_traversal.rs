@@ -88,11 +88,13 @@ pub(crate) fn gen_between_traversal_methods(edge: &EdgeInfo<'_>) -> TokenStream 
         }
     };
     let try_between_doc =
-        format!("{pair_order_description}端点対を平均 O(1)、追加確保なしで検索する。");
+        format!(" {pair_order_description}端点対を平均 O(1)、追加確保なしで検索する。");
     let between_avoid_panic_doc =
-        format!("パニックを避けたい場合は対の [`Self::{try_between}`] を使う。");
+        format!(" パニックを避けたい場合は対の [`Self::{try_between}`] を使う。");
+    let 宣言元への参照 = &edge.宣言元への参照;
     quote! {
         #[doc = #try_between_doc]
+        #宣言元への参照
         pub fn #try_between(self, other: #other_reference<'graph>)
             -> Result<#between_result, graphite::GraphMismatch>
         {
@@ -103,6 +105,7 @@ pub(crate) fn gen_between_traversal_methods(edge: &EdgeInfo<'_>) -> TokenStream 
         /// # Panics
         /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
         #[doc = #between_avoid_panic_doc]
+        #宣言元への参照
         pub fn #between(self, other: #other_reference<'graph>) -> #between_result {
             self.#try_between(other).unwrap_or_else(|error| {
                 panic!("{}::{}: {error}", stringify!(#node_reference), stringify!(#between))

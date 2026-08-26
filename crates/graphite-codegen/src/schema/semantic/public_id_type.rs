@@ -3,6 +3,8 @@
 use proc_macro2::Ident;
 use syn::{Path, PathSegment};
 
+use super::type_path_spelling::型パスの綴り;
+
 /// 宣言を省略した既定生成ID、または `(id: 型パス)` で明示された既存ID型。
 ///
 /// 利用者が書いたパスは schema module の**内側**から見えるパスへ構築時に1回だけ
@@ -46,6 +48,21 @@ impl 公開ID型 {
     /// 表示できるのは生成ID型に限る。
     pub fn デバッグ表示に使えるか(&self) -> bool {
         self.スキーマが生成するid型か()
+    }
+
+    /// 宣言の形へ書く明示ID型の綴り。schema が生成するID型は宣言に書かれて
+    /// いないため `None` を返す。
+    ///
+    /// 綴りは生成 module 内から解決できる形へ正規化済みである (`self::X` は
+    /// `super::X` になる)。宣言の形は DSL 原文の逐語ではなく、宣言の意味を
+    /// 1行で表す正規形として扱う。
+    pub(super) fn 明示された型パスの綴り(&self) -> Option<String> {
+        match self {
+            Self::スキーマが生成するID型 { .. } => None,
+            Self::利用者が宣言した既存のID型 {
+                生成module内から見たパス,
+            } => Some(型パスの綴り(生成module内から見たパス)),
+        }
     }
 
     /// スキーマが生成する場合のその型名。明示指定なら `None`。

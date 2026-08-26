@@ -30,9 +30,11 @@ pub(crate) fn gen_node_reference_type(
     let node_ref_value_ident = Ident::new("value", span);
     let node_debug_impl = gen_reference_debug_impl(&reference, n.id_ty.is_debug_printable());
     let traversal_methods = gen_node_traversal_methods(探索計画, edges);
-    let reference_doc = format!("完成済みグラフ上の `{ty}` ノード個体。");
+    let reference_doc = format!(" 完成済みグラフ上の `{ty}` ノード個体。");
+    let 宣言元への参照 = &n.宣言元への参照;
     quote! {
         #[doc = #reference_doc]
+        #宣言元への参照
         #[derive(Clone, Copy)]
         pub struct #reference<'graph> {
             graph: &'graph #graph_ident,

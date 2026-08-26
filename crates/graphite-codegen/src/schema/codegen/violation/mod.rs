@@ -10,6 +10,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::Ident;
 
+use crate::schema::codegen::declaration_doc::宣言元への参照;
 use crate::schema::codegen::edge_names::EdgeInfo;
 use crate::schema::codegen::node_names::NodeInfo;
 use crate::schema::semantic::違反定義;
@@ -38,6 +39,7 @@ pub(crate) fn gen_violation_enum(
     nodes: &[NodeInfo<'_>],
     edges: &[EdgeInfo<'_>],
     違反定義の列: &[違反定義],
+    schema宣言元への参照: &宣言元への参照,
 ) -> TokenStream {
     let mut variants: Vec<TokenStream> = Vec::new();
     let mut display_arms: Vec<TokenStream> = Vec::new();
@@ -48,6 +50,8 @@ pub(crate) fn gen_violation_enum(
     }
 
     quote! {
+        /// 凍結時の図式適合検査が見つけた違反。
+        #schema宣言元への参照
         #[allow(clippy::enum_variant_names)]
         #[derive(Clone, PartialEq, Eq)]
         pub enum #violation_ident {

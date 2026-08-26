@@ -14,6 +14,7 @@ use crate::naming::{
     unique_pair_violation_variant_ident, unknown_endpoint_variant_ident,
     unknown_source_variant_ident, unknown_target_variant_ident,
 };
+use crate::schema::codegen::declaration_doc::宣言元への参照;
 use crate::schema::codegen::node_names::NodeInfo;
 use crate::schema::codegen::public_id_type::PublicIdType;
 use crate::schema::semantic::{EachSide, RoleCardinality, 積み荷, 辺の向き, 辺定義};
@@ -28,6 +29,9 @@ use crate::schema::semantic::{EachSide, RoleCardinality, 積み荷, 辺の向き
 pub(crate) struct EdgeInfo<'a> {
     pub(crate) 定義: &'a 辺定義,
     pub(crate) kind: &'a Ident,
+    /// この種別の生成物の doc へ足す、`edge` 宣言元への参照。生成名ではないが、
+    /// 種別ごとの生成物すべてが同じ参照を書くため、識別子と同じ場所で持つ。
+    pub(crate) 宣言元への参照: 宣言元への参照,
     /// エッジ種別の newtype キー型名 (`BossId`)。
     pub(crate) id_ty: PublicIdType<'a>,
     /// 内部ストレージのフィールド名 = builder 追加メソッド名 = 単数形
@@ -114,6 +118,7 @@ impl<'a> EdgeInfo<'a> {
 pub(crate) fn build_edge_info<'a>(
     定義: &'a 辺定義,
     node_infos: &'a [NodeInfo<'a>],
+    宣言元への参照: 宣言元への参照,
 ) -> EdgeInfo<'a> {
     let kind = 定義.辺種別名();
     let accessor = accessor_ident(kind);
@@ -129,6 +134,7 @@ pub(crate) fn build_edge_info<'a>(
     EdgeInfo {
         定義,
         kind,
+        宣言元への参照,
         id_ty: PublicIdType::new(定義.公開id型()),
         accessor_ident: accessor,
         index_field_ident,

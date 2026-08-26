@@ -7,13 +7,22 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    13839468117385406052u64, 2665874783563166665u64, 13022111867507885638u64,
-    17911966541158617730u64,
+    6098333711438255653u64, 7778612587266332624u64, 5807063246750941123u64,
+    3913111479714790439u64,
 ];
+/// `Book` ノードの公開ID。
+///
+/// 宣言: `src/lib.rs` の `node Book`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BookId(pub String);
+/// `Reader` ノードの公開ID。
+///
+/// 宣言: `src/lib.rs` の `node Reader`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ReaderId(pub String);
+/// `Borrowed` 辺の公開ID。
+///
+/// 宣言: `src/lib.rs` の `edge Borrowed = (book: Book) -[loan: Loan]-> (reader: Reader) where each book: 0..1`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BorrowedId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -31,6 +40,9 @@ pub struct __ReaderNamedPosition(__ReaderInternalPosition, u64);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __BorrowedNamedPosition(__BorrowedInternalPosition, u64);
+/// 構築時に組み立てる `Borrowed` 辺の値。
+///
+/// 宣言: `src/lib.rs` の `edge Borrowed = (book: Book) -[loan: Loan]-> (reader: Reader) where each book: 0..1`
 #[derive(Clone, PartialEq)]
 pub struct Borrowed {
     pub book: BookId,
@@ -65,6 +77,9 @@ struct __BorrowedRecord {
     reader: __ReaderInternalPosition,
     loan: Loan,
 }
+/// 凍結時の図式適合検査が見つけた違反。
+///
+/// 宣言: `src/lib.rs` の `schema Library`
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
@@ -123,6 +138,8 @@ impl std::fmt::Debug for Violation {
 impl std::error::Error for Violation {}
 /// 凍結済み図式グラフ。構築後の構造は不変で、ノード値と辺の積み荷だけを
 /// `&mut Graph` を要求する種別APIから更新できる。
+///
+/// 宣言: `src/lib.rs` の `schema Library`
 pub struct Graph {
     __graphite_node_book: graphite::KeyedTable<BookId, super::Book>,
     __graphite_node_reader: graphite::KeyedTable<ReaderId, super::Reader>,
@@ -144,6 +161,8 @@ pub struct Graph {
 }
 impl Graph {
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `src/lib.rs` の `node Book`
     pub fn book_by_id<'graph>(&'graph self, id: &BookId) -> Option<BookRef<'graph>> {
         let internal_position = __BookInternalPosition(
             self.__graphite_node_book.position(id)?,
@@ -154,14 +173,20 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `src/lib.rs` の `node Book`
     pub fn book_value_mut(&mut self, id: &BookId) -> Option<&mut super::Book> {
         self.__graphite_node_book.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `src/lib.rs` の `node Book`
     pub fn book_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph BookId> {
         self.__graphite_node_book.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `src/lib.rs` の `node Book`
     pub fn book_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = BookRef<'graph>> + 'graph {
@@ -173,10 +198,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `src/lib.rs` の `node Book`
     pub fn book_len(&self) -> usize {
         self.__graphite_node_book.len()
     }
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `src/lib.rs` の `node Reader`
     pub fn reader_by_id<'graph>(
         &'graph self,
         id: &ReaderId,
@@ -190,14 +219,20 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `src/lib.rs` の `node Reader`
     pub fn reader_value_mut(&mut self, id: &ReaderId) -> Option<&mut super::Reader> {
         self.__graphite_node_reader.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `src/lib.rs` の `node Reader`
     pub fn reader_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph ReaderId> {
         self.__graphite_node_reader.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `src/lib.rs` の `node Reader`
     pub fn reader_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = ReaderRef<'graph>> + 'graph {
@@ -209,10 +244,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `src/lib.rs` の `node Reader`
     pub fn reader_len(&self) -> usize {
         self.__graphite_node_reader.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Borrowed = (book: Book) -[loan: Loan]-> (reader: Reader) where each book: 0..1`
     pub fn borrowed_by_id<'graph>(
         &'graph self,
         id: &BorrowedId,
@@ -223,16 +262,22 @@ impl Graph {
         })
     }
     /// 辺の構造を保ったまま積み荷だけを可変借用する。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Borrowed = (book: Book) -[loan: Loan]-> (reader: Reader) where each book: 0..1`
     pub fn borrowed_payload_mut(&mut self, id: &BorrowedId) -> Option<&mut Loan> {
         self.borrowed.get_mut(id).map(|record: &mut __BorrowedRecord| &mut record.loan)
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Borrowed = (book: Book) -[loan: Loan]-> (reader: Reader) where each book: 0..1`
     pub fn borrowed_ids<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = &'graph BorrowedId> {
         self.borrowed.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Borrowed = (book: Book) -[loan: Loan]-> (reader: Reader) where each book: 0..1`
     pub fn borrowed_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = BorrowedRef<'graph>> + 'graph {
@@ -244,6 +289,8 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Borrowed = (book: Book) -[loan: Loan]-> (reader: Reader) where each book: 0..1`
     pub fn borrowed_len(&self) -> usize {
         self.borrowed.len()
     }
@@ -284,6 +331,8 @@ impl Graph {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `src/lib.rs` の `edge Borrowed = (book: Book) -[loan: Loan]-> (reader: Reader) where each book: 0..1`
 #[derive(Clone, Copy)]
 pub struct BorrowedRef<'graph> {
     graph: &'graph Graph,
@@ -347,6 +396,8 @@ impl<'graph> std::fmt::Debug for BorrowedRef<'graph> {
     }
 }
 /// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+///
+/// 宣言: `src/lib.rs` の `schema Library`
 pub struct Builder {
     __graphite_node_book: Vec<(BookId, super::Book)>,
     __graphite_node_reader: Vec<(ReaderId, super::Reader)>,
@@ -451,7 +502,9 @@ impl LibraryDefaultId for super::Book {
     }
 }
 impl LibraryNode for super::Book {}
-///完成済みグラフ上の `Book` ノード個体。
+/// 完成済みグラフ上の `Book` ノード個体。
+///
+/// 宣言: `src/lib.rs` の `node Book`
 #[derive(Clone, Copy)]
 pub struct BookRef<'graph> {
     graph: &'graph Graph,
@@ -477,6 +530,8 @@ impl<'graph> BookRef<'graph> {
             .1
     }
     /// この役割に接続する高々1本の辺を O(1)、追加確保なしで返す。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Borrowed = (book: Book) -[loan: Loan]-> (reader: Reader) where each book: 0..1`
     pub fn borrowed_as_book(self) -> Option<BorrowedRef<'graph>> {
         self.graph
             .borrowed_from_index
@@ -487,7 +542,9 @@ impl<'graph> BookRef<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Borrowed = (book: Book) -[loan: Loan]-> (reader: Reader) where each book: 0..1`
     pub fn borrowed_try_between(
         self,
         other: ReaderRef<'graph>,
@@ -518,7 +575,9 @@ impl<'graph> BookRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::borrowed_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::borrowed_try_between`] を使う。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Borrowed = (book: Book) -[loan: Loan]-> (reader: Reader) where each book: 0..1`
     pub fn borrowed_between(
         self,
         other: ReaderRef<'graph>,
@@ -603,7 +662,9 @@ impl LibraryDefaultId for super::Reader {
     }
 }
 impl LibraryNode for super::Reader {}
-///完成済みグラフ上の `Reader` ノード個体。
+/// 完成済みグラフ上の `Reader` ノード個体。
+///
+/// 宣言: `src/lib.rs` の `node Reader`
 #[derive(Clone, Copy)]
 pub struct ReaderRef<'graph> {
     graph: &'graph Graph,
@@ -630,6 +691,8 @@ impl<'graph> ReaderRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Borrowed = (book: Book) -[loan: Loan]-> (reader: Reader) where each book: 0..1`
     pub fn borrowed_as_reader(
         self,
     ) -> impl Iterator<Item = BorrowedRef<'graph>> + 'graph {

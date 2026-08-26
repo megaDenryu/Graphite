@@ -7,9 +7,12 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    7296459078554486047u64, 7060194074588651672u64, 6241326006888784693u64,
-    13089057766897822985u64,
+    6841833382225643455u64, 165223787344158926u64, 17516683087083152833u64,
+    16644393125325702221u64,
 ];
+/// `Widget` ノードの公開ID。
+///
+/// 宣言: `tests/orphan_node_no_warning.rs` の `node Widget`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WidgetId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -17,6 +20,9 @@ struct __WidgetInternalPosition(graphite::TablePosition);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __WidgetNamedPosition(__WidgetInternalPosition, u64);
+/// 凍結時の図式適合検査が見つけた違反。
+///
+/// 宣言: `tests/orphan_node_no_warning.rs` の `schema WidgetGraph`
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
@@ -39,6 +45,8 @@ impl std::fmt::Debug for Violation {
 impl std::error::Error for Violation {}
 /// 凍結済み図式グラフ。構築後の構造は不変で、ノード値と辺の積み荷だけを
 /// `&mut Graph` を要求する種別APIから更新できる。
+///
+/// 宣言: `tests/orphan_node_no_warning.rs` の `schema WidgetGraph`
 pub struct Graph {
     __graphite_node_widget: graphite::KeyedTable<WidgetId, super::Widget>,
     /// この `Graph` を生んだ構築の構築印。凍結元の `Builder` から
@@ -48,6 +56,8 @@ pub struct Graph {
 }
 impl Graph {
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/orphan_node_no_warning.rs` の `node Widget`
     pub fn widget_by_id<'graph>(
         &'graph self,
         id: &WidgetId,
@@ -61,14 +71,20 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `tests/orphan_node_no_warning.rs` の `node Widget`
     pub fn widget_value_mut(&mut self, id: &WidgetId) -> Option<&mut super::Widget> {
         self.__graphite_node_widget.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/orphan_node_no_warning.rs` の `node Widget`
     pub fn widget_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph WidgetId> {
         self.__graphite_node_widget.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/orphan_node_no_warning.rs` の `node Widget`
     pub fn widget_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = WidgetRef<'graph>> + 'graph {
@@ -80,6 +96,8 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `tests/orphan_node_no_warning.rs` の `node Widget`
     pub fn widget_len(&self) -> usize {
         self.__graphite_node_widget.len()
     }
@@ -120,6 +138,8 @@ impl Graph {
     }
 }
 /// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+///
+/// 宣言: `tests/orphan_node_no_warning.rs` の `schema WidgetGraph`
 pub struct Builder {
     __graphite_node_widget: Vec<(WidgetId, super::Widget)>,
     /// この構築を識別する構築印。`Builder::new()` が発行し、この
@@ -222,7 +242,9 @@ impl WidgetGraphDefaultId for super::Widget {
     }
 }
 impl WidgetGraphNode for super::Widget {}
-///完成済みグラフ上の `Widget` ノード個体。
+/// 完成済みグラフ上の `Widget` ノード個体。
+///
+/// 宣言: `tests/orphan_node_no_warning.rs` の `node Widget`
 #[derive(Clone, Copy)]
 pub struct WidgetRef<'graph> {
     graph: &'graph Graph,

@@ -7,13 +7,22 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    17243085902354042950u64, 13058979948022301931u64, 13277057886466318336u64,
-    13883477713124033852u64,
+    13660263509569496911u64, 7375332562587754764u64, 12434210690260140089u64,
+    12545093015642914901u64,
 ];
+/// `Sensor` ノードの公開ID。
+///
+/// 宣言: `tests/f64_attrs.rs` の `node Sensor`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SensorId(pub String);
+/// `Reading` ノードの公開ID。
+///
+/// 宣言: `tests/f64_attrs.rs` の `node Reading`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ReadingId(pub String);
+/// `Measured` 辺の公開ID。
+///
+/// 宣言: `tests/f64_attrs.rs` の `edge Measured = (sensor: Sensor) -[measurement: MeasuredEdge]-> (reading: Reading)`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MeasuredId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -31,6 +40,9 @@ pub struct __ReadingNamedPosition(__ReadingInternalPosition, u64);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __MeasuredNamedPosition(__MeasuredInternalPosition, u64);
+/// 構築時に組み立てる `Measured` 辺の値。
+///
+/// 宣言: `tests/f64_attrs.rs` の `edge Measured = (sensor: Sensor) -[measurement: MeasuredEdge]-> (reading: Reading)`
 #[derive(Clone, PartialEq)]
 pub struct Measured {
     pub sensor: SensorId,
@@ -65,6 +77,9 @@ struct __MeasuredRecord {
     reading: __ReadingInternalPosition,
     measurement: MeasuredEdge,
 }
+/// 凍結時の図式適合検査が見つけた違反。
+///
+/// 宣言: `tests/f64_attrs.rs` の `schema Measurement`
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
@@ -114,6 +129,8 @@ impl std::fmt::Debug for Violation {
 impl std::error::Error for Violation {}
 /// 凍結済み図式グラフ。構築後の構造は不変で、ノード値と辺の積み荷だけを
 /// `&mut Graph` を要求する種別APIから更新できる。
+///
+/// 宣言: `tests/f64_attrs.rs` の `schema Measurement`
 pub struct Graph {
     __graphite_node_sensor: graphite::KeyedTable<SensorId, super::Sensor>,
     __graphite_node_reading: graphite::KeyedTable<ReadingId, super::Reading>,
@@ -135,6 +152,8 @@ pub struct Graph {
 }
 impl Graph {
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `node Sensor`
     pub fn sensor_by_id<'graph>(
         &'graph self,
         id: &SensorId,
@@ -148,14 +167,20 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `node Sensor`
     pub fn sensor_value_mut(&mut self, id: &SensorId) -> Option<&mut super::Sensor> {
         self.__graphite_node_sensor.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `node Sensor`
     pub fn sensor_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph SensorId> {
         self.__graphite_node_sensor.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `node Sensor`
     pub fn sensor_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = SensorRef<'graph>> + 'graph {
@@ -167,10 +192,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `node Sensor`
     pub fn sensor_len(&self) -> usize {
         self.__graphite_node_sensor.len()
     }
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `node Reading`
     pub fn reading_by_id<'graph>(
         &'graph self,
         id: &ReadingId,
@@ -184,14 +213,20 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `node Reading`
     pub fn reading_value_mut(&mut self, id: &ReadingId) -> Option<&mut super::Reading> {
         self.__graphite_node_reading.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `node Reading`
     pub fn reading_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph ReadingId> {
         self.__graphite_node_reading.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `node Reading`
     pub fn reading_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = ReadingRef<'graph>> + 'graph {
@@ -203,10 +238,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `node Reading`
     pub fn reading_len(&self) -> usize {
         self.__graphite_node_reading.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `edge Measured = (sensor: Sensor) -[measurement: MeasuredEdge]-> (reading: Reading)`
     pub fn measured_by_id<'graph>(
         &'graph self,
         id: &MeasuredId,
@@ -217,6 +256,8 @@ impl Graph {
         })
     }
     /// 辺の構造を保ったまま積み荷だけを可変借用する。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `edge Measured = (sensor: Sensor) -[measurement: MeasuredEdge]-> (reading: Reading)`
     pub fn measured_payload_mut(
         &mut self,
         id: &MeasuredId,
@@ -226,12 +267,16 @@ impl Graph {
             .map(|record: &mut __MeasuredRecord| &mut record.measurement)
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `edge Measured = (sensor: Sensor) -[measurement: MeasuredEdge]-> (reading: Reading)`
     pub fn measured_ids<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = &'graph MeasuredId> {
         self.measured.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `edge Measured = (sensor: Sensor) -[measurement: MeasuredEdge]-> (reading: Reading)`
     pub fn measured_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = MeasuredRef<'graph>> + 'graph {
@@ -243,6 +288,8 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `edge Measured = (sensor: Sensor) -[measurement: MeasuredEdge]-> (reading: Reading)`
     pub fn measured_len(&self) -> usize {
         self.measured.len()
     }
@@ -283,6 +330,8 @@ impl Graph {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `tests/f64_attrs.rs` の `edge Measured = (sensor: Sensor) -[measurement: MeasuredEdge]-> (reading: Reading)`
 #[derive(Clone, Copy)]
 pub struct MeasuredRef<'graph> {
     graph: &'graph Graph,
@@ -346,6 +395,8 @@ impl<'graph> std::fmt::Debug for MeasuredRef<'graph> {
     }
 }
 /// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+///
+/// 宣言: `tests/f64_attrs.rs` の `schema Measurement`
 pub struct Builder {
     __graphite_node_sensor: Vec<(SensorId, super::Sensor)>,
     __graphite_node_reading: Vec<(ReadingId, super::Reading)>,
@@ -450,7 +501,9 @@ impl MeasurementDefaultId for super::Sensor {
     }
 }
 impl MeasurementNode for super::Sensor {}
-///完成済みグラフ上の `Sensor` ノード個体。
+/// 完成済みグラフ上の `Sensor` ノード個体。
+///
+/// 宣言: `tests/f64_attrs.rs` の `node Sensor`
 #[derive(Clone, Copy)]
 pub struct SensorRef<'graph> {
     graph: &'graph Graph,
@@ -477,6 +530,8 @@ impl<'graph> SensorRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `edge Measured = (sensor: Sensor) -[measurement: MeasuredEdge]-> (reading: Reading)`
     pub fn measured_as_sensor(
         self,
     ) -> impl Iterator<Item = MeasuredRef<'graph>> + 'graph {
@@ -489,7 +544,9 @@ impl<'graph> SensorRef<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `edge Measured = (sensor: Sensor) -[measurement: MeasuredEdge]-> (reading: Reading)`
     pub fn measured_try_between(
         self,
         other: ReadingRef<'graph>,
@@ -520,7 +577,9 @@ impl<'graph> SensorRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::measured_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::measured_try_between`] を使う。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `edge Measured = (sensor: Sensor) -[measurement: MeasuredEdge]-> (reading: Reading)`
     pub fn measured_between(
         self,
         other: ReadingRef<'graph>,
@@ -606,7 +665,9 @@ impl MeasurementDefaultId for super::Reading {
     }
 }
 impl MeasurementNode for super::Reading {}
-///完成済みグラフ上の `Reading` ノード個体。
+/// 完成済みグラフ上の `Reading` ノード個体。
+///
+/// 宣言: `tests/f64_attrs.rs` の `node Reading`
 #[derive(Clone, Copy)]
 pub struct ReadingRef<'graph> {
     graph: &'graph Graph,
@@ -633,6 +694,8 @@ impl<'graph> ReadingRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `edge Measured = (sensor: Sensor) -[measurement: MeasuredEdge]-> (reading: Reading)`
     pub fn measured_as_reading(
         self,
     ) -> impl Iterator<Item = MeasuredRef<'graph>> + 'graph {

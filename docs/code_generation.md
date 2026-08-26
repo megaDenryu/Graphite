@@ -83,6 +83,8 @@ cargo xtask generate --check
 
 `cargo xtask generate --check`は生成本文全体をバイト単位で比較する。schemaの位置移動、生成器の変更、コメントに記録する元DSL位置の変化も検出する。
 
+宣言元ファイルの綴りは指紋の材料に入れない。生成物の doc へ書く宣言元への参照 (`docs/desugaring_reference.md` §26.6) とファイル先頭の案内コメントは、どちらも宣言元ファイルの綴りを含むが、指紋を計算する`graph_schema!`は自分が書かれたファイルのパッケージ相対の綴りを知らない。綴りを指紋へ効かせると、生成ファイルの指紋とマクロが計算する指紋が一致しなくなる。宣言元ファイルを移動したときの綴りのずれは`generate --check`のバイト比較が検出する。
+
 ## 関連文書
 
 生成物のどれが公開でどれが非公開かは `docs/desugaring_reference.md` §22 が一覧で定める。`graph!`の名前付きラッパーだけを生成ファイルへ事前生成しない理由は同 §26.5 にある。クレートごとの責務は `docs/development/crate_architecture.md` が定める。

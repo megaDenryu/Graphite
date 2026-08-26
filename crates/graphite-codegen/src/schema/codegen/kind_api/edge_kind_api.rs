@@ -19,8 +19,10 @@ pub(crate) fn gen_edge_kind_api_methods(edge: &EdgeInfo<'_>) -> TokenStream {
     let iter = kind_api_method_ident(accessor, "iter");
     let len = kind_api_method_ident(accessor, "len");
     let payload_mut = gen_edge_payload_mut_method(edge);
+    let 宣言元への参照 = &edge.宣言元への参照;
     quote! {
         /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+        #宣言元への参照
         pub fn #by_id<'graph>(&'graph self, id: &#id_ty) -> Option<#reference<'graph>> {
             Some(#reference {
                 graph: self,
@@ -31,11 +33,13 @@ pub(crate) fn gen_edge_kind_api_methods(edge: &EdgeInfo<'_>) -> TokenStream {
         #payload_mut
 
         /// この種別の辺の公開IDを挿入順に走査する。
+        #宣言元への参照
         pub fn #ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph #id_ty> {
             self.#accessor.ids()
         }
 
         /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+        #宣言元への参照
         pub fn #iter<'graph>(&'graph self) -> impl Iterator<Item = #reference<'graph>> + 'graph {
             self.#accessor.positions().map(move |position| #reference {
                 graph: self,
@@ -44,6 +48,7 @@ pub(crate) fn gen_edge_kind_api_methods(edge: &EdgeInfo<'_>) -> TokenStream {
         }
 
         /// この種別の辺の件数を返す。
+        #宣言元への参照
         pub fn #len(&self) -> usize {
             self.#accessor.len()
         }

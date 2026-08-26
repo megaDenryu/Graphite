@@ -21,8 +21,10 @@ pub(crate) fn gen_edge_payload_mut_method(edge: &EdgeInfo<'_>) -> TokenStream {
     let payload_role = payload.役割名();
     let payload_ty = payload.型パス();
     let payload_mut = kind_api_method_ident(accessor, "payload_mut");
+    let 宣言元への参照 = &edge.宣言元への参照;
     quote! {
         /// 辺の構造を保ったまま積み荷だけを可変借用する。
+        #宣言元への参照
         pub fn #payload_mut(&mut self, id: &#id_ty) -> Option<&mut #payload_ty> {
             self.#accessor.get_mut(id).map(|record: &mut #record| &mut record.#payload_role)
         }

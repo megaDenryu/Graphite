@@ -7,11 +7,17 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    5989575520764528178u64, 8557965358162519057u64, 6452083185604433728u64,
-    6703547994525769220u64,
+    3879848870663051264u64, 1770760746580191631u64, 9579112365924869214u64,
+    9236133549682497858u64,
 ];
+/// `Person` ノードの公開ID。
+///
+/// 宣言: `tests/graph_splice.rs` の `node Person`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PersonId(pub String);
+/// `Knows` 辺の公開ID。
+///
+/// 宣言: `tests/graph_splice.rs` の `edge Knows = (knower: Person) -> (known: Person)`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct KnowsId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -24,6 +30,9 @@ pub struct __PersonNamedPosition(__PersonInternalPosition, u64);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __KnowsNamedPosition(__KnowsInternalPosition, u64);
+/// 構築時に組み立てる `Knows` 辺の値。
+///
+/// 宣言: `tests/graph_splice.rs` の `edge Knows = (knower: Person) -> (known: Person)`
 #[derive(Clone, PartialEq)]
 pub struct Knows {
     pub knower: PersonId,
@@ -49,6 +58,9 @@ struct __KnowsRecord {
     knower: __PersonInternalPosition,
     known: __PersonInternalPosition,
 }
+/// 凍結時の図式適合検査が見つけた違反。
+///
+/// 宣言: `tests/graph_splice.rs` の `schema SpliceDemo`
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
@@ -94,6 +106,8 @@ impl std::fmt::Debug for Violation {
 impl std::error::Error for Violation {}
 /// 凍結済み図式グラフ。構築後の構造は不変で、ノード値と辺の積み荷だけを
 /// `&mut Graph` を要求する種別APIから更新できる。
+///
+/// 宣言: `tests/graph_splice.rs` の `schema SpliceDemo`
 pub struct Graph {
     __graphite_node_person: graphite::KeyedTable<PersonId, super::Person>,
     knows: graphite::KeyedTable<KnowsId, __KnowsRecord>,
@@ -114,6 +128,8 @@ pub struct Graph {
 }
 impl Graph {
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/graph_splice.rs` の `node Person`
     pub fn person_by_id<'graph>(
         &'graph self,
         id: &PersonId,
@@ -127,14 +143,20 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `tests/graph_splice.rs` の `node Person`
     pub fn person_value_mut(&mut self, id: &PersonId) -> Option<&mut super::Person> {
         self.__graphite_node_person.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/graph_splice.rs` の `node Person`
     pub fn person_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph PersonId> {
         self.__graphite_node_person.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/graph_splice.rs` の `node Person`
     pub fn person_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = PersonRef<'graph>> + 'graph {
@@ -146,10 +168,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `tests/graph_splice.rs` の `node Person`
     pub fn person_len(&self) -> usize {
         self.__graphite_node_person.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/graph_splice.rs` の `edge Knows = (knower: Person) -> (known: Person)`
     pub fn knows_by_id<'graph>(&'graph self, id: &KnowsId) -> Option<KnowsRef<'graph>> {
         Some(KnowsRef {
             graph: self,
@@ -157,10 +183,14 @@ impl Graph {
         })
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/graph_splice.rs` の `edge Knows = (knower: Person) -> (known: Person)`
     pub fn knows_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph KnowsId> {
         self.knows.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/graph_splice.rs` の `edge Knows = (knower: Person) -> (known: Person)`
     pub fn knows_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = KnowsRef<'graph>> + 'graph {
@@ -172,6 +202,8 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `tests/graph_splice.rs` の `edge Knows = (knower: Person) -> (known: Person)`
     pub fn knows_len(&self) -> usize {
         self.knows.len()
     }
@@ -212,6 +244,8 @@ impl Graph {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `tests/graph_splice.rs` の `edge Knows = (knower: Person) -> (known: Person)`
 #[derive(Clone, Copy)]
 pub struct KnowsRef<'graph> {
     graph: &'graph Graph,
@@ -269,6 +303,8 @@ impl<'graph> std::fmt::Debug for KnowsRef<'graph> {
     }
 }
 /// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+///
+/// 宣言: `tests/graph_splice.rs` の `schema SpliceDemo`
 pub struct Builder {
     __graphite_node_person: Vec<(PersonId, super::Person)>,
     knows: Vec<(KnowsId, Knows)>,
@@ -372,7 +408,9 @@ impl SpliceDemoDefaultId for super::Person {
     }
 }
 impl SpliceDemoNode for super::Person {}
-///完成済みグラフ上の `Person` ノード個体。
+/// 完成済みグラフ上の `Person` ノード個体。
+///
+/// 宣言: `tests/graph_splice.rs` の `node Person`
 #[derive(Clone, Copy)]
 pub struct PersonRef<'graph> {
     graph: &'graph Graph,
@@ -399,6 +437,8 @@ impl<'graph> PersonRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/graph_splice.rs` の `edge Knows = (knower: Person) -> (known: Person)`
     pub fn knows_as_knower(self) -> impl Iterator<Item = KnowsRef<'graph>> + 'graph {
         let positions = self.graph.knows_from_index.get(self.internal_position.0);
         positions
@@ -411,6 +451,8 @@ impl<'graph> PersonRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/graph_splice.rs` の `edge Knows = (knower: Person) -> (known: Person)`
     pub fn knows_as_known(self) -> impl Iterator<Item = KnowsRef<'graph>> + 'graph {
         let positions = self.graph.knows_to_index.get(self.internal_position.0);
         positions
@@ -421,7 +463,9 @@ impl<'graph> PersonRef<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `tests/graph_splice.rs` の `edge Knows = (knower: Person) -> (known: Person)`
     pub fn knows_try_between(
         self,
         other: PersonRef<'graph>,
@@ -452,7 +496,9 @@ impl<'graph> PersonRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::knows_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::knows_try_between`] を使う。
+    ///
+    /// 宣言: `tests/graph_splice.rs` の `edge Knows = (knower: Person) -> (known: Person)`
     pub fn knows_between(
         self,
         other: PersonRef<'graph>,

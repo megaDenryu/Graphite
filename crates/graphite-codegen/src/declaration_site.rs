@@ -21,4 +21,13 @@ impl DeclarationSite {
     pub fn display(&self) -> String {
         format!("{}:{}", self.source_path, self.line)
     }
+
+    /// 生成物の doc へ書く宣言元ファイルの綴り。行番号は含めない。
+    ///
+    /// 行番号まで doc へ書くと、宣言の行が動くだけで全生成ファイルが再生成の
+    /// 対象になる。行番号を持つのは生成ファイル先頭の案内コメントだけにする
+    /// (`schema::codegen::declaration_doc` 参照)。
+    pub(crate) fn 宣言ファイルの綴り(&self) -> &str {
+        &self.source_path
+    }
 }

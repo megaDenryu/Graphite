@@ -7,21 +7,42 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    9015862705586993563u64, 7927467647084825228u64, 14959210509793727809u64,
-    6341027218072696181u64,
+    11312645938280886286u64, 6464331962766303547u64, 3264734104394708312u64,
+    15197219080436717868u64,
 ];
+/// `OrderState` ノードの公開ID。
+///
+/// 宣言: `src/schema.rs` の `node OrderState`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct OrderStateId(pub String);
+/// `Submit` 辺の公開ID。
+///
+/// 宣言: `src/schema.rs` の `edge Submit = (before: OrderState) -> (after: OrderState) where each before: 0..1`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SubmitId(pub String);
+/// `Pay` 辺の公開ID。
+///
+/// 宣言: `src/schema.rs` の `edge Pay = (before: OrderState) -> (after: OrderState) where each before: 0..1`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PayId(pub String);
+/// `Ship` 辺の公開ID。
+///
+/// 宣言: `src/schema.rs` の `edge Ship = (before: OrderState) -> (after: OrderState) where each before: 0..1`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ShipId(pub String);
+/// `Deliver` 辺の公開ID。
+///
+/// 宣言: `src/schema.rs` の `edge Deliver = (before: OrderState) -> (after: OrderState) where each before: 0..1`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DeliverId(pub String);
+/// `Cancel` 辺の公開ID。
+///
+/// 宣言: `src/schema.rs` の `edge Cancel = (before: OrderState) -[cancellation: CancelEdge]-> (after: OrderState) where each before: 0..1`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CancelId(pub String);
+/// `Refund` 辺の公開ID。
+///
+/// 宣言: `src/schema.rs` の `edge Refund = (before: OrderState) -[refund: RefundEdge]-> (after: OrderState) where each before: 0..1`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RefundId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -59,6 +80,9 @@ pub struct __CancelNamedPosition(__CancelInternalPosition, u64);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __RefundNamedPosition(__RefundInternalPosition, u64);
+/// 構築時に組み立てる `Submit` 辺の値。
+///
+/// 宣言: `src/schema.rs` の `edge Submit = (before: OrderState) -> (after: OrderState) where each before: 0..1`
 #[derive(Clone, PartialEq)]
 pub struct Submit {
     pub before: OrderStateId,
@@ -79,6 +103,9 @@ impl std::fmt::Debug for Submit {
         f.debug_tuple(stringify!(Submit)).field(&self.before).field(&self.after).finish()
     }
 }
+/// 構築時に組み立てる `Pay` 辺の値。
+///
+/// 宣言: `src/schema.rs` の `edge Pay = (before: OrderState) -> (after: OrderState) where each before: 0..1`
 #[derive(Clone, PartialEq)]
 pub struct Pay {
     pub before: OrderStateId,
@@ -99,6 +126,9 @@ impl std::fmt::Debug for Pay {
         f.debug_tuple(stringify!(Pay)).field(&self.before).field(&self.after).finish()
     }
 }
+/// 構築時に組み立てる `Ship` 辺の値。
+///
+/// 宣言: `src/schema.rs` の `edge Ship = (before: OrderState) -> (after: OrderState) where each before: 0..1`
 #[derive(Clone, PartialEq)]
 pub struct Ship {
     pub before: OrderStateId,
@@ -119,6 +149,9 @@ impl std::fmt::Debug for Ship {
         f.debug_tuple(stringify!(Ship)).field(&self.before).field(&self.after).finish()
     }
 }
+/// 構築時に組み立てる `Deliver` 辺の値。
+///
+/// 宣言: `src/schema.rs` の `edge Deliver = (before: OrderState) -> (after: OrderState) where each before: 0..1`
 #[derive(Clone, PartialEq)]
 pub struct Deliver {
     pub before: OrderStateId,
@@ -142,6 +175,9 @@ impl std::fmt::Debug for Deliver {
             .finish()
     }
 }
+/// 構築時に組み立てる `Cancel` 辺の値。
+///
+/// 宣言: `src/schema.rs` の `edge Cancel = (before: OrderState) -[cancellation: CancelEdge]-> (after: OrderState) where each before: 0..1`
 #[derive(Clone, PartialEq)]
 pub struct Cancel {
     pub before: OrderStateId,
@@ -174,6 +210,9 @@ impl std::fmt::Debug for Cancel {
         f.write_str(stringify!(Cancel))
     }
 }
+/// 構築時に組み立てる `Refund` 辺の値。
+///
+/// 宣言: `src/schema.rs` の `edge Refund = (before: OrderState) -[refund: RefundEdge]-> (after: OrderState) where each before: 0..1`
 #[derive(Clone, PartialEq)]
 pub struct Refund {
     pub before: OrderStateId,
@@ -238,6 +277,9 @@ struct __RefundRecord {
     after: __OrderStateInternalPosition,
     refund: RefundEdge,
 }
+/// 凍結時の図式適合検査が見つけた違反。
+///
+/// 宣言: `src/schema.rs` の `schema OrderFsm`
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
@@ -452,6 +494,8 @@ impl std::fmt::Debug for Violation {
 impl std::error::Error for Violation {}
 /// 凍結済み図式グラフ。構築後の構造は不変で、ノード値と辺の積み荷だけを
 /// `&mut Graph` を要求する種別APIから更新できる。
+///
+/// 宣言: `src/schema.rs` の `schema OrderFsm`
 pub struct Graph {
     __graphite_node_order_state: graphite::KeyedTable<OrderStateId, super::OrderState>,
     submit: graphite::KeyedTable<SubmitId, __SubmitRecord>,
@@ -527,6 +571,8 @@ pub struct Graph {
 }
 impl Graph {
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `src/schema.rs` の `node OrderState`
     pub fn order_state_by_id<'graph>(
         &'graph self,
         id: &OrderStateId,
@@ -540,6 +586,8 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `node OrderState`
     pub fn order_state_value_mut(
         &mut self,
         id: &OrderStateId,
@@ -547,12 +595,16 @@ impl Graph {
         self.__graphite_node_order_state.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `src/schema.rs` の `node OrderState`
     pub fn order_state_ids<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = &'graph OrderStateId> {
         self.__graphite_node_order_state.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `src/schema.rs` の `node OrderState`
     pub fn order_state_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = OrderStateRef<'graph>> + 'graph {
@@ -564,10 +616,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `src/schema.rs` の `node OrderState`
     pub fn order_state_len(&self) -> usize {
         self.__graphite_node_order_state.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Submit = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn submit_by_id<'graph>(
         &'graph self,
         id: &SubmitId,
@@ -578,10 +634,14 @@ impl Graph {
         })
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Submit = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn submit_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph SubmitId> {
         self.submit.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Submit = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn submit_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = SubmitRef<'graph>> + 'graph {
@@ -593,10 +653,14 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Submit = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn submit_len(&self) -> usize {
         self.submit.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Pay = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn pay_by_id<'graph>(&'graph self, id: &PayId) -> Option<PayRef<'graph>> {
         Some(PayRef {
             graph: self,
@@ -604,10 +668,14 @@ impl Graph {
         })
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Pay = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn pay_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph PayId> {
         self.pay.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Pay = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn pay_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = PayRef<'graph>> + 'graph {
@@ -619,10 +687,14 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Pay = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn pay_len(&self) -> usize {
         self.pay.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Ship = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn ship_by_id<'graph>(&'graph self, id: &ShipId) -> Option<ShipRef<'graph>> {
         Some(ShipRef {
             graph: self,
@@ -630,10 +702,14 @@ impl Graph {
         })
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Ship = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn ship_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph ShipId> {
         self.ship.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Ship = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn ship_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = ShipRef<'graph>> + 'graph {
@@ -645,10 +721,14 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Ship = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn ship_len(&self) -> usize {
         self.ship.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Deliver = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn deliver_by_id<'graph>(
         &'graph self,
         id: &DeliverId,
@@ -659,10 +739,14 @@ impl Graph {
         })
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Deliver = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn deliver_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph DeliverId> {
         self.deliver.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Deliver = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn deliver_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = DeliverRef<'graph>> + 'graph {
@@ -674,10 +758,14 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Deliver = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn deliver_len(&self) -> usize {
         self.deliver.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Cancel = (before: OrderState) -[cancellation: CancelEdge]-> (after: OrderState) where each before: 0..1`
     pub fn cancel_by_id<'graph>(
         &'graph self,
         id: &CancelId,
@@ -688,16 +776,22 @@ impl Graph {
         })
     }
     /// 辺の構造を保ったまま積み荷だけを可変借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Cancel = (before: OrderState) -[cancellation: CancelEdge]-> (after: OrderState) where each before: 0..1`
     pub fn cancel_payload_mut(&mut self, id: &CancelId) -> Option<&mut CancelEdge> {
         self.cancel
             .get_mut(id)
             .map(|record: &mut __CancelRecord| &mut record.cancellation)
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Cancel = (before: OrderState) -[cancellation: CancelEdge]-> (after: OrderState) where each before: 0..1`
     pub fn cancel_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph CancelId> {
         self.cancel.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Cancel = (before: OrderState) -[cancellation: CancelEdge]-> (after: OrderState) where each before: 0..1`
     pub fn cancel_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = CancelRef<'graph>> + 'graph {
@@ -709,10 +803,14 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Cancel = (before: OrderState) -[cancellation: CancelEdge]-> (after: OrderState) where each before: 0..1`
     pub fn cancel_len(&self) -> usize {
         self.cancel.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Refund = (before: OrderState) -[refund: RefundEdge]-> (after: OrderState) where each before: 0..1`
     pub fn refund_by_id<'graph>(
         &'graph self,
         id: &RefundId,
@@ -723,14 +821,20 @@ impl Graph {
         })
     }
     /// 辺の構造を保ったまま積み荷だけを可変借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Refund = (before: OrderState) -[refund: RefundEdge]-> (after: OrderState) where each before: 0..1`
     pub fn refund_payload_mut(&mut self, id: &RefundId) -> Option<&mut RefundEdge> {
         self.refund.get_mut(id).map(|record: &mut __RefundRecord| &mut record.refund)
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Refund = (before: OrderState) -[refund: RefundEdge]-> (after: OrderState) where each before: 0..1`
     pub fn refund_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph RefundId> {
         self.refund.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Refund = (before: OrderState) -[refund: RefundEdge]-> (after: OrderState) where each before: 0..1`
     pub fn refund_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = RefundRef<'graph>> + 'graph {
@@ -742,6 +846,8 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Refund = (before: OrderState) -[refund: RefundEdge]-> (after: OrderState) where each before: 0..1`
     pub fn refund_len(&self) -> usize {
         self.refund.len()
     }
@@ -782,6 +888,8 @@ impl Graph {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `src/schema.rs` の `edge Submit = (before: OrderState) -> (after: OrderState) where each before: 0..1`
 #[derive(Clone, Copy)]
 pub struct SubmitRef<'graph> {
     graph: &'graph Graph,
@@ -839,6 +947,8 @@ impl<'graph> std::fmt::Debug for SubmitRef<'graph> {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `src/schema.rs` の `edge Pay = (before: OrderState) -> (after: OrderState) where each before: 0..1`
 #[derive(Clone, Copy)]
 pub struct PayRef<'graph> {
     graph: &'graph Graph,
@@ -896,6 +1006,8 @@ impl<'graph> std::fmt::Debug for PayRef<'graph> {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `src/schema.rs` の `edge Ship = (before: OrderState) -> (after: OrderState) where each before: 0..1`
 #[derive(Clone, Copy)]
 pub struct ShipRef<'graph> {
     graph: &'graph Graph,
@@ -953,6 +1065,8 @@ impl<'graph> std::fmt::Debug for ShipRef<'graph> {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `src/schema.rs` の `edge Deliver = (before: OrderState) -> (after: OrderState) where each before: 0..1`
 #[derive(Clone, Copy)]
 pub struct DeliverRef<'graph> {
     graph: &'graph Graph,
@@ -1010,6 +1124,8 @@ impl<'graph> std::fmt::Debug for DeliverRef<'graph> {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `src/schema.rs` の `edge Cancel = (before: OrderState) -[cancellation: CancelEdge]-> (after: OrderState) where each before: 0..1`
 #[derive(Clone, Copy)]
 pub struct CancelRef<'graph> {
     graph: &'graph Graph,
@@ -1073,6 +1189,8 @@ impl<'graph> std::fmt::Debug for CancelRef<'graph> {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `src/schema.rs` の `edge Refund = (before: OrderState) -[refund: RefundEdge]-> (after: OrderState) where each before: 0..1`
 #[derive(Clone, Copy)]
 pub struct RefundRef<'graph> {
     graph: &'graph Graph,
@@ -1136,6 +1254,8 @@ impl<'graph> std::fmt::Debug for RefundRef<'graph> {
     }
 }
 /// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+///
+/// 宣言: `src/schema.rs` の `schema OrderFsm`
 pub struct Builder {
     __graphite_node_order_state: Vec<(OrderStateId, super::OrderState)>,
     submit: Vec<(SubmitId, Submit)>,
@@ -1244,7 +1364,9 @@ impl OrderFsmDefaultId for super::OrderState {
     }
 }
 impl OrderFsmNode for super::OrderState {}
-///完成済みグラフ上の `OrderState` ノード個体。
+/// 完成済みグラフ上の `OrderState` ノード個体。
+///
+/// 宣言: `src/schema.rs` の `node OrderState`
 #[derive(Clone, Copy)]
 pub struct OrderStateRef<'graph> {
     graph: &'graph Graph,
@@ -1270,6 +1392,8 @@ impl<'graph> OrderStateRef<'graph> {
             .1
     }
     /// この役割に接続する高々1本の辺を O(1)、追加確保なしで返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Submit = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn submit_as_before(self) -> Option<SubmitRef<'graph>> {
         self.graph
             .submit_from_index
@@ -1282,6 +1406,8 @@ impl<'graph> OrderStateRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Submit = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn submit_as_after(self) -> impl Iterator<Item = SubmitRef<'graph>> + 'graph {
         let positions = self.graph.submit_to_index.get(self.internal_position.0);
         positions
@@ -1292,7 +1418,9 @@ impl<'graph> OrderStateRef<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Submit = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn submit_try_between(
         self,
         other: OrderStateRef<'graph>,
@@ -1323,7 +1451,9 @@ impl<'graph> OrderStateRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::submit_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::submit_try_between`] を使う。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Submit = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn submit_between(
         self,
         other: OrderStateRef<'graph>,
@@ -1337,6 +1467,8 @@ impl<'graph> OrderStateRef<'graph> {
             })
     }
     /// この役割に接続する高々1本の辺を O(1)、追加確保なしで返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Pay = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn pay_as_before(self) -> Option<PayRef<'graph>> {
         self.graph
             .pay_from_index
@@ -1349,6 +1481,8 @@ impl<'graph> OrderStateRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Pay = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn pay_as_after(self) -> impl Iterator<Item = PayRef<'graph>> + 'graph {
         let positions = self.graph.pay_to_index.get(self.internal_position.0);
         positions
@@ -1359,7 +1493,9 @@ impl<'graph> OrderStateRef<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Pay = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn pay_try_between(
         self,
         other: OrderStateRef<'graph>,
@@ -1387,7 +1523,9 @@ impl<'graph> OrderStateRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::pay_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::pay_try_between`] を使う。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Pay = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn pay_between(
         self,
         other: OrderStateRef<'graph>,
@@ -1400,6 +1538,8 @@ impl<'graph> OrderStateRef<'graph> {
             })
     }
     /// この役割に接続する高々1本の辺を O(1)、追加確保なしで返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Ship = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn ship_as_before(self) -> Option<ShipRef<'graph>> {
         self.graph
             .ship_from_index
@@ -1412,6 +1552,8 @@ impl<'graph> OrderStateRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Ship = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn ship_as_after(self) -> impl Iterator<Item = ShipRef<'graph>> + 'graph {
         let positions = self.graph.ship_to_index.get(self.internal_position.0);
         positions
@@ -1422,7 +1564,9 @@ impl<'graph> OrderStateRef<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Ship = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn ship_try_between(
         self,
         other: OrderStateRef<'graph>,
@@ -1453,7 +1597,9 @@ impl<'graph> OrderStateRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::ship_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::ship_try_between`] を使う。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Ship = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn ship_between(
         self,
         other: OrderStateRef<'graph>,
@@ -1467,6 +1613,8 @@ impl<'graph> OrderStateRef<'graph> {
             })
     }
     /// この役割に接続する高々1本の辺を O(1)、追加確保なしで返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Deliver = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn deliver_as_before(self) -> Option<DeliverRef<'graph>> {
         self.graph
             .deliver_from_index
@@ -1479,6 +1627,8 @@ impl<'graph> OrderStateRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Deliver = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn deliver_as_after(self) -> impl Iterator<Item = DeliverRef<'graph>> + 'graph {
         let positions = self.graph.deliver_to_index.get(self.internal_position.0);
         positions
@@ -1489,7 +1639,9 @@ impl<'graph> OrderStateRef<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Deliver = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn deliver_try_between(
         self,
         other: OrderStateRef<'graph>,
@@ -1520,7 +1672,9 @@ impl<'graph> OrderStateRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::deliver_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::deliver_try_between`] を使う。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Deliver = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn deliver_between(
         self,
         other: OrderStateRef<'graph>,
@@ -1534,6 +1688,8 @@ impl<'graph> OrderStateRef<'graph> {
             })
     }
     /// この役割に接続する高々1本の辺を O(1)、追加確保なしで返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Cancel = (before: OrderState) -[cancellation: CancelEdge]-> (after: OrderState) where each before: 0..1`
     pub fn cancel_as_before(self) -> Option<CancelRef<'graph>> {
         self.graph
             .cancel_from_index
@@ -1546,6 +1702,8 @@ impl<'graph> OrderStateRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Cancel = (before: OrderState) -[cancellation: CancelEdge]-> (after: OrderState) where each before: 0..1`
     pub fn cancel_as_after(self) -> impl Iterator<Item = CancelRef<'graph>> + 'graph {
         let positions = self.graph.cancel_to_index.get(self.internal_position.0);
         positions
@@ -1556,7 +1714,9 @@ impl<'graph> OrderStateRef<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Cancel = (before: OrderState) -[cancellation: CancelEdge]-> (after: OrderState) where each before: 0..1`
     pub fn cancel_try_between(
         self,
         other: OrderStateRef<'graph>,
@@ -1587,7 +1747,9 @@ impl<'graph> OrderStateRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::cancel_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::cancel_try_between`] を使う。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Cancel = (before: OrderState) -[cancellation: CancelEdge]-> (after: OrderState) where each before: 0..1`
     pub fn cancel_between(
         self,
         other: OrderStateRef<'graph>,
@@ -1601,6 +1763,8 @@ impl<'graph> OrderStateRef<'graph> {
             })
     }
     /// この役割に接続する高々1本の辺を O(1)、追加確保なしで返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Refund = (before: OrderState) -[refund: RefundEdge]-> (after: OrderState) where each before: 0..1`
     pub fn refund_as_before(self) -> Option<RefundRef<'graph>> {
         self.graph
             .refund_from_index
@@ -1613,6 +1777,8 @@ impl<'graph> OrderStateRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Refund = (before: OrderState) -[refund: RefundEdge]-> (after: OrderState) where each before: 0..1`
     pub fn refund_as_after(self) -> impl Iterator<Item = RefundRef<'graph>> + 'graph {
         let positions = self.graph.refund_to_index.get(self.internal_position.0);
         positions
@@ -1623,7 +1789,9 @@ impl<'graph> OrderStateRef<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Refund = (before: OrderState) -[refund: RefundEdge]-> (after: OrderState) where each before: 0..1`
     pub fn refund_try_between(
         self,
         other: OrderStateRef<'graph>,
@@ -1654,7 +1822,9 @@ impl<'graph> OrderStateRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::refund_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::refund_try_between`] を使う。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Refund = (before: OrderState) -[refund: RefundEdge]-> (after: OrderState) where each before: 0..1`
     pub fn refund_between(
         self,
         other: OrderStateRef<'graph>,

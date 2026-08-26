@@ -256,7 +256,9 @@ NodeRef・EdgeRefのメソッド、役割アクセサ、`Graph`の種別API
 (`{type}_by_id`・`{kind}_iter`・`{kind}_ids`・`{kind}_len` 等)、
 `NodeRef`の`{kind}_between`・`{kind}_try_between`へ定義ジャンプした場合、
 生成ファイル内の実装へ着地することを受理条件とする。生成ファイル先頭の「生成元」から元DSLのファイルと行へ
-戻れる。
+戻れる。着地した要素そのものからも戻れるよう、生成する公開型と公開メソッドの doc は
+「宣言: `<宣言元ファイルのパッケージ相対の綴り>` の `<宣言の形>`」の段落を持つ
+(issue #17、書式と対応表は `docs/desugaring_reference.md` §26.6)。
 
 `graph!`が作る名前付きラッパーは呼び出し箇所ローカル型なので通常ファイルへ
 事前生成しない。`graph.alice()`の定義情報は左辺`alice`のスパンへ結び付ける。
@@ -270,13 +272,17 @@ NodeRef・EdgeRefのメソッド、役割アクセサ、`Graph`の種別API
 
 | メソッド | 着地行 (`traversal_api_traversal.rs`) |
 |---|---|
-| `person_by_id` | 362 |
-| `person_value_mut` | 375 |
-| `person_len` | 394 |
-| `purchase_iter` | 450 |
-| `purchase_as_buyer` | 937 |
-| `関係_try_between` | 1084 |
-| `関係_between` | 1109 |
+| `person_by_id` | 397 |
+| `person_value_mut` | 412 |
+| `person_len` | 437 |
+| `purchase_iter` | 509 |
+| `purchase_as_buyer` | 1036 |
+| `関係_try_between` | 1201 |
+| `関係_between` | 1228 |
+
+上表の着地行は 2026-08-26 の実測時に採った位置を、issue #17 の再生成
+(生成物の doc へ宣言元への参照を足した) による行の移動へ diff の行対応で
+写した値である。実測そのものはやり直していない。
 
 ## 2. 仕様項目
 

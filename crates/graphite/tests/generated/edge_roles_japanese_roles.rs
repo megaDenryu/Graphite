@@ -7,13 +7,22 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    2568093042814413375u64, 6582658368770243370u64, 8998943530008602953u64,
-    16700517122804023557u64,
+    8101318978595338976u64, 8320740492671662769u64, 15639361154850383150u64,
+    6756724821292528858u64,
 ];
+/// `Person` ノードの公開ID。
+///
+/// 宣言: `tests/edge_roles.rs` の `node Person`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PersonId(pub String);
+/// `Item` ノードの公開ID。
+///
+/// 宣言: `tests/edge_roles.rs` の `node Item`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ItemId(pub String);
+/// `Ownership` 辺の公開ID。
+///
+/// 宣言: `tests/edge_roles.rs` の `edge Ownership = (所有者: Person) -> (所有物: Item) where each 所有者: 1`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct OwnershipId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -31,6 +40,9 @@ pub struct __ItemNamedPosition(__ItemInternalPosition, u64);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __OwnershipNamedPosition(__OwnershipInternalPosition, u64);
+/// 構築時に組み立てる `Ownership` 辺の値。
+///
+/// 宣言: `tests/edge_roles.rs` の `edge Ownership = (所有者: Person) -> (所有物: Item) where each 所有者: 1`
 #[derive(Clone, PartialEq)]
 pub struct Ownership {
     pub 所有者: PersonId,
@@ -62,6 +74,9 @@ struct __OwnershipRecord {
     所有者: __PersonInternalPosition,
     所有物: __ItemInternalPosition,
 }
+/// 凍結時の図式適合検査が見つけた違反。
+///
+/// 宣言: `tests/edge_roles.rs` の `schema JapaneseRoles`
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
@@ -120,6 +135,8 @@ impl std::fmt::Debug for Violation {
 impl std::error::Error for Violation {}
 /// 凍結済み図式グラフ。構築後の構造は不変で、ノード値と辺の積み荷だけを
 /// `&mut Graph` を要求する種別APIから更新できる。
+///
+/// 宣言: `tests/edge_roles.rs` の `schema JapaneseRoles`
 pub struct Graph {
     __graphite_node_person: graphite::KeyedTable<PersonId, super::Person>,
     __graphite_node_item: graphite::KeyedTable<ItemId, super::Item>,
@@ -141,6 +158,8 @@ pub struct Graph {
 }
 impl Graph {
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `node Person`
     pub fn person_by_id<'graph>(
         &'graph self,
         id: &PersonId,
@@ -154,14 +173,20 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `node Person`
     pub fn person_value_mut(&mut self, id: &PersonId) -> Option<&mut super::Person> {
         self.__graphite_node_person.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `node Person`
     pub fn person_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph PersonId> {
         self.__graphite_node_person.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `node Person`
     pub fn person_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = PersonRef<'graph>> + 'graph {
@@ -173,10 +198,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `node Person`
     pub fn person_len(&self) -> usize {
         self.__graphite_node_person.len()
     }
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `node Item`
     pub fn item_by_id<'graph>(&'graph self, id: &ItemId) -> Option<ItemRef<'graph>> {
         let internal_position = __ItemInternalPosition(
             self.__graphite_node_item.position(id)?,
@@ -187,14 +216,20 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `node Item`
     pub fn item_value_mut(&mut self, id: &ItemId) -> Option<&mut super::Item> {
         self.__graphite_node_item.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `node Item`
     pub fn item_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph ItemId> {
         self.__graphite_node_item.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `node Item`
     pub fn item_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = ItemRef<'graph>> + 'graph {
@@ -206,10 +241,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `node Item`
     pub fn item_len(&self) -> usize {
         self.__graphite_node_item.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Ownership = (所有者: Person) -> (所有物: Item) where each 所有者: 1`
     pub fn ownership_by_id<'graph>(
         &'graph self,
         id: &OwnershipId,
@@ -220,12 +259,16 @@ impl Graph {
         })
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Ownership = (所有者: Person) -> (所有物: Item) where each 所有者: 1`
     pub fn ownership_ids<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = &'graph OwnershipId> {
         self.ownership.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Ownership = (所有者: Person) -> (所有物: Item) where each 所有者: 1`
     pub fn ownership_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = OwnershipRef<'graph>> + 'graph {
@@ -237,6 +280,8 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Ownership = (所有者: Person) -> (所有物: Item) where each 所有者: 1`
     pub fn ownership_len(&self) -> usize {
         self.ownership.len()
     }
@@ -277,6 +322,8 @@ impl Graph {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `tests/edge_roles.rs` の `edge Ownership = (所有者: Person) -> (所有物: Item) where each 所有者: 1`
 #[derive(Clone, Copy)]
 pub struct OwnershipRef<'graph> {
     graph: &'graph Graph,
@@ -334,6 +381,8 @@ impl<'graph> std::fmt::Debug for OwnershipRef<'graph> {
     }
 }
 /// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+///
+/// 宣言: `tests/edge_roles.rs` の `schema JapaneseRoles`
 pub struct Builder {
     __graphite_node_person: Vec<(PersonId, super::Person)>,
     __graphite_node_item: Vec<(ItemId, super::Item)>,
@@ -438,7 +487,9 @@ impl JapaneseRolesDefaultId for super::Person {
     }
 }
 impl JapaneseRolesNode for super::Person {}
-///完成済みグラフ上の `Person` ノード個体。
+/// 完成済みグラフ上の `Person` ノード個体。
+///
+/// 宣言: `tests/edge_roles.rs` の `node Person`
 #[derive(Clone, Copy)]
 pub struct PersonRef<'graph> {
     graph: &'graph Graph,
@@ -464,6 +515,8 @@ impl<'graph> PersonRef<'graph> {
             .1
     }
     /// この役割に接続する唯一の辺を O(1)、追加確保なしで返す。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Ownership = (所有者: Person) -> (所有物: Item) where each 所有者: 1`
     pub fn ownership_as_所有者(self) -> OwnershipRef<'graph> {
         OwnershipRef {
             graph: self.graph,
@@ -473,7 +526,9 @@ impl<'graph> PersonRef<'graph> {
                 .get(self.internal_position.0),
         }
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Ownership = (所有者: Person) -> (所有物: Item) where each 所有者: 1`
     pub fn ownership_try_between(
         self,
         other: ItemRef<'graph>,
@@ -504,7 +559,9 @@ impl<'graph> PersonRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::ownership_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::ownership_try_between`] を使う。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Ownership = (所有者: Person) -> (所有物: Item) where each 所有者: 1`
     pub fn ownership_between(
         self,
         other: ItemRef<'graph>,
@@ -590,7 +647,9 @@ impl JapaneseRolesDefaultId for super::Item {
     }
 }
 impl JapaneseRolesNode for super::Item {}
-///完成済みグラフ上の `Item` ノード個体。
+/// 完成済みグラフ上の `Item` ノード個体。
+///
+/// 宣言: `tests/edge_roles.rs` の `node Item`
 #[derive(Clone, Copy)]
 pub struct ItemRef<'graph> {
     graph: &'graph Graph,
@@ -617,6 +676,8 @@ impl<'graph> ItemRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Ownership = (所有者: Person) -> (所有物: Item) where each 所有者: 1`
     pub fn ownership_as_所有物(
         self,
     ) -> impl Iterator<Item = OwnershipRef<'graph>> + 'graph {

@@ -7,15 +7,27 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    5106925965304441446u64, 1471139130197875267u64, 15406725647618052524u64,
-    16810604678830995696u64,
+    15780425753874411893u64, 11623891638366838552u64, 12724208267906162191u64,
+    16184785050676734115u64,
 ];
+/// `Scene` ノードの公開ID。
+///
+/// 宣言: `src/schema.rs` の `node Scene`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SceneId(pub String);
+/// `Ending` ノードの公開ID。
+///
+/// 宣言: `src/schema.rs` の `node Ending`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EndingId(pub String);
+/// `Choice` 辺の公開ID。
+///
+/// 宣言: `src/schema.rs` の `edge Choice = (scene: Scene) -[choice: ChoiceEdge]-> (next: Scene)`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ChoiceId(pub String);
+/// `Finale` 辺の公開ID。
+///
+/// 宣言: `src/schema.rs` の `edge Finale = (scene: Scene) -> (ending: Ending) where each scene: 0..1`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FinaleId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -38,6 +50,9 @@ pub struct __ChoiceNamedPosition(__ChoiceInternalPosition, u64);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __FinaleNamedPosition(__FinaleInternalPosition, u64);
+/// 構築時に組み立てる `Choice` 辺の値。
+///
+/// 宣言: `src/schema.rs` の `edge Choice = (scene: Scene) -[choice: ChoiceEdge]-> (next: Scene)`
 #[derive(Clone, PartialEq)]
 pub struct Choice {
     pub scene: SceneId,
@@ -66,6 +81,9 @@ impl std::fmt::Debug for Choice {
         f.write_str(stringify!(Choice))
     }
 }
+/// 構築時に組み立てる `Finale` 辺の値。
+///
+/// 宣言: `src/schema.rs` の `edge Finale = (scene: Scene) -> (ending: Ending) where each scene: 0..1`
 #[derive(Clone, PartialEq)]
 pub struct Finale {
     pub scene: SceneId,
@@ -97,6 +115,9 @@ struct __FinaleRecord {
     scene: __SceneInternalPosition,
     ending: __EndingInternalPosition,
 }
+/// 凍結時の図式適合検査が見つけた違反。
+///
+/// 宣言: `src/schema.rs` の `schema DialogueGraph`
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
@@ -178,6 +199,8 @@ impl std::fmt::Debug for Violation {
 impl std::error::Error for Violation {}
 /// 凍結済み図式グラフ。構築後の構造は不変で、ノード値と辺の積み荷だけを
 /// `&mut Graph` を要求する種別APIから更新できる。
+///
+/// 宣言: `src/schema.rs` の `schema DialogueGraph`
 pub struct Graph {
     __graphite_node_scene: graphite::KeyedTable<SceneId, super::Scene>,
     __graphite_node_ending: graphite::KeyedTable<EndingId, super::Ending>,
@@ -210,6 +233,8 @@ pub struct Graph {
 }
 impl Graph {
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `src/schema.rs` の `node Scene`
     pub fn scene_by_id<'graph>(&'graph self, id: &SceneId) -> Option<SceneRef<'graph>> {
         let internal_position = __SceneInternalPosition(
             self.__graphite_node_scene.position(id)?,
@@ -220,14 +245,20 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `node Scene`
     pub fn scene_value_mut(&mut self, id: &SceneId) -> Option<&mut super::Scene> {
         self.__graphite_node_scene.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `src/schema.rs` の `node Scene`
     pub fn scene_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph SceneId> {
         self.__graphite_node_scene.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `src/schema.rs` の `node Scene`
     pub fn scene_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = SceneRef<'graph>> + 'graph {
@@ -239,10 +270,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `src/schema.rs` の `node Scene`
     pub fn scene_len(&self) -> usize {
         self.__graphite_node_scene.len()
     }
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `src/schema.rs` の `node Ending`
     pub fn ending_by_id<'graph>(
         &'graph self,
         id: &EndingId,
@@ -256,14 +291,20 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `node Ending`
     pub fn ending_value_mut(&mut self, id: &EndingId) -> Option<&mut super::Ending> {
         self.__graphite_node_ending.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `src/schema.rs` の `node Ending`
     pub fn ending_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph EndingId> {
         self.__graphite_node_ending.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `src/schema.rs` の `node Ending`
     pub fn ending_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = EndingRef<'graph>> + 'graph {
@@ -275,10 +316,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `src/schema.rs` の `node Ending`
     pub fn ending_len(&self) -> usize {
         self.__graphite_node_ending.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Choice = (scene: Scene) -[choice: ChoiceEdge]-> (next: Scene)`
     pub fn choice_by_id<'graph>(
         &'graph self,
         id: &ChoiceId,
@@ -289,14 +334,20 @@ impl Graph {
         })
     }
     /// 辺の構造を保ったまま積み荷だけを可変借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Choice = (scene: Scene) -[choice: ChoiceEdge]-> (next: Scene)`
     pub fn choice_payload_mut(&mut self, id: &ChoiceId) -> Option<&mut ChoiceEdge> {
         self.choice.get_mut(id).map(|record: &mut __ChoiceRecord| &mut record.choice)
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Choice = (scene: Scene) -[choice: ChoiceEdge]-> (next: Scene)`
     pub fn choice_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph ChoiceId> {
         self.choice.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Choice = (scene: Scene) -[choice: ChoiceEdge]-> (next: Scene)`
     pub fn choice_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = ChoiceRef<'graph>> + 'graph {
@@ -308,10 +359,14 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Choice = (scene: Scene) -[choice: ChoiceEdge]-> (next: Scene)`
     pub fn choice_len(&self) -> usize {
         self.choice.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Finale = (scene: Scene) -> (ending: Ending) where each scene: 0..1`
     pub fn finale_by_id<'graph>(
         &'graph self,
         id: &FinaleId,
@@ -322,10 +377,14 @@ impl Graph {
         })
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Finale = (scene: Scene) -> (ending: Ending) where each scene: 0..1`
     pub fn finale_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph FinaleId> {
         self.finale.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Finale = (scene: Scene) -> (ending: Ending) where each scene: 0..1`
     pub fn finale_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = FinaleRef<'graph>> + 'graph {
@@ -337,6 +396,8 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Finale = (scene: Scene) -> (ending: Ending) where each scene: 0..1`
     pub fn finale_len(&self) -> usize {
         self.finale.len()
     }
@@ -377,6 +438,8 @@ impl Graph {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `src/schema.rs` の `edge Choice = (scene: Scene) -[choice: ChoiceEdge]-> (next: Scene)`
 #[derive(Clone, Copy)]
 pub struct ChoiceRef<'graph> {
     graph: &'graph Graph,
@@ -440,6 +503,8 @@ impl<'graph> std::fmt::Debug for ChoiceRef<'graph> {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `src/schema.rs` の `edge Finale = (scene: Scene) -> (ending: Ending) where each scene: 0..1`
 #[derive(Clone, Copy)]
 pub struct FinaleRef<'graph> {
     graph: &'graph Graph,
@@ -497,6 +562,8 @@ impl<'graph> std::fmt::Debug for FinaleRef<'graph> {
     }
 }
 /// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+///
+/// 宣言: `src/schema.rs` の `schema DialogueGraph`
 pub struct Builder {
     __graphite_node_scene: Vec<(SceneId, super::Scene)>,
     __graphite_node_ending: Vec<(EndingId, super::Ending)>,
@@ -602,7 +669,9 @@ impl DialogueGraphDefaultId for super::Scene {
     }
 }
 impl DialogueGraphNode for super::Scene {}
-///完成済みグラフ上の `Scene` ノード個体。
+/// 完成済みグラフ上の `Scene` ノード個体。
+///
+/// 宣言: `src/schema.rs` の `node Scene`
 #[derive(Clone, Copy)]
 pub struct SceneRef<'graph> {
     graph: &'graph Graph,
@@ -629,6 +698,8 @@ impl<'graph> SceneRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Choice = (scene: Scene) -[choice: ChoiceEdge]-> (next: Scene)`
     pub fn choice_as_scene(self) -> impl Iterator<Item = ChoiceRef<'graph>> + 'graph {
         let positions = self.graph.choice_from_index.get(self.internal_position.0);
         positions
@@ -641,6 +712,8 @@ impl<'graph> SceneRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Choice = (scene: Scene) -[choice: ChoiceEdge]-> (next: Scene)`
     pub fn choice_as_next(self) -> impl Iterator<Item = ChoiceRef<'graph>> + 'graph {
         let positions = self.graph.choice_to_index.get(self.internal_position.0);
         positions
@@ -651,7 +724,9 @@ impl<'graph> SceneRef<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Choice = (scene: Scene) -[choice: ChoiceEdge]-> (next: Scene)`
     pub fn choice_try_between(
         self,
         other: SceneRef<'graph>,
@@ -682,7 +757,9 @@ impl<'graph> SceneRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::choice_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::choice_try_between`] を使う。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Choice = (scene: Scene) -[choice: ChoiceEdge]-> (next: Scene)`
     pub fn choice_between(
         self,
         other: SceneRef<'graph>,
@@ -695,6 +772,8 @@ impl<'graph> SceneRef<'graph> {
             })
     }
     /// この役割に接続する高々1本の辺を O(1)、追加確保なしで返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Finale = (scene: Scene) -> (ending: Ending) where each scene: 0..1`
     pub fn finale_as_scene(self) -> Option<FinaleRef<'graph>> {
         self.graph
             .finale_from_index
@@ -705,7 +784,9 @@ impl<'graph> SceneRef<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Finale = (scene: Scene) -> (ending: Ending) where each scene: 0..1`
     pub fn finale_try_between(
         self,
         other: EndingRef<'graph>,
@@ -736,7 +817,9 @@ impl<'graph> SceneRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::finale_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::finale_try_between`] を使う。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Finale = (scene: Scene) -> (ending: Ending) where each scene: 0..1`
     pub fn finale_between(
         self,
         other: EndingRef<'graph>,
@@ -821,7 +904,9 @@ impl DialogueGraphDefaultId for super::Ending {
     }
 }
 impl DialogueGraphNode for super::Ending {}
-///完成済みグラフ上の `Ending` ノード個体。
+/// 完成済みグラフ上の `Ending` ノード個体。
+///
+/// 宣言: `src/schema.rs` の `node Ending`
 #[derive(Clone, Copy)]
 pub struct EndingRef<'graph> {
     graph: &'graph Graph,
@@ -848,6 +933,8 @@ impl<'graph> EndingRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Finale = (scene: Scene) -> (ending: Ending) where each scene: 0..1`
     pub fn finale_as_ending(self) -> impl Iterator<Item = FinaleRef<'graph>> + 'graph {
         let positions = self.graph.finale_to_index.get(self.internal_position.0);
         positions

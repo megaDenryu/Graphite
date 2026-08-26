@@ -7,21 +7,42 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    8396418820902240279u64, 8108918508071563206u64, 1007385117988090293u64,
-    13580761694949469945u64,
+    10061333971067123214u64, 16509508849484548467u64, 3191699554987117772u64,
+    15654373976188028816u64,
 ];
+/// `人物` ノードの公開ID。
+///
+/// 宣言: `tests/allocation_contract.rs` の `node 人物`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct 人物Id(pub String);
+/// `商品` ノードの公開ID。
+///
+/// 宣言: `tests/allocation_contract.rs` の `node 商品`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct 商品Id(pub String);
+/// `購入` 辺の公開ID。
+///
+/// 宣言: `tests/allocation_contract.rs` の `edge 購入 = (購入者: 人物) -[取引: 取引情報]-> (対象商品: 商品) where unique pair`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct 購入Id(pub String);
+/// `閲覧` 辺の公開ID。
+///
+/// 宣言: `tests/allocation_contract.rs` の `edge 閲覧 = (閲覧者: 人物) -> (対象商品: 商品)`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct 閲覧Id(pub String);
+/// `推薦` 辺の公開ID。
+///
+/// 宣言: `tests/allocation_contract.rs` の `edge 推薦 = (推薦者: 人物) -> (対象商品: 商品) where each 推薦者: 0..1`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct 推薦Id(pub String);
+/// `常用` 辺の公開ID。
+///
+/// 宣言: `tests/allocation_contract.rs` の `edge 常用 = (常用者: 人物) -> (対象商品: 商品) where each 常用者: 1`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct 常用Id(pub String);
+/// `友人` 辺の公開ID。
+///
+/// 宣言: `tests/allocation_contract.rs` の `edge 友人 = 人物 -- 人物 where unique pair`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct 友人Id(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -59,6 +80,9 @@ pub struct __常用NamedPosition(__常用InternalPosition, u64);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __友人NamedPosition(__友人InternalPosition, u64);
+/// 構築時に組み立てる `購入` 辺の値。
+///
+/// 宣言: `tests/allocation_contract.rs` の `edge 購入 = (購入者: 人物) -[取引: 取引情報]-> (対象商品: 商品) where unique pair`
 #[derive(Clone, PartialEq)]
 pub struct 購入 {
     pub 購入者: 人物Id,
@@ -87,6 +111,9 @@ impl std::fmt::Debug for 購入 {
         f.write_str(stringify!(購入))
     }
 }
+/// 構築時に組み立てる `閲覧` 辺の値。
+///
+/// 宣言: `tests/allocation_contract.rs` の `edge 閲覧 = (閲覧者: 人物) -> (対象商品: 商品)`
 #[derive(Clone, PartialEq)]
 pub struct 閲覧 {
     pub 閲覧者: 人物Id,
@@ -113,6 +140,9 @@ impl std::fmt::Debug for 閲覧 {
             .finish()
     }
 }
+/// 構築時に組み立てる `推薦` 辺の値。
+///
+/// 宣言: `tests/allocation_contract.rs` の `edge 推薦 = (推薦者: 人物) -> (対象商品: 商品) where each 推薦者: 0..1`
 #[derive(Clone, PartialEq)]
 pub struct 推薦 {
     pub 推薦者: 人物Id,
@@ -139,6 +169,9 @@ impl std::fmt::Debug for 推薦 {
             .finish()
     }
 }
+/// 構築時に組み立てる `常用` 辺の値。
+///
+/// 宣言: `tests/allocation_contract.rs` の `edge 常用 = (常用者: 人物) -> (対象商品: 商品) where each 常用者: 1`
 #[derive(Clone, PartialEq)]
 pub struct 常用 {
     pub 常用者: 人物Id,
@@ -165,6 +198,9 @@ impl std::fmt::Debug for 常用 {
             .finish()
     }
 }
+/// 構築時に組み立てる `友人` 辺の値。
+///
+/// 宣言: `tests/allocation_contract.rs` の `edge 友人 = 人物 -- 人物 where unique pair`
 #[derive(Clone, PartialEq)]
 pub struct 友人 {
     endpoints: graphite::UnorderedPair<人物Id>,
@@ -217,6 +253,9 @@ struct __常用Record {
 struct __友人Record {
     endpoints: graphite::UnorderedPair<__人物InternalPosition>,
 }
+/// 凍結時の図式適合検査が見つけた違反。
+///
+/// 宣言: `tests/allocation_contract.rs` の `schema 確保契約`
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
@@ -388,6 +427,8 @@ impl std::fmt::Debug for Violation {
 impl std::error::Error for Violation {}
 /// 凍結済み図式グラフ。構築後の構造は不変で、ノード値と辺の積み荷だけを
 /// `&mut Graph` を要求する種別APIから更新できる。
+///
+/// 宣言: `tests/allocation_contract.rs` の `schema 確保契約`
 pub struct Graph {
     __graphite_node_人物: graphite::KeyedTable<人物Id, super::人物>,
     __graphite_node_商品: graphite::KeyedTable<商品Id, super::商品>,
@@ -450,6 +491,8 @@ pub struct Graph {
 }
 impl Graph {
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `node 人物`
     pub fn 人物_by_id<'graph>(
         &'graph self,
         id: &人物Id,
@@ -463,14 +506,20 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `node 人物`
     pub fn 人物_value_mut(&mut self, id: &人物Id) -> Option<&mut super::人物> {
         self.__graphite_node_人物.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `node 人物`
     pub fn 人物_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph 人物Id> {
         self.__graphite_node_人物.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `node 人物`
     pub fn 人物_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = 人物Ref<'graph>> + 'graph {
@@ -482,10 +531,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `node 人物`
     pub fn 人物_len(&self) -> usize {
         self.__graphite_node_人物.len()
     }
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `node 商品`
     pub fn 商品_by_id<'graph>(
         &'graph self,
         id: &商品Id,
@@ -499,14 +552,20 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `node 商品`
     pub fn 商品_value_mut(&mut self, id: &商品Id) -> Option<&mut super::商品> {
         self.__graphite_node_商品.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `node 商品`
     pub fn 商品_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph 商品Id> {
         self.__graphite_node_商品.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `node 商品`
     pub fn 商品_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = 商品Ref<'graph>> + 'graph {
@@ -518,10 +577,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `node 商品`
     pub fn 商品_len(&self) -> usize {
         self.__graphite_node_商品.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 購入 = (購入者: 人物) -[取引: 取引情報]-> (対象商品: 商品) where unique pair`
     pub fn 購入_by_id<'graph>(
         &'graph self,
         id: &購入Id,
@@ -532,14 +595,20 @@ impl Graph {
         })
     }
     /// 辺の構造を保ったまま積み荷だけを可変借用する。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 購入 = (購入者: 人物) -[取引: 取引情報]-> (対象商品: 商品) where unique pair`
     pub fn 購入_payload_mut(&mut self, id: &購入Id) -> Option<&mut 取引情報> {
         self.購入.get_mut(id).map(|record: &mut __購入Record| &mut record.取引)
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 購入 = (購入者: 人物) -[取引: 取引情報]-> (対象商品: 商品) where unique pair`
     pub fn 購入_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph 購入Id> {
         self.購入.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 購入 = (購入者: 人物) -[取引: 取引情報]-> (対象商品: 商品) where unique pair`
     pub fn 購入_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = 購入Ref<'graph>> + 'graph {
@@ -551,10 +620,14 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 購入 = (購入者: 人物) -[取引: 取引情報]-> (対象商品: 商品) where unique pair`
     pub fn 購入_len(&self) -> usize {
         self.購入.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 閲覧 = (閲覧者: 人物) -> (対象商品: 商品)`
     pub fn 閲覧_by_id<'graph>(
         &'graph self,
         id: &閲覧Id,
@@ -565,10 +638,14 @@ impl Graph {
         })
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 閲覧 = (閲覧者: 人物) -> (対象商品: 商品)`
     pub fn 閲覧_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph 閲覧Id> {
         self.閲覧.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 閲覧 = (閲覧者: 人物) -> (対象商品: 商品)`
     pub fn 閲覧_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = 閲覧Ref<'graph>> + 'graph {
@@ -580,10 +657,14 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 閲覧 = (閲覧者: 人物) -> (対象商品: 商品)`
     pub fn 閲覧_len(&self) -> usize {
         self.閲覧.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 推薦 = (推薦者: 人物) -> (対象商品: 商品) where each 推薦者: 0..1`
     pub fn 推薦_by_id<'graph>(
         &'graph self,
         id: &推薦Id,
@@ -594,10 +675,14 @@ impl Graph {
         })
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 推薦 = (推薦者: 人物) -> (対象商品: 商品) where each 推薦者: 0..1`
     pub fn 推薦_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph 推薦Id> {
         self.推薦.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 推薦 = (推薦者: 人物) -> (対象商品: 商品) where each 推薦者: 0..1`
     pub fn 推薦_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = 推薦Ref<'graph>> + 'graph {
@@ -609,10 +694,14 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 推薦 = (推薦者: 人物) -> (対象商品: 商品) where each 推薦者: 0..1`
     pub fn 推薦_len(&self) -> usize {
         self.推薦.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 常用 = (常用者: 人物) -> (対象商品: 商品) where each 常用者: 1`
     pub fn 常用_by_id<'graph>(
         &'graph self,
         id: &常用Id,
@@ -623,10 +712,14 @@ impl Graph {
         })
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 常用 = (常用者: 人物) -> (対象商品: 商品) where each 常用者: 1`
     pub fn 常用_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph 常用Id> {
         self.常用.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 常用 = (常用者: 人物) -> (対象商品: 商品) where each 常用者: 1`
     pub fn 常用_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = 常用Ref<'graph>> + 'graph {
@@ -638,10 +731,14 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 常用 = (常用者: 人物) -> (対象商品: 商品) where each 常用者: 1`
     pub fn 常用_len(&self) -> usize {
         self.常用.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 友人 = 人物 -- 人物 where unique pair`
     pub fn 友人_by_id<'graph>(
         &'graph self,
         id: &友人Id,
@@ -652,10 +749,14 @@ impl Graph {
         })
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 友人 = 人物 -- 人物 where unique pair`
     pub fn 友人_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph 友人Id> {
         self.友人.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 友人 = 人物 -- 人物 where unique pair`
     pub fn 友人_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = 友人Ref<'graph>> + 'graph {
@@ -667,6 +768,8 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 友人 = 人物 -- 人物 where unique pair`
     pub fn 友人_len(&self) -> usize {
         self.友人.len()
     }
@@ -707,6 +810,8 @@ impl Graph {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `tests/allocation_contract.rs` の `edge 購入 = (購入者: 人物) -[取引: 取引情報]-> (対象商品: 商品) where unique pair`
 #[derive(Clone, Copy)]
 pub struct 購入Ref<'graph> {
     graph: &'graph Graph,
@@ -770,6 +875,8 @@ impl<'graph> std::fmt::Debug for 購入Ref<'graph> {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `tests/allocation_contract.rs` の `edge 閲覧 = (閲覧者: 人物) -> (対象商品: 商品)`
 #[derive(Clone, Copy)]
 pub struct 閲覧Ref<'graph> {
     graph: &'graph Graph,
@@ -827,6 +934,8 @@ impl<'graph> std::fmt::Debug for 閲覧Ref<'graph> {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `tests/allocation_contract.rs` の `edge 推薦 = (推薦者: 人物) -> (対象商品: 商品) where each 推薦者: 0..1`
 #[derive(Clone, Copy)]
 pub struct 推薦Ref<'graph> {
     graph: &'graph Graph,
@@ -884,6 +993,8 @@ impl<'graph> std::fmt::Debug for 推薦Ref<'graph> {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `tests/allocation_contract.rs` の `edge 常用 = (常用者: 人物) -> (対象商品: 商品) where each 常用者: 1`
 #[derive(Clone, Copy)]
 pub struct 常用Ref<'graph> {
     graph: &'graph Graph,
@@ -941,6 +1052,8 @@ impl<'graph> std::fmt::Debug for 常用Ref<'graph> {
     }
 }
 /// 完成済みグラフ上の無向辺個体。
+///
+/// 宣言: `tests/allocation_contract.rs` の `edge 友人 = 人物 -- 人物 where unique pair`
 #[derive(Clone, Copy)]
 pub struct 友人Ref<'graph> {
     graph: &'graph Graph,
@@ -987,6 +1100,8 @@ impl<'graph> std::fmt::Debug for 友人Ref<'graph> {
     }
 }
 /// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+///
+/// 宣言: `tests/allocation_contract.rs` の `schema 確保契約`
 pub struct Builder {
     __graphite_node_人物: Vec<(人物Id, super::人物)>,
     __graphite_node_商品: Vec<(商品Id, super::商品)>,
@@ -1095,7 +1210,9 @@ impl 確保契約DefaultId for super::人物 {
     }
 }
 impl 確保契約Node for super::人物 {}
-///完成済みグラフ上の `人物` ノード個体。
+/// 完成済みグラフ上の `人物` ノード個体。
+///
+/// 宣言: `tests/allocation_contract.rs` の `node 人物`
 #[derive(Clone, Copy)]
 pub struct 人物Ref<'graph> {
     graph: &'graph Graph,
@@ -1122,6 +1239,8 @@ impl<'graph> 人物Ref<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 購入 = (購入者: 人物) -[取引: 取引情報]-> (対象商品: 商品) where unique pair`
     pub fn 購入_as_購入者(
         self,
     ) -> impl Iterator<Item = 購入Ref<'graph>> + 'graph {
@@ -1134,7 +1253,9 @@ impl<'graph> 人物Ref<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 購入 = (購入者: 人物) -[取引: 取引情報]-> (対象商品: 商品) where unique pair`
     pub fn 購入_try_between(
         self,
         other: 商品Ref<'graph>,
@@ -1159,7 +1280,9 @@ impl<'graph> 人物Ref<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::購入_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::購入_try_between`] を使う。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 購入 = (購入者: 人物) -[取引: 取引情報]-> (対象商品: 商品) where unique pair`
     pub fn 購入_between(self, other: 商品Ref<'graph>) -> Option<購入Ref<'graph>> {
         self.購入_try_between(other)
             .unwrap_or_else(|error| {
@@ -1170,6 +1293,8 @@ impl<'graph> 人物Ref<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 閲覧 = (閲覧者: 人物) -> (対象商品: 商品)`
     pub fn 閲覧_as_閲覧者(
         self,
     ) -> impl Iterator<Item = 閲覧Ref<'graph>> + 'graph {
@@ -1182,7 +1307,9 @@ impl<'graph> 人物Ref<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 閲覧 = (閲覧者: 人物) -> (対象商品: 商品)`
     pub fn 閲覧_try_between(
         self,
         other: 商品Ref<'graph>,
@@ -1213,7 +1340,9 @@ impl<'graph> 人物Ref<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::閲覧_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::閲覧_try_between`] を使う。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 閲覧 = (閲覧者: 人物) -> (対象商品: 商品)`
     pub fn 閲覧_between(
         self,
         other: 商品Ref<'graph>,
@@ -1226,6 +1355,8 @@ impl<'graph> 人物Ref<'graph> {
             })
     }
     /// この役割に接続する高々1本の辺を O(1)、追加確保なしで返す。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 推薦 = (推薦者: 人物) -> (対象商品: 商品) where each 推薦者: 0..1`
     pub fn 推薦_as_推薦者(self) -> Option<推薦Ref<'graph>> {
         self.graph
             .推薦_from_index
@@ -1236,7 +1367,9 @@ impl<'graph> 人物Ref<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 推薦 = (推薦者: 人物) -> (対象商品: 商品) where each 推薦者: 0..1`
     pub fn 推薦_try_between(
         self,
         other: 商品Ref<'graph>,
@@ -1267,7 +1400,9 @@ impl<'graph> 人物Ref<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::推薦_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::推薦_try_between`] を使う。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 推薦 = (推薦者: 人物) -> (対象商品: 商品) where each 推薦者: 0..1`
     pub fn 推薦_between(
         self,
         other: 商品Ref<'graph>,
@@ -1280,6 +1415,8 @@ impl<'graph> 人物Ref<'graph> {
             })
     }
     /// この役割に接続する唯一の辺を O(1)、追加確保なしで返す。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 常用 = (常用者: 人物) -> (対象商品: 商品) where each 常用者: 1`
     pub fn 常用_as_常用者(self) -> 常用Ref<'graph> {
         常用Ref {
             graph: self.graph,
@@ -1289,7 +1426,9 @@ impl<'graph> 人物Ref<'graph> {
                 .get(self.internal_position.0),
         }
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 常用 = (常用者: 人物) -> (対象商品: 商品) where each 常用者: 1`
     pub fn 常用_try_between(
         self,
         other: 商品Ref<'graph>,
@@ -1320,7 +1459,9 @@ impl<'graph> 人物Ref<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::常用_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::常用_try_between`] を使う。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 常用 = (常用者: 人物) -> (対象商品: 商品) where each 常用者: 1`
     pub fn 常用_between(
         self,
         other: 商品Ref<'graph>,
@@ -1333,6 +1474,8 @@ impl<'graph> 人物Ref<'graph> {
             })
     }
     /// 接続辺を O(1) で参照し、追加確保なしで挿入順に走査する。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 友人 = 人物 -- 人物 where unique pair`
     pub fn 友人_incident(self) -> impl Iterator<Item = 友人Ref<'graph>> + 'graph {
         let positions = self.graph.友人_index.get(self.internal_position.0);
         positions
@@ -1343,7 +1486,9 @@ impl<'graph> 人物Ref<'graph> {
                 internal_position,
             })
     }
-    ///順序なし端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序なし端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 友人 = 人物 -- 人物 where unique pair`
     pub fn 友人_try_between(
         self,
         other: 人物Ref<'graph>,
@@ -1373,7 +1518,9 @@ impl<'graph> 人物Ref<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::友人_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::友人_try_between`] を使う。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 友人 = 人物 -- 人物 where unique pair`
     pub fn 友人_between(self, other: 人物Ref<'graph>) -> Option<友人Ref<'graph>> {
         self.友人_try_between(other)
             .unwrap_or_else(|error| {
@@ -1455,7 +1602,9 @@ impl 確保契約DefaultId for super::商品 {
     }
 }
 impl 確保契約Node for super::商品 {}
-///完成済みグラフ上の `商品` ノード個体。
+/// 完成済みグラフ上の `商品` ノード個体。
+///
+/// 宣言: `tests/allocation_contract.rs` の `node 商品`
 #[derive(Clone, Copy)]
 pub struct 商品Ref<'graph> {
     graph: &'graph Graph,
@@ -1482,6 +1631,8 @@ impl<'graph> 商品Ref<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 購入 = (購入者: 人物) -[取引: 取引情報]-> (対象商品: 商品) where unique pair`
     pub fn 購入_as_対象商品(
         self,
     ) -> impl Iterator<Item = 購入Ref<'graph>> + 'graph {
@@ -1496,6 +1647,8 @@ impl<'graph> 商品Ref<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 閲覧 = (閲覧者: 人物) -> (対象商品: 商品)`
     pub fn 閲覧_as_対象商品(
         self,
     ) -> impl Iterator<Item = 閲覧Ref<'graph>> + 'graph {
@@ -1510,6 +1663,8 @@ impl<'graph> 商品Ref<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 推薦 = (推薦者: 人物) -> (対象商品: 商品) where each 推薦者: 0..1`
     pub fn 推薦_as_対象商品(
         self,
     ) -> impl Iterator<Item = 推薦Ref<'graph>> + 'graph {
@@ -1524,6 +1679,8 @@ impl<'graph> 商品Ref<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/allocation_contract.rs` の `edge 常用 = (常用者: 人物) -> (対象商品: 商品) where each 常用者: 1`
     pub fn 常用_as_対象商品(
         self,
     ) -> impl Iterator<Item = 常用Ref<'graph>> + 'graph {

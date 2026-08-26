@@ -23,24 +23,29 @@ pub(crate) fn gen_node_kind_api_methods(node: &NodeInfo) -> TokenStream {
     let ids = kind_api_method_ident(accessor, "ids");
     let iter = kind_api_method_ident(accessor, "iter");
     let len = kind_api_method_ident(accessor, "len");
+    let 宣言元への参照 = &node.宣言元への参照;
     quote! {
         /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+        #宣言元への参照
         pub fn #by_id<'graph>(&'graph self, id: &#id_ty) -> Option<#reference<'graph>> {
             let internal_position = #internal_position(self.#field.position(id)?);
             Some(#reference { graph: self, internal_position })
         }
 
         /// グラフの構造を保ったままノード値だけを可変借用する。
+        #宣言元への参照
         pub fn #value_mut(&mut self, id: &#id_ty) -> Option<&mut super::#ty> {
             self.#field.get_mut(id)
         }
 
         /// この種別のノードの公開IDを挿入順に走査する。
+        #宣言元への参照
         pub fn #ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph #id_ty> {
             self.#field.ids()
         }
 
         /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+        #宣言元への参照
         pub fn #iter<'graph>(&'graph self) -> impl Iterator<Item = #reference<'graph>> + 'graph {
             self.#field.positions().map(move |position| #reference {
                 graph: self,
@@ -49,6 +54,7 @@ pub(crate) fn gen_node_kind_api_methods(node: &NodeInfo) -> TokenStream {
         }
 
         /// この種別のノードの件数を返す。
+        #宣言元への参照
         pub fn #len(&self) -> usize {
             self.#field.len()
         }

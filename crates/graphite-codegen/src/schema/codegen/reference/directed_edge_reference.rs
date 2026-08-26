@@ -36,8 +36,10 @@ pub(crate) fn gen_directed_edge_reference_type(
     let to_ident = Ident::new("to", kind_span);
     let from_id_ident = Ident::new("from_id", kind_span);
     let to_id_ident = Ident::new("to_id", kind_span);
+    let 宣言元への参照 = &edge.宣言元への参照;
     quote! {
         /// 完成済みグラフ上の有向辺個体。
+        #宣言元への参照
         #[derive(Clone, Copy)]
         pub struct #reference<'graph> {
             graph: &'graph #graph_ident,

@@ -7,11 +7,17 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    10837037650801091453u64, 11609725645273392316u64, 2129304352576731651u64,
-    5606256825908137663u64,
+    15273406592076785782u64, 4319742417705813317u64, 13840474139917085728u64,
+    14537176934756227492u64,
 ];
+/// `AutomaticNode` ノードの公開ID。
+///
+/// 宣言: `tests/schema_ids.rs` の `node AutomaticNode`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AutomaticNodeId(pub String);
+/// `AutomaticLink` 辺の公開ID。
+///
+/// 宣言: `tests/schema_ids.rs` の `edge AutomaticLink = (source: AutomaticNode) -> (target: AutomaticNode)`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AutomaticLinkId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -49,6 +55,9 @@ pub struct __ExternalFriendNamedPosition(__ExternalFriendInternalPosition, u64);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __AutomaticLinkNamedPosition(__AutomaticLinkInternalPosition, u64);
+/// 構築時に組み立てる `ExternalLink` 辺の値。
+///
+/// 宣言: `tests/schema_ids.rs` の `edge ExternalLink(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each source: 1`
 #[derive(Clone, PartialEq)]
 pub struct ExternalLink {
     pub source: ExternalNodeId,
@@ -69,6 +78,9 @@ impl std::fmt::Debug for ExternalLink {
         f.write_str(stringify!(ExternalLink))
     }
 }
+/// 構築時に組み立てる `ExternalIncoming` 辺の値。
+///
+/// 宣言: `tests/schema_ids.rs` の `edge ExternalIncoming(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each target: 1`
 #[derive(Clone, PartialEq)]
 pub struct ExternalIncoming {
     pub source: ExternalNodeId,
@@ -90,6 +102,9 @@ impl std::fmt::Debug for ExternalIncoming {
         f.write_str(stringify!(ExternalIncoming))
     }
 }
+/// 構築時に組み立てる `ExternalFriend` 辺の値。
+///
+/// 宣言: `tests/schema_ids.rs` の `edge ExternalFriend(id: ExternalEdgeId) = ExternalNode -- ExternalNode`
 #[derive(Clone, PartialEq)]
 pub struct ExternalFriend {
     endpoints: graphite::UnorderedPair<ExternalNodeId>,
@@ -114,6 +129,9 @@ impl std::fmt::Debug for ExternalFriend {
         f.write_str(stringify!(ExternalFriend))
     }
 }
+/// 構築時に組み立てる `AutomaticLink` 辺の値。
+///
+/// 宣言: `tests/schema_ids.rs` の `edge AutomaticLink = (source: AutomaticNode) -> (target: AutomaticNode)`
 #[derive(Clone, PartialEq)]
 pub struct AutomaticLink {
     pub source: AutomaticNodeId,
@@ -157,6 +175,9 @@ struct __AutomaticLinkRecord {
     source: __AutomaticNodeInternalPosition,
     target: __AutomaticNodeInternalPosition,
 }
+/// 凍結時の図式適合検査が見つけた違反。
+///
+/// 宣言: `tests/schema_ids.rs` の `schema MixedIds`
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
@@ -293,6 +314,8 @@ impl std::fmt::Debug for Violation {
 impl std::error::Error for Violation {}
 /// 凍結済み図式グラフ。構築後の構造は不変で、ノード値と辺の積み荷だけを
 /// `&mut Graph` を要求する種別APIから更新できる。
+///
+/// 宣言: `tests/schema_ids.rs` の `schema MixedIds`
 pub struct Graph {
     __graphite_node_external_node: graphite::KeyedTable<
         ExternalNodeId,
@@ -361,6 +384,8 @@ pub struct Graph {
 }
 impl Graph {
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `node ExternalNode(id: ExternalNodeId)`
     pub fn external_node_by_id<'graph>(
         &'graph self,
         id: &ExternalNodeId,
@@ -374,6 +399,8 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `node ExternalNode(id: ExternalNodeId)`
     pub fn external_node_value_mut(
         &mut self,
         id: &ExternalNodeId,
@@ -381,12 +408,16 @@ impl Graph {
         self.__graphite_node_external_node.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `node ExternalNode(id: ExternalNodeId)`
     pub fn external_node_ids<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = &'graph ExternalNodeId> {
         self.__graphite_node_external_node.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `node ExternalNode(id: ExternalNodeId)`
     pub fn external_node_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = ExternalNodeRef<'graph>> + 'graph {
@@ -398,10 +429,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `node ExternalNode(id: ExternalNodeId)`
     pub fn external_node_len(&self) -> usize {
         self.__graphite_node_external_node.len()
     }
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `node AutomaticNode`
     pub fn automatic_node_by_id<'graph>(
         &'graph self,
         id: &AutomaticNodeId,
@@ -415,6 +450,8 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `node AutomaticNode`
     pub fn automatic_node_value_mut(
         &mut self,
         id: &AutomaticNodeId,
@@ -422,12 +459,16 @@ impl Graph {
         self.__graphite_node_automatic_node.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `node AutomaticNode`
     pub fn automatic_node_ids<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = &'graph AutomaticNodeId> {
         self.__graphite_node_automatic_node.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `node AutomaticNode`
     pub fn automatic_node_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = AutomaticNodeRef<'graph>> + 'graph {
@@ -439,10 +480,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `node AutomaticNode`
     pub fn automatic_node_len(&self) -> usize {
         self.__graphite_node_automatic_node.len()
     }
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `node BooleanNode(id: bool)`
     pub fn boolean_node_by_id<'graph>(
         &'graph self,
         id: &bool,
@@ -456,6 +501,8 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `node BooleanNode(id: bool)`
     pub fn boolean_node_value_mut(
         &mut self,
         id: &bool,
@@ -463,10 +510,14 @@ impl Graph {
         self.__graphite_node_boolean_node.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `node BooleanNode(id: bool)`
     pub fn boolean_node_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph bool> {
         self.__graphite_node_boolean_node.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `node BooleanNode(id: bool)`
     pub fn boolean_node_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = BooleanNodeRef<'graph>> + 'graph {
@@ -478,10 +529,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `node BooleanNode(id: bool)`
     pub fn boolean_node_len(&self) -> usize {
         self.__graphite_node_boolean_node.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalLink(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each source: 1`
     pub fn external_link_by_id<'graph>(
         &'graph self,
         id: &ExternalEdgeId,
@@ -494,12 +549,16 @@ impl Graph {
         })
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalLink(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each source: 1`
     pub fn external_link_ids<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = &'graph ExternalEdgeId> {
         self.external_link.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalLink(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each source: 1`
     pub fn external_link_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = ExternalLinkRef<'graph>> + 'graph {
@@ -511,10 +570,14 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalLink(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each source: 1`
     pub fn external_link_len(&self) -> usize {
         self.external_link.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalIncoming(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each target: 1`
     pub fn external_incoming_by_id<'graph>(
         &'graph self,
         id: &ExternalEdgeId,
@@ -527,12 +590,16 @@ impl Graph {
         })
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalIncoming(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each target: 1`
     pub fn external_incoming_ids<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = &'graph ExternalEdgeId> {
         self.external_incoming.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalIncoming(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each target: 1`
     pub fn external_incoming_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = ExternalIncomingRef<'graph>> + 'graph {
@@ -544,10 +611,14 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalIncoming(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each target: 1`
     pub fn external_incoming_len(&self) -> usize {
         self.external_incoming.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalFriend(id: ExternalEdgeId) = ExternalNode -- ExternalNode`
     pub fn external_friend_by_id<'graph>(
         &'graph self,
         id: &ExternalEdgeId,
@@ -560,12 +631,16 @@ impl Graph {
         })
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalFriend(id: ExternalEdgeId) = ExternalNode -- ExternalNode`
     pub fn external_friend_ids<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = &'graph ExternalEdgeId> {
         self.external_friend.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalFriend(id: ExternalEdgeId) = ExternalNode -- ExternalNode`
     pub fn external_friend_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = ExternalFriendRef<'graph>> + 'graph {
@@ -577,10 +652,14 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalFriend(id: ExternalEdgeId) = ExternalNode -- ExternalNode`
     pub fn external_friend_len(&self) -> usize {
         self.external_friend.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge AutomaticLink = (source: AutomaticNode) -> (target: AutomaticNode)`
     pub fn automatic_link_by_id<'graph>(
         &'graph self,
         id: &AutomaticLinkId,
@@ -593,12 +672,16 @@ impl Graph {
         })
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge AutomaticLink = (source: AutomaticNode) -> (target: AutomaticNode)`
     pub fn automatic_link_ids<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = &'graph AutomaticLinkId> {
         self.automatic_link.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge AutomaticLink = (source: AutomaticNode) -> (target: AutomaticNode)`
     pub fn automatic_link_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = AutomaticLinkRef<'graph>> + 'graph {
@@ -610,6 +693,8 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge AutomaticLink = (source: AutomaticNode) -> (target: AutomaticNode)`
     pub fn automatic_link_len(&self) -> usize {
         self.automatic_link.len()
     }
@@ -650,6 +735,8 @@ impl Graph {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `tests/schema_ids.rs` の `edge ExternalLink(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each source: 1`
 #[derive(Clone, Copy)]
 pub struct ExternalLinkRef<'graph> {
     graph: &'graph Graph,
@@ -705,6 +792,8 @@ impl<'graph> std::fmt::Debug for ExternalLinkRef<'graph> {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `tests/schema_ids.rs` の `edge ExternalIncoming(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each target: 1`
 #[derive(Clone, Copy)]
 pub struct ExternalIncomingRef<'graph> {
     graph: &'graph Graph,
@@ -760,6 +849,8 @@ impl<'graph> std::fmt::Debug for ExternalIncomingRef<'graph> {
     }
 }
 /// 完成済みグラフ上の無向辺個体。
+///
+/// 宣言: `tests/schema_ids.rs` の `edge ExternalFriend(id: ExternalEdgeId) = ExternalNode -- ExternalNode`
 #[derive(Clone, Copy)]
 pub struct ExternalFriendRef<'graph> {
     graph: &'graph Graph,
@@ -804,6 +895,8 @@ impl<'graph> std::fmt::Debug for ExternalFriendRef<'graph> {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `tests/schema_ids.rs` の `edge AutomaticLink = (source: AutomaticNode) -> (target: AutomaticNode)`
 #[derive(Clone, Copy)]
 pub struct AutomaticLinkRef<'graph> {
     graph: &'graph Graph,
@@ -861,6 +954,8 @@ impl<'graph> std::fmt::Debug for AutomaticLinkRef<'graph> {
     }
 }
 /// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+///
+/// 宣言: `tests/schema_ids.rs` の `schema MixedIds`
 pub struct Builder {
     __graphite_node_external_node: Vec<(ExternalNodeId, super::ExternalNode)>,
     __graphite_node_automatic_node: Vec<(AutomaticNodeId, super::AutomaticNode)>,
@@ -958,7 +1053,9 @@ impl graphite::NamedGraphElement<Graph> for __ExternalNodeNamedPosition {
     }
 }
 impl MixedIdsNode for super::ExternalNode {}
-///完成済みグラフ上の `ExternalNode` ノード個体。
+/// 完成済みグラフ上の `ExternalNode` ノード個体。
+///
+/// 宣言: `tests/schema_ids.rs` の `node ExternalNode(id: ExternalNodeId)`
 #[derive(Clone, Copy)]
 pub struct ExternalNodeRef<'graph> {
     graph: &'graph Graph,
@@ -984,6 +1081,8 @@ impl<'graph> ExternalNodeRef<'graph> {
             .1
     }
     /// この役割に接続する唯一の辺を O(1)、追加確保なしで返す。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalLink(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each source: 1`
     pub fn external_link_as_source(self) -> ExternalLinkRef<'graph> {
         ExternalLinkRef {
             graph: self.graph,
@@ -995,6 +1094,8 @@ impl<'graph> ExternalNodeRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalLink(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each source: 1`
     pub fn external_link_as_target(
         self,
     ) -> impl Iterator<Item = ExternalLinkRef<'graph>> + 'graph {
@@ -1007,7 +1108,9 @@ impl<'graph> ExternalNodeRef<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalLink(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each source: 1`
     pub fn external_link_try_between(
         self,
         other: ExternalNodeRef<'graph>,
@@ -1038,7 +1141,9 @@ impl<'graph> ExternalNodeRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::external_link_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::external_link_try_between`] を使う。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalLink(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each source: 1`
     pub fn external_link_between(
         self,
         other: ExternalNodeRef<'graph>,
@@ -1053,6 +1158,8 @@ impl<'graph> ExternalNodeRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalIncoming(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each target: 1`
     pub fn external_incoming_as_source(
         self,
     ) -> impl Iterator<Item = ExternalIncomingRef<'graph>> + 'graph {
@@ -1069,6 +1176,8 @@ impl<'graph> ExternalNodeRef<'graph> {
             })
     }
     /// この役割に接続する唯一の辺を O(1)、追加確保なしで返す。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalIncoming(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each target: 1`
     pub fn external_incoming_as_target(self) -> ExternalIncomingRef<'graph> {
         ExternalIncomingRef {
             graph: self.graph,
@@ -1078,7 +1187,9 @@ impl<'graph> ExternalNodeRef<'graph> {
                 .get(self.internal_position.0),
         }
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalIncoming(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each target: 1`
     pub fn external_incoming_try_between(
         self,
         other: ExternalNodeRef<'graph>,
@@ -1109,7 +1220,9 @@ impl<'graph> ExternalNodeRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::external_incoming_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::external_incoming_try_between`] を使う。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalIncoming(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each target: 1`
     pub fn external_incoming_between(
         self,
         other: ExternalNodeRef<'graph>,
@@ -1123,6 +1236,8 @@ impl<'graph> ExternalNodeRef<'graph> {
             })
     }
     /// 接続辺を O(1) で参照し、追加確保なしで挿入順に走査する。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalFriend(id: ExternalEdgeId) = ExternalNode -- ExternalNode`
     pub fn external_friend_incident(
         self,
     ) -> impl Iterator<Item = ExternalFriendRef<'graph>> + 'graph {
@@ -1135,7 +1250,9 @@ impl<'graph> ExternalNodeRef<'graph> {
                 internal_position,
             })
     }
-    ///順序なし端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序なし端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalFriend(id: ExternalEdgeId) = ExternalNode -- ExternalNode`
     pub fn external_friend_try_between(
         self,
         other: ExternalNodeRef<'graph>,
@@ -1171,7 +1288,9 @@ impl<'graph> ExternalNodeRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::external_friend_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::external_friend_try_between`] を使う。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalFriend(id: ExternalEdgeId) = ExternalNode -- ExternalNode`
     pub fn external_friend_between(
         self,
         other: ExternalNodeRef<'graph>,
@@ -1262,7 +1381,9 @@ impl MixedIdsDefaultId for super::AutomaticNode {
     }
 }
 impl MixedIdsNode for super::AutomaticNode {}
-///完成済みグラフ上の `AutomaticNode` ノード個体。
+/// 完成済みグラフ上の `AutomaticNode` ノード個体。
+///
+/// 宣言: `tests/schema_ids.rs` の `node AutomaticNode`
 #[derive(Clone, Copy)]
 pub struct AutomaticNodeRef<'graph> {
     graph: &'graph Graph,
@@ -1289,6 +1410,8 @@ impl<'graph> AutomaticNodeRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge AutomaticLink = (source: AutomaticNode) -> (target: AutomaticNode)`
     pub fn automatic_link_as_source(
         self,
     ) -> impl Iterator<Item = AutomaticLinkRef<'graph>> + 'graph {
@@ -1306,6 +1429,8 @@ impl<'graph> AutomaticNodeRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge AutomaticLink = (source: AutomaticNode) -> (target: AutomaticNode)`
     pub fn automatic_link_as_target(
         self,
     ) -> impl Iterator<Item = AutomaticLinkRef<'graph>> + 'graph {
@@ -1318,7 +1443,9 @@ impl<'graph> AutomaticNodeRef<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge AutomaticLink = (source: AutomaticNode) -> (target: AutomaticNode)`
     pub fn automatic_link_try_between(
         self,
         other: AutomaticNodeRef<'graph>,
@@ -1349,7 +1476,9 @@ impl<'graph> AutomaticNodeRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::automatic_link_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::automatic_link_try_between`] を使う。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge AutomaticLink = (source: AutomaticNode) -> (target: AutomaticNode)`
     pub fn automatic_link_between(
         self,
         other: AutomaticNodeRef<'graph>,
@@ -1422,7 +1551,9 @@ impl graphite::NamedGraphElement<Graph> for __BooleanNodeNamedPosition {
     }
 }
 impl MixedIdsNode for super::BooleanNode {}
-///完成済みグラフ上の `BooleanNode` ノード個体。
+/// 完成済みグラフ上の `BooleanNode` ノード個体。
+///
+/// 宣言: `tests/schema_ids.rs` の `node BooleanNode(id: bool)`
 #[derive(Clone, Copy)]
 pub struct BooleanNodeRef<'graph> {
     graph: &'graph Graph,

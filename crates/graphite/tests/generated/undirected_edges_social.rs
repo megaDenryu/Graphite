@@ -7,13 +7,22 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    594360863009716014u64, 1912780570926071469u64, 250009452544659368u64,
-    5193048946222574060u64,
+    1272176105345127479u64, 8191436678416729798u64, 9228833304626671909u64,
+    691059462114197169u64,
 ];
+/// `Person` ノードの公開ID。
+///
+/// 宣言: `tests/undirected_edges.rs` の `node Person`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PersonId(pub String);
+/// `Friends` 辺の公開ID。
+///
+/// 宣言: `tests/undirected_edges.rs` の `edge Friends = Person -- Person where unique pair`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FriendsId(pub String);
+/// `Wire` 辺の公開ID。
+///
+/// 宣言: `tests/undirected_edges.rs` の `edge Wire = Person -[cable: Cable]- Person`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WireId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -31,6 +40,9 @@ pub struct __FriendsNamedPosition(__FriendsInternalPosition, u64);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __WireNamedPosition(__WireInternalPosition, u64);
+/// 構築時に組み立てる `Friends` 辺の値。
+///
+/// 宣言: `tests/undirected_edges.rs` の `edge Friends = Person -- Person where unique pair`
 #[derive(Clone, PartialEq)]
 pub struct Friends {
     endpoints: graphite::UnorderedPair<PersonId>,
@@ -58,6 +70,9 @@ impl std::fmt::Debug for Friends {
             .finish()
     }
 }
+/// 構築時に組み立てる `Wire` 辺の値。
+///
+/// 宣言: `tests/undirected_edges.rs` の `edge Wire = Person -[cable: Cable]- Person`
 #[derive(Clone, PartialEq)]
 pub struct Wire {
     endpoints: graphite::UnorderedPair<PersonId>,
@@ -96,6 +111,9 @@ struct __WireRecord {
     endpoints: graphite::UnorderedPair<__PersonInternalPosition>,
     cable: Cable,
 }
+/// 凍結時の図式適合検査が見つけた違反。
+///
+/// 宣言: `tests/undirected_edges.rs` の `schema Social`
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
@@ -158,6 +176,8 @@ impl std::fmt::Debug for Violation {
 impl std::error::Error for Violation {}
 /// 凍結済み図式グラフ。構築後の構造は不変で、ノード値と辺の積み荷だけを
 /// `&mut Graph` を要求する種別APIから更新できる。
+///
+/// 宣言: `tests/undirected_edges.rs` の `schema Social`
 pub struct Graph {
     __graphite_node_person: graphite::KeyedTable<PersonId, super::Person>,
     friends: graphite::KeyedTable<FriendsId, __FriendsRecord>,
@@ -183,6 +203,8 @@ pub struct Graph {
 }
 impl Graph {
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `node Person`
     pub fn person_by_id<'graph>(
         &'graph self,
         id: &PersonId,
@@ -196,14 +218,20 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `node Person`
     pub fn person_value_mut(&mut self, id: &PersonId) -> Option<&mut super::Person> {
         self.__graphite_node_person.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `node Person`
     pub fn person_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph PersonId> {
         self.__graphite_node_person.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `node Person`
     pub fn person_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = PersonRef<'graph>> + 'graph {
@@ -215,10 +243,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `node Person`
     pub fn person_len(&self) -> usize {
         self.__graphite_node_person.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `edge Friends = Person -- Person where unique pair`
     pub fn friends_by_id<'graph>(
         &'graph self,
         id: &FriendsId,
@@ -229,10 +261,14 @@ impl Graph {
         })
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `edge Friends = Person -- Person where unique pair`
     pub fn friends_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph FriendsId> {
         self.friends.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `edge Friends = Person -- Person where unique pair`
     pub fn friends_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = FriendsRef<'graph>> + 'graph {
@@ -244,10 +280,14 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `edge Friends = Person -- Person where unique pair`
     pub fn friends_len(&self) -> usize {
         self.friends.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `edge Wire = Person -[cable: Cable]- Person`
     pub fn wire_by_id<'graph>(&'graph self, id: &WireId) -> Option<WireRef<'graph>> {
         Some(WireRef {
             graph: self,
@@ -255,14 +295,20 @@ impl Graph {
         })
     }
     /// 辺の構造を保ったまま積み荷だけを可変借用する。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `edge Wire = Person -[cable: Cable]- Person`
     pub fn wire_payload_mut(&mut self, id: &WireId) -> Option<&mut Cable> {
         self.wire.get_mut(id).map(|record: &mut __WireRecord| &mut record.cable)
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `edge Wire = Person -[cable: Cable]- Person`
     pub fn wire_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph WireId> {
         self.wire.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `edge Wire = Person -[cable: Cable]- Person`
     pub fn wire_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = WireRef<'graph>> + 'graph {
@@ -274,6 +320,8 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `edge Wire = Person -[cable: Cable]- Person`
     pub fn wire_len(&self) -> usize {
         self.wire.len()
     }
@@ -314,6 +362,8 @@ impl Graph {
     }
 }
 /// 完成済みグラフ上の無向辺個体。
+///
+/// 宣言: `tests/undirected_edges.rs` の `edge Friends = Person -- Person where unique pair`
 #[derive(Clone, Copy)]
 pub struct FriendsRef<'graph> {
     graph: &'graph Graph,
@@ -360,6 +410,8 @@ impl<'graph> std::fmt::Debug for FriendsRef<'graph> {
     }
 }
 /// 完成済みグラフ上の無向辺個体。
+///
+/// 宣言: `tests/undirected_edges.rs` の `edge Wire = Person -[cable: Cable]- Person`
 #[derive(Clone, Copy)]
 pub struct WireRef<'graph> {
     graph: &'graph Graph,
@@ -412,6 +464,8 @@ impl<'graph> std::fmt::Debug for WireRef<'graph> {
     }
 }
 /// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+///
+/// 宣言: `tests/undirected_edges.rs` の `schema Social`
 pub struct Builder {
     __graphite_node_person: Vec<(PersonId, super::Person)>,
     friends: Vec<(FriendsId, Friends)>,
@@ -516,7 +570,9 @@ impl SocialDefaultId for super::Person {
     }
 }
 impl SocialNode for super::Person {}
-///完成済みグラフ上の `Person` ノード個体。
+/// 完成済みグラフ上の `Person` ノード個体。
+///
+/// 宣言: `tests/undirected_edges.rs` の `node Person`
 #[derive(Clone, Copy)]
 pub struct PersonRef<'graph> {
     graph: &'graph Graph,
@@ -542,6 +598,8 @@ impl<'graph> PersonRef<'graph> {
             .1
     }
     /// 接続辺を O(1) で参照し、追加確保なしで挿入順に走査する。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `edge Friends = Person -- Person where unique pair`
     pub fn friends_incident(self) -> impl Iterator<Item = FriendsRef<'graph>> + 'graph {
         let positions = self.graph.friends_index.get(self.internal_position.0);
         positions
@@ -552,7 +610,9 @@ impl<'graph> PersonRef<'graph> {
                 internal_position,
             })
     }
-    ///順序なし端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序なし端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `edge Friends = Person -- Person where unique pair`
     pub fn friends_try_between(
         self,
         other: PersonRef<'graph>,
@@ -582,7 +642,9 @@ impl<'graph> PersonRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::friends_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::friends_try_between`] を使う。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `edge Friends = Person -- Person where unique pair`
     pub fn friends_between(
         self,
         other: PersonRef<'graph>,
@@ -595,6 +657,8 @@ impl<'graph> PersonRef<'graph> {
             })
     }
     /// 接続辺を O(1) で参照し、追加確保なしで挿入順に走査する。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `edge Wire = Person -[cable: Cable]- Person`
     pub fn wire_incident(self) -> impl Iterator<Item = WireRef<'graph>> + 'graph {
         let positions = self.graph.wire_index.get(self.internal_position.0);
         positions
@@ -605,7 +669,9 @@ impl<'graph> PersonRef<'graph> {
                 internal_position,
             })
     }
-    ///順序なし端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序なし端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `edge Wire = Person -[cable: Cable]- Person`
     pub fn wire_try_between(
         self,
         other: PersonRef<'graph>,
@@ -641,7 +707,9 @@ impl<'graph> PersonRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::wire_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::wire_try_between`] を使う。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `edge Wire = Person -[cable: Cable]- Person`
     pub fn wire_between(
         self,
         other: PersonRef<'graph>,

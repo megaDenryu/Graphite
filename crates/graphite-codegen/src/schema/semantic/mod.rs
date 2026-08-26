@@ -7,6 +7,12 @@
 //! 持たず、意味モデル型へ `ToTokens` を実装しない。生成コードの形をこの層が
 //! 決めると、コード生成層が意味を判断する場所へ戻ってしまうためである。
 //!
+//! 宣言の形を `String` で返す表示メソッド (`宣言の形`) はこの層に置く。
+//! 「宣言がどう書かれていたか」は Graphite の意味そのものであり、生成コードの
+//! 形を決めるものではないためである。返すのは `String` だけで、`TokenStream`
+//! は作らない。この文字列を doc へどう埋めるかはコード生成層が決める
+//! (`schema::codegen::declaration_doc`)。
+//!
 //! `proc_macro2::Ident` と `syn::Path` の保持は許す。これらは「利用者が書いた
 //! 名前」そのものであり、span を保つことが IDE 支援 (`docs/development/ide_support_spec.md`)
 //! に必要だからである。
@@ -31,6 +37,7 @@ mod node_definition;
 mod public_id_type;
 mod schema_definition;
 mod traversal_plan;
+mod type_path_spelling;
 mod violation_catalog;
 
 // 再公開するのは、この層の外 (`schema::codegen` / `schema::validate` / `lib.rs`)

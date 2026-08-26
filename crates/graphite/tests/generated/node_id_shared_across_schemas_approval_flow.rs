@@ -7,9 +7,12 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    2313845253489516878u64, 8310628073181526105u64, 14257899276100957704u64,
-    10018217044800390228u64,
+    4600649020497813333u64, 15323196260887087560u64, 6865187099403271695u64,
+    1584010237700473939u64,
 ];
+/// `Approves` 辺の公開ID。
+///
+/// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge Approves = (approver: Person) -> (approved: Person)`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ApprovesId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -22,6 +25,9 @@ pub struct __PersonNamedPosition(__PersonInternalPosition, u64);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __ApprovesNamedPosition(__ApprovesInternalPosition, u64);
+/// 構築時に組み立てる `Approves` 辺の値。
+///
+/// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge Approves = (approver: Person) -> (approved: Person)`
 #[derive(Clone, PartialEq)]
 pub struct Approves {
     pub approver: PersonId,
@@ -50,6 +56,9 @@ struct __ApprovesRecord {
     approver: __PersonInternalPosition,
     approved: __PersonInternalPosition,
 }
+/// 凍結時の図式適合検査が見つけた違反。
+///
+/// 宣言: `tests/node_id_shared_across_schemas.rs` の `schema ApprovalFlow`
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
@@ -95,6 +104,8 @@ impl std::fmt::Debug for Violation {
 impl std::error::Error for Violation {}
 /// 凍結済み図式グラフ。構築後の構造は不変で、ノード値と辺の積み荷だけを
 /// `&mut Graph` を要求する種別APIから更新できる。
+///
+/// 宣言: `tests/node_id_shared_across_schemas.rs` の `schema ApprovalFlow`
 pub struct Graph {
     __graphite_node_person: graphite::KeyedTable<PersonId, super::Person>,
     approves: graphite::KeyedTable<ApprovesId, __ApprovesRecord>,
@@ -115,6 +126,8 @@ pub struct Graph {
 }
 impl Graph {
     /// 公開IDから完成済みグラフ上のノード個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `node Person(id: PersonId)`
     pub fn person_by_id<'graph>(
         &'graph self,
         id: &PersonId,
@@ -128,14 +141,20 @@ impl Graph {
         })
     }
     /// グラフの構造を保ったままノード値だけを可変借用する。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `node Person(id: PersonId)`
     pub fn person_value_mut(&mut self, id: &PersonId) -> Option<&mut super::Person> {
         self.__graphite_node_person.get_mut(id)
     }
     /// この種別のノードの公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `node Person(id: PersonId)`
     pub fn person_ids<'graph>(&'graph self) -> impl Iterator<Item = &'graph PersonId> {
         self.__graphite_node_person.ids()
     }
     /// この種別のノード個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `node Person(id: PersonId)`
     pub fn person_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = PersonRef<'graph>> + 'graph {
@@ -147,10 +166,14 @@ impl Graph {
             })
     }
     /// この種別のノードの件数を返す。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `node Person(id: PersonId)`
     pub fn person_len(&self) -> usize {
         self.__graphite_node_person.len()
     }
     /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge Approves = (approver: Person) -> (approved: Person)`
     pub fn approves_by_id<'graph>(
         &'graph self,
         id: &ApprovesId,
@@ -161,12 +184,16 @@ impl Graph {
         })
     }
     /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge Approves = (approver: Person) -> (approved: Person)`
     pub fn approves_ids<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = &'graph ApprovesId> {
         self.approves.ids()
     }
     /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge Approves = (approver: Person) -> (approved: Person)`
     pub fn approves_iter<'graph>(
         &'graph self,
     ) -> impl Iterator<Item = ApprovesRef<'graph>> + 'graph {
@@ -178,6 +205,8 @@ impl Graph {
             })
     }
     /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge Approves = (approver: Person) -> (approved: Person)`
     pub fn approves_len(&self) -> usize {
         self.approves.len()
     }
@@ -218,6 +247,8 @@ impl Graph {
     }
 }
 /// 完成済みグラフ上の有向辺個体。
+///
+/// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge Approves = (approver: Person) -> (approved: Person)`
 #[derive(Clone, Copy)]
 pub struct ApprovesRef<'graph> {
     graph: &'graph Graph,
@@ -275,6 +306,8 @@ impl<'graph> std::fmt::Debug for ApprovesRef<'graph> {
     }
 }
 /// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+///
+/// 宣言: `tests/node_id_shared_across_schemas.rs` の `schema ApprovalFlow`
 pub struct Builder {
     __graphite_node_person: Vec<(PersonId, super::Person)>,
     approves: Vec<(ApprovesId, Approves)>,
@@ -365,7 +398,9 @@ impl graphite::NamedGraphElement<Graph> for __PersonNamedPosition {
     }
 }
 impl ApprovalFlowNode for super::Person {}
-///完成済みグラフ上の `Person` ノード個体。
+/// 完成済みグラフ上の `Person` ノード個体。
+///
+/// 宣言: `tests/node_id_shared_across_schemas.rs` の `node Person(id: PersonId)`
 #[derive(Clone, Copy)]
 pub struct PersonRef<'graph> {
     graph: &'graph Graph,
@@ -392,6 +427,8 @@ impl<'graph> PersonRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge Approves = (approver: Person) -> (approved: Person)`
     pub fn approves_as_approver(
         self,
     ) -> impl Iterator<Item = ApprovesRef<'graph>> + 'graph {
@@ -406,6 +443,8 @@ impl<'graph> PersonRef<'graph> {
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge Approves = (approver: Person) -> (approved: Person)`
     pub fn approves_as_approved(
         self,
     ) -> impl Iterator<Item = ApprovesRef<'graph>> + 'graph {
@@ -418,7 +457,9 @@ impl<'graph> PersonRef<'graph> {
                 internal_position,
             })
     }
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge Approves = (approver: Person) -> (approved: Person)`
     pub fn approves_try_between(
         self,
         other: PersonRef<'graph>,
@@ -449,7 +490,9 @@ impl<'graph> PersonRef<'graph> {
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::approves_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::approves_try_between`] を使う。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge Approves = (approver: Person) -> (approved: Person)`
     pub fn approves_between(
         self,
         other: PersonRef<'graph>,
