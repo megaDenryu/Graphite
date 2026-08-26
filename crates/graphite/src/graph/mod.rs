@@ -23,17 +23,22 @@
 //! であり、builder への参照をクロージャの外に持ち出すことを借用検査器が
 //! 静的に拒否する (`std::thread::scope` と同じ仕組み)。
 
+mod assembly;
 mod build_error;
+mod builder;
 mod cycle_error;
 mod key_correspondence;
+mod structure_graph;
 mod topology;
 
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::hash::Hash;
 
 pub use build_error::GraphError;
+pub use builder::GraphBuilder;
 pub use cycle_error::CycleError;
 
+use assembly::構築中のグラフ;
 use key_correspondence::キー対応表;
 use topology::{ノード位置, 有向トポロジー};
 
@@ -45,47 +50,6 @@ use topology::{ノード位置, 有向トポロジー};
 pub struct Graph<N, E = (), K = String> {
     トポロジー: 有向トポロジー<N, E>,
     キー対応: キー対応表<K>,
-}
-
-/// [`Graph::create`] に貸し出される構築用 builder。
-///
-/// クロージャの外に参照を持ち出すことはできない (借用検査器が保証)。
-/// 凍結 ([`Graph::create`] 内部で呼ばれる) までは多重度等の検査を一切
-/// 行わない — 「構築中の型」と「構築後の型」を分ける、というのが
-/// `docs/graph_design_sketches.md` 決定2/決定4 の要点。
-pub struct GraphBuilder<N, E, K> {
-    nodes: Vec<(K, N)>,
-    edges: Vec<(K, K, E)>,
-}
-
-impl<N, E, K> GraphBuilder<N, E, K> {
-    fn new() -> Self {
-        Self {
-            nodes: Vec::new(),
-            edges: Vec::new(),
-        }
-    }
-
-    /// ノードを 1 つ積む。
-    pub fn node(&mut self, key: K, value: N) -> &mut Self {
-        self.nodes.push((key, value));
-        self
-    }
-
-    /// 辺を 1 つ積む。
-    pub fn edge(&mut self, from: K, to: K, value: E) -> &mut Self {
-        self.edges.push((from, to, value));
-        self
-    }
-}
-
-impl<N, E, K> GraphBuilder<N, E, K>
-where
-    K: Hash + Eq + Clone,
-{
-    fn freeze(self) -> Result<Graph<N, E, K>, GraphError<K>> {
-        Graph::build(self.nodes, self.edges)
-    }
 }
 
 impl<N, E, K> Graph<N, E, K> {
@@ -111,36 +75,7 @@ where
         nodes: impl IntoIterator<Item = (K, N)>,
         edges: impl IntoIterator<Item = (K, K, E)>,
     ) -> Result<Self, GraphError<K>> {
-        let mut トポロジー = 有向トポロジー::空のトポロジーを生成する();
-        let mut キー対応 = キー対応表::空の対応表を生成する();
-
-        for (key, value) in nodes {
-            if キー対応.キーが登録済みか(&key) {
-                return Err(GraphError::DuplicateKey(key));
-            }
-            let 位置 = トポロジー.ノードを追加する(value);
-            キー対応.対応を登録する(key, 位置);
-        }
-
-        for (from, to, value) in edges {
-            let 始点 = キー対応
-                .位置(&from)
-                .ok_or_else(|| GraphError::UnknownEndpoint {
-                    from: from.clone(),
-                    to: to.clone(),
-                    missing: from.clone(),
-                })?;
-            let 終点 = キー対応
-                .位置(&to)
-                .ok_or_else(|| GraphError::UnknownEndpoint {
-                    from: from.clone(),
-                    to: to.clone(),
-                    missing: to.clone(),
-                })?;
-            トポロジー.辺を追加する(始点, 終点, value);
-        }
-
-        Ok(Self::部品から組み立てる(トポロジー, キー対応))
+        構築中のグラフ::ノード列と辺列から組み立てる(nodes, edges)
     }
 
     /// builder をクロージャに貸し出し、戻ったら凍結して一括検証する。
@@ -152,9 +87,9 @@ where
     where
         F: for<'b> FnOnce(&'b mut GraphBuilder<N, E, K>),
     {
-        let mut builder = GraphBuilder::new();
+        let mut builder = GraphBuilder::空のbuilderから始める();
         f(&mut builder);
-        builder.freeze()
+        builder.凍結する()
     }
 
     /// キーからノード値を引く。
@@ -568,57 +503,6 @@ where
         }
 
         Graph::部品から組み立てる(トポロジー, キー対応)
-    }
-}
-
-impl<K> Graph<(), (), K>
-where
-    K: Hash + Eq + Clone,
-{
-    /// ノードキー集合と辺 `(from, to)` の列から、値なしの構造グラフを作る。
-    ///
-    /// 図式グラフの `{label}_pairs()` から汎用アルゴリズム (`has_cycle` 等)
-    /// へ射影する定型操作のためのヘルパー。キーは内部で `clone` して所有
-    /// するので、呼び出し側で借用の生存期間を気にしなくてよい。
-    /// 重複ノードキー・未知キーへの辺は [`Graph::build`] と同じ `GraphError`
-    /// 規約でエラーを返す。
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use graphite::Graph;
-    ///
-    /// let g: Graph<(), (), &str> =
-    ///     Graph::from_edges(vec!["a", "b", "c"], vec![("a", "b"), ("b", "c")]).unwrap();
-    /// assert!(!g.has_cycle());
-    /// ```
-    ///
-    /// 図式グラフの `{label}_pairs()` (`&K` を yield するイテレータ) から
-    /// 射影したい場合は `.cloned()` を挟んで所有権を渡す:
-    ///
-    /// ```
-    /// use graphite::Graph;
-    ///
-    /// let ids = vec!["a".to_string(), "b".to_string(), "c".to_string()];
-    /// // 例えば `schema.produces_pairs()` のような `(&K, &K)` を yield する
-    /// // イテレータを想定した図。
-    /// let pairs: Vec<(&String, &String)> = vec![(&ids[0], &ids[1]), (&ids[1], &ids[2])];
-    ///
-    /// let g: Graph<(), (), String> = Graph::from_edges(
-    ///     ids.iter().cloned(),
-    ///     pairs.into_iter().map(|(a, b)| (a.clone(), b.clone())),
-    /// )
-    /// .unwrap();
-    /// assert!(!g.has_cycle());
-    /// ```
-    pub fn from_edges(
-        nodes: impl IntoIterator<Item = K>,
-        edges: impl IntoIterator<Item = (K, K)>,
-    ) -> Result<Self, GraphError<K>> {
-        Self::build(
-            nodes.into_iter().map(|k| (k, ())),
-            edges.into_iter().map(|(from, to)| (from, to, ())),
-        )
     }
 }
 
