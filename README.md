@@ -90,25 +90,8 @@ let (boss, attrs) = (boss_edge.superior(), boss_edge.payload());
 何ができないのか」を実際のコンパイルエラー付きで1つずつ確認したい場合は、
 まず `examples/hello-graph` を読んでみてください (下記「実践例」節参照)。
 
-## 4 クレート構成
-
-```
-crates/graphite/         # ランタイムクレート。利用者が唯一 depend するクレート
-crates/graphite-codegen/ # schemaの構文解析・検証・指紋・Rust生成を担う純粋層
-crates/graphite-macros/  # コンパイル時検証・指紋照合とgraph!/flow!を担うproc-macroクレート
-xtask/                   # 生成ファイルの探索・読み書き・差分検査を担う開発用入口
-```
-
-proc-macro クレート (`proc-macro = true`) は手続き型マクロ = コンパイラ
-プラグインの一種であり、生成する側 (マクロ) と生成されたコードが依存する側
-(ランタイム型) を同じクレートに置けないという Rust の技術的制約のため分離
-している。マクロが生成する内容と通常ファイルの内容が一致することは`graphite-codegen`の共有で保証し、
-ファイルI/Oは`xtask`だけが行う。利用者は `graphite` だけ
-に依存し、マクロは `graphite::graph_schema!` / `graphite::graph!` /
-`graphite::flow!` として re-export されたものを使う。
-
-`crates/graphite` の内部がどの実行時概念をどのファイルへ置いているかは
-`docs/development/runtime_structure.md` に記録しています。
+利用者は `graphite` だけに依存します。クレートの分け方とその理由は
+`docs/development/crate_architecture.md` に記録しています。
 
 `graph_schema!`/`graph!` の辺は**宣言**(構築時に検証されるデータの繋がり)
 ですが、`graphite::flow!` の矢印 `-[関数式]->` は**実行**です — `x -[f]->
@@ -692,139 +675,14 @@ BelongsTo(..)` の `tanaka_dept` の部分) は**ノード・エッジの種別�
 各ディレクトリの詳細な使い方・サブコマンド一覧は、それぞれの `README.md` を
 参照してください。
 
-## テスト
+## 開発者向け
 
-```powershell
-cargo build 2> build_errors.txt; Get-Content build_errors.txt -Head 50
-cargo test
-cargo xtask generate --check
-```
-
-- `crates/graphite/tests/orgchart_handwritten.rs` — フェーズ2で手書きした
-  `OrgChart` (schema生成コードの目標形。テンプレートとして
-  残置)
-- `crates/graphite/tests/orgchart_macro.rs` — `graph_schema!` で `OrgChart`
-  を宣言し、通常のRust生成ファイルを読み込む同等テスト、および `graph!` リテラルのテスト
-- `crates/graphite/tests/compile_fail.rs` + `tests/ui/*.rs` —
-  [`trybuild`](https://docs.rs/trybuild) によるコンパイルエラー系テスト
-  (未宣言ノード型を端点に指定 / 不正な `where each` 指定 / `graph!` で
-  存在しないエッジ種別 / ノードキー重複 / 宣言単位のエラー回復)。stderr の
-  再生成は `TRYBUILD=overwrite cargo test --test compile_fail`
-
-## IDE サポート (rust-analyzer)
-
-`examples/` 配下はルート Cargo workspace から独立したスタンドアロンクレート
-ですが、`.vscode/settings.json` の `rust-analyzer.linkedProjects` で明示的に
-リンクしているため、VSCode で開けば通常のクレートと同様に rust-analyzer の
-解析対象になります。今後 example を追加したときは `linkedProjects` に 1 行
-足すことを運用ルールとします。詳細は `docs/development/ide_support_spec.md` を参照して
-ください。
-
-## 手書きテンプレートとの差異
-
-schema生成コードは基本的に`orgchart_handwritten.rs`と同じ形を生成します
-が、「任意のノード型・エッジ型の組み合わせ」に一般化する過程でいくつか
-手書き版と異なる設計判断をしています。
-
-1. **違反 enum は 1 スキーマにつき 1 つ生成** (`{Schema}Violation`)。手書き
-   版は `SchemaViolation` という固定名でしたが、複数のスキーマを同じモジュール
-   に宣言したときに型名が衝突しないよう、スキーマ名をプレフィックスにして
-   います。
-2. **違反 enum のバリアントはエッジ単位で型付き生成される
-   (`{Kind}{役割名}EachViolation` / `{Kind}UniquePairViolation` /
-   `{Kind}DuplicateKey` / `{Kind}UnknownSource` / `{Kind}UnknownTarget`)**。
-   手書き版は `MultiplicityViolation { employee: EmployeeId, .. }` という
-   スキーマ共通の 1 バリアントでしたが、一般のスキーマでは辺ごとに
-   始点/終点ノード型が異なりうる (例: `A -> B` と `C -> D` が両方 each
-   違反を起こしうる) ため、辺ごとに専用バリアントを生成することで型を
-   `String` に落とさず固定できるようにしています (「型の strictness」
-   原則。`docs/development/design_principles.md` 原則1 参照)。例:
-   `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1;` からは
-   `BelongsToEmployeeEachViolation { source: EmployeeId, count: usize }` /
-   `BelongsToUnknownSource { edge: BelongsToId, source: EmployeeId }` /
-   `BelongsToUnknownTarget { edge: BelongsToId, target: DepartmentId }` /
-   `BelongsToDuplicateKey(BelongsToId)` が生成されます (v4 で辺キー重複・
-   `unique pair` 違反が追加された。`docs/schema_v4.md` §3.1 参照)。
-3. **builder のエッジ追加メソッドの引数は `({Kind}Id, {Kind})`**。手書き版
-   は `boss(employee, boss, attrs)`・`reports(manager, report)` のように
-   端点を直接引数に取っていましたが、v4 では辺そのものが第一級のキー付き
-   要素になったため、builder のエッジメソッドは常に「辺キー + 名前付きフィールドの辺値」
-   のペアを取ります (`b.boss(OrgChart::BossId("b1".into()),
-   OrgChart::Boss { subordinate: employee_id, superior: boss_id, appointment: attrs })` のように)。
-4. **内部ストレージの複数形フィールド名は素朴な英語複数形 (`+ "s"`) 固定**。
-   不規則複数形 (`Category` → `Categorys` になってしまう等) には自動対応
-   していません。この名前は非公開フィールドで利用者から見えないため機能上の
-   問題はなく、明示指定構文は持ちません (`docs/graph_splice.md` §3)。生成
-   コードを `cargo expand` 等で目視する際は注意してください。
-5. **導出エッジ (`colleagues` 等) はマクロが生成しない**。上記「使用例 3」
-   参照。
-6. **ノード値の型・エッジ属性型はいずれもユーザーが `graph_schema!` の外で
-   宣言し、マクロは参照するだけ**。手書き版は `pub struct Employee { .. }` /
-   `pub struct BossAttrs { pub since: i32 }` をテンプレート内に直接書いて
-   いましたが、マクロはこれらの型を一切生成せず、スキーマ宣言
-   (`node Employee;` / `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1;`)
-   に書かれた型をそのまま参照します。派生する
-   trait 要求も無い (上記
-   「ノード値の型・エッジ属性型に対する trait 要求」参照) ため、derive する
-   かどうかも含めて完全に利用者の自由です。
-7. **ノード・エッジのID型は宣言ごとに既定生成または明示指定を選ぶ**。省略時は schema module 内へ `{Node}Id` / `{Kind}Id` を生成します。既存型を使う宣言は `(id: 型パス)` を付け、`graph!` では `名前 @ ID式 = 値` と書きます (詳細は「キーの設計」節)。
-
-## 未決事項 / フェーズ4があるとしたら
-
-以下はフェーズ3終了時点での未決事項一覧でした。フェーズ4で 5 項目中 4 項目
-(残り 1 項目は設計判断として据え置き) に着手し、対応関係は以下の通りです。
-
-- **多重度 `(1)` アクセサへ未知キーを渡した場合は v0 ではパニックとする —
-  解決済み (フェーズ4、その後ビュー方式へ移行)**。多重度 `(1)` のビューの
-  `of(&SrcId) -> TRef<'graph>` (パニック版) は「このスキーマが発行したキーだけを
-  渡すことが呼び出し側の責務」という設計のまま残しつつ、非パニック版
-  `get(&SrcId) -> Option<TRef<'graph>>` (属性付きは `Option<(TRef<'graph>, &Attrs)>`) を対で
-  持ちます。`Vec` の `v[i]` (パニック) と `v.get(i)` (`Option`) の対と
-  同じ関係です (フェーズ4では `{label}`/`try_{label}` という導出名の
-  メソッド対でしたが、`docs/history/edge_view_api.md` でビュー1個の `of`/`get`
-  に統合されました)。
-- **`match` パターンでのクエリは非対応 — 一部緩和 (フェーズ4)、
-  `match` 構文そのものは引き続き非対応**。Vertex 側で検討していた
-  `match g { @{ a -[boss]-> b, b -[boss]-> a } => ... }` のような辺ラベル
-  付きパターンマッチは、Rust の安定版では `match` アーム位置に任意の
-  カスタム構文を注入できないため今後も実装しません。代わりに、各エッジ
-  種別ごとの `iter() -> impl Iterator<Item = KindRef<'graph>>`
-  と、各ノード種別ごとのキー列挙 `{node_snake}_ids()` を追加し、メソッド
-  チェーンで同種のクエリ (例: 相互上司の検出) を書けるようにしました
-  (独自パーサ・コンビネータ DSL は「独自パーサの再演になる」という
-  `../Bullet/docs/rust_graph_extension_sketch.md` の警告に従い採用して
-  いません)。
-- **エッジ属性・ノード値のフィールド型に対する derive 制約 (`f64` 等が使えない
-  問題) — 解決済み**。ノード値の型・エッジ属性型はいずれもユーザー宣言なので、
-  マクロからの derive 制約はそもそも存在しません。`f64` のような `Eq` を
-  実装できない型を使うかどうかも含めて derive 方針は利用者の自由です
-  (newtype キー型だけは `HashMap` キーとして使うため `Hash + Eq` を要求します)。
-- **`plural_field_name` の素朴な複数形化 — 一時解決 (明示指定構文) → v4 で
-  廃止**。かつては `node Category(categories);` のように `node` 宣言に
-  省略可能な `(識別子)` を付けて内部ストレージのフィールド名を明示指定
-  できましたが、v4 でストレージ名が完全に内部専用 (利用者から不可視) になり
-  明示する意義が消えたため、構文自体を廃止しました
-  (`docs/graph_splice.md` §3)。内部フィールド名は常に素朴な `+ "s"` で
-  生成されます。
-- **`graph!` のエラーメッセージ品質 (未知エッジラベル) — フェーズ4で
-  ハンドシェイクマクロにより一時解決、v3 (`docs/history/graph_literal_v3.md` §4) で
-  全廃**。フェーズ4では `graph_schema!` が `__graphite_edge_{Schema}!` という
-  宣言的マクロを追加生成し、未知のラベルに「利用可能なエッジ一覧」付きの
-  `compile_error!` を出していましたが、この方式には `macro_rules!` の
-  テキストスコープに起因する同一ファイル制約があり (別モジュールから
-  `graph!` を使うには `#[macro_export]` 等の追加対応が必要)、かつ
-  `graph!` (proc-macro) → ハンドシェイク (macro_rules) という二段展開が
-  rust-analyzer の定義ジャンプを妨げる副作用もありました
-  (`docs/development/ide_support_spec.md` §1.7)。v3 でリテラルの属性ペイロードを
-  `-[label = 式]->` という式渡しに変えたことでハンドシェイク自体が不要になり、
-  完全に廃止しました。未知ラベルは `graph!` が生成する
-  `__graphite_b.{label}(..)` 呼び出しが素の rustc method-not-found (E0599) に
-  落ちることで検出されます。「利用可能なエッジ一覧」付きの親切なメッセージは
-  失いますが、健全性 (コンパイルエラーになること自体) には関与しないため
-  許容する、というユーザー決定です (`tests/ui/graph_unknown_edge_label.stderr`
-  参照)。この全廃により、同一ファイル制約自体も構造的に消滅しました
-  (`graph!` が参照するのは通常の型・メソッドだけになったため。実証は
-  `crates/graphite/tests/graph_cross_module.rs`)。
+Graphite 自身を実装・保守する人向けの文書は `docs/development/` にあります。
+テストの構成と実行手順は `docs/development/testing.md`、生成コードと手書き
+テンプレートとの差異は `docs/development/generated_vs_handwritten.md`、
+クレートの分け方は `docs/development/crate_architecture.md` を参照して
+ください。フェーズ3終了時点の未決事項とフェーズ4の対応関係は
+`docs/history/phase4_open_questions.md` に記録しています。
 
 ## ライセンス
 
