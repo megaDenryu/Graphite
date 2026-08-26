@@ -106,9 +106,10 @@ Graphite ではこう考える:
   しない — `OrderFsm::create` が `each` 制約違反を一括検査するので、
   同じ状態から同じイベントで2箇所以上に遷移するような矛盾したデータは
   構築時点で `Err` になる。
-- **schema そのものが遷移表のドキュメント。** `src/fsm.rs` の
-  `graph_schema!`/`graph!` を読めば、遷移規則の全体像 (どの状態からどの
-  イベントでどこへ行けるか) が1箇所に宣言的に並んでいる。ドキュメントと
+- **schema そのものが遷移表のドキュメント。** `src/schema.rs` の
+  `graph_schema!` と `src/fsm/transition_table.rs` の `graph!` を読めば、
+  遷移規則の全体像 (どの状態からどのイベントでどこへ行けるか) が1箇所に
+  宣言的に並んでいる。ドキュメントと
   コードが同じソースなので乖離が起きない。
 
 ## 4. 対応表
@@ -119,7 +120,7 @@ Graphite ではこう考える:
 | イベント (submit/pay/ship/...) | 辺種別 (Kind。`Submit`/`Pay`/... という nominal 型) |
 | 「この状態でこのイベントの行き先は高々1つ」という決定性 | `where each before: 0..1` |
 | ガード条件・監査ログ用の付随情報 (キャンセル理由・返金要否・監査ラベル) | エッジ属性型 (`CancelEdge`/`RefundEdge`) |
-| 遷移表そのもの | `schema` 宣言 + `graph!` リテラル (`src/fsm.rs::build`) |
+| 遷移表そのもの | `schema` 宣言 + `graph!` リテラル (`src/fsm/transition_table.rs::build`) |
 | 「未定義の遷移」 | `TransitionError` (`Result::Err`、型で必ず処理を強制) |
 | 「どこからも呼ばれない状態がある」(デッドコード相当) | `reachable_from` による到達不能検出 |
 | 「そこから先へ進む手段が無いのに終端でもない」(定義漏れ) | `out_neighbors` による行き止まり検出 |
@@ -154,7 +155,7 @@ graphite::graph_schema! {
 がすでに「同じ (始点, 終点) の対に2本目」を禁止しているため、併記は冗長
 になる (§1「実装を単純にするため特別扱いしない」方針)。
 
-## 遷移グラフ (`src/fsm.rs::build`)
+## 遷移グラフ (`src/fsm/transition_table.rs::build`)
 
 ```rust
 submit_draft    = Submit(draft -> pending_payment),
@@ -274,14 +275,29 @@ enum+match 散在アンチパターンの「規則が複数関数に分散する
 互いに他方を誤検出しないことからも分かる (デモ1は行き止まりゼロ、デモ2は
 到達不能ゼロ)。
 
+## 構成
+
+| ファイル | 役割 |
+|---|---|
+| `src/schema.rs` | `graph_schema!` による状態とイベントの宣言 |
+| `src/fsm.rs` | 遷移エンジン `step` と、遷移の属性を読む補助 |
+| `src/fsm/transition_table.rs` | 遷移表そのもの (`graph!` リテラル) と初期状態・終端状態 |
+| `src/fsm/event.rs` | イベントの列挙 |
+| `src/fsm/transition_error.rs` | 未定義遷移を表す誤り |
+| `src/fsm/broken_variant.rs` | 検証の実演用に意図的に壊した遷移表2種 |
+| `src/validate.rs` | 到達不能状態・行き止まり状態の検出 |
+| `src/scenario.rs` | 読み物としてのシナリオ実演 |
+| `src/validation_demo.rs` | 検証結果の表示と壊れた変種での実演 |
+| `src/main.rs` | サブコマンドの振り分け |
+
 ## テスト
 
-`tests/integration.rs` に15件。カテゴリ:
+`tests/` の4本に15件。カテゴリ (ファイル名は括弧内):
 
-- 正常遷移 (ライフサイクル一直線・cancel/refund属性の読み取り)
-- 不正遷移が `Result::Err` になること (未定義遷移・終端後の遷移)
-- 決定性 (同じ状態・同じイベントは常に同じ遷移先、`each before: 0..1` の保証)
-- 検証アルゴリズム (正規FSMの健全性、壊れた変種2つそれぞれの検出)
+- 正常遷移 (ライフサイクル一直線・cancel/refund属性の読み取り。`valid_transition.rs`)
+- 不正遷移が `Result::Err` になること (未定義遷移・終端後の遷移。`undefined_transition.rs`)
+- 決定性 (同じ状態・同じイベントは常に同じ遷移先、`each before: 0..1` の保証。`determinism.rs`)
+- 検証アルゴリズム (正規FSMの健全性、壊れた変種2つそれぞれの検出。`design_validation.rs`)
 
 ```powershell
 cargo test
