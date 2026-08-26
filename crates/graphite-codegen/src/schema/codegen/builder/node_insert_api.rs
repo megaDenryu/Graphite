@@ -30,7 +30,7 @@ pub(crate) fn gen_builder_node_insert_api(
 
         /// `graph!` が公開IDと名前付き要素の内部位置を同時に受け取る経路。
         /// [`graphite::NamedInsertPermit`] を要求する
-        /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
+        /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/schema_runtime/named_construction.rs` 参照)。
         #[doc(hidden)]
         pub fn insert_named<N>(
             &mut self,
@@ -54,7 +54,7 @@ pub(crate) fn gen_builder_node_insert_api(
 
         /// `graph!` の `@ ID式` 付きノードを名前付き位置と共に挿入する経路。
         /// [`graphite::NamedInsertPermit`] を要求する
-        /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
+        /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/schema_runtime/named_construction.rs` 参照)。
         #[doc(hidden)]
         pub fn insert_named_with_id<N: #node_trait_ident>(
             &mut self,

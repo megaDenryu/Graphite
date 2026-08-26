@@ -49,7 +49,8 @@ pub fn default_id_trait_ident(schema_name: &Ident) -> Ident {
 /// `Builder`/`Graph`/名前付き位置型が共通で持つ、構築印 (`u64`) の
 /// 非公開フィールド名を返す。構築印は `graph!` の1回の構築を識別する印で、
 /// 名前付き位置が生成元と異なる `Graph` へ bind されるのを実行時に検出する
-/// ために使う (`crates/graphite/src/lib.rs` の構築印発行関数を参照)。
+/// ために使う (`crates/graphite/src/schema_runtime/construction_stamp.rs` の
+/// 構築印発行関数を参照)。
 pub fn construction_stamp_field_ident(span: Span) -> Ident {
     Ident::new("__graphite_construction_stamp", span)
 }

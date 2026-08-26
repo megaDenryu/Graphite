@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    17932197533008096323u64, 6649639880536379718u64, 9068572975455407965u64,
-    4633290857523646689u64,
+    18408057504168464979u64, 16544567998126664006u64, 15733681859339877109u64,
+    14755270211034826089u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct KnowsId(pub String);
@@ -193,7 +193,7 @@ impl Graph {
     /// 内部構築経路。`Graph` の凍結に成功した場合だけ名前付き位置を返す。
     /// [`graphite::build_named_graph`] へ薄く委譲するだけで、
     /// [`graphite::NamedInsertPermit`] はそちらでしか作らない
-    /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
+    /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/schema_runtime/named_construction.rs` 参照)。
     #[doc(hidden)]
     pub fn create_named<F, N>(f: F) -> Result<(Self, N), Violation>
     where
@@ -288,7 +288,7 @@ pub struct Builder {
 /// `Builder::insert`/`Builder::add` の側にある。
 ///
 /// `insert_named_with_id` は [`graphite::NamedInsertPermit`] を要求する
-/// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
+/// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/schema_runtime/named_construction.rs` 参照)。
 /// `insert_with_id` (許可証不要、名前付き位置を返さない) は独立した
 /// 実装を持ち、`insert_named_with_id` を経由しない
 /// (`create` のクロージャから許可証なしで呼べる必要があるため)。
@@ -558,7 +558,7 @@ impl Builder {
     }
     /// `graph!` が公開IDと名前付き要素の内部位置を同時に受け取る経路。
     /// [`graphite::NamedInsertPermit`] を要求する
-    /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
+    /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/schema_runtime/named_construction.rs` 参照)。
     #[doc(hidden)]
     pub fn insert_named<N>(
         &mut self,
@@ -580,7 +580,7 @@ impl Builder {
     }
     /// `graph!` の `@ ID式` 付きノードを名前付き位置と共に挿入する経路。
     /// [`graphite::NamedInsertPermit`] を要求する
-    /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
+    /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/schema_runtime/named_construction.rs` 参照)。
     #[doc(hidden)]
     pub fn insert_named_with_id<N: QualifiedIdsNode>(
         &mut self,
@@ -603,7 +603,7 @@ impl Builder {
     }
     /// `graph!` が公開IDと名前付き辺の内部位置を同時に受け取る経路。
     /// [`graphite::NamedInsertPermit`] を要求する
-    /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
+    /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/schema_runtime/named_construction.rs` 参照)。
     #[doc(hidden)]
     pub fn add_named<E>(
         &mut self,
@@ -625,7 +625,7 @@ impl Builder {
     }
     /// `graph!` の `@ ID式` 付き辺を名前付き位置と共に挿入する経路。
     /// [`graphite::NamedInsertPermit`] を要求する
-    /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
+    /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/schema_runtime/named_construction.rs` 参照)。
     #[doc(hidden)]
     pub fn add_named_with_id<E: QualifiedIdsEdge>(
         &mut self,

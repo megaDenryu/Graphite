@@ -50,7 +50,7 @@ pub(crate) fn gen_insertable_traits(
         /// `Builder::insert`/`Builder::add` の側にある。
         ///
         /// `insert_named_with_id` は [`graphite::NamedInsertPermit`] を要求する
-        /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
+        /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/schema_runtime/named_construction.rs` 参照)。
         /// `insert_with_id` (許可証不要、名前付き位置を返さない) は独立した
         /// 実装を持ち、`insert_named_with_id` を経由しない
         /// (`create` のクロージャから許可証なしで呼べる必要があるため)。

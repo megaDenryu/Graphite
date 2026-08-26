@@ -163,7 +163,8 @@ fn main() {
 //
 // は次のように展開されます (実装が生成する呼び出し形。`__graphite_b` が
 // builder、`__graphite_permit` は名前付き位置を積む操作の許可証
-// (`crates/graphite/src/lib.rs` の `NamedInsertPermit` 参照)、`clone()` は
+// (`crates/graphite/src/schema_runtime/named_construction.rs` の
+// `NamedInsertPermit` 参照)、`clone()` は
 // 端点のキーを渡すため):
 //
 // ```rust

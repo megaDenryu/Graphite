@@ -61,7 +61,7 @@ pub(crate) fn gen_schema_impl(
             /// 内部構築経路。`Graph` の凍結に成功した場合だけ名前付き位置を返す。
             /// [`graphite::build_named_graph`] へ薄く委譲するだけで、
             /// [`graphite::NamedInsertPermit`] はそちらでしか作らない
-            /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/lib.rs` 参照)。
+            /// (許可証は通常の `create` 経路からの直接的・偶発的な誤用を防ぐためのものであり、名前付き位置の持ち出しの検出は構築印の照合が担う。`crates/graphite/src/schema_runtime/named_construction.rs` 参照)。
             #[doc(hidden)]
             pub fn create_named<F, N>(f: F) -> Result<(Self, N), #violation_ident>
             where

@@ -18,7 +18,8 @@
 //! schema::codegen::insertable_trait::marker_traits::gen_node_trait_and_impls`
 //! 参照) にキー文字列と値の式をそのまま渡し、
 //! `N::Id` の型推論を rustc に委ねる (許可証付き経路の詳細は
-//! `crates/graphite/src/lib.rs` の `NamedInsertPermit` 参照)。
+//! `crates/graphite/src/schema_runtime/named_construction.rs` の
+//! `NamedInsertPermit` 参照)。
 //!
 //! エッジ項 (`key = Kind(from -> to)` / `key = Kind(from -[式]-> to)`) は
 //! 名前付きフィールドの辺値型を、柄に対応する内部コンストラクタで構築したあと、
