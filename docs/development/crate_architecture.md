@@ -1,5 +1,7 @@
 # クレート構成とその理由
 
+> **Development document** — 索引: `docs/README.md`
+
 この文書は、Graphite を構成する4つのクレートが何を担い、なぜ分かれているのかを
 定める生存型文書である。Graphite を使うだけなら読む必要はない。
 

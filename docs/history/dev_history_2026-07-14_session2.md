@@ -1,5 +1,7 @@
 # 開発履歴: 2026-07-14 セッション2 (IDEサポート: rust-analyzer 対応)
 
+> **Historical document** — 索引: `docs/README.md`
+
 前セッション (`dev_history_2026-07-14_session1.md`) からの継続。ユーザー指示は原文のまま引用する。
 
 ## 0. セッション開始指示

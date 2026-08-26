@@ -1,5 +1,7 @@
 # IDE サポート仕様 (VSCode / rust-analyzer)
 
+> **Development document** — 索引: `docs/README.md`
+
 Graphite の DSL (`graph_schema!` / `graph!`) を書くとき、VSCode 上で参照ジャンプ・
 型追跡・rename などが「普通の Rust コードと同じように」機能することを目標とする。
 

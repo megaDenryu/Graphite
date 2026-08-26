@@ -1,5 +1,7 @@
 # graph! リテラル構文 v3 — `=` 束縛・式ペイロード・ハンドシェイク全廃
 
+> **Historical document** — 索引: `docs/README.md`
+
 > **[v4 (`docs/schema_v4.md`) で置換済み]** このファイルは歴史的記録として残す。
 > 現行のリテラル構文 (`名前 = 値` または `名前 @ ID式 = 値`、辺は `key = Kind(from -> to)` /
 > `key @ ID式 = Kind(from -[式]-> to)` で名前付きフィールドの構造体を構築) は `docs/schema_v4.md`

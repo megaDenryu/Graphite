@@ -1,5 +1,8 @@
 # ID型の既定生成と明示指定
 
+> **Current reference** — 索引: `docs/README.md`
+> 名前の版番号は仕様が確定した版を指しており、内容は現行仕様である。
+
 この文書は、schema宣言がノード・エッジのID型を選ぶ規則と、`graph!` がID値を受け取る規則を定める生存型文書である。ID型の実体は `cargo xtask generate` が生成する通常のRustファイルに置かれる。生成の配線と生成先の規約は `docs/code_generation.md` を参照する。生成されるID型・参照型・種別APIの実際の形は `docs/desugaring_reference.md` §2・§3・§8 にある。
 
 ## schema宣言

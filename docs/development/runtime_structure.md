@@ -1,5 +1,7 @@
 # ランタイムクレートの内部構造 (`crates/graphite/src`)
 
+> **Development document** — 索引: `docs/README.md`
+
 `crates/graphite` の実行時コードがどの概念をどのファイルへ置いているかを記録する。
 公開APIの使い方は各型の rustdoc と README の「どれを使えばよいか」を、生成コードとの
 対応は `docs/desugaring_reference.md` を参照する。ここは「どこに何があるか」と「何が何に依存してよいか」だけを扱う。

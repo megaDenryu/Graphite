@@ -1,5 +1,8 @@
 # スキーマ v4 — 辺の第一級化: 全要素キー・where 制約・Graph中心の種別API
 
+> **Current reference** — 索引: `docs/README.md`
+> 名前の版番号は仕様が確定した版を指しており、内容は現行仕様である。
+
 2026-07-16 のユーザー決定。v3 (edge_syntax_v3.md / graph_literal_v3.md /
 edge_view_api.md) を置き換える大改訂。設計議論の経緯は
 dev_history と Fudaba #7 を参照。

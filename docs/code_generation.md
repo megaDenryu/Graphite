@@ -1,5 +1,7 @@
 # 追跡可能なRustコードの生成規約
 
+> **Current reference** — 索引: `docs/README.md`
+
 この文書は、Graphiteのschema DSLから通常のRustソースを生成し、公開APIの定義と実装を追跡可能に保つ規約を定める生存型文書である。
 
 生成物の中身 (どの構文がどの型・値・関数になるか) は `docs/desugaring_reference.md` が正本である。この文書は生成の配線・生成先・陳腐化の検出・可視性の境界という規約の側を定める。

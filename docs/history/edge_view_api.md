@@ -1,5 +1,7 @@
 # エッジアクセス API — ビュー方式 (導出名の全廃)
 
+> **Historical document** — 索引: `docs/README.md`
+
 > **[v4 (`docs/schema_v4.md`) で置換済み]** このファイルは歴史的記録として残す。
 > ビュー6型 (`EdgeOne`/`EdgeOneWith`/`EdgeOption`/`EdgeOptionWith`/`EdgeMany`/
 > `EdgeManyWith`) は v4 で全廃された。置き換え先はいったん辺種別型の関連関数

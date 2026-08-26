@@ -1,5 +1,7 @@
 # 生成コードと手書きテンプレートとの差異
 
+> **Development document** — 索引: `docs/README.md`
+
 この文書は、schema生成コードが `crates/graphite/tests/orgchart_handwritten.rs`
 の手書きテンプレートと異なる設計判断をした箇所を記録する生存型文書である。
 

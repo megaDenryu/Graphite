@@ -1,5 +1,7 @@
 # 一括構築API
 
+> **Current reference** — 索引: `docs/README.md`
+
 この文書は、実行時データからグラフを構築する `Builder::extend` の現行契約を定める生存型文書である。
 
 `extend` はノードとエッジに共通する一括挿入APIである。値の型がどの内部表へ入るかはRustの型推論が決める。

@@ -1,5 +1,10 @@
 # スキーマ宣言構文 v2 — ノード/エッジ属性の外部 struct 参照化 (決定3 の改訂)
 
+> **Historical document** — 索引: `docs/README.md`
+> 2.1節の内容 (ノード型・積み荷型を `graph_schema!` の外で宣言する規約) は現行仕様
+> であり、現在の正本は `docs/desugaring_reference.md` §2・§4 と
+> `docs/schema_v4.md` §1 である。本ファイルは決定当時の記録として残す。
+
 > **注記 (2026-07-16)**: エッジ宣言部 (2.2「エッジ宣言」および関連する
 > `-[label]->`/`-[label: 型パス]->` 記法) は `docs/history/edge_syntax_v3.md` で
 > `label: From -> To (mult)` / `label: From -[型パス]-> To (mult)` の形へ

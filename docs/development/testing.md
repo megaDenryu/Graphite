@@ -1,5 +1,7 @@
 # テストの構成と実行
 
+> **Development document** — 索引: `docs/README.md`
+
 この文書は、Graphite 自身のテストが何を担保し、どう実行するのかを定める生存型
 文書である。
 

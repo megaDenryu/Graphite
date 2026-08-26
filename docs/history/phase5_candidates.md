@@ -1,5 +1,7 @@
 # フェーズ5候補: `examples/` 実装で見えた Graphite API の不足点
 
+> **Historical document** — 索引: `docs/README.md`
+
 2026-07-14、`examples/build-pipeline` / `examples/org-analyzer` /
 `examples/dialogue-engine` の3実践exampleを並行実装した際、各実装エージェント
 から報告された Graphite ランタイム/マクロの不足点・改善候補をまとめたもの。
