@@ -56,4 +56,4 @@
 | `docs/history/edge_view_api.md` | Historical document | `docs/desugaring_reference.md` §17・§18 | 全廃されたビュー6型によるエッジアクセスAPIの決定 |
 | `docs/history/graph_literal_v3.md` | Historical document | `docs/schema_v4.md` | `graph!` リテラル構文 v3 とハンドシェイクマクロ全廃の決定 |
 | `docs/history/phase4_open_questions.md` | Historical document | `docs/desugaring_reference.md` | フェーズ3終了時点の未決事項と、フェーズ4での対応関係 |
-| `docs/history/phase5_candidates.md` | Historical document | GitHub の Issue | 実践example から報告されたAPI不足点10件の記録。全項目が解決済みである |
+| `docs/history/phase5_candidates.md` | Historical document | GitHub の Issue | 実践example から報告されたAPI不足点9件と知見1件の記録。8件は解決済みで、平坦な名前空間の1件は設計判断として見送りが決まっている。未処置の項目は残っていない |

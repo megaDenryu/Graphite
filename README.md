@@ -126,8 +126,9 @@ schema を変えて生成し忘れると、指紋が合わず通常の `cargo bu
 - **ノードの値は普通の Rust の型です。** Graphite は値型を生成せず、宣言に書かれた
   型を参照するだけです。`Clone` ・ `Debug` ・ `PartialEq` などを要求しません。
 - **ノードと辺は ID による同一性を持ちます。** `node Person;` は `PersonId(pub String)`
-  を schema module 内に生成します。既存の型を使いたい場合は `node Person(id: PersonId);`
-  と書きます。IDは内部位置ではありません。詳細は `docs/node_id_v4_2.md` にあります。
+  を schema module 内に生成します。自分で用意した型を使いたい場合は
+  `node Person(id: EmployeeNumber);` と書きます。IDは内部位置ではありません。詳細は
+  `docs/node_id_v4_2.md` にあります。
 - **辺は第一級の要素です。** 辺種別は新しい名前の型として生成され、独自のキーと
   積み荷を持ちます。同じ形でも `Boss` と `Mentor` は別の型です。
 - **端点の役割名が関係の意味を表します。** `(subordinate: Person) -> (superior: Person)`
@@ -173,8 +174,9 @@ schema を変えて生成し忘れると、指紋が合わず通常の `cargo bu
 - 依存の再計算 → `examples/reactive-cells`
 - 波に分けた並列実行 → `examples/async-dag`
 
-後ろの3本は「暗黙の制御フローで表現されていた構造を、宣言されたグラフデータに変え、
-性質の検証をグラフアルゴリズムへ任せる」という同じ変換の実証です。
+`state-machine` ・ `async-dag` ・ `reactive-cells` の3本は「暗黙の制御フローで表現
+されていた構造を、宣言されたグラフデータに変え、性質の検証をグラフアルゴリズムへ
+任せる」という同じ変換の実証です。
 
 - `examples/state-machine` — bool フラグの組み合わせ爆発を、状態をノード・イベントを
   辺種別・決定性を `where each before: 0..1` として再定式化し、到達不能状態を検出します。
