@@ -74,14 +74,17 @@
 //! (参照: `docs/reverse_query.md`)。
 
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote, ToTokens};
+use quote::{quote, ToTokens};
 use syn::{Ident, Path};
 
 use crate::naming::{
-    construction_stamp_field_ident, each_violation_ident, edge_record_ident, edge_storage_ident,
-    generated_id_ident, graph_type_ident, incident_method_ident, internal_position_ident,
+    accessor_ident, construction_stamp_field_ident, duplicate_edge_key_variant_ident,
+    duplicate_node_key_variant_ident, each_violation_ident, edge_record_ident, edge_storage_ident,
+    generated_id_ident, incident_index_field_ident, incident_method_ident, internal_position_ident,
     kind_api_method_ident, named_position_ident, node_storage_ident, pair_index_field_ident,
-    reference_ident, to_snake_case, traversal_method_ident,
+    reference_ident, source_role_index_field_ident, target_role_index_field_ident,
+    traversal_method_ident, unique_pair_violation_variant_ident, unknown_endpoint_variant_ident,
+    unknown_source_variant_ident, unknown_target_variant_ident, 固定生成名の予約表,
 };
 use crate::schema_dsl::{
     EachSpec, EdgeDecl, EdgePayload, EdgeShape, NodeDecl, RoleCardinality, SchemaInput,
@@ -139,22 +142,19 @@ struct NodeInfo {
 
 impl NodeInfo {
     fn new(decl: &NodeDecl) -> Self {
-        let type_name = decl.name.to_string();
-        let span = decl.name.span();
-        let field_ident = node_storage_ident(&decl.name);
         NodeInfo {
             type_ident: decl.name.clone(),
             id_ty: PublicIdType {
                 generated_ident: generated_id_ident(&decl.name),
                 explicit_path: decl.id_ty.clone(),
             },
-            field_ident,
-            accessor_ident: Ident::new(&to_snake_case(&type_name), span),
+            field_ident: node_storage_ident(&decl.name),
+            accessor_ident: accessor_ident(&decl.name),
         }
     }
 
     fn dup_variant(&self) -> Ident {
-        format_ident!("Duplicate{}", self.type_ident)
+        duplicate_node_key_variant_ident(&self.type_ident)
     }
 
     fn internal_position_ident(&self) -> Ident {
@@ -232,24 +232,24 @@ impl<'a> EdgeInfo<'a> {
     }
 
     fn duplicate_key_variant(&self) -> Ident {
-        format_ident!("{}DuplicateKey", self.kind)
+        duplicate_edge_key_variant_ident(self.kind)
     }
     fn unknown_source_variant(&self) -> Ident {
-        format_ident!("{}UnknownSource", self.kind, span = self.kind.span())
+        unknown_source_variant_ident(self.kind)
     }
     fn unknown_target_variant(&self) -> Ident {
-        format_ident!("{}UnknownTarget", self.kind, span = self.kind.span())
+        unknown_target_variant_ident(self.kind)
     }
     /// 無向辺用: 位置の区別が無いため未知端点は1種類の variant で足りる。
     fn unknown_endpoint_variant(&self) -> Ident {
-        format_ident!("{}UnknownEndpoint", self.kind, span = self.kind.span())
+        unknown_endpoint_variant_ident(self.kind)
     }
 
     fn each_for(&self, side: EachSide) -> Option<&EdgeEach> {
         self.each.iter().find(|constraint| constraint.side == side)
     }
     fn unique_pair_violation_variant(&self) -> Ident {
-        format_ident!("{}UniquePairViolation", self.kind, span = self.kind.span())
+        unique_pair_violation_variant_ident(self.kind)
     }
 
     fn internal_position_ident(&self) -> Ident {
@@ -271,21 +271,16 @@ impl<'a> EdgeInfo<'a> {
 
 pub fn generate_module_body(schema: &SchemaInput) -> TokenStream {
     let schema_name = &schema.schema_name;
-    let graph_ident = graph_type_ident(schema_name);
-    let violation_ident = format_ident!("Violation", span = schema_name.span());
-    let builder_ident = format_ident!("Builder", span = schema_name.span());
-    // `graph!` が値の型名を一切知らずに済むようにするための、ノード挿入用
-    // トレイト。名前は schema ごとにユニークにする
-    // (`gen_node_trait_and_impls` のドキュメントコメント参照)。
-    let node_trait_ident = format_ident!("{}Node", schema_name);
-    // 同じ理由でエッジ挿入用にも生やす (書き込み側専用。読み取り側は
-    // 各エッジ種別型への固有 impl なのでトレイトを介さない)。
-    let edge_trait_ident = format_ident!("{}Edge", schema_name);
-    // ノード用/エッジ用の挿入 trait を単一の `extend` に橋渡しするための
-    // 共通 supertrait (`gen_insertable_trait` のドキュメントコメント参照、
-    // `docs/graph_splice.md` §2)。
-    let insertable_trait_ident = format_ident!("{}Insertable", schema_name);
-    let default_id_trait_ident = format_ident!("{}DefaultId", schema_name);
+    // 固定生成名は衝突検査 (`schema_validate::validate_generated_type_names`) と
+    // 同じ予約表から取り出す。
+    let 予約表 = 固定生成名の予約表::schema名から導出する(schema_name);
+    let graph_ident = 予約表.グラフ型名().clone();
+    let violation_ident = 予約表.違反列挙型名().clone();
+    let builder_ident = 予約表.構築器型名().clone();
+    let node_trait_ident = 予約表.ノード挿入トレイト名().clone();
+    let edge_trait_ident = 予約表.辺挿入トレイト名().clone();
+    let insertable_trait_ident = 予約表.挿入可能トレイト名().clone();
+    let default_id_trait_ident = 予約表.既定id生成トレイト名().clone();
 
     let node_infos: Vec<NodeInfo> = schema.nodes.iter().map(NodeInfo::new).collect();
 
@@ -405,16 +400,15 @@ fn build_edge_info<'a>(decl: &'a EdgeDecl, node_infos: &'a [NodeInfo]) -> EdgeIn
         .find(|n| n.type_ident == *to_type)
         .expect("validate() を通過していれば必ず見つかるはず");
     let kind = &decl.kind;
-    let span = kind.span();
-    let accessor_ident = Ident::new(&to_snake_case(&kind.to_string()), span);
+    let accessor = accessor_ident(kind);
     // 有向辺は始点側と終点側の2索引を持つため、位置を名前へ明示する。
     let index_field_ident = match &decl.shape {
-        EdgeShape::Directed { .. } => format_ident!("{}_from_index", accessor_ident),
-        EdgeShape::Undirected { .. } => format_ident!("{}_index", accessor_ident),
+        EdgeShape::Directed { .. } => source_role_index_field_ident(&accessor),
+        EdgeShape::Undirected { .. } => incident_index_field_ident(&accessor),
     };
     // 無向辺では使わないが、無条件に計算しておいて差し支えない (単なる
     // Ident の合成であり、無向辺では単に参照されないだけ)。
-    let to_index_field_ident = format_ident!("{}_to_index", accessor_ident);
+    let to_index_field_ident = target_role_index_field_ident(&accessor);
     let each = decl
         .constraints
         .each
@@ -432,7 +426,7 @@ fn build_edge_info<'a>(decl: &'a EdgeDecl, node_infos: &'a [NodeInfo]) -> EdgeIn
             generated_ident: generated_id_ident(kind),
             explicit_path: decl.id_ty.clone(),
         },
-        accessor_ident,
+        accessor_ident: accessor,
         index_field_ident,
         to_index_field_ident,
         from_node,

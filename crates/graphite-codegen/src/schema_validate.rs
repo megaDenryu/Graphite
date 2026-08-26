@@ -27,7 +27,9 @@ use std::collections::{HashMap, HashSet};
 use quote::ToTokens;
 use syn::Ident;
 
-use crate::naming::{generated_id_ident, named_position_ident, reference_ident};
+use crate::naming::{
+    generated_id_ident, named_position_ident, reference_ident, 固定生成名の予約表,
+};
 use crate::schema_dsl::{EdgeDecl, EdgeShape, NodeDecl};
 
 pub fn validate_unique_node_names(nodes: &[NodeDecl]) -> syn::Result<()> {
@@ -133,19 +135,11 @@ pub fn validate_generated_type_names(
 ) -> syn::Result<()> {
     let mut names: HashMap<String, (proc_macro2::Span, String)> = HashMap::new();
 
-    let fixed = ["Graph", "Builder", "Violation"];
-    for name in fixed {
-        names.insert(
-            name.to_string(),
-            (schema_name.span(), format!("生成型 `{name}`")),
-        );
-    }
-    for suffix in ["Node", "Edge", "Insertable", "DefaultId"] {
-        let name = format!("{schema_name}{suffix}");
-        names.insert(
-            name.clone(),
-            (schema_name.span(), format!("生成trait `{name}`")),
-        );
+    // 予約表は生成側 (`schema_codegen::generate_module_body`) と共有する。
+    // 検査だけが知る文字列表を持つと、固定生成名を増やしたときに登録漏れが出る。
+    let 予約表 = 固定生成名の予約表::schema名から導出する(schema_name);
+    for (生成名, 説明) in 予約表.衝突検査へ登録する項目() {
+        names.insert(生成名, (schema_name.span(), 説明));
     }
 
     let mut register = |name: String,
