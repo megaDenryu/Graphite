@@ -7,7 +7,6 @@ mod declaration_site;
 mod generated_path;
 pub mod naming;
 mod schema;
-mod schema_codegen;
 mod schema_dsl;
 mod schema_validate;
 
@@ -47,7 +46,7 @@ impl TrackedSchema {
 
     /// schema module の通常の Rust ソース本文を生成する。
     pub fn render_module_source(&self, site: &DeclarationSite) -> syn::Result<String> {
-        let body = schema_codegen::generate_module_body(&self.スキーマ定義);
+        let body = schema::codegen::generate_module_body(&self.スキーマ定義);
         let fingerprint = self.fingerprint;
         let generated: syn::File = syn::parse2(quote! {
             #[allow(unused_imports)]
@@ -113,7 +112,7 @@ pub fn parse_tracked_schema(input: TokenStream) -> Result<TrackedSchema, Vec<syn
     let schema = validate(parsed)?;
     let スキーマ定義 =
         schema::semantic::検証済み構文からスキーマ定義を組み立てる(&schema);
-    let generated = schema_codegen::generate_module_body(&スキーマ定義);
+    let generated = schema::codegen::generate_module_body(&スキーマ定義);
     let normalized: syn::File = syn::parse2(quote! {
         #[allow(unused_imports)]
         use super::*;
@@ -150,7 +149,7 @@ pub fn expand_inline_for_test(input: TokenStream) -> TokenStream {
                 schema::semantic::検証済み構文からスキーマ定義を組み立てる(
                     &schema,
                 );
-            let generated = schema_codegen::generate(&スキーマ定義);
+            let generated = schema::codegen::generate(&スキーマ定義);
             quote! { #diagnostics #generated }
         }
         ValidationResult::Rejected(errors) => {
