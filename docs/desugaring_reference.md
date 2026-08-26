@@ -1371,7 +1371,8 @@ let g = graphite::graph!(Org {
 `graph!` は `{Schema}::Graph::create_named` の呼び出しへ脱糖する。項の展開は
 「全ノード項 → (全辺項と全スプライス項を記述順)」の2段である。辺はノードのID束縛を
 参照するので、`let` が使用より前に来ている必要があるためである。検証は凍結時なので
-意味論は変わらない (`crates/graphite-macros/src/instance_codegen.rs:36-51`)。この
+意味論は変わらない (並べ替えの決定は `crates/graphite-macros/src/instance_semantic.rs`、
+トークン化は `crates/graphite-macros/src/instance_codegen.rs:65-70`)。この
 並べ替えがあるため、利用者はリテラルの中で辺の項をノードの項より前に書いてよい。
 
 builderのクロージャ引数名が `b` ではなく `__graphite_b` なのは、ノードキーに `b` を
@@ -1396,7 +1397,7 @@ Org::Graph::create_named(|__graphite_b, __graphite_permit| {
 ```
 
 実際に生成するトークンは次の形である
-(`crates/graphite-macros/src/instance_codegen.rs:178-189`)。
+(`crates/graphite-macros/src/instance_codegen.rs:117-128`)。
 
 ```rust
                 let call = match explicit_id {
@@ -1414,7 +1415,7 @@ Org::Graph::create_named(|__graphite_b, __graphite_permit| {
 ```
 
 辺項は、柄の向きに対応する辺リテラルトレイトの構築関数を経由する
-(`crates/graphite-macros/src/instance_codegen.rs:225-266`)。
+(`crates/graphite-macros/src/instance_codegen.rs:145-170`)。
 
 ```rust
                 let literal_trait = match edge.direction {
@@ -1496,8 +1497,8 @@ impl CommerceDefaultId for super::Person {
 
 `graph!` の左辺名は、ノードと辺を通じて1つの平坦な名前空間である。同じ識別子を
 2回宣言するとコンパイルエラーになる。`into_graph` は名前付きラッパーの予約メソッド
-名なので左辺名に使えない
-(`crates/graphite-macros/src/instance_codegen.rs:116-129`)。
+名なので左辺名に使えない (この検査は意味層が行う、
+`crates/graphite-macros/src/instance_semantic.rs:123-135`)。
 
 **6. 完成済みGraphの内部保存**
 
@@ -1545,7 +1546,7 @@ ID式。
 
 `insert_named_with_id(#id, #value, __graphite_permit)` /
 `add_named_with_id(#id, #ctor, __graphite_permit)` へ脱糖する
-(`crates/graphite-macros/src/instance_codegen.rs:179-181, 255-258`)。文字列を経由
+(`crates/graphite-macros/src/instance_codegen.rs:117-120, 175-178`)。文字列を経由
 しないため、`{Schema}DefaultId` を要求しない。既定ID型の種別にも明示IDを渡せる。
 
 **6. 完成済みGraphの内部保存**
@@ -1627,7 +1628,7 @@ impl graphite::NamedGraphElement<Graph> for __PersonNamedPosition {
 名前付きラッパーは呼び出し箇所ローカルの型であり、生成ファイルには置かない。左辺名の
 集合が呼び出し箇所ごとに異なり、安定したモジュールのファイルへ事前生成できないためで
 ある。マクロが呼び出し箇所のブロックスコープへ展開する
-(`crates/graphite-macros/src/instance_codegen.rs:350-373`)。
+(`crates/graphite-macros/src/instance_codegen.rs:265-288`)。
 
 ```rust
     Ok(quote! {{
@@ -1657,7 +1658,7 @@ impl graphite::NamedGraphElement<Graph> for __PersonNamedPosition {
 ```
 
 静的アクセサは名前付き位置から参照を直接作る
-(`crates/graphite-macros/src/instance_codegen.rs:320-335`)。
+(`crates/graphite-macros/src/instance_codegen.rs:235-250`)。
 
 ```rust
     let accessors = named_keys
@@ -1865,10 +1866,10 @@ schema module内の既定IDを使うノード値型または辺値型である�
 **4. private生成物**
 
 なし。スプライス項は左辺名を持たないため、`let` 束縛も名前付き位置も作らない
-(`crates/graphite-macros/src/instance_codegen.rs:274-282`)。
+(`crates/graphite-macros/src/instance_codegen.rs:194-202`)。
 
 ```rust
-            GraphItem::Spread(spread) => {
+            検証済み残り項::スプライス(spread) => {
                 // 統一 `extend` への脱糖 (`docs/graph_splice.md` §1/§2)。
                 // スプライスの要素は名前を持たないため `let` 束縛は作らず、
                 // 戻り値のキー列もその場で捨てる (式文として実行するのみ)。

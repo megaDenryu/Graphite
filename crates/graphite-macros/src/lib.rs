@@ -44,6 +44,7 @@ mod flow_codegen;
 mod flow_dsl;
 mod instance_codegen;
 mod instance_dsl;
+mod instance_semantic;
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
@@ -141,8 +142,9 @@ pub fn graph(input: TokenStream) -> TokenStream {
         .map(syn::Error::to_compile_error)
         .collect();
 
-    match instance_codegen::generate(&graph, has_parse_errors) {
-        Ok(tokens) => {
+    match instance_semantic::構文を検証してグラフリテラルを組み立てる(graph, has_parse_errors) {
+        Ok(検証済み) => {
+            let tokens = instance_codegen::generate(&検証済み);
             if has_parse_errors {
                 // G4b: `graph!` は式位置で使われる (`SchemaName::create_named(..)`
                 // という式に脱糖する) ため、蓄積した compile_error! を単純に
