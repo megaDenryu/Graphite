@@ -31,6 +31,7 @@
 
 mod analyze;
 mod cardinality;
+mod edge_declaration_spelling;
 mod edge_definition;
 mod endpoint_pairing;
 mod node_definition;
