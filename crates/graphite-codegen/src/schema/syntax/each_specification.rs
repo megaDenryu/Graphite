@@ -62,3 +62,12 @@ pub(super) fn parse_each_spec(input: ParseStream) -> syn::Result<EachSpec> {
     let max: usize = upper.base10_parse()?;
     EachSpec::new(min, Some(max), upper.span())
 }
+
+#[cfg(test)]
+impl EachSpec {
+    /// 下限と上限を検査せずに直接組み立てる。多重度の分類だけを試す意味層の
+    /// テストが、DSL の文字列を経由せずに範囲を作れるようにする。
+    pub(crate) fn 検査用に作る(min: usize, max: Option<usize>) -> Self {
+        Self { min, max }
+    }
+}

@@ -105,3 +105,33 @@ pub fn each制約が指す端点の側を判定する(
         ))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn each制約の範囲を多重度3値へ分類できる() {
+        let ちょうど1 = EachSpec::検査用に作る(1, Some(1));
+        let 高々1 = EachSpec::検査用に作る(0, Some(1));
+        let 範囲 = EachSpec::検査用に作る(1, Some(3));
+        let 下限だけ = EachSpec::検査用に作る(2, None);
+        assert_eq!(
+            RoleCardinality::classify(Some(ちょうど1)),
+            RoleCardinality::Exact
+        );
+        assert_eq!(
+            RoleCardinality::classify(Some(高々1)),
+            RoleCardinality::Optional
+        );
+        assert_eq!(
+            RoleCardinality::classify(Some(範囲)),
+            RoleCardinality::Multiple
+        );
+        assert_eq!(
+            RoleCardinality::classify(Some(下限だけ)),
+            RoleCardinality::Multiple
+        );
+        assert_eq!(RoleCardinality::classify(None), RoleCardinality::Multiple);
+    }
+}

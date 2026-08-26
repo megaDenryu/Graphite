@@ -121,7 +121,7 @@ use violation::gen_violation_enum;
 
 pub(crate) fn generate_module_body(schema: &スキーマ定義) -> TokenStream {
     let schema_name = schema.スキーマ名();
-    // 固定生成名は衝突検査 (`schema_validate::validate_generated_type_names`) と
+    // 固定生成名は衝突検査 (`schema::validate::generated_name_collision`) と
     // 同じ予約表から取り出す。
     let 予約表 = 固定生成名の予約表::schema名から導出する(schema_name);
     let graph_ident = 予約表.グラフ型名().clone();
@@ -177,23 +177,12 @@ pub(crate) fn generate_module_body(schema: &スキーマ定義) -> TokenStream {
         &builder_ident,
     );
     let node_trait_and_impls = gen_node_trait_and_impls(
-        &node_trait_ident,
-        &insertable_trait_ident,
-        &default_id_trait_ident,
-        &builder_ident,
-        &graph_ident,
+        &予約表,
         &node_infos,
         &edge_infos,
         schema.ノードごとの探索計画(),
     );
-    let edge_trait_and_impls = gen_edge_trait_and_impls(
-        &edge_trait_ident,
-        &insertable_trait_ident,
-        &default_id_trait_ident,
-        &builder_ident,
-        &graph_ident,
-        &edge_infos,
-    );
+    let edge_trait_and_impls = gen_edge_trait_and_impls(&予約表, &edge_infos);
     quote! {
         #(#default_id_defs)*
         #(#internal_position_defs)*

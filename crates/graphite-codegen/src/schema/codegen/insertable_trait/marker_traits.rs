@@ -6,9 +6,8 @@
 
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::Ident;
 
-use crate::naming::construction_stamp_field_ident;
+use crate::naming::{construction_stamp_field_ident, 固定生成名の予約表};
 use crate::schema::codegen::edge_names::EdgeInfo;
 use crate::schema::codegen::insertable_trait::default_id_implementation::gen_default_id_impl;
 use crate::schema::codegen::insertable_trait::element_implementation::{
@@ -53,15 +52,16 @@ use crate::schema::semantic::ノードの探索計画;
 /// `node Node;` や `edge Edge = ..;` と生成基盤名が衝突する可能性を増やさず、
 /// コンパイラ診断から所属 schema を判別できる名前を維持する。
 pub(crate) fn gen_node_trait_and_impls(
-    node_trait_ident: &Ident,
-    insertable_trait_ident: &Ident,
-    default_id_trait_ident: &Ident,
-    builder_ident: &Ident,
-    graph_ident: &Ident,
+    予約表: &固定生成名の予約表,
     nodes: &[NodeInfo<'_>],
     edges: &[EdgeInfo<'_>],
     探索計画の列: &[ノードの探索計画],
 ) -> TokenStream {
+    let node_trait_ident = 予約表.ノード挿入トレイト名();
+    let insertable_trait_ident = 予約表.挿入可能トレイト名();
+    let default_id_trait_ident = 予約表.既定id生成トレイト名();
+    let builder_ident = 予約表.構築器型名();
+    let graph_ident = 予約表.グラフ型名();
     let node_impls = nodes.iter().zip(探索計画の列).map(|(n, 探索計画)| {
         let ty = &n.type_ident;
         let reference = n.reference_ident();
@@ -130,13 +130,14 @@ pub(crate) fn gen_node_trait_and_impls(
 /// 型付き挿入と関連型 `Id` は `{Schema}Insertable` に集約する。このトレイトは
 /// エッジ専用の型境界を保つマーカーになる。
 pub(crate) fn gen_edge_trait_and_impls(
-    edge_trait_ident: &Ident,
-    insertable_trait_ident: &Ident,
-    default_id_trait_ident: &Ident,
-    builder_ident: &Ident,
-    graph_ident: &Ident,
+    予約表: &固定生成名の予約表,
     edges: &[EdgeInfo<'_>],
 ) -> TokenStream {
+    let edge_trait_ident = 予約表.辺挿入トレイト名();
+    let insertable_trait_ident = 予約表.挿入可能トレイト名();
+    let default_id_trait_ident = 予約表.既定id生成トレイト名();
+    let builder_ident = 予約表.構築器型名();
+    let graph_ident = 予約表.グラフ型名();
     let edge_impls = edges.iter().map(|e| {
         let kind = e.kind;
         let accessor = &e.accessor_ident;

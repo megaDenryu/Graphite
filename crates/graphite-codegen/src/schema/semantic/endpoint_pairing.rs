@@ -27,3 +27,47 @@ pub enum 端点対のキーの形 {
     順序付きの対,
     順序なしの対,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::schema::semantic::analyze::検査用にdslからスキーマ定義を組み立てる;
+
+    #[test]
+    fn unique_pairの有無が端点対の重複可否になる() {
+        let 定義 = 検査用にdslからスキーマ定義を組み立てる(
+            "schema Org {
+                node Person;
+                edge Reports = (reporter: Person) -> (recipient: Person) where unique pair;
+                edge Knows = (source: Person) -> (target: Person);
+            }",
+        );
+        assert_eq!(
+            定義.辺定義の列()[0].端点対の重複可否(),
+            端点対の重複可否::対ごとに1本だけ許す
+        );
+        assert_eq!(
+            定義.辺定義の列()[1].端点対の重複可否(),
+            端点対の重複可否::対ごとに何本でも許す
+        );
+    }
+
+    #[test]
+    fn 端点対のキーの形は辺の向きで決まる() {
+        let 定義 = 検査用にdslからスキーマ定義を組み立てる(
+            "schema Social {
+                node Person;
+                edge Knows = (source: Person) -> (target: Person);
+                edge Friends = Person -- Person;
+            }",
+        );
+        assert_eq!(
+            定義.辺定義の列()[0].端点対のキーの形(),
+            端点対のキーの形::順序付きの対
+        );
+        assert_eq!(
+            定義.辺定義の列()[1].端点対のキーの形(),
+            端点対のキーの形::順序なしの対
+        );
+    }
+}
