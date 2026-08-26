@@ -1,4 +1,4 @@
-//! `main.rs` と `tests/integration.rs` の両方から使う固定のサンプルグラフ。
+//! `main.rs` と `tests/` の両方から使う固定のサンプルグラフ。
 //! 同じデータを2箇所に手書きして食い違わせないよう、ここに1箇所だけ置く。
 
 use crate::schema::{Orchestration, Service};

@@ -12,7 +12,7 @@ use super::naive_cell::NaiveCell;
 ///
 /// 戻り値は実際に実行された通知の回数。`cap` にちょうど達していれば
 /// 「安全弁が無ければ止まらなかった」ことの証拠になる
-/// (README「無限ループの実演」節、`tests/integration.rs` 参照)。
+/// (README「無限ループの実演」節、`tests/cycle_rejection.rs` 参照)。
 pub fn build_infinite_loop_demo(cap: usize) -> usize {
     let x = NaiveCell::new(1.0);
     let y = NaiveCell::new(1.0);

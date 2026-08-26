@@ -38,7 +38,7 @@ pub const DEPARTMENT_COUNT: usize = 8;
 /// プロジェクト数 (`PROJECT_NAMES` の要素数と一致させる)。
 pub const PROJECT_COUNT: usize = 15;
 
-/// 管理職とみなす最低 grade (係長相当以上)。`analysis.rs` からも参照する。
+/// 管理職とみなす最低 grade (係長相当以上)。`analysis/span_of_control.rs` からも参照する。
 pub const MANAGER_GRADE_THRESHOLD: u8 = 3;
 
 /// シードから組織データを合成する。
