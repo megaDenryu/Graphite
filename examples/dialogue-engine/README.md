@@ -8,7 +8,7 @@ Graphite の `graph_schema!`/`graph!` を使った、分岐ノベルゲームエ
 
 SF ミステリー短編「月面基地アルテミスIII、通信途絶」を題材にした、
 **30 シーン・4 エンディング**の分岐シナリオを丸ごと `graph!` リテラルで
-書き下ろしている (`src/schema.rs`)。
+書き下ろしている (`src/story.rs`)。
 
 - ノード種別: `Scene { speaker, text }` (場面) / `Ending { title, epilogue }`
   (結末)
@@ -84,7 +84,7 @@ PS> cargo run -- validate
 検証結果: 問題なし (全シーン到達可能・デッドエンド無し・全エンディング到達可能)
 ```
 
-壊れたシナリオを検証すると (`src/validate.rs` のテストで実行):
+壊れたシナリオを検証すると (`src/validate/tests.rs` で実行):
 
 ```
 検証結果: 問題あり
@@ -173,7 +173,7 @@ PS> cargo run -- stats
 - **構造検証が既存のグラフアルゴリズムの組み合わせで書ける**:
   `validate.rs` の「到達不能シーン」「閉じたループ」検出は、
   `reachable_from`/`filter_nodes`/`out_neighbors` という**汎用グラフ
-  ライブラリの部品を組み合わせるだけ**で実装できた (`schema.rs` の
+  ライブラリの部品を組み合わせるだけ**で実装できた (`derived_query.rs` の
   `scene_graph()` で図式グラフを汎用 `Graph<SceneId, String, SceneId>`
   へ射影している)。手書きの隣接リストでこれをやると、DFS/BFS を毎回
   自分で書き直すか、petgraph を直接使うにしても「文字列キー↔内部
@@ -191,7 +191,8 @@ PS> cargo run -- stats
 逆に言うと、Graphite が肩代わりしているのは「グラフの一貫性検査」と
 「文字列キー⇔内部表現の変換」の部分であり、「シナリオとして何を検証
 すべきか」(到達不能・デッドエンド・閉じたループの定義) は本 example の
-`validate.rs`/`report.rs` のようにアプリ側が組み立てる必要がある。
+`validate.rs`/`mermaid.rs`/`stats.rs`/`route.rs` のようにアプリ側が組み立てる
+必要がある。
 その組み立てが `reachable_from`/`filter_nodes`/`path` のような小さな
 部品の組み合わせで済む、というのが Graphite を使う最大の利点だと言える。
 
@@ -200,12 +201,28 @@ PS> cargo run -- stats
 | ファイル | 内容 |
 |---|---|
 | `src/lib.rs` | ライブラリのエントリポイント (CLI と統合テストの両方から使うため `main.rs` とは分離) |
-| `src/main.rs` | CLI (`std::env::args` での自作パース) |
-| `src/schema.rs` | `graph_schema!` 宣言 + 本編シナリオ (`graph!`) + 壊れたシナリオ (テスト用) |
+| `src/main.rs` | CLI の引数振り分けと使い方の表示 (`std::env::args` での自作パース) |
+| `src/play_command.rs` | `play` サブコマンド (stdin 入力の読み取りを含む) |
+| `src/validate_command.rs` | `validate` サブコマンドの表示 |
+| `src/route_command.rs` | `route` サブコマンドの表示 |
+| `src/stats_command.rs` | `stats` サブコマンドの表示 |
+| `src/schema.rs` | `graph_schema!` 宣言と、そこで参照するノード型・積み荷型 |
+| `src/story.rs` | 本編シナリオの `graph!` リテラル |
+| `src/broken_story.rs` | `validate` の検出能力を確かめるための壊れたシナリオ2本 |
+| `src/derived_query.rs` | 完成済みグラフへの導出クエリ (`scene_choices`/`scene_graph` 等) |
 | `src/engine.rs` | プレイロジック (入出力をクロージャで抽象化し、stdin無しでテスト可能) |
 | `src/validate.rs` | シナリオ構造検証 (到達不能・デッドエンド・閉じたループ・到達不能エンディング) |
-| `src/report.rs` | mermaid 出力・統計・ルート探索 |
-| `tests/integration.rs` | モジュールをまたいだ統合テスト |
+| `src/mermaid.rs` | `map` 向けの mermaid flowchart 出力 |
+| `src/stats.rs` | `stats` 向けのシナリオ統計 |
+| `src/route.rs` | `route` 向けの最短ルート探索 |
+| `tests/validation.rs`・`tests/play.rs`・`tests/route.rs`・`tests/report_output.rs` | モジュールをまたいだ統合テスト |
+
+`src/story.rs` だけは1ファイル100行の原則を超える (コード行206行)。シーンを
+外へ出す手段としてスプライス構文 `..式` (`docs/graph_splice.md` §1) はあるが、
+スプライスの要素は実行時の `(String, 値)` の対であり、矢印記法の両端が指す
+識別子の束縛を作らない。シーンをスプライスへ移すと56本の選択肢が全て
+`Choice::new(SceneId(..), ..)` の呼び出しへ書き換わり、この example が
+見せている矢印記法そのものが消える。
 
 ## graph! リテラルを大規模に書いて分かったこと
 

@@ -5,7 +5,12 @@
 //! (Cargo は `src/lib.rs` + `src/main.rs` が両方あるパッケージで、バイナリが
 //! 暗黙にライブラリへ依存する構成を標準サポートしている)。
 
+pub mod broken_story;
+pub mod derived_query;
 pub mod engine;
-pub mod report;
+pub mod mermaid;
+pub mod route;
 pub mod schema;
+pub mod stats;
+pub mod story;
 pub mod validate;
