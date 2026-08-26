@@ -1397,25 +1397,25 @@ Org::Graph::create_named(|__graphite_b, __graphite_permit| {
 ```
 
 実際に生成するトークンは次の形である
-(`crates/graphite-macros/src/instance_codegen.rs:117-128`)。
+(`crates/graphite-macros/src/instance_codegen.rs:123-134`)。
 
 ```rust
-                let call = match explicit_id {
-                    Some(id) => {
-                        quote! { __graphite_b.insert_named_with_id(#id, #value, __graphite_permit) }
-                    }
-                    None => {
-                        quote! { __graphite_b.insert_named(#key_str, #value, __graphite_permit) }
-                    }
-                };
-                node_calls.push(quote! {
-                    #[allow(unused_variables, non_snake_case)]
-                    let (#key_ident, #named_position) = #call;
-                });
+        let call = match explicit_id {
+            Some(id) => {
+                quote! { __graphite_b.insert_named_with_id(#id, #value, __graphite_permit) }
+            }
+            None => {
+                quote! { __graphite_b.insert_named(#key_str, #value, __graphite_permit) }
+            }
+        };
+        node_calls.push(quote! {
+            #[allow(unused_variables, non_snake_case)]
+            let (#key_ident, #named_position) = #call;
+        });
 ```
 
 辺項は、柄の向きに対応する辺リテラルトレイトの構築関数を経由する
-(`crates/graphite-macros/src/instance_codegen.rs:145-170`)。
+(`crates/graphite-macros/src/instance_codegen.rs:151-176`)。
 
 ```rust
                 let literal_trait = match edge.direction {
@@ -1497,8 +1497,38 @@ impl CommerceDefaultId for super::Person {
 
 `graph!` の左辺名は、ノードと辺を通じて1つの平坦な名前空間である。同じ識別子を
 2回宣言するとコンパイルエラーになる。`into_graph` は名前付きラッパーの予約メソッド
-名なので左辺名に使えない (この検査は意味層が行う、
-`crates/graphite-macros/src/instance_semantic.rs:123-135`)。
+名なので左辺名に使えない。この検査は意味層が行う
+(`crates/graphite-macros/src/instance_semantic.rs:123-145`)。
+
+```rust
+    for item in items {
+        let key = match item {
+            GraphItem::Node(node) => &node.key,
+            GraphItem::Edge(edge) => &edge.key,
+            // スプライス項は名前を持たない (名前は静的な項だけの概念、
+            // `docs/graph_splice.md` §1) ので、キーの重複検査の対象外。
+            GraphItem::Spread(_) => continue,
+        };
+        if key == "into_graph" {
+            return Err(syn::Error::new(
+                key.span(),
+                "識別子 `into_graph` は名前付きグラフを素の `Graph` へ戻す予約メソッド名です。別の名前を付けてください",
+            ));
+        }
+        if let Some(prev_span) = キーの初出位置.get(key) {
+            let mut err = syn::Error::new(
+                key.span(),
+                format!("識別子 `{key}` は既に宣言されています"),
+            );
+            err.combine(syn::Error::new(*prev_span, "最初の宣言はこちら"));
+            return Err(err);
+        }
+        キーの初出位置.insert(key.clone(), key.span());
+```
+
+キー集合は `HashSet<Ident>`/`HashMap<Ident, Span>` であり (`proc_macro2::Ident` は
+文字列比較で `Hash`/`Eq`/`Ord` を実装済み)、`.to_string()` はエラー文言の生成箇所
+だけに限る。
 
 **6. 完成済みGraphの内部保存**
 
@@ -1546,7 +1576,7 @@ ID式。
 
 `insert_named_with_id(#id, #value, __graphite_permit)` /
 `add_named_with_id(#id, #ctor, __graphite_permit)` へ脱糖する
-(`crates/graphite-macros/src/instance_codegen.rs:117-120, 175-178`)。文字列を経由
+(`crates/graphite-macros/src/instance_codegen.rs:123-126, 181-184`)。文字列を経由
 しないため、`{Schema}DefaultId` を要求しない。既定ID型の種別にも明示IDを渡せる。
 
 **6. 完成済みGraphの内部保存**
@@ -1628,10 +1658,10 @@ impl graphite::NamedGraphElement<Graph> for __PersonNamedPosition {
 名前付きラッパーは呼び出し箇所ローカルの型であり、生成ファイルには置かない。左辺名の
 集合が呼び出し箇所ごとに異なり、安定したモジュールのファイルへ事前生成できないためで
 ある。マクロが呼び出し箇所のブロックスコープへ展開する
-(`crates/graphite-macros/src/instance_codegen.rs:265-288`)。
+(`crates/graphite-macros/src/instance_codegen.rs:271-294`)。
 
 ```rust
-    Ok(quote! {{
+    quote! {{
         #[allow(non_snake_case)]
         struct #wrapper_ident<__GraphiteGraph #(, #wrapper_parameters)*> {
             __graphite_graph: __GraphiteGraph,
@@ -1658,7 +1688,7 @@ impl graphite::NamedGraphElement<Graph> for __PersonNamedPosition {
 ```
 
 静的アクセサは名前付き位置から参照を直接作る
-(`crates/graphite-macros/src/instance_codegen.rs:235-250`)。
+(`crates/graphite-macros/src/instance_codegen.rs:241-256`)。
 
 ```rust
     let accessors = named_keys
@@ -1866,7 +1896,7 @@ schema module内の既定IDを使うノード値型または辺値型である�
 **4. private生成物**
 
 なし。スプライス項は左辺名を持たないため、`let` 束縛も名前付き位置も作らない
-(`crates/graphite-macros/src/instance_codegen.rs:194-202`)。
+(`crates/graphite-macros/src/instance_codegen.rs:200-208`)。
 
 ```rust
             検証済み残り項::スプライス(spread) => {

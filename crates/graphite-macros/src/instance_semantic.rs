@@ -116,9 +116,9 @@ struct 並べ替え済み項 {
 /// ため両者を区別する)。
 fn 予約名と重複キーを検査してノードキー集合を得る(
     items: &[GraphItem],
-) -> syn::Result<HashSet<String>> {
-    let mut ノードキー集合: HashSet<String> = HashSet::new();
-    let mut キーの初出位置: HashMap<String, Span> = HashMap::new();
+) -> syn::Result<HashSet<Ident>> {
+    let mut ノードキー集合: HashSet<Ident> = HashSet::new();
+    let mut キーの初出位置: HashMap<Ident, Span> = HashMap::new();
 
     for item in items {
         let key = match item {
@@ -128,24 +128,23 @@ fn 予約名と重複キーを検査してノードキー集合を得る(
             // `docs/graph_splice.md` §1) ので、キーの重複検査の対象外。
             GraphItem::Spread(_) => continue,
         };
-        let key_str = key.to_string();
-        if key_str == "into_graph" {
+        if key == "into_graph" {
             return Err(syn::Error::new(
                 key.span(),
                 "識別子 `into_graph` は名前付きグラフを素の `Graph` へ戻す予約メソッド名です。別の名前を付けてください",
             ));
         }
-        if let Some(&prev_span) = キーの初出位置.get(&key_str) {
+        if let Some(prev_span) = キーの初出位置.get(key) {
             let mut err = syn::Error::new(
                 key.span(),
-                format!("識別子 `{key_str}` は既に宣言されています"),
+                format!("識別子 `{key}` は既に宣言されています"),
             );
-            err.combine(syn::Error::new(prev_span, "最初の宣言はこちら"));
+            err.combine(syn::Error::new(*prev_span, "最初の宣言はこちら"));
             return Err(err);
         }
-        キーの初出位置.insert(key_str.clone(), key.span());
+        キーの初出位置.insert(key.clone(), key.span());
         if matches!(item, GraphItem::Node(_)) {
-            ノードキー集合.insert(key_str);
+            ノードキー集合.insert(key.clone());
         }
     }
 
@@ -156,7 +155,7 @@ fn 予約名と重複キーを検査してノードキー集合を得る(
 /// 2段への並べ替えを1回の走査で行う。
 fn 端点を検証して全ノードと残りの2段へ並べ替える(
     items: Vec<GraphItem>,
-    ノードキー集合: &HashSet<String>,
+    ノードキー集合: &HashSet<Ident>,
     has_parse_errors: bool,
 ) -> syn::Result<並べ替え済み項> {
     let mut ノード項の列: Vec<NodeInstance> = Vec::new();
@@ -167,8 +166,8 @@ fn 端点を検証して全ノードと残りの2段へ並べ替える(
             GraphItem::Node(node) => ノード項の列.push(node),
             GraphItem::Edge(edge) => {
                 // 端点キーがノードとして宣言されているかどうかの検証。
-                let from_known = ノードキー集合.contains(&edge.from.to_string());
-                let to_known = ノードキー集合.contains(&edge.to.to_string());
+                let from_known = ノードキー集合.contains(&edge.from);
+                let to_known = ノードキー集合.contains(&edge.to);
                 if !from_known || !to_known {
                     if has_parse_errors {
                         // G4b: 二次エラー抑制。他の項目が既にパース失敗して
