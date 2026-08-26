@@ -13,7 +13,7 @@
 「ノード = 値、辺 = 関数」の形を flow! と共有する。将来 flow! の記述を
 エンジンに載せ替える道は閉じない (今回はやらない)。
 
-## API の骨格 (crates/graphite/src/compute.rs)
+## API の骨格 (crates/graphite/src/compute/)
 
 ```rust
 let mut b = ComputeGraph::builder();

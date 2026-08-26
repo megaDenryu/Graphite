@@ -7,7 +7,7 @@ Graphite (`graph_schema!`/`graph!`) が倒すべき敵その3 = **リアクテ�
 
 このexampleは `f64` + `Formula` enum に特化した題材だが、汎用版
 (遅延実行・差分再計算を任意の値型でそのまま使えるランタイムエンジン) は
-`graphite::ComputeGraph` (`crates/graphite/src/compute.rs`) として提供している。
+`graphite::ComputeGraph` (`crates/graphite/src/compute/`) として提供している。
 
 ```powershell
 cargo build 2> build_errors.txt; Get-Content build_errors.txt -Head 50

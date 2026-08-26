@@ -143,7 +143,7 @@ let lead_ref = g.lead();   // AssignedRef<'_>
   格納位置と、生成元を識別する構築印を保持する型のことである。凍結を
   またいで運ばれ、静的アクセサが公開IDの検索なしに参照を作るために使う。
   生成元以外の `Graph` へ渡すと、保持している構築印の不一致が実行時に
-  検出されて `panic!` する (`crates/graphite/src/lib.rs` の構築印発行関数と
+  検出されて `panic!` する (`crates/graphite/src/schema_runtime/construction_stamp.rs` の構築印発行関数と
   `NamedGraphElement::bind` の生成実装を参照)。
 - **呼び出し箇所**とは、`graph!` を1回呼んだ場所のことである。
 - **凍結**とは、builderに積んだ要素を検査して確定済み `Graph` へ変換する

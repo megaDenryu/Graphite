@@ -736,7 +736,7 @@ variant名は辺種別名と役割名から機械的に導出する
 ```
 
 3種の索引はいずれもノードの内部位置を添字にする配列である
-(`crates/graphite/src/lib.rs:41-123`)。`MultipleRoleIndex` は範囲の配列と連続した
+(`crates/graphite/src/schema_runtime/role_index.rs:9-91`)。`MultipleRoleIndex` は範囲の配列と連続した
 辺位置列の組であり、問い合わせでスライスを借用して返す。`OptionalRoleIndex` は
 `Vec<Option<P>>`、`ExactlyOneRoleIndex` は `Vec<P>` である。
 
@@ -1769,7 +1769,7 @@ impl graphite::NamedGraphElement<Graph> for __PersonNamedPosition {
 
 `graphite::NamedInsertPermit` のフィールドは非公開であり、値を作れるのは
 `graphite::build_named_graph` だけである
-(`crates/graphite/src/lib.rs:191-228`)。
+(`crates/graphite/src/schema_runtime/named_construction.rs:3-57`)。
 
 ```rust
 #[doc(hidden)]
@@ -1802,7 +1802,7 @@ where
 この通常経路からの偶発的な誤用である。
 
 構築印は、名前付き位置を持ち出して別の `Graph` へ束縛する誤用を実行時に検出する
-(`crates/graphite/src/lib.rs:149-173`)。`Builder::new()` が1つ発行し、その `Builder`
+(`crates/graphite/src/schema_runtime/construction_stamp.rs:5-29`)。`Builder::new()` が1つ発行し、その `Builder`
 から生まれる `Graph` と全ての名前付き位置へ同じ値を刻む。`bind` は不一致を
 `panic!` にする。これは呼び出し規約の違反であり通常のドメインエラーではないため、
 パニックにしている (`docs/design_principles.md` 原則2)。
@@ -2111,7 +2111,7 @@ edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) wh
 ```
 
 `graphite::GraphMismatch` はランタイムクレートの公開型である
-(`crates/graphite/src/lib.rs:29-39`)。
+(`crates/graphite/src/schema_runtime/graph_mismatch.rs:5-15`)。
 
 **4. private生成物**
 

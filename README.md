@@ -107,6 +107,9 @@ proc-macro クレート (`proc-macro = true`) は手続き型マクロ = コン�
 に依存し、マクロは `graphite::graph_schema!` / `graphite::graph!` /
 `graphite::flow!` として re-export されたものを使います。
 
+`crates/graphite` の内部がどの実行時概念をどのファイルへ置いているかは
+`docs/runtime_structure.md` に記録しています。
+
 `graph_schema!`/`graph!` の辺は**宣言**(構築時に検証されるデータの繋がり)
 ですが、`graphite::flow!` の矢印 `-[関数式]->` は**実行**です — `x -[f]->
 y` は `let y = (f)(x);` に即時脱糖するだけの糖衣で、`x -[f]-> y -[g]-> z`
@@ -539,7 +542,7 @@ let result: Result<OrgChart::Graph, Vec<OrgChart::Violation>> = OrgChart::Graph:
 `out_neighbors`/`in_neighbors`/`map_nodes`/`map_nodes_with_key`/
 `filter_nodes`/`filter_nodes_with_key`/`from_edges` などのアルゴリズム・
 ヘルパーはこちらに実装されており、通常のRustファイルに生成する図式グラフ
-とは独立した別 API です (`crates/graphite/src/graph.rs`)。
+とは独立した別 API です (`crates/graphite/src/graph/`)。
 
 - `in_neighbors(&K) -> Vec<&K>` — `out_neighbors` と対称 (入ってくる辺の
   始点キー一覧)。
