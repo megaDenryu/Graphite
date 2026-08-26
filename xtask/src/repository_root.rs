@@ -87,8 +87,8 @@ impl RepositoryRoot {
     /// 文書参照を書きうるファイルを、順序を固定して列挙する。
     ///
     /// 走査対象は `README.md`・`CLAUDE.md`・`docs/` 配下の Markdown・
-    /// `examples/*/README.md`・`crates`/`xtask`/`examples` 配下の Rust ファイル
-    /// である。生成ファイルも rustdoc に文書参照を持つため除外しない。
+    /// `examples/*/README.md`・`crates`/`xtask`/`examples`/`verification` 配下の
+    /// Rust ファイルである。生成ファイルも rustdoc に文書参照を持つため除外しない。
     pub fn document_reference_sources(&self) -> Result<Vec<PathBuf>, Box<dyn Error>> {
         let mut candidates = Vec::new();
         push_if_file(&self.path.join("README.md"), &mut candidates);
@@ -97,7 +97,7 @@ impl RepositoryRoot {
         for example_directory in subdirectories(&self.path, &self.path.join("examples"))? {
             push_if_file(&example_directory.join("README.md"), &mut candidates);
         }
-        for area in ["crates", "xtask", "examples"] {
+        for area in ["crates", "xtask", "examples", "verification"] {
             self.collect_all_files(&self.path.join(area), &mut candidates)?;
         }
         candidates.retain(is_scannable_text_file);

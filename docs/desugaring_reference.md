@@ -2625,12 +2625,21 @@ crate rootなので、`#[global_allocator]` の差し替えはこのテストバ
 
 ### 26.3 生成コマンド
 
-作業ディレクトリをリポジトリルートにして実行する。
+外部crateでは、生成したいパッケージのディレクトリで実行する。
+
+```powershell
+cargo graphite generate
+cargo graphite generate --check
+```
+
+Graphite自身の開発では、作業ディレクトリをリポジトリルートにして実行する。
 
 ```powershell
 cargo xtask generate
 cargo xtask generate --check
 ```
+
+2つの入口で違うのは走査開始点だけである。詳細は `docs/code_generation.md` を参照する。
 
 `generate` は全宣言を読んで生成ファイルを更新する。`--check` は書き換えずに、
 生成本文全体をバイト単位で比較し、不足・差分・宣言の無い孤児ファイルをエラーに

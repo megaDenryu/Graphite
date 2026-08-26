@@ -34,21 +34,44 @@ graphite::graph_schema! {
 
 ## 生成コマンド
 
-作業ディレクトリをリポジトリルート (このリポジトリの最上位ディレクトリ) にして実行する。
+生成の入口は2つある。`generate`は全宣言を読み、期待する生成ファイルを更新する。`generate --check`はファイルを書き換えず、生成ファイルの不足と差分をエラーにする。どちらの入口でも意味は同じである。
+
+**外部crateから使う場合。** 一度だけ次のコマンドで生成器を入れる。
+
+```powershell
+cargo install --path <Graphiteのclone先>/crates/graphite-cli
+```
+
+以後は、生成したいパッケージのディレクトリ (`Cargo.toml`があるディレクトリ) で実行する。
+
+```powershell
+cargo graphite generate
+cargo graphite generate --check
+```
+
+**Graphite自身の開発の場合。** 作業ディレクトリをリポジトリルート (このリポジトリの最上位ディレクトリ) にして実行する。
 
 ```powershell
 cargo xtask generate
 cargo xtask generate --check
 ```
 
-`generate`は全宣言を読み、期待する生成ファイルを更新する。`generate --check`はファイルを書き換えず、生成ファイルの不足と差分をエラーにする。
+2つの入口で違うのは走査開始点だけである。`cargo graphite`はパッケージ直下の`src`と`tests`を走査し、`cargo xtask`はワークスペース全体 (`crates/*/src`・`crates/*/tests`・`examples/*/src`) を走査する。schema宣言の抽出・生成計画・書き込み・差分検査は`graphite-cli`が両方へ提供する同じ処理である (クレートの分け方は `docs/development/crate_architecture.md` 参照)。
+
+外部crateからの経路が壊れていないことは`cargo xtask check-external`が実走で検査する。検査対象は`verification/external-crate`であり、ワークスペースの外に置いてある。
 
 ## 生成先
 
 - 通常crateと例の `src/*.rs` にある宣言は、宣言元と同じ `src/generated/` に生成する。
 - `crates/graphite/tests/*.rs` にある統合テストの宣言は、`crates/graphite/tests/generated/` に生成する。統合テストは1ファイルが1つのcrate rootであり、`src/` を持たないためである。`tests/generated/` 直下のファイルはどのテストのcrate rootにもならないので、`tests/` を走査する `cargo test` が生成物を単体のテストcrateとして拾うことはない。
 - 宣言の `generated` は宣言元Rustファイルからの相対パス `generated/<名前>.rs` とする。絶対パスと `..` は許可しない。
-- 生成ファイルはgitで管理する。ファイル先頭に手編集禁止、元DSLのリポジトリ相対パスと行、実行場所つきの再生成コマンドを記録する。
+- 生成ファイルはgitで管理する。ファイル先頭に手編集禁止、元DSLのパッケージ相対パスと行、再生成コマンドを記録する。
+
+## 再生成の案内
+
+生成ファイルの先頭に書く再生成コマンドの案内と、指紋が合わないときのコンパイルエラーの文言は、どの入口から生成しても同じにする。入口ごとに書き分けると、`cargo graphite generate`が書いたファイルを`cargo xtask generate --check`が古いと判定し、その逆も起きる。
+
+このため案内は`cargo graphite generate`を主に書き、Graphite自身の開発では`cargo xtask generate`と括弧で添える形に固定する。
 
 ## 陳腐化の検出
 

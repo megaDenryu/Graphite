@@ -26,13 +26,14 @@ Vertex 側では「グラフ指向」を独立言語の構文・型システム�
 Graphite の設計判断のほとんどはここで既に検討済みです。車輪の再発明をする前に
 必ず参照してください。
 
-## 4 クレート構成とその理由
+## 5 クレート構成とその理由
 
 ```
 crates/graphite/         # ランタイムクレート。利用者が唯一 depend するクレート
 crates/graphite-codegen/ # schemaの構文解析・検証・指紋・Rust生成を担う純粋層
 crates/graphite-macros/  # コンパイル時検証・指紋照合と graph!/flow! を担うproc-macroクレート
-xtask/                   # 生成元探索と通常Rustファイルの読み書きを担う開発用入口
+crates/graphite-cli/     # 生成コア(宣言の探索・生成計画・読み書きと差分検査)と cargo-graphite バイナリ
+xtask/                   # Graphite リポジトリ自身の開発用入口。ワークスペース全体の走査と文書検査
 ```
 
 `graphite-macros` はなぜ分離が必要か: proc-macro クレート (`proc-macro = true`) は
@@ -41,7 +42,14 @@ xtask/                   # 生成元探索と通常Rustファイルの読み書�
 制約**です。選択の余地はありません (serde/serde_derive、diesel、sqlx が全て同じ
 2 分割を採用しているのはこのため)。Graphiteではさらに、マクロとファイル生成が
 同じ処理を使うように`graphite-codegen`へ純粋な生成処理を分離し、ファイルI/Oは
-`xtask`だけへ閉じ込める。
+`graphite-cli`だけへ閉じ込める。
+
+生成の入口は2つある。外部crate向けの`cargo graphite generate`と、Graphite自身の
+`cargo xtask generate`である。この2つで違うのは走査開始点だけであり (前者は
+パッケージ直下の`src`・`tests`、後者はワークスペース全体)、抽出・生成計画・
+書き込み・差分検査は`graphite-cli`の`GenerationTree`を通して共有する。
+生成ファイルの案内コメントと指紋エラーの文言を入口ごとに書き分けてはならない。
+書き分けると、一方が書いたファイルをもう一方が古いと判定する。
 
 利用者は `graphite` だけに依存し、`graphite-macros` のマクロは `graphite` から
 re-export される想定です (`graphite::graph_schema!` のように使う。serde が
@@ -63,6 +71,13 @@ cargo xtask generate --check
 
 # 文書参照の綴りの実在と docs/README.md 索引の網羅を検査
 cargo xtask check-docs
+
+# 外部crateからの生成経路 (verification/external-crate) を実走で検査
+cargo xtask check-external
+
+# 外部crate向けの生成器を入れる (利用者が行う手順。開発中は cargo run で足りる)
+cargo install --path crates/graphite-cli
+cargo graphite generate [--check]
 ```
 
 **ビルドコマンドは必ず** `cargo build 2> build_errors.txt; Get-Content build_errors.txt -Head 50`
@@ -74,8 +89,10 @@ cargo xtask check-docs
 - **コミットメッセージは日本語**
 - 新機能・API設計で判断に迷ったら `docs/development/design_principles.md` (Rust的な精神・
   型のstrictnessを具体化した6原則) を必ず参照する
-- ツールの入口は`cargo xtask`へ集約する。現在のコマンドは
-  `cargo xtask generate [--check]`と`cargo xtask check-docs`である
+- Graphite自身の開発ツールの入口は`cargo xtask`へ集約する。現在のコマンドは
+  `cargo xtask generate [--check]`・`cargo xtask check-docs`・
+  `cargo xtask check-external`である。外部crateの利用者向けの入口は
+  `cargo graphite generate [--check]` (バイナリ名`cargo-graphite`) である
 - 文書の配置は3つに分ける。現行の仕様とガイド (実装に追随して更新し続ける文書) は
   `docs/`直下、Graphite自身を実装・保守する人向けの文書は`docs/development/`、
   設計史・旧仕様・開発記録は`docs/history/`へ置く

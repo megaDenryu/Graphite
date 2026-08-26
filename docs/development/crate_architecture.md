@@ -2,17 +2,18 @@
 
 > **Development document** — 索引: `docs/README.md`
 
-この文書は、Graphite を構成する4つのクレートが何を担い、なぜ分かれているのかを
+この文書は、Graphite を構成する5つのクレートが何を担い、なぜ分かれているのかを
 定める文書であり、実装が変わるたびに追随して更新する。Graphite を使うだけなら
 読む必要はない。
 
-## 4つのクレート
+## 5つのクレート
 
 ```
 crates/graphite/         # ランタイムクレート。利用者が唯一 depend するクレート
 crates/graphite-codegen/ # schemaの構文解析・検証・指紋・Rust生成を担う純粋層
 crates/graphite-macros/  # コンパイル時検証・指紋照合とgraph!/flow!を担うproc-macroクレート
-xtask/                   # 生成ファイルの探索・読み書き・差分検査、文書参照と索引の検査(check-docs)を担う開発用入口
+crates/graphite-cli/     # 生成コア(宣言の探索・生成計画・ファイルの読み書きと差分検査)と cargo-graphite バイナリ
+xtask/                   # Graphite リポジトリ自身の開発用入口。ワークスペース全体の走査と、文書参照と索引の検査(check-docs)
 ```
 
 ## proc-macro クレートを分ける理由
@@ -25,20 +26,44 @@ proc-macro クレート (`proc-macro = true`) は手続き型マクロ、つま�
 
 Graphite ではさらに2つの分割を加えている。マクロが生成する内容と通常ファイルの
 内容が一致することは `graphite-codegen` を共有することで保証し、ファイルの
-読み書きは `xtask` だけが行う。
+読み書きは `graphite-cli` とその利用者 (`xtask`) だけが行う。
 
 利用者は `graphite` だけに依存する。マクロは `graphite::graph_schema!` /
 `graphite::graph!` / `graphite::flow!` として re-export されたものを使い、
 `graphite-macros` へ直接依存させることはしない。
 
+## 生成の入口を2つに分ける理由
+
+生成ファイルを書き出す入口は2つある。Graphite リポジトリ自身の `cargo xtask
+generate` と、外部 crate 向けの `cargo graphite generate` である。この2つで違うのは
+**走査開始点の決め方だけ**であり、schema宣言の抽出・生成計画・書き込み・差分検査は
+`graphite-cli` の `GenerationTree` を通して完全に共有する。
+
+| 入口 | 走査開始点を決める型 | 走査開始点 |
+|---|---|---|
+| `cargo xtask generate` | `xtask::RepositoryRoot` | `crates/*/src` ・ `crates/*/tests` ・ `examples/*/src` |
+| `cargo graphite generate` | `graphite_cli::PackageRoot` | パッケージ直下の `src` ・ `tests` |
+
+分けるのは、Graphite リポジトリが複数パッケージを1回の実行で処理する必要があり、
+外部 crate は自分のパッケージだけを対象にするためである。走査開始点を設定で
+切り替える形にはしない。どちらも規約で決まる開始点であり、選択の自由度は要らない。
+
+共有する側を分けないと、生成した内容が入口ごとにずれる。生成ファイルの先頭に書く
+案内コメントを入口ごとに書き分けないのも同じ理由である (`docs/code_generation.md`
+「再生成の案内」参照)。
+
 ## クレートの責務
 
 - `graphite-codegen` は schema の構文解析、意味検査、指紋計算、Rustコード生成を
-  行う純粋層である。
+  行う純粋層である。ファイルの読み書きは行わない。
 - `graphite-macros` はコンパイル時の schema 検査と指紋照合、および `graph!` と
   `flow!` の展開を行う。
-- `xtask` は宣言元の探索、生成先の検査、生成ファイルの読み書きと差分検査、文書参照と
-  索引の検査 (`cargo xtask check-docs`) を行う。
+- `graphite-cli` は宣言元の探索、生成先の検査、生成ファイルの読み書きと差分検査を
+  行い、`cargo graphite generate [--check]` のバイナリ (`cargo-graphite`) を提供する。
+- `xtask` は Graphite リポジトリ自身の開発用入口である。ワークスペース全体を走査
+  開始点として `graphite-cli` を呼び、加えて文書参照と索引の検査
+  (`cargo xtask check-docs`)、外部 crate からの生成経路の実走検査
+  (`cargo xtask check-external`) を行う。
 - `graphite` はグラフの実行時型を持ち、利用者が依存する入口としてマクロを
   再公開する。
 

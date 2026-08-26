@@ -18,7 +18,7 @@
 - **ドメインの関係を schema として宣言できます。** ノード種別・辺種別・端点の役割名・
   多重度の制約を型で表します。辺は第一級の要素であり、独立したキーと積み荷を持ちます
   (積み荷とは辺そのものが持つ属性値のことです。詳細は「主要な概念」)。
-- **宣言から通常の Rust ソースを生成します。** `cargo xtask generate` が書き出した
+- **宣言から通常の Rust ソースを生成します。** `cargo graphite generate` が書き出した
   ファイルが唯一の実装であり、利用コードから定義ジャンプするとその実装行へ着地します。
   マクロは宣言を検証したうえで、生成ファイルとの指紋の一致をコンパイル時に検査します。
 - **完成したグラフを凍結して読みます。** `graph.alice()` や
@@ -37,7 +37,7 @@ Graphite には意図的に別の概念が同居しています。用途から�
 
 | やりたいこと | 使うもの | 何をするものか |
 |---|---|---|
-| ドメイン固有の型付きグラフ構造を宣言したい | `graph_schema!` | ノード種別・辺種別・役割名・制約を型付きで宣言する。実体は `cargo xtask generate` が書き出す通常の Rust ファイルで、マクロは宣言の検証と指紋の照合を行う |
+| ドメイン固有の型付きグラフ構造を宣言したい | `graph_schema!` | ノード種別・辺種別・役割名・制約を型付きで宣言する。実体は `cargo graphite generate` が書き出す通常の Rust ファイルで、マクロは宣言の検証と指紋の照合を行う |
 | そのschemaの具体的な Graph 値を作りたい | `graph!` / 生成された `Builder` | 静的な項と実行時データの両方からグラフを構築し、凍結時に制約を検査する |
 | 同種ノードの汎用グラフアルゴリズムを使いたい | `Graph<N, E, K>` | ノード型が1種類の汎用不変グラフ。`has_cycle` / `topological_sort` / `topological_levels` / `critical_path_by` / `reachable_from` / `path` を持つ。マクロを使わない |
 | 値を独立した関数へ順に流したい | `flow!` | Graph の値を作らない即時実行の糖衣。`x -[f]-> y` は `let y = (f)(x);` へ脱糖するだけ |
@@ -116,7 +116,8 @@ let appointment = boss_edge.payload();            // 辺そのものが持つ値
 (`Org::Graph`)、`Org::Builder`、制約違反の enum (`Org::Violation`) です。ノードの
 値型と積み荷の型は生成せず、宣言に書かれた型をそのまま参照します。
 
-生成ファイルはリポジトリルートで `cargo xtask generate` を実行して更新します。
+生成ファイルは、そのパッケージのディレクトリで `cargo graphite generate` を実行して
+更新します (導入は「導入方法」を参照)。
 schema を変えて生成し忘れると、指紋が合わず通常の `cargo build` がコンパイル
 エラーになります。schema 宣言と `include!` はモジュール直下へ置いてください。
 関数の中で宣言したローカルな型は、生成された module から参照できません。
@@ -212,29 +213,48 @@ schema を変えて生成し忘れると、指紋が合わず通常の `cargo bu
 
 ## 導入方法
 
-**現時点で、このリポジトリの外の crate から schema を使うための生成手段は提供して
-いません。** 根拠は次のとおりです。`cargo xtask` は `.cargo/config.toml` の別名設定
-とワークスペースメンバー `xtask/` に依存しており、`graphite` を依存に足しただけの
-crate の手元には存在しません。走査の開始点は `crates/*/src` ・ `crates/*/tests` ・
-`examples/*/src` に固定されており、`src/` がパッケージ直下にある通常の crate は1件も
-一致しません。指紋が合わないときのコンパイルエラーも「リポジトリルートで
-`cargo xtask generate` を実行してください」と表示します。外部利用向けの生成手段は
-別の Issue で扱います ([#15](https://github.com/megaDenryu/Graphite/issues/15))。
+crates.io へは未公開です。`crates/graphite/Cargo.toml` に `license` フィールドが無く、
+`cargo publish` の要求を満たしません。下記のライセンスの状態を先に読んでください。
+そのため、いずれの使い方でもこのリポジトリを clone するか Git 依存で参照します。
 
-現在動く使い方は2つです。
+### schema を使わない場合
 
-1. **schema を使う場合**: このリポジトリを clone し、`examples/` 配下に自分のクレートを
-   置いて、リポジトリルートで `cargo xtask generate` を実行します。
-2. **schema を使わない場合**: `Graph<N, E, K>` ・ `ComputeGraph<V>` ・ `flow!` だけなら
-   コード生成が不要なので、Git 依存で利用できます。
+`Graph<N, E, K>` ・ `ComputeGraph<V>` ・ `flow!` だけならコード生成が要りません。
+依存を足すだけで使えます。
 
 ```toml
 [dependencies]
 graphite = { git = "https://github.com/megaDenryu/Graphite" }
 ```
 
-crates.io へは未公開です。`crates/graphite/Cargo.toml` に `license` フィールドが無く、
-`cargo publish` の要求を満たしません。下記のライセンスの状態を先に読んでください。
+### schema を使う場合
+
+`graph_schema!` は実装を展開せず、生成された通常の Rust ファイルとの指紋の一致を
+検査します。そのため、生成器を1つ入れる必要があります。
+
+```powershell
+git clone https://github.com/megaDenryu/Graphite
+cargo install --path Graphite/crates/graphite-cli
+```
+
+これで `cargo graphite` が使えます。自分のパッケージへ依存を足し、
+
+```toml
+[dependencies]
+graphite = { git = "https://github.com/megaDenryu/Graphite" }
+```
+
+schema 宣言と生成moduleの `include!` を書いたら、そのパッケージのディレクトリで
+生成します。
+
+```powershell
+cargo graphite generate          # 生成ファイルを更新する
+cargo graphite generate --check  # 差分と孤児をエラーにする (CI 向け)
+```
+
+走査するのはパッケージ直下の `src` と `tests` の配下です。生成ファイルは
+git で管理してください。実際に動く最小の crate は `verification/external-crate`
+にあります。生成の規約は `docs/code_generation.md` が定めます。
 
 ## 開発者向け
 
