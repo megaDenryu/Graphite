@@ -28,15 +28,7 @@
 //! - **値型は単一のジェネリック `V`** (`ComputeGraph<V>`)。異種の値はユーザーが
 //!   enum で表現する想定であり、`ComputeGraph` 自体は実行時リフレクションを
 //!   持ち込まない (`reactive-cells` の `Engine` と同じ整理)。
-//! - **関数は `Box<dyn Fn(&[&V]) -> V>`。** `docs/design_principles.md` 原則5
-//!   (ゼロコスト志向) は「マクロが生成するコードは手書きコードと同形でなければ
-//!   ならない」という**マクロ生成コードに対する**規律である。`ComputeGraph` は
-//!   マクロではなく手書きのランタイムエンジンであり、ユーザーが任意個・任意型の
-//!   計算ノードを実行時に組み立てられる以上、動的ディスパッチ (`dyn Fn`) は
-//!   回避不可能かつ Rust の正道 (手書きでも同じ設計になる — `Vec<Box<dyn
-//!   FnMut()>>` 等と同じ立ち位置)。原則5 が禁じるのは「マクロが生成する
-//!   コードに手書きでは書かないリフレクション/動的ディスパッチを混入させる
-//!   こと」であり、ランタイムエンジンそのものの設計判断とは別の階層にある。
+//! - **関数は動的ディスパッチ** (`node_kind.rs` の `値を求める関数` に理由を書いた)。
 //! - **依存は位置引数** (`args[0]` = 依存キー列の 0 番目)。非可換な演算
 //!   (減算等) の左右は依存リストの並び順で表現する — `flow!` の fan-in
 //!   タプルと同じ規則。`docs/modeling_guide.md` §5 の「役割は名前で」は
@@ -76,23 +68,18 @@
 //!   が内製する。「再利用できる部分は再利用し、既存の型に無理に押し込むと
 //!   歪みが生じる部分は内製する」という判断そのもの。
 
+mod error;
+mod node_kind;
+mod node_table;
+
 use std::collections::{HashMap, HashSet};
-use std::error::Error as StdError;
-use std::fmt;
 
-use crate::{CycleError, Graph, GraphError};
+use crate::Graph;
 
-/// ノードの種別。入力ノードは値のみ、計算ノードは依存キー列と関数を持つ。
-enum NodeKind<V> {
-    /// 入力ノード。値は [`ComputeGraph::set_input`] で直接書き込む。
-    Input,
-    /// 計算ノード。`deps` は宣言順の依存キー列 (位置引数の並びそのもの)、
-    /// `f` はその値列から自分の値を求める関数。
-    Computed {
-        deps: Vec<String>,
-        f: Box<dyn Fn(&[&V]) -> V>,
-    },
-}
+pub use error::ComputeGraphError;
+
+use node_kind::{ノード種別, 値を求める関数};
+use node_table::{キーの照会結果, 計算ノード表};
 
 /// [`ComputeGraph::builder`] が返す構築用 builder。
 ///
@@ -101,7 +88,7 @@ enum NodeKind<V> {
 /// 値としての builder → freeze だが、「構築中の型」と「構築後の型」を
 /// 分けるという要点は同じ)。
 pub struct ComputeGraphBuilder<V> {
-    entries: Vec<(String, NodeKind<V>)>,
+    entries: Vec<(String, ノード種別<V>)>,
     input_values: HashMap<String, V>,
 }
 
@@ -115,18 +102,18 @@ impl<V> ComputeGraphBuilder<V> {
 
     /// 入力ノードを1つ積む。`key` が重複した場合のエラーは [`Self::freeze`]
     /// まで遅延する ([`ComputeGraphError::Graph`] の
-    /// [`GraphError::DuplicateKey`])。
+    /// [`crate::GraphError::DuplicateKey`])。
     pub fn input(&mut self, key: impl Into<String>, value: V) -> &mut Self {
         let key = key.into();
         self.input_values.insert(key.clone(), value);
-        self.entries.push((key, NodeKind::Input));
+        self.entries.push((key, ノード種別::入力ノード));
         self
     }
 
     /// 計算ノードを1つ積む。`deps` は評価時に `f` へ渡される位置引数の並び
     /// そのもの (`args[0]` = `deps` の0番目)。`deps` が参照するキーが未宣言
     /// だった場合のエラーは [`Self::freeze`] まで遅延する
-    /// ([`ComputeGraphError::Graph`] の [`GraphError::UnknownEndpoint`])。
+    /// ([`ComputeGraphError::Graph`] の [`crate::GraphError::UnknownEndpoint`])。
     pub fn computed<D, S>(
         &mut self,
         key: impl Into<String>,
@@ -137,12 +124,12 @@ impl<V> ComputeGraphBuilder<V> {
         D: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        let deps: Vec<String> = deps.into_iter().map(Into::into).collect();
+        let 依存キー列: Vec<String> = deps.into_iter().map(Into::into).collect();
         self.entries.push((
             key.into(),
-            NodeKind::Computed {
-                deps,
-                f: Box::new(f),
+            ノード種別::計算ノード {
+                依存キー列,
+                値を求める: 値を求める関数::関数から生成する(f),
             },
         ));
         self
@@ -165,8 +152,10 @@ impl<V> ComputeGraphBuilder<V> {
         let edges: Vec<(String, String)> = entries
             .iter()
             .filter_map(|(key, kind)| match kind {
-                NodeKind::Computed { deps, .. } => Some((key, deps)),
-                NodeKind::Input => None,
+                ノード種別::計算ノード {
+                    依存キー列, ..
+                } => Some((key, 依存キー列)),
+                ノード種別::入力ノード => None,
             })
             .flat_map(|(key, deps)| deps.iter().map(move |dep| (dep.clone(), key.clone())))
             .collect();
@@ -187,17 +176,11 @@ impl<V> ComputeGraphBuilder<V> {
             .map(|(i, key)| (key.clone(), i))
             .collect();
 
-        let mut kinds: HashMap<String, NodeKind<V>> = HashMap::new();
-        let mut dirty: HashSet<String> = HashSet::new();
-        for (key, kind) in entries {
-            if matches!(kind, NodeKind::Computed { .. }) {
-                dirty.insert(key.clone());
-            }
-            kinds.insert(key, kind);
-        }
+        let ノード表 = 計算ノード表::宣言列から生成する(entries);
+        let dirty: HashSet<String> = ノード表.計算ノードのキー列().cloned().collect();
 
         Ok(ComputeGraph {
-            kinds,
+            ノード表,
             values: input_values,
             dirty,
             dependency_graph,
@@ -206,30 +189,6 @@ impl<V> ComputeGraphBuilder<V> {
     }
 }
 
-/// [`ComputeGraphBuilder::freeze`] が返しうる構築エラー。
-///
-/// - [`Self::Graph`] — キー重複・未宣言依存 ([`crate::GraphError`] をそのまま
-///   運ぶ。stringly-typed な理由メッセージへ潰さず型付きのまま公開する、
-///   `docs/design_principles.md` 原則1)。
-/// - [`Self::Cycle`] — 循環依存 ([`crate::CycleError`] をそのまま運ぶ。
-///   `cycle` フィールドに循環を構成するキー列がそのまま入っている)。
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ComputeGraphError {
-    Graph(GraphError<String>),
-    Cycle(CycleError<String>),
-}
-
-impl fmt::Display for ComputeGraphError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ComputeGraphError::Graph(e) => write!(f, "{e}"),
-            ComputeGraphError::Cycle(e) => write!(f, "{e}"),
-        }
-    }
-}
-
-impl StdError for ComputeGraphError {}
-
 /// 遅延実行・差分再計算する計算グラフ (モジュール doc 参照)。
 ///
 /// 構築後は依存構造 (どのノードがどのノードに依存するか) は不変。可変なのは
@@ -237,7 +196,7 @@ impl StdError for ComputeGraphError {}
 /// の `Engine` が不変な依存グラフ + 可変な値ストアを分けるのと同じ整理、
 /// `docs/graph_design_sketches.md` 決定2)。
 pub struct ComputeGraph<V> {
-    kinds: HashMap<String, NodeKind<V>>,
+    ノード表: 計算ノード表<V>,
     /// 現在の値。入力ノードは常に存在する。計算ノードは一度でも評価されると
     /// エントリができ、以後 dirty になっても値は残ったまま (次に
     /// [`Self::get`] されるまでの間、古い値として参照可能だが `dirty` が
@@ -249,9 +208,8 @@ pub struct ComputeGraph<V> {
     /// (値は直接書き込まれるので「古い」という概念がない)。
     dirty: HashSet<String>,
     /// 依存構造そのもの ([`crate::Graph::reachable_from`] による dirty 伝播
-    /// 専用。評価時の位置引数の並びは各ノードの `deps: Vec<String>`
-    /// (`kinds`) 側が真実であり、こちらは使わない — モジュール doc
-    /// 「既存機構の再利用 vs 内製」参照)。
+    /// 専用。評価時の位置引数の並びは計算ノード表の依存キー列が真実であり、
+    /// こちらは使わない — モジュール doc 「既存機構の再利用 vs 内製」参照)。
     dependency_graph: Graph<(), (), String>,
     /// [`ComputeGraphBuilder::freeze`] で1回だけ計算したトポロジカル順序の
     /// 位置索引。依存構造は構築後不変なので、更新のたびに再計算する必要は
@@ -272,7 +230,10 @@ impl<V> ComputeGraph<V> {
     /// `key` がこのグラフに存在しないキーの場合 (呼び出し規約違反。
     /// `docs/design_principles.md` 原則2)。
     pub fn get(&mut self, key: &str) -> &V {
-        assert!(self.kinds.contains_key(key), "get: 未知のキーです: {key:?}");
+        assert!(
+            self.ノード表.キーを含むか(key),
+            "get: 未知のキーです: {key:?}"
+        );
         self.recompute_if_needed(key);
         &self.values[key]
     }
@@ -288,13 +249,13 @@ impl<V> ComputeGraph<V> {
     ///   依存構造と値ストアの不整合を招く契約違反 (`docs/design_principles.md`
     ///   原則2、`reactive-cells` の `Engine::set_input` と同じ整理)。
     pub fn set_input(&mut self, key: &str, value: V) {
-        match self.kinds.get(key) {
-            None => panic!("set_input: 未知のキーです: {key:?}"),
-            Some(NodeKind::Computed { .. }) => panic!(
+        match self.ノード表.キーを照会する(key) {
+            キーの照会結果::未知のキー => panic!("set_input: 未知のキーです: {key:?}"),
+            キーの照会結果::計算ノード => panic!(
                 "set_input: {key:?} は計算ノードであり入力ノードではありません。\
                  計算ノードの値は依存元ノードの更新から自動的に決まります。"
             ),
-            Some(NodeKind::Input) => {}
+            キーの照会結果::入力ノード => {}
         }
 
         // 影響範囲 (keyを含む) をreachable_fromで絞り、key自身を除いた
@@ -348,22 +309,23 @@ impl<V> ComputeGraph<V> {
         if !self.dirty.contains(key) {
             return;
         }
-        if let NodeKind::Computed { deps, .. } = &self.kinds[key] {
-            for dep in deps {
-                self.collect_dirty_closure(dep, seen, out);
-            }
+        for dep in self.ノード表.依存キー列(key) {
+            self.collect_dirty_closure(dep, seen, out);
         }
         out.push(key.to_string());
     }
 
     /// `key` (計算ノードであるはず) を評価し、値を書き込んで clean にする。
     fn evaluate(&mut self, key: &str) {
-        let new_value = match &self.kinds[key] {
-            NodeKind::Input => return,
-            NodeKind::Computed { deps, f } => {
-                let args: Vec<&V> = deps.iter().map(|dep| &self.values[dep]).collect();
-                f(&args)
-            }
+        let args: Vec<&V> = self
+            .ノード表
+            .依存キー列(key)
+            .iter()
+            .map(|dep| &self.values[dep])
+            .collect();
+        let new_value = match self.ノード表.依存値から計算する(key, &args) {
+            Some(value) => value,
+            None => return,
         };
         self.values.insert(key.to_string(), new_value);
         self.dirty.remove(key);
@@ -373,6 +335,7 @@ impl<V> ComputeGraph<V> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::GraphError;
     use std::cell::RefCell;
     use std::rc::Rc;
 

@@ -43,11 +43,8 @@ impl<'t, N, E> 単純閉路の切り出し<'t, N, E> {
     /// 逆辺 (経路上のノードへ戻る辺) を見つけた時点で、その宛先から現在の
     /// ノードまでの経路を切り出す。これがそのまま単純閉路になる。
     pub(in crate::graph::topology) fn 閉路を1本得る(mut self) -> 閉路の位置列 {
-        loop {
-            let 次の行き先 = match self.未処理の枝.last_mut() {
-                Some((_, 残り)) => 残り.next(),
-                None => break,
-            };
+        while let Some((_, 残り)) = self.未処理の枝.last_mut() {
+            let 次の行き先 = 残り.next();
             match 次の行き先 {
                 Some(次) => {
                     if let Some(&順番) = self.経路上の順番.get(&次) {
