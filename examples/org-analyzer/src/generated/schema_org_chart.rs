@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    1014913619829802024u64, 9779723098012690573u64, 4527960488477622950u64,
-    3338087729583570618u64,
+    6405832261482724446u64, 14213327916756896467u64, 716972994366450936u64,
+    7728371219601180068u64,
 ];
 /// `Employee` ノードの公開ID。
 ///
@@ -89,6 +89,9 @@ pub struct BelongsTo {
     pub department: DepartmentId,
 }
 impl BelongsTo {
+    /// 始点と終点の公開IDから構築用の辺値を作る。
+    ///
+    /// 宣言: `src/schema.rs` の `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1`
     pub fn new(from: EmployeeId, to: DepartmentId) -> Self {
         Self {
             employee: from,
@@ -119,6 +122,9 @@ pub struct Boss {
     pub appointment: BossEdge,
 }
 impl Boss {
+    /// 始点と終点の公開IDと積み荷から構築用の辺値を作る。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
     pub fn new(from: EmployeeId, to: EmployeeId, payload: BossEdge) -> Self {
         Self {
             subordinate: from,
@@ -126,6 +132,9 @@ impl Boss {
             appointment: payload,
         }
     }
+    /// この辺値が運ぶ積み荷を借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
     pub fn payload(&self) -> &BossEdge {
         &self.appointment
     }
@@ -150,6 +159,9 @@ pub struct Assigned {
     pub assignment: AssignedEdge,
 }
 impl Assigned {
+    /// 始点と終点の公開IDと積み荷から構築用の辺値を作る。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Assigned = (employee: Employee) -[assignment: AssignedEdge]-> (project: Project)`
     pub fn new(from: EmployeeId, to: ProjectId, payload: AssignedEdge) -> Self {
         Self {
             employee: from,
@@ -157,6 +169,9 @@ impl Assigned {
             assignment: payload,
         }
     }
+    /// この辺値が運ぶ積み荷を借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Assigned = (employee: Employee) -[assignment: AssignedEdge]-> (project: Project)`
     pub fn payload(&self) -> &AssignedEdge {
         &self.assignment
     }
@@ -184,6 +199,9 @@ pub struct Sponsors {
     pub project: ProjectId,
 }
 impl Sponsors {
+    /// 始点と終点の公開IDから構築用の辺値を作る。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Sponsors = (department: Department) -> (project: Project) where each department: 0..1`
     pub fn new(from: DepartmentId, to: ProjectId) -> Self {
         Self {
             department: from,
@@ -804,6 +822,9 @@ impl<'graph> BelongsToRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1`
     pub fn id(self) -> &'graph BelongsToId {
         self.graph
             .belongs_to
@@ -813,27 +834,45 @@ impl<'graph> BelongsToRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1`
     pub fn employee(self) -> EmployeeRef<'graph> {
         EmployeeRef {
             graph: self.graph,
             internal_position: __EmployeeInternalPosition(self.record().employee.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1`
     pub fn department(self) -> DepartmentRef<'graph> {
         DepartmentRef {
             graph: self.graph,
             internal_position: __DepartmentInternalPosition(self.record().department.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1`
     pub fn from(self) -> EmployeeRef<'graph> {
         self.employee()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1`
     pub fn to(self) -> DepartmentRef<'graph> {
         self.department()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1`
     pub fn from_id(self) -> &'graph EmployeeId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1`
     pub fn to_id(self) -> &'graph DepartmentId {
         self.to().id()
     }
@@ -863,6 +902,9 @@ impl<'graph> BossRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
     pub fn id(self) -> &'graph BossId {
         self.graph
             .boss
@@ -872,33 +914,57 @@ impl<'graph> BossRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
     pub fn subordinate(self) -> EmployeeRef<'graph> {
         EmployeeRef {
             graph: self.graph,
             internal_position: __EmployeeInternalPosition(self.record().subordinate.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
     pub fn superior(self) -> EmployeeRef<'graph> {
         EmployeeRef {
             graph: self.graph,
             internal_position: __EmployeeInternalPosition(self.record().superior.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
     pub fn from(self) -> EmployeeRef<'graph> {
         self.subordinate()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
     pub fn to(self) -> EmployeeRef<'graph> {
         self.superior()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
     pub fn from_id(self) -> &'graph EmployeeId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
     pub fn to_id(self) -> &'graph EmployeeId {
         self.to().id()
     }
+    /// この辺個体が運ぶ積み荷を役割名で借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
     pub fn appointment(self) -> &'graph BossEdge {
         &self.record().appointment
     }
+    /// この辺個体が運ぶ積み荷を、役割名によらない固定名で借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
     pub fn payload(self) -> &'graph BossEdge {
         &self.record().appointment
     }
@@ -928,6 +994,9 @@ impl<'graph> AssignedRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Assigned = (employee: Employee) -[assignment: AssignedEdge]-> (project: Project)`
     pub fn id(self) -> &'graph AssignedId {
         self.graph
             .assigned
@@ -937,33 +1006,57 @@ impl<'graph> AssignedRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Assigned = (employee: Employee) -[assignment: AssignedEdge]-> (project: Project)`
     pub fn employee(self) -> EmployeeRef<'graph> {
         EmployeeRef {
             graph: self.graph,
             internal_position: __EmployeeInternalPosition(self.record().employee.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Assigned = (employee: Employee) -[assignment: AssignedEdge]-> (project: Project)`
     pub fn project(self) -> ProjectRef<'graph> {
         ProjectRef {
             graph: self.graph,
             internal_position: __ProjectInternalPosition(self.record().project.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Assigned = (employee: Employee) -[assignment: AssignedEdge]-> (project: Project)`
     pub fn from(self) -> EmployeeRef<'graph> {
         self.employee()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Assigned = (employee: Employee) -[assignment: AssignedEdge]-> (project: Project)`
     pub fn to(self) -> ProjectRef<'graph> {
         self.project()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Assigned = (employee: Employee) -[assignment: AssignedEdge]-> (project: Project)`
     pub fn from_id(self) -> &'graph EmployeeId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Assigned = (employee: Employee) -[assignment: AssignedEdge]-> (project: Project)`
     pub fn to_id(self) -> &'graph ProjectId {
         self.to().id()
     }
+    /// この辺個体が運ぶ積み荷を役割名で借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Assigned = (employee: Employee) -[assignment: AssignedEdge]-> (project: Project)`
     pub fn assignment(self) -> &'graph AssignedEdge {
         &self.record().assignment
     }
+    /// この辺個体が運ぶ積み荷を、役割名によらない固定名で借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Assigned = (employee: Employee) -[assignment: AssignedEdge]-> (project: Project)`
     pub fn payload(self) -> &'graph AssignedEdge {
         &self.record().assignment
     }
@@ -993,6 +1086,9 @@ impl<'graph> SponsorsRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Sponsors = (department: Department) -> (project: Project) where each department: 0..1`
     pub fn id(self) -> &'graph SponsorsId {
         self.graph
             .sponsors
@@ -1002,27 +1098,45 @@ impl<'graph> SponsorsRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Sponsors = (department: Department) -> (project: Project) where each department: 0..1`
     pub fn department(self) -> DepartmentRef<'graph> {
         DepartmentRef {
             graph: self.graph,
             internal_position: __DepartmentInternalPosition(self.record().department.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Sponsors = (department: Department) -> (project: Project) where each department: 0..1`
     pub fn project(self) -> ProjectRef<'graph> {
         ProjectRef {
             graph: self.graph,
             internal_position: __ProjectInternalPosition(self.record().project.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Sponsors = (department: Department) -> (project: Project) where each department: 0..1`
     pub fn from(self) -> DepartmentRef<'graph> {
         self.department()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Sponsors = (department: Department) -> (project: Project) where each department: 0..1`
     pub fn to(self) -> ProjectRef<'graph> {
         self.project()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Sponsors = (department: Department) -> (project: Project) where each department: 0..1`
     pub fn from_id(self) -> &'graph DepartmentId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Sponsors = (department: Department) -> (project: Project) where each department: 0..1`
     pub fn to_id(self) -> &'graph ProjectId {
         self.to().id()
     }
@@ -1154,6 +1268,9 @@ pub struct EmployeeRef<'graph> {
     internal_position: __EmployeeInternalPosition,
 }
 impl<'graph> EmployeeRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `node Employee`
     pub fn id(self) -> &'graph EmployeeId {
         self.graph
             .__graphite_node_employee
@@ -1163,6 +1280,9 @@ impl<'graph> EmployeeRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `node Employee`
     pub fn value(self) -> &'graph super::Employee {
         self.graph
             .__graphite_node_employee
@@ -1452,6 +1572,9 @@ pub struct DepartmentRef<'graph> {
     internal_position: __DepartmentInternalPosition,
 }
 impl<'graph> DepartmentRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `node Department`
     pub fn id(self) -> &'graph DepartmentId {
         self.graph
             .__graphite_node_department
@@ -1461,6 +1584,9 @@ impl<'graph> DepartmentRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `node Department`
     pub fn value(self) -> &'graph super::Department {
         self.graph
             .__graphite_node_department
@@ -1629,6 +1755,9 @@ pub struct ProjectRef<'graph> {
     internal_position: __ProjectInternalPosition,
 }
 impl<'graph> ProjectRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `node Project`
     pub fn id(self) -> &'graph ProjectId {
         self.graph
             .__graphite_node_project
@@ -1638,6 +1767,9 @@ impl<'graph> ProjectRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `node Project`
     pub fn value(self) -> &'graph super::Project {
         self.graph
             .__graphite_node_project
@@ -1926,10 +2058,16 @@ impl Builder {
             __graphite_construction_stamp: graphite::次の構築印を発行する(),
         }
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/schema.rs` の `node Employee`
     pub fn employee(&mut self, id: EmployeeId, value: super::Employee) -> &mut Self {
         self.__graphite_node_employee.push((id, value));
         self
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/schema.rs` の `node Department`
     pub fn department(
         &mut self,
         id: DepartmentId,
@@ -1938,22 +2076,37 @@ impl Builder {
         self.__graphite_node_department.push((id, value));
         self
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/schema.rs` の `node Project`
     pub fn project(&mut self, id: ProjectId, value: super::Project) -> &mut Self {
         self.__graphite_node_project.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/schema.rs` の `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1`
     pub fn belongs_to(&mut self, id: BelongsToId, value: BelongsTo) -> &mut Self {
         self.belongs_to.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
     pub fn boss(&mut self, id: BossId, value: Boss) -> &mut Self {
         self.boss.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Assigned = (employee: Employee) -[assignment: AssignedEdge]-> (project: Project)`
     pub fn assigned(&mut self, id: AssignedId, value: Assigned) -> &mut Self {
         self.assigned.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Sponsors = (department: Department) -> (project: Project) where each department: 0..1`
     pub fn sponsors(&mut self, id: SponsorsId, value: Sponsors) -> &mut Self {
         self.sponsors.push((id, value));
         self

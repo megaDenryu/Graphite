@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    268278588836625045u64, 15301273537628537330u64, 6851385703665389439u64,
-    9821841771916239579u64,
+    3536189147059688369u64, 14830515318720335256u64, 3621131064272937927u64,
+    12606130664328457075u64,
 ];
 /// `Cell` ノードの公開ID。
 ///
@@ -59,6 +59,9 @@ pub struct Feeds {
     pub dependent: CellId,
 }
 impl Feeds {
+    /// 始点と終点の公開IDから構築用の辺値を作る。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Feeds = (dependency: Cell) -> (dependent: Cell) where unique pair`
     pub fn new(from: CellId, to: CellId) -> Self {
         Self {
             dependency: from,
@@ -88,6 +91,9 @@ pub struct Lhs {
     pub operation: CellId,
 }
 impl Lhs {
+    /// 始点と終点の公開IDから構築用の辺値を作る。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Lhs = (operand: Cell) -> (operation: Cell) where unique pair`
     pub fn new(from: CellId, to: CellId) -> Self {
         Self {
             operand: from,
@@ -117,6 +123,9 @@ pub struct Rhs {
     pub operation: CellId,
 }
 impl Rhs {
+    /// 始点と終点の公開IDから構築用の辺値を作る。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Rhs = (operand: Cell) -> (operation: Cell) where unique pair`
     pub fn new(from: CellId, to: CellId) -> Self {
         Self {
             operand: from,
@@ -518,6 +527,9 @@ impl<'graph> FeedsRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Feeds = (dependency: Cell) -> (dependent: Cell) where unique pair`
     pub fn id(self) -> &'graph FeedsId {
         self.graph
             .feeds
@@ -527,27 +539,45 @@ impl<'graph> FeedsRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Feeds = (dependency: Cell) -> (dependent: Cell) where unique pair`
     pub fn dependency(self) -> CellRef<'graph> {
         CellRef {
             graph: self.graph,
             internal_position: __CellInternalPosition(self.record().dependency.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Feeds = (dependency: Cell) -> (dependent: Cell) where unique pair`
     pub fn dependent(self) -> CellRef<'graph> {
         CellRef {
             graph: self.graph,
             internal_position: __CellInternalPosition(self.record().dependent.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Feeds = (dependency: Cell) -> (dependent: Cell) where unique pair`
     pub fn from(self) -> CellRef<'graph> {
         self.dependency()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Feeds = (dependency: Cell) -> (dependent: Cell) where unique pair`
     pub fn to(self) -> CellRef<'graph> {
         self.dependent()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Feeds = (dependency: Cell) -> (dependent: Cell) where unique pair`
     pub fn from_id(self) -> &'graph CellId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Feeds = (dependency: Cell) -> (dependent: Cell) where unique pair`
     pub fn to_id(self) -> &'graph CellId {
         self.to().id()
     }
@@ -577,6 +607,9 @@ impl<'graph> LhsRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Lhs = (operand: Cell) -> (operation: Cell) where unique pair`
     pub fn id(self) -> &'graph LhsId {
         self.graph
             .lhs
@@ -586,27 +619,45 @@ impl<'graph> LhsRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Lhs = (operand: Cell) -> (operation: Cell) where unique pair`
     pub fn operand(self) -> CellRef<'graph> {
         CellRef {
             graph: self.graph,
             internal_position: __CellInternalPosition(self.record().operand.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Lhs = (operand: Cell) -> (operation: Cell) where unique pair`
     pub fn operation(self) -> CellRef<'graph> {
         CellRef {
             graph: self.graph,
             internal_position: __CellInternalPosition(self.record().operation.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Lhs = (operand: Cell) -> (operation: Cell) where unique pair`
     pub fn from(self) -> CellRef<'graph> {
         self.operand()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Lhs = (operand: Cell) -> (operation: Cell) where unique pair`
     pub fn to(self) -> CellRef<'graph> {
         self.operation()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Lhs = (operand: Cell) -> (operation: Cell) where unique pair`
     pub fn from_id(self) -> &'graph CellId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Lhs = (operand: Cell) -> (operation: Cell) where unique pair`
     pub fn to_id(self) -> &'graph CellId {
         self.to().id()
     }
@@ -636,6 +687,9 @@ impl<'graph> RhsRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Rhs = (operand: Cell) -> (operation: Cell) where unique pair`
     pub fn id(self) -> &'graph RhsId {
         self.graph
             .rhs
@@ -645,27 +699,45 @@ impl<'graph> RhsRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Rhs = (operand: Cell) -> (operation: Cell) where unique pair`
     pub fn operand(self) -> CellRef<'graph> {
         CellRef {
             graph: self.graph,
             internal_position: __CellInternalPosition(self.record().operand.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Rhs = (operand: Cell) -> (operation: Cell) where unique pair`
     pub fn operation(self) -> CellRef<'graph> {
         CellRef {
             graph: self.graph,
             internal_position: __CellInternalPosition(self.record().operation.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Rhs = (operand: Cell) -> (operation: Cell) where unique pair`
     pub fn from(self) -> CellRef<'graph> {
         self.operand()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Rhs = (operand: Cell) -> (operation: Cell) where unique pair`
     pub fn to(self) -> CellRef<'graph> {
         self.operation()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Rhs = (operand: Cell) -> (operation: Cell) where unique pair`
     pub fn from_id(self) -> &'graph CellId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Rhs = (operand: Cell) -> (operation: Cell) where unique pair`
     pub fn to_id(self) -> &'graph CellId {
         self.to().id()
     }
@@ -794,6 +866,9 @@ pub struct CellRef<'graph> {
     internal_position: __CellInternalPosition,
 }
 impl<'graph> CellRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `node Cell`
     pub fn id(self) -> &'graph CellId {
         self.graph
             .__graphite_node_cell
@@ -803,6 +878,9 @@ impl<'graph> CellRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `node Cell`
     pub fn value(self) -> &'graph super::Cell {
         self.graph
             .__graphite_node_cell
@@ -1191,18 +1269,30 @@ impl Builder {
             __graphite_construction_stamp: graphite::次の構築印を発行する(),
         }
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/schema.rs` の `node Cell`
     pub fn cell(&mut self, id: CellId, value: super::Cell) -> &mut Self {
         self.__graphite_node_cell.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Feeds = (dependency: Cell) -> (dependent: Cell) where unique pair`
     pub fn feeds(&mut self, id: FeedsId, value: Feeds) -> &mut Self {
         self.feeds.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Lhs = (operand: Cell) -> (operation: Cell) where unique pair`
     pub fn lhs(&mut self, id: LhsId, value: Lhs) -> &mut Self {
         self.lhs.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Rhs = (operand: Cell) -> (operation: Cell) where unique pair`
     pub fn rhs(&mut self, id: RhsId, value: Rhs) -> &mut Self {
         self.rhs.push((id, value));
         self

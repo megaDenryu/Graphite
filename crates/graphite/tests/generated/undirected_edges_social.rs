@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    1272176105345127479u64, 8191436678416729798u64, 9228833304626671909u64,
-    691059462114197169u64,
+    9282104624520699058u64, 1641150953224918463u64, 8292121963919487452u64,
+    13260264874892603304u64,
 ];
 /// `Person` ノードの公開ID。
 ///
@@ -48,11 +48,17 @@ pub struct Friends {
     endpoints: graphite::UnorderedPair<PersonId>,
 }
 impl Friends {
+    /// 両端の公開IDから構築用の辺値を作る。両端の順序は保たない。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `edge Friends = Person -- Person where unique pair`
     pub fn new(a: PersonId, b: PersonId) -> Self {
         Self {
             endpoints: graphite::UnorderedPair::new(a, b),
         }
     }
+    /// この辺値の両端の公開IDを順序なし対として借用する。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `edge Friends = Person -- Person where unique pair`
     pub fn endpoints(&self) -> (&PersonId, &PersonId) {
         self.endpoints.endpoints()
     }
@@ -79,15 +85,24 @@ pub struct Wire {
     pub cable: Cable,
 }
 impl Wire {
+    /// 両端の公開IDと積み荷から構築用の辺値を作る。両端の順序は保たない。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `edge Wire = Person -[cable: Cable]- Person`
     pub fn new(a: PersonId, b: PersonId, payload: Cable) -> Self {
         Self {
             endpoints: graphite::UnorderedPair::new(a, b),
             cable: payload,
         }
     }
+    /// この辺値の両端の公開IDを順序なし対として借用する。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `edge Wire = Person -[cable: Cable]- Person`
     pub fn endpoints(&self) -> (&PersonId, &PersonId) {
         self.endpoints.endpoints()
     }
+    /// この辺値が運ぶ積み荷を借用する。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `edge Wire = Person -[cable: Cable]- Person`
     pub fn payload(&self) -> &Cable {
         &self.cable
     }
@@ -379,6 +394,9 @@ impl<'graph> FriendsRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `edge Friends = Person -- Person where unique pair`
     pub fn id(self) -> &'graph FriendsId {
         self.graph
             .friends
@@ -388,6 +406,9 @@ impl<'graph> FriendsRef<'graph> {
             )
             .0
     }
+    /// この辺個体の両端を順序なし対として返す。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `edge Friends = Person -- Person where unique pair`
     pub fn endpoints(self) -> (PersonRef<'graph>, PersonRef<'graph>) {
         let (first, second) = self.record().endpoints.endpoints();
         (
@@ -427,6 +448,9 @@ impl<'graph> WireRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `edge Wire = Person -[cable: Cable]- Person`
     pub fn id(self) -> &'graph WireId {
         self.graph
             .wire
@@ -436,6 +460,9 @@ impl<'graph> WireRef<'graph> {
             )
             .0
     }
+    /// この辺個体の両端を順序なし対として返す。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `edge Wire = Person -[cable: Cable]- Person`
     pub fn endpoints(self) -> (PersonRef<'graph>, PersonRef<'graph>) {
         let (first, second) = self.record().endpoints.endpoints();
         (
@@ -449,9 +476,15 @@ impl<'graph> WireRef<'graph> {
             },
         )
     }
+    /// この辺個体が運ぶ積み荷を役割名で借用する。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `edge Wire = Person -[cable: Cable]- Person`
     pub fn cable(self) -> &'graph Cable {
         &self.record().cable
     }
+    /// この辺個体が運ぶ積み荷を、役割名によらない固定名で借用する。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `edge Wire = Person -[cable: Cable]- Person`
     pub fn payload(self) -> &'graph Cable {
         &self.record().cable
     }
@@ -579,6 +612,9 @@ pub struct PersonRef<'graph> {
     internal_position: __PersonInternalPosition,
 }
 impl<'graph> PersonRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `node Person`
     pub fn id(self) -> &'graph PersonId {
         self.graph
             .__graphite_node_person
@@ -588,6 +624,9 @@ impl<'graph> PersonRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `node Person`
     pub fn value(self) -> &'graph super::Person {
         self.graph
             .__graphite_node_person
@@ -858,14 +897,23 @@ impl Builder {
             __graphite_construction_stamp: graphite::次の構築印を発行する(),
         }
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `node Person`
     pub fn person(&mut self, id: PersonId, value: super::Person) -> &mut Self {
         self.__graphite_node_person.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `edge Friends = Person -- Person where unique pair`
     pub fn friends(&mut self, id: FriendsId, value: Friends) -> &mut Self {
         self.friends.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/undirected_edges.rs` の `edge Wire = Person -[cable: Cable]- Person`
     pub fn wire(&mut self, id: WireId, value: Wire) -> &mut Self {
         self.wire.push((id, value));
         self

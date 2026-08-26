@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    17354122510948086773u64, 10450315027066350296u64, 17337203135111179051u64,
-    3738973561999414575u64,
+    18250921928737847635u64, 11079730131818045116u64, 8192866492627985001u64,
+    15452063339683691109u64,
 ];
 /// `Speaker` ノードの公開ID。
 ///
@@ -49,6 +49,9 @@ pub struct Choice {
     pub line: LineId,
 }
 impl Choice {
+    /// 始点と終点の公開IDから構築用の辺値を作る。
+    ///
+    /// 宣言: `tests/keyed_table_insertion_order.rs` の `edge Choice = (speaker: Speaker) -> (line: Line)`
     pub fn new(from: SpeakerId, to: LineId) -> Self {
         Self { speaker: from, line: to }
     }
@@ -322,6 +325,9 @@ impl<'graph> ChoiceRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/keyed_table_insertion_order.rs` の `edge Choice = (speaker: Speaker) -> (line: Line)`
     pub fn id(self) -> &'graph ChoiceId {
         self.graph
             .choice
@@ -331,27 +337,45 @@ impl<'graph> ChoiceRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/keyed_table_insertion_order.rs` の `edge Choice = (speaker: Speaker) -> (line: Line)`
     pub fn speaker(self) -> SpeakerRef<'graph> {
         SpeakerRef {
             graph: self.graph,
             internal_position: __SpeakerInternalPosition(self.record().speaker.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/keyed_table_insertion_order.rs` の `edge Choice = (speaker: Speaker) -> (line: Line)`
     pub fn line(self) -> LineRef<'graph> {
         LineRef {
             graph: self.graph,
             internal_position: __LineInternalPosition(self.record().line.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/keyed_table_insertion_order.rs` の `edge Choice = (speaker: Speaker) -> (line: Line)`
     pub fn from(self) -> SpeakerRef<'graph> {
         self.speaker()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/keyed_table_insertion_order.rs` の `edge Choice = (speaker: Speaker) -> (line: Line)`
     pub fn to(self) -> LineRef<'graph> {
         self.line()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/keyed_table_insertion_order.rs` の `edge Choice = (speaker: Speaker) -> (line: Line)`
     pub fn from_id(self) -> &'graph SpeakerId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/keyed_table_insertion_order.rs` の `edge Choice = (speaker: Speaker) -> (line: Line)`
     pub fn to_id(self) -> &'graph LineId {
         self.to().id()
     }
@@ -479,6 +503,9 @@ pub struct SpeakerRef<'graph> {
     internal_position: __SpeakerInternalPosition,
 }
 impl<'graph> SpeakerRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/keyed_table_insertion_order.rs` の `node Speaker`
     pub fn id(self) -> &'graph SpeakerId {
         self.graph
             .__graphite_node_speaker
@@ -488,6 +515,9 @@ impl<'graph> SpeakerRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `tests/keyed_table_insertion_order.rs` の `node Speaker`
     pub fn value(self) -> &'graph super::Speaker {
         self.graph
             .__graphite_node_speaker
@@ -640,6 +670,9 @@ pub struct LineRef<'graph> {
     internal_position: __LineInternalPosition,
 }
 impl<'graph> LineRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/keyed_table_insertion_order.rs` の `node Line`
     pub fn id(self) -> &'graph LineId {
         self.graph
             .__graphite_node_line
@@ -649,6 +682,9 @@ impl<'graph> LineRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `tests/keyed_table_insertion_order.rs` の `node Line`
     pub fn value(self) -> &'graph super::Line {
         self.graph
             .__graphite_node_line
@@ -758,14 +794,23 @@ impl Builder {
             __graphite_construction_stamp: graphite::次の構築印を発行する(),
         }
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/keyed_table_insertion_order.rs` の `node Speaker`
     pub fn speaker(&mut self, id: SpeakerId, value: super::Speaker) -> &mut Self {
         self.__graphite_node_speaker.push((id, value));
         self
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/keyed_table_insertion_order.rs` の `node Line`
     pub fn line(&mut self, id: LineId, value: super::Line) -> &mut Self {
         self.__graphite_node_line.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/keyed_table_insertion_order.rs` の `edge Choice = (speaker: Speaker) -> (line: Line)`
     pub fn choice(&mut self, id: ChoiceId, value: Choice) -> &mut Self {
         self.choice.push((id, value));
         self

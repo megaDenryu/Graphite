@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    12456524193842528639u64, 12876387633989192666u64, 15124353700391347869u64,
-    1329001106070162161u64,
+    1258563856800380013u64, 14505146347717596028u64, 9456073245323484251u64,
+    2833417394957201663u64,
 ];
 /// `Consumes` 辺の公開ID。
 ///
@@ -44,6 +44,9 @@ pub struct Produces {
     pub artifact: ArtifactId,
 }
 impl Produces {
+    /// 始点と終点の公開IDから構築用の辺値を作る。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Produces(id: ProducesId) = (task: Task) -> (artifact: Artifact) where unique pair`
     pub fn new(from: TaskId, to: ArtifactId) -> Self {
         Self { task: from, artifact: to }
     }
@@ -67,6 +70,9 @@ pub struct Consumes {
     pub artifact: ArtifactId,
 }
 impl Consumes {
+    /// 始点と終点の公開IDから構築用の辺値を作る。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Consumes = (task: Task) -> (artifact: Artifact) where unique pair`
     pub fn new(from: TaskId, to: ArtifactId) -> Self {
         Self { task: from, artifact: to }
     }
@@ -445,6 +451,9 @@ impl<'graph> ProducesRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Produces(id: ProducesId) = (task: Task) -> (artifact: Artifact) where unique pair`
     pub fn id(self) -> &'graph ProducesId {
         self.graph
             .produces
@@ -454,27 +463,45 @@ impl<'graph> ProducesRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Produces(id: ProducesId) = (task: Task) -> (artifact: Artifact) where unique pair`
     pub fn task(self) -> TaskRef<'graph> {
         TaskRef {
             graph: self.graph,
             internal_position: __TaskInternalPosition(self.record().task.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Produces(id: ProducesId) = (task: Task) -> (artifact: Artifact) where unique pair`
     pub fn artifact(self) -> ArtifactRef<'graph> {
         ArtifactRef {
             graph: self.graph,
             internal_position: __ArtifactInternalPosition(self.record().artifact.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Produces(id: ProducesId) = (task: Task) -> (artifact: Artifact) where unique pair`
     pub fn from(self) -> TaskRef<'graph> {
         self.task()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Produces(id: ProducesId) = (task: Task) -> (artifact: Artifact) where unique pair`
     pub fn to(self) -> ArtifactRef<'graph> {
         self.artifact()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Produces(id: ProducesId) = (task: Task) -> (artifact: Artifact) where unique pair`
     pub fn from_id(self) -> &'graph TaskId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Produces(id: ProducesId) = (task: Task) -> (artifact: Artifact) where unique pair`
     pub fn to_id(self) -> &'graph ArtifactId {
         self.to().id()
     }
@@ -502,6 +529,9 @@ impl<'graph> ConsumesRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Consumes = (task: Task) -> (artifact: Artifact) where unique pair`
     pub fn id(self) -> &'graph ConsumesId {
         self.graph
             .consumes
@@ -511,27 +541,45 @@ impl<'graph> ConsumesRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Consumes = (task: Task) -> (artifact: Artifact) where unique pair`
     pub fn task(self) -> TaskRef<'graph> {
         TaskRef {
             graph: self.graph,
             internal_position: __TaskInternalPosition(self.record().task.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Consumes = (task: Task) -> (artifact: Artifact) where unique pair`
     pub fn artifact(self) -> ArtifactRef<'graph> {
         ArtifactRef {
             graph: self.graph,
             internal_position: __ArtifactInternalPosition(self.record().artifact.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Consumes = (task: Task) -> (artifact: Artifact) where unique pair`
     pub fn from(self) -> TaskRef<'graph> {
         self.task()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Consumes = (task: Task) -> (artifact: Artifact) where unique pair`
     pub fn to(self) -> ArtifactRef<'graph> {
         self.artifact()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Consumes = (task: Task) -> (artifact: Artifact) where unique pair`
     pub fn from_id(self) -> &'graph TaskId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Consumes = (task: Task) -> (artifact: Artifact) where unique pair`
     pub fn to_id(self) -> &'graph ArtifactId {
         self.to().id()
     }
@@ -647,6 +695,9 @@ pub struct TaskRef<'graph> {
     internal_position: __TaskInternalPosition,
 }
 impl<'graph> TaskRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `node Task(id: TaskId)`
     pub fn id(self) -> &'graph TaskId {
         self.graph
             .__graphite_node_task
@@ -656,6 +707,9 @@ impl<'graph> TaskRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `node Task(id: TaskId)`
     pub fn value(self) -> &'graph super::Task {
         self.graph
             .__graphite_node_task
@@ -842,6 +896,9 @@ pub struct ArtifactRef<'graph> {
     internal_position: __ArtifactInternalPosition,
 }
 impl<'graph> ArtifactRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `node Artifact(id: ArtifactId)`
     pub fn id(self) -> &'graph ArtifactId {
         self.graph
             .__graphite_node_artifact
@@ -851,6 +908,9 @@ impl<'graph> ArtifactRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `node Artifact(id: ArtifactId)`
     pub fn value(self) -> &'graph super::Artifact {
         self.graph
             .__graphite_node_artifact
@@ -1022,18 +1082,30 @@ impl Builder {
             __graphite_construction_stamp: graphite::次の構築印を発行する(),
         }
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/schema.rs` の `node Task(id: TaskId)`
     pub fn task(&mut self, id: TaskId, value: super::Task) -> &mut Self {
         self.__graphite_node_task.push((id, value));
         self
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/schema.rs` の `node Artifact(id: ArtifactId)`
     pub fn artifact(&mut self, id: ArtifactId, value: super::Artifact) -> &mut Self {
         self.__graphite_node_artifact.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Produces(id: ProducesId) = (task: Task) -> (artifact: Artifact) where unique pair`
     pub fn produces(&mut self, id: ProducesId, value: Produces) -> &mut Self {
         self.produces.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Consumes = (task: Task) -> (artifact: Artifact) where unique pair`
     pub fn consumes(&mut self, id: ConsumesId, value: Consumes) -> &mut Self {
         self.consumes.push((id, value));
         self

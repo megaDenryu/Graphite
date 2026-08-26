@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    6098333711438255653u64, 7778612587266332624u64, 5807063246750941123u64,
-    3913111479714790439u64,
+    7591747667156961036u64, 13197851493964670375u64, 8050212448023462346u64,
+    14170154918472472782u64,
 ];
 /// `Book` ノードの公開ID。
 ///
@@ -50,6 +50,9 @@ pub struct Borrowed {
     pub loan: Loan,
 }
 impl Borrowed {
+    /// 始点と終点の公開IDと積み荷から構築用の辺値を作る。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Borrowed = (book: Book) -[loan: Loan]-> (reader: Reader) where each book: 0..1`
     pub fn new(from: BookId, to: ReaderId, payload: Loan) -> Self {
         Self {
             book: from,
@@ -57,6 +60,9 @@ impl Borrowed {
             loan: payload,
         }
     }
+    /// この辺値が運ぶ積み荷を借用する。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Borrowed = (book: Book) -[loan: Loan]-> (reader: Reader) where each book: 0..1`
     pub fn payload(&self) -> &Loan {
         &self.loan
     }
@@ -348,6 +354,9 @@ impl<'graph> BorrowedRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Borrowed = (book: Book) -[loan: Loan]-> (reader: Reader) where each book: 0..1`
     pub fn id(self) -> &'graph BorrowedId {
         self.graph
             .borrowed
@@ -357,33 +366,57 @@ impl<'graph> BorrowedRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Borrowed = (book: Book) -[loan: Loan]-> (reader: Reader) where each book: 0..1`
     pub fn book(self) -> BookRef<'graph> {
         BookRef {
             graph: self.graph,
             internal_position: __BookInternalPosition(self.record().book.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Borrowed = (book: Book) -[loan: Loan]-> (reader: Reader) where each book: 0..1`
     pub fn reader(self) -> ReaderRef<'graph> {
         ReaderRef {
             graph: self.graph,
             internal_position: __ReaderInternalPosition(self.record().reader.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Borrowed = (book: Book) -[loan: Loan]-> (reader: Reader) where each book: 0..1`
     pub fn from(self) -> BookRef<'graph> {
         self.book()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Borrowed = (book: Book) -[loan: Loan]-> (reader: Reader) where each book: 0..1`
     pub fn to(self) -> ReaderRef<'graph> {
         self.reader()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Borrowed = (book: Book) -[loan: Loan]-> (reader: Reader) where each book: 0..1`
     pub fn from_id(self) -> &'graph BookId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Borrowed = (book: Book) -[loan: Loan]-> (reader: Reader) where each book: 0..1`
     pub fn to_id(self) -> &'graph ReaderId {
         self.to().id()
     }
+    /// この辺個体が運ぶ積み荷を役割名で借用する。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Borrowed = (book: Book) -[loan: Loan]-> (reader: Reader) where each book: 0..1`
     pub fn loan(self) -> &'graph Loan {
         &self.record().loan
     }
+    /// この辺個体が運ぶ積み荷を、役割名によらない固定名で借用する。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Borrowed = (book: Book) -[loan: Loan]-> (reader: Reader) where each book: 0..1`
     pub fn payload(self) -> &'graph Loan {
         &self.record().loan
     }
@@ -511,6 +544,9 @@ pub struct BookRef<'graph> {
     internal_position: __BookInternalPosition,
 }
 impl<'graph> BookRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/lib.rs` の `node Book`
     pub fn id(self) -> &'graph BookId {
         self.graph
             .__graphite_node_book
@@ -520,6 +556,9 @@ impl<'graph> BookRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `src/lib.rs` の `node Book`
     pub fn value(self) -> &'graph super::Book {
         self.graph
             .__graphite_node_book
@@ -671,6 +710,9 @@ pub struct ReaderRef<'graph> {
     internal_position: __ReaderInternalPosition,
 }
 impl<'graph> ReaderRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/lib.rs` の `node Reader`
     pub fn id(self) -> &'graph ReaderId {
         self.graph
             .__graphite_node_reader
@@ -680,6 +722,9 @@ impl<'graph> ReaderRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `src/lib.rs` の `node Reader`
     pub fn value(self) -> &'graph super::Reader {
         self.graph
             .__graphite_node_reader
@@ -791,14 +836,23 @@ impl Builder {
             __graphite_construction_stamp: graphite::次の構築印を発行する(),
         }
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/lib.rs` の `node Book`
     pub fn book(&mut self, id: BookId, value: super::Book) -> &mut Self {
         self.__graphite_node_book.push((id, value));
         self
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/lib.rs` の `node Reader`
     pub fn reader(&mut self, id: ReaderId, value: super::Reader) -> &mut Self {
         self.__graphite_node_reader.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Borrowed = (book: Book) -[loan: Loan]-> (reader: Reader) where each book: 0..1`
     pub fn borrowed(&mut self, id: BorrowedId, value: Borrowed) -> &mut Self {
         self.borrowed.push((id, value));
         self

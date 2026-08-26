@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    11312645938280886286u64, 6464331962766303547u64, 3264734104394708312u64,
-    15197219080436717868u64,
+    3845609520283884498u64, 7967057580019453419u64, 12470256070841884480u64,
+    9972050547867582108u64,
 ];
 /// `OrderState` ノードの公開ID。
 ///
@@ -89,6 +89,9 @@ pub struct Submit {
     pub after: OrderStateId,
 }
 impl Submit {
+    /// 始点と終点の公開IDから構築用の辺値を作る。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Submit = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn new(from: OrderStateId, to: OrderStateId) -> Self {
         Self { before: from, after: to }
     }
@@ -112,6 +115,9 @@ pub struct Pay {
     pub after: OrderStateId,
 }
 impl Pay {
+    /// 始点と終点の公開IDから構築用の辺値を作る。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Pay = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn new(from: OrderStateId, to: OrderStateId) -> Self {
         Self { before: from, after: to }
     }
@@ -135,6 +141,9 @@ pub struct Ship {
     pub after: OrderStateId,
 }
 impl Ship {
+    /// 始点と終点の公開IDから構築用の辺値を作る。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Ship = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn new(from: OrderStateId, to: OrderStateId) -> Self {
         Self { before: from, after: to }
     }
@@ -158,6 +167,9 @@ pub struct Deliver {
     pub after: OrderStateId,
 }
 impl Deliver {
+    /// 始点と終点の公開IDから構築用の辺値を作る。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Deliver = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn new(from: OrderStateId, to: OrderStateId) -> Self {
         Self { before: from, after: to }
     }
@@ -185,6 +197,9 @@ pub struct Cancel {
     pub cancellation: CancelEdge,
 }
 impl Cancel {
+    /// 始点と終点の公開IDと積み荷から構築用の辺値を作る。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Cancel = (before: OrderState) -[cancellation: CancelEdge]-> (after: OrderState) where each before: 0..1`
     pub fn new(from: OrderStateId, to: OrderStateId, payload: CancelEdge) -> Self {
         Self {
             before: from,
@@ -192,6 +207,9 @@ impl Cancel {
             cancellation: payload,
         }
     }
+    /// この辺値が運ぶ積み荷を借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Cancel = (before: OrderState) -[cancellation: CancelEdge]-> (after: OrderState) where each before: 0..1`
     pub fn payload(&self) -> &CancelEdge {
         &self.cancellation
     }
@@ -220,6 +238,9 @@ pub struct Refund {
     pub refund: RefundEdge,
 }
 impl Refund {
+    /// 始点と終点の公開IDと積み荷から構築用の辺値を作る。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Refund = (before: OrderState) -[refund: RefundEdge]-> (after: OrderState) where each before: 0..1`
     pub fn new(from: OrderStateId, to: OrderStateId, payload: RefundEdge) -> Self {
         Self {
             before: from,
@@ -227,6 +248,9 @@ impl Refund {
             refund: payload,
         }
     }
+    /// この辺値が運ぶ積み荷を借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Refund = (before: OrderState) -[refund: RefundEdge]-> (after: OrderState) where each before: 0..1`
     pub fn payload(&self) -> &RefundEdge {
         &self.refund
     }
@@ -905,6 +929,9 @@ impl<'graph> SubmitRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Submit = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn id(self) -> &'graph SubmitId {
         self.graph
             .submit
@@ -914,27 +941,45 @@ impl<'graph> SubmitRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Submit = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn before(self) -> OrderStateRef<'graph> {
         OrderStateRef {
             graph: self.graph,
             internal_position: __OrderStateInternalPosition(self.record().before.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Submit = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn after(self) -> OrderStateRef<'graph> {
         OrderStateRef {
             graph: self.graph,
             internal_position: __OrderStateInternalPosition(self.record().after.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Submit = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn from(self) -> OrderStateRef<'graph> {
         self.before()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Submit = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn to(self) -> OrderStateRef<'graph> {
         self.after()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Submit = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn from_id(self) -> &'graph OrderStateId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Submit = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn to_id(self) -> &'graph OrderStateId {
         self.to().id()
     }
@@ -964,6 +1009,9 @@ impl<'graph> PayRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Pay = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn id(self) -> &'graph PayId {
         self.graph
             .pay
@@ -973,27 +1021,45 @@ impl<'graph> PayRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Pay = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn before(self) -> OrderStateRef<'graph> {
         OrderStateRef {
             graph: self.graph,
             internal_position: __OrderStateInternalPosition(self.record().before.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Pay = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn after(self) -> OrderStateRef<'graph> {
         OrderStateRef {
             graph: self.graph,
             internal_position: __OrderStateInternalPosition(self.record().after.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Pay = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn from(self) -> OrderStateRef<'graph> {
         self.before()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Pay = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn to(self) -> OrderStateRef<'graph> {
         self.after()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Pay = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn from_id(self) -> &'graph OrderStateId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Pay = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn to_id(self) -> &'graph OrderStateId {
         self.to().id()
     }
@@ -1023,6 +1089,9 @@ impl<'graph> ShipRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Ship = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn id(self) -> &'graph ShipId {
         self.graph
             .ship
@@ -1032,27 +1101,45 @@ impl<'graph> ShipRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Ship = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn before(self) -> OrderStateRef<'graph> {
         OrderStateRef {
             graph: self.graph,
             internal_position: __OrderStateInternalPosition(self.record().before.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Ship = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn after(self) -> OrderStateRef<'graph> {
         OrderStateRef {
             graph: self.graph,
             internal_position: __OrderStateInternalPosition(self.record().after.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Ship = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn from(self) -> OrderStateRef<'graph> {
         self.before()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Ship = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn to(self) -> OrderStateRef<'graph> {
         self.after()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Ship = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn from_id(self) -> &'graph OrderStateId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Ship = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn to_id(self) -> &'graph OrderStateId {
         self.to().id()
     }
@@ -1082,6 +1169,9 @@ impl<'graph> DeliverRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Deliver = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn id(self) -> &'graph DeliverId {
         self.graph
             .deliver
@@ -1091,27 +1181,45 @@ impl<'graph> DeliverRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Deliver = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn before(self) -> OrderStateRef<'graph> {
         OrderStateRef {
             graph: self.graph,
             internal_position: __OrderStateInternalPosition(self.record().before.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Deliver = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn after(self) -> OrderStateRef<'graph> {
         OrderStateRef {
             graph: self.graph,
             internal_position: __OrderStateInternalPosition(self.record().after.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Deliver = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn from(self) -> OrderStateRef<'graph> {
         self.before()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Deliver = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn to(self) -> OrderStateRef<'graph> {
         self.after()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Deliver = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn from_id(self) -> &'graph OrderStateId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Deliver = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn to_id(self) -> &'graph OrderStateId {
         self.to().id()
     }
@@ -1141,6 +1249,9 @@ impl<'graph> CancelRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Cancel = (before: OrderState) -[cancellation: CancelEdge]-> (after: OrderState) where each before: 0..1`
     pub fn id(self) -> &'graph CancelId {
         self.graph
             .cancel
@@ -1150,33 +1261,57 @@ impl<'graph> CancelRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Cancel = (before: OrderState) -[cancellation: CancelEdge]-> (after: OrderState) where each before: 0..1`
     pub fn before(self) -> OrderStateRef<'graph> {
         OrderStateRef {
             graph: self.graph,
             internal_position: __OrderStateInternalPosition(self.record().before.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Cancel = (before: OrderState) -[cancellation: CancelEdge]-> (after: OrderState) where each before: 0..1`
     pub fn after(self) -> OrderStateRef<'graph> {
         OrderStateRef {
             graph: self.graph,
             internal_position: __OrderStateInternalPosition(self.record().after.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Cancel = (before: OrderState) -[cancellation: CancelEdge]-> (after: OrderState) where each before: 0..1`
     pub fn from(self) -> OrderStateRef<'graph> {
         self.before()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Cancel = (before: OrderState) -[cancellation: CancelEdge]-> (after: OrderState) where each before: 0..1`
     pub fn to(self) -> OrderStateRef<'graph> {
         self.after()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Cancel = (before: OrderState) -[cancellation: CancelEdge]-> (after: OrderState) where each before: 0..1`
     pub fn from_id(self) -> &'graph OrderStateId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Cancel = (before: OrderState) -[cancellation: CancelEdge]-> (after: OrderState) where each before: 0..1`
     pub fn to_id(self) -> &'graph OrderStateId {
         self.to().id()
     }
+    /// この辺個体が運ぶ積み荷を役割名で借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Cancel = (before: OrderState) -[cancellation: CancelEdge]-> (after: OrderState) where each before: 0..1`
     pub fn cancellation(self) -> &'graph CancelEdge {
         &self.record().cancellation
     }
+    /// この辺個体が運ぶ積み荷を、役割名によらない固定名で借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Cancel = (before: OrderState) -[cancellation: CancelEdge]-> (after: OrderState) where each before: 0..1`
     pub fn payload(self) -> &'graph CancelEdge {
         &self.record().cancellation
     }
@@ -1206,6 +1341,9 @@ impl<'graph> RefundRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Refund = (before: OrderState) -[refund: RefundEdge]-> (after: OrderState) where each before: 0..1`
     pub fn id(self) -> &'graph RefundId {
         self.graph
             .refund
@@ -1215,33 +1353,57 @@ impl<'graph> RefundRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Refund = (before: OrderState) -[refund: RefundEdge]-> (after: OrderState) where each before: 0..1`
     pub fn before(self) -> OrderStateRef<'graph> {
         OrderStateRef {
             graph: self.graph,
             internal_position: __OrderStateInternalPosition(self.record().before.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Refund = (before: OrderState) -[refund: RefundEdge]-> (after: OrderState) where each before: 0..1`
     pub fn after(self) -> OrderStateRef<'graph> {
         OrderStateRef {
             graph: self.graph,
             internal_position: __OrderStateInternalPosition(self.record().after.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Refund = (before: OrderState) -[refund: RefundEdge]-> (after: OrderState) where each before: 0..1`
     pub fn from(self) -> OrderStateRef<'graph> {
         self.before()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Refund = (before: OrderState) -[refund: RefundEdge]-> (after: OrderState) where each before: 0..1`
     pub fn to(self) -> OrderStateRef<'graph> {
         self.after()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Refund = (before: OrderState) -[refund: RefundEdge]-> (after: OrderState) where each before: 0..1`
     pub fn from_id(self) -> &'graph OrderStateId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Refund = (before: OrderState) -[refund: RefundEdge]-> (after: OrderState) where each before: 0..1`
     pub fn to_id(self) -> &'graph OrderStateId {
         self.to().id()
     }
+    /// この辺個体が運ぶ積み荷を役割名で借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Refund = (before: OrderState) -[refund: RefundEdge]-> (after: OrderState) where each before: 0..1`
     pub fn refund(self) -> &'graph RefundEdge {
         &self.record().refund
     }
+    /// この辺個体が運ぶ積み荷を、役割名によらない固定名で借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Refund = (before: OrderState) -[refund: RefundEdge]-> (after: OrderState) where each before: 0..1`
     pub fn payload(self) -> &'graph RefundEdge {
         &self.record().refund
     }
@@ -1373,6 +1535,9 @@ pub struct OrderStateRef<'graph> {
     internal_position: __OrderStateInternalPosition,
 }
 impl<'graph> OrderStateRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `node OrderState`
     pub fn id(self) -> &'graph OrderStateId {
         self.graph
             .__graphite_node_order_state
@@ -1382,6 +1547,9 @@ impl<'graph> OrderStateRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `node OrderState`
     pub fn value(self) -> &'graph super::OrderState {
         self.graph
             .__graphite_node_order_state
@@ -2188,6 +2356,9 @@ impl Builder {
             __graphite_construction_stamp: graphite::次の構築印を発行する(),
         }
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/schema.rs` の `node OrderState`
     pub fn order_state(
         &mut self,
         id: OrderStateId,
@@ -2196,26 +2367,44 @@ impl Builder {
         self.__graphite_node_order_state.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Submit = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn submit(&mut self, id: SubmitId, value: Submit) -> &mut Self {
         self.submit.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Pay = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn pay(&mut self, id: PayId, value: Pay) -> &mut Self {
         self.pay.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Ship = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn ship(&mut self, id: ShipId, value: Ship) -> &mut Self {
         self.ship.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Deliver = (before: OrderState) -> (after: OrderState) where each before: 0..1`
     pub fn deliver(&mut self, id: DeliverId, value: Deliver) -> &mut Self {
         self.deliver.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Cancel = (before: OrderState) -[cancellation: CancelEdge]-> (after: OrderState) where each before: 0..1`
     pub fn cancel(&mut self, id: CancelId, value: Cancel) -> &mut Self {
         self.cancel.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Refund = (before: OrderState) -[refund: RefundEdge]-> (after: OrderState) where each before: 0..1`
     pub fn refund(&mut self, id: RefundId, value: Refund) -> &mut Self {
         self.refund.push((id, value));
         self

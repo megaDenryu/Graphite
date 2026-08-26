@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    8101318978595338976u64, 8320740492671662769u64, 15639361154850383150u64,
-    6756724821292528858u64,
+    5885588358647233040u64, 6143556587150587767u64, 16312500420955715278u64,
+    7773066864163283490u64,
 ];
 /// `Person` ノードの公開ID。
 ///
@@ -49,6 +49,9 @@ pub struct Ownership {
     pub 所有物: ItemId,
 }
 impl Ownership {
+    /// 始点と終点の公開IDから構築用の辺値を作る。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Ownership = (所有者: Person) -> (所有物: Item) where each 所有者: 1`
     pub fn new(from: PersonId, to: ItemId) -> Self {
         Self {
             所有者: from,
@@ -339,6 +342,9 @@ impl<'graph> OwnershipRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Ownership = (所有者: Person) -> (所有物: Item) where each 所有者: 1`
     pub fn id(self) -> &'graph OwnershipId {
         self.graph
             .ownership
@@ -348,27 +354,45 @@ impl<'graph> OwnershipRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Ownership = (所有者: Person) -> (所有物: Item) where each 所有者: 1`
     pub fn 所有者(self) -> PersonRef<'graph> {
         PersonRef {
             graph: self.graph,
             internal_position: __PersonInternalPosition(self.record().所有者.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Ownership = (所有者: Person) -> (所有物: Item) where each 所有者: 1`
     pub fn 所有物(self) -> ItemRef<'graph> {
         ItemRef {
             graph: self.graph,
             internal_position: __ItemInternalPosition(self.record().所有物.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Ownership = (所有者: Person) -> (所有物: Item) where each 所有者: 1`
     pub fn from(self) -> PersonRef<'graph> {
         self.所有者()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Ownership = (所有者: Person) -> (所有物: Item) where each 所有者: 1`
     pub fn to(self) -> ItemRef<'graph> {
         self.所有物()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Ownership = (所有者: Person) -> (所有物: Item) where each 所有者: 1`
     pub fn from_id(self) -> &'graph PersonId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Ownership = (所有者: Person) -> (所有物: Item) where each 所有者: 1`
     pub fn to_id(self) -> &'graph ItemId {
         self.to().id()
     }
@@ -496,6 +520,9 @@ pub struct PersonRef<'graph> {
     internal_position: __PersonInternalPosition,
 }
 impl<'graph> PersonRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `node Person`
     pub fn id(self) -> &'graph PersonId {
         self.graph
             .__graphite_node_person
@@ -505,6 +532,9 @@ impl<'graph> PersonRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `node Person`
     pub fn value(self) -> &'graph super::Person {
         self.graph
             .__graphite_node_person
@@ -656,6 +686,9 @@ pub struct ItemRef<'graph> {
     internal_position: __ItemInternalPosition,
 }
 impl<'graph> ItemRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `node Item`
     pub fn id(self) -> &'graph ItemId {
         self.graph
             .__graphite_node_item
@@ -665,6 +698,9 @@ impl<'graph> ItemRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `node Item`
     pub fn value(self) -> &'graph super::Item {
         self.graph
             .__graphite_node_item
@@ -781,14 +817,23 @@ impl Builder {
             __graphite_construction_stamp: graphite::次の構築印を発行する(),
         }
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `node Person`
     pub fn person(&mut self, id: PersonId, value: super::Person) -> &mut Self {
         self.__graphite_node_person.push((id, value));
         self
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `node Item`
     pub fn item(&mut self, id: ItemId, value: super::Item) -> &mut Self {
         self.__graphite_node_item.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Ownership = (所有者: Person) -> (所有物: Item) where each 所有者: 1`
     pub fn ownership(&mut self, id: OwnershipId, value: Ownership) -> &mut Self {
         self.ownership.push((id, value));
         self

@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    15273406592076785782u64, 4319742417705813317u64, 13840474139917085728u64,
-    14537176934756227492u64,
+    12811233752109305556u64, 3438155976027600415u64, 4271652016615164994u64,
+    11771454647146179622u64,
 ];
 /// `AutomaticNode` ノードの公開ID。
 ///
@@ -64,6 +64,9 @@ pub struct ExternalLink {
     pub target: ExternalNodeId,
 }
 impl ExternalLink {
+    /// 始点と終点の公開IDから構築用の辺値を作る。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalLink(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each source: 1`
     pub fn new(from: ExternalNodeId, to: ExternalNodeId) -> Self {
         Self { source: from, target: to }
     }
@@ -87,6 +90,9 @@ pub struct ExternalIncoming {
     pub target: ExternalNodeId,
 }
 impl ExternalIncoming {
+    /// 始点と終点の公開IDから構築用の辺値を作る。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalIncoming(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each target: 1`
     pub fn new(from: ExternalNodeId, to: ExternalNodeId) -> Self {
         Self { source: from, target: to }
     }
@@ -110,11 +116,17 @@ pub struct ExternalFriend {
     endpoints: graphite::UnorderedPair<ExternalNodeId>,
 }
 impl ExternalFriend {
+    /// 両端の公開IDから構築用の辺値を作る。両端の順序は保たない。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalFriend(id: ExternalEdgeId) = ExternalNode -- ExternalNode`
     pub fn new(a: ExternalNodeId, b: ExternalNodeId) -> Self {
         Self {
             endpoints: graphite::UnorderedPair::new(a, b),
         }
     }
+    /// この辺値の両端の公開IDを順序なし対として借用する。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalFriend(id: ExternalEdgeId) = ExternalNode -- ExternalNode`
     pub fn endpoints(&self) -> (&ExternalNodeId, &ExternalNodeId) {
         self.endpoints.endpoints()
     }
@@ -138,6 +150,9 @@ pub struct AutomaticLink {
     pub target: AutomaticNodeId,
 }
 impl AutomaticLink {
+    /// 始点と終点の公開IDから構築用の辺値を作る。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge AutomaticLink = (source: AutomaticNode) -> (target: AutomaticNode)`
     pub fn new(from: AutomaticNodeId, to: AutomaticNodeId) -> Self {
         Self { source: from, target: to }
     }
@@ -752,6 +767,9 @@ impl<'graph> ExternalLinkRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalLink(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each source: 1`
     pub fn id(self) -> &'graph ExternalEdgeId {
         self.graph
             .external_link
@@ -761,27 +779,45 @@ impl<'graph> ExternalLinkRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalLink(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each source: 1`
     pub fn source(self) -> ExternalNodeRef<'graph> {
         ExternalNodeRef {
             graph: self.graph,
             internal_position: __ExternalNodeInternalPosition(self.record().source.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalLink(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each source: 1`
     pub fn target(self) -> ExternalNodeRef<'graph> {
         ExternalNodeRef {
             graph: self.graph,
             internal_position: __ExternalNodeInternalPosition(self.record().target.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalLink(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each source: 1`
     pub fn from(self) -> ExternalNodeRef<'graph> {
         self.source()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalLink(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each source: 1`
     pub fn to(self) -> ExternalNodeRef<'graph> {
         self.target()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalLink(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each source: 1`
     pub fn from_id(self) -> &'graph ExternalNodeId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalLink(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each source: 1`
     pub fn to_id(self) -> &'graph ExternalNodeId {
         self.to().id()
     }
@@ -809,6 +845,9 @@ impl<'graph> ExternalIncomingRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalIncoming(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each target: 1`
     pub fn id(self) -> &'graph ExternalEdgeId {
         self.graph
             .external_incoming
@@ -818,27 +857,45 @@ impl<'graph> ExternalIncomingRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalIncoming(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each target: 1`
     pub fn source(self) -> ExternalNodeRef<'graph> {
         ExternalNodeRef {
             graph: self.graph,
             internal_position: __ExternalNodeInternalPosition(self.record().source.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalIncoming(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each target: 1`
     pub fn target(self) -> ExternalNodeRef<'graph> {
         ExternalNodeRef {
             graph: self.graph,
             internal_position: __ExternalNodeInternalPosition(self.record().target.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalIncoming(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each target: 1`
     pub fn from(self) -> ExternalNodeRef<'graph> {
         self.source()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalIncoming(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each target: 1`
     pub fn to(self) -> ExternalNodeRef<'graph> {
         self.target()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalIncoming(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each target: 1`
     pub fn from_id(self) -> &'graph ExternalNodeId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalIncoming(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each target: 1`
     pub fn to_id(self) -> &'graph ExternalNodeId {
         self.to().id()
     }
@@ -866,6 +923,9 @@ impl<'graph> ExternalFriendRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalFriend(id: ExternalEdgeId) = ExternalNode -- ExternalNode`
     pub fn id(self) -> &'graph ExternalEdgeId {
         self.graph
             .external_friend
@@ -875,6 +935,9 @@ impl<'graph> ExternalFriendRef<'graph> {
             )
             .0
     }
+    /// この辺個体の両端を順序なし対として返す。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalFriend(id: ExternalEdgeId) = ExternalNode -- ExternalNode`
     pub fn endpoints(self) -> (ExternalNodeRef<'graph>, ExternalNodeRef<'graph>) {
         let (first, second) = self.record().endpoints.endpoints();
         (
@@ -912,6 +975,9 @@ impl<'graph> AutomaticLinkRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge AutomaticLink = (source: AutomaticNode) -> (target: AutomaticNode)`
     pub fn id(self) -> &'graph AutomaticLinkId {
         self.graph
             .automatic_link
@@ -921,27 +987,45 @@ impl<'graph> AutomaticLinkRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge AutomaticLink = (source: AutomaticNode) -> (target: AutomaticNode)`
     pub fn source(self) -> AutomaticNodeRef<'graph> {
         AutomaticNodeRef {
             graph: self.graph,
             internal_position: __AutomaticNodeInternalPosition(self.record().source.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge AutomaticLink = (source: AutomaticNode) -> (target: AutomaticNode)`
     pub fn target(self) -> AutomaticNodeRef<'graph> {
         AutomaticNodeRef {
             graph: self.graph,
             internal_position: __AutomaticNodeInternalPosition(self.record().target.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge AutomaticLink = (source: AutomaticNode) -> (target: AutomaticNode)`
     pub fn from(self) -> AutomaticNodeRef<'graph> {
         self.source()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge AutomaticLink = (source: AutomaticNode) -> (target: AutomaticNode)`
     pub fn to(self) -> AutomaticNodeRef<'graph> {
         self.target()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge AutomaticLink = (source: AutomaticNode) -> (target: AutomaticNode)`
     pub fn from_id(self) -> &'graph AutomaticNodeId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge AutomaticLink = (source: AutomaticNode) -> (target: AutomaticNode)`
     pub fn to_id(self) -> &'graph AutomaticNodeId {
         self.to().id()
     }
@@ -1062,6 +1146,9 @@ pub struct ExternalNodeRef<'graph> {
     internal_position: __ExternalNodeInternalPosition,
 }
 impl<'graph> ExternalNodeRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `node ExternalNode(id: ExternalNodeId)`
     pub fn id(self) -> &'graph ExternalNodeId {
         self.graph
             .__graphite_node_external_node
@@ -1071,6 +1158,9 @@ impl<'graph> ExternalNodeRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `node ExternalNode(id: ExternalNodeId)`
     pub fn value(self) -> &'graph super::ExternalNode {
         self.graph
             .__graphite_node_external_node
@@ -1390,6 +1480,9 @@ pub struct AutomaticNodeRef<'graph> {
     internal_position: __AutomaticNodeInternalPosition,
 }
 impl<'graph> AutomaticNodeRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `node AutomaticNode`
     pub fn id(self) -> &'graph AutomaticNodeId {
         self.graph
             .__graphite_node_automatic_node
@@ -1399,6 +1492,9 @@ impl<'graph> AutomaticNodeRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `node AutomaticNode`
     pub fn value(self) -> &'graph super::AutomaticNode {
         self.graph
             .__graphite_node_automatic_node
@@ -1560,6 +1656,9 @@ pub struct BooleanNodeRef<'graph> {
     internal_position: __BooleanNodeInternalPosition,
 }
 impl<'graph> BooleanNodeRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `node BooleanNode(id: bool)`
     pub fn id(self) -> &'graph bool {
         self.graph
             .__graphite_node_boolean_node
@@ -1569,6 +1668,9 @@ impl<'graph> BooleanNodeRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `node BooleanNode(id: bool)`
     pub fn value(self) -> &'graph super::BooleanNode {
         self.graph
             .__graphite_node_boolean_node
@@ -1791,6 +1893,9 @@ impl Builder {
             __graphite_construction_stamp: graphite::次の構築印を発行する(),
         }
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `node ExternalNode(id: ExternalNodeId)`
     pub fn external_node(
         &mut self,
         id: ExternalNodeId,
@@ -1799,6 +1904,9 @@ impl Builder {
         self.__graphite_node_external_node.push((id, value));
         self
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `node AutomaticNode`
     pub fn automatic_node(
         &mut self,
         id: AutomaticNodeId,
@@ -1807,10 +1915,16 @@ impl Builder {
         self.__graphite_node_automatic_node.push((id, value));
         self
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `node BooleanNode(id: bool)`
     pub fn boolean_node(&mut self, id: bool, value: super::BooleanNode) -> &mut Self {
         self.__graphite_node_boolean_node.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalLink(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each source: 1`
     pub fn external_link(
         &mut self,
         id: ExternalEdgeId,
@@ -1819,6 +1933,9 @@ impl Builder {
         self.external_link.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalIncoming(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each target: 1`
     pub fn external_incoming(
         &mut self,
         id: ExternalEdgeId,
@@ -1827,6 +1944,9 @@ impl Builder {
         self.external_incoming.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge ExternalFriend(id: ExternalEdgeId) = ExternalNode -- ExternalNode`
     pub fn external_friend(
         &mut self,
         id: ExternalEdgeId,
@@ -1835,6 +1955,9 @@ impl Builder {
         self.external_friend.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/schema_ids.rs` の `edge AutomaticLink = (source: AutomaticNode) -> (target: AutomaticNode)`
     pub fn automatic_link(
         &mut self,
         id: AutomaticLinkId,

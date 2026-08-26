@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    6818867901900124593u64, 18258272667739230388u64, 6924070660949774107u64,
-    9322741814696642239u64,
+    3384557504274654326u64, 10670998955246496683u64, 8221520459489957680u64,
+    6338026797930345292u64,
 ];
 /// `BelongsTo` 辺の公開ID。
 ///
@@ -49,6 +49,9 @@ pub struct BelongsTo {
     pub department: DepartmentId,
 }
 impl BelongsTo {
+    /// 始点と終点の公開IDから構築用の辺値を作る。
+    ///
+    /// 宣言: `tests/graph_cross_module.rs` の `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1`
     pub fn new(from: EmployeeId, to: DepartmentId) -> Self {
         Self {
             employee: from,
@@ -76,6 +79,9 @@ pub struct Boss {
     pub appointment: BossEdge,
 }
 impl Boss {
+    /// 始点と終点の公開IDと積み荷から構築用の辺値を作る。
+    ///
+    /// 宣言: `tests/graph_cross_module.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
     pub fn new(from: EmployeeId, to: EmployeeId, payload: BossEdge) -> Self {
         Self {
             subordinate: from,
@@ -83,6 +89,9 @@ impl Boss {
             appointment: payload,
         }
     }
+    /// この辺値が運ぶ積み荷を借用する。
+    ///
+    /// 宣言: `tests/graph_cross_module.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
     pub fn payload(&self) -> &BossEdge {
         &self.appointment
     }
@@ -469,6 +478,9 @@ impl<'graph> BelongsToRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/graph_cross_module.rs` の `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1`
     pub fn id(self) -> &'graph BelongsToId {
         self.graph
             .belongs_to
@@ -478,27 +490,45 @@ impl<'graph> BelongsToRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/graph_cross_module.rs` の `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1`
     pub fn employee(self) -> EmployeeRef<'graph> {
         EmployeeRef {
             graph: self.graph,
             internal_position: __EmployeeInternalPosition(self.record().employee.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/graph_cross_module.rs` の `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1`
     pub fn department(self) -> DepartmentRef<'graph> {
         DepartmentRef {
             graph: self.graph,
             internal_position: __DepartmentInternalPosition(self.record().department.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/graph_cross_module.rs` の `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1`
     pub fn from(self) -> EmployeeRef<'graph> {
         self.employee()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/graph_cross_module.rs` の `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1`
     pub fn to(self) -> DepartmentRef<'graph> {
         self.department()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/graph_cross_module.rs` の `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1`
     pub fn from_id(self) -> &'graph EmployeeId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/graph_cross_module.rs` の `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1`
     pub fn to_id(self) -> &'graph DepartmentId {
         self.to().id()
     }
@@ -528,6 +558,9 @@ impl<'graph> BossRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/graph_cross_module.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
     pub fn id(self) -> &'graph BossId {
         self.graph
             .boss
@@ -537,33 +570,57 @@ impl<'graph> BossRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/graph_cross_module.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
     pub fn subordinate(self) -> EmployeeRef<'graph> {
         EmployeeRef {
             graph: self.graph,
             internal_position: __EmployeeInternalPosition(self.record().subordinate.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/graph_cross_module.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
     pub fn superior(self) -> EmployeeRef<'graph> {
         EmployeeRef {
             graph: self.graph,
             internal_position: __EmployeeInternalPosition(self.record().superior.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/graph_cross_module.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
     pub fn from(self) -> EmployeeRef<'graph> {
         self.subordinate()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/graph_cross_module.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
     pub fn to(self) -> EmployeeRef<'graph> {
         self.superior()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/graph_cross_module.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
     pub fn from_id(self) -> &'graph EmployeeId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/graph_cross_module.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
     pub fn to_id(self) -> &'graph EmployeeId {
         self.to().id()
     }
+    /// この辺個体が運ぶ積み荷を役割名で借用する。
+    ///
+    /// 宣言: `tests/graph_cross_module.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
     pub fn appointment(self) -> &'graph BossEdge {
         &self.record().appointment
     }
+    /// この辺個体が運ぶ積み荷を、役割名によらない固定名で借用する。
+    ///
+    /// 宣言: `tests/graph_cross_module.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
     pub fn payload(self) -> &'graph BossEdge {
         &self.record().appointment
     }
@@ -679,6 +736,9 @@ pub struct EmployeeRef<'graph> {
     internal_position: __EmployeeInternalPosition,
 }
 impl<'graph> EmployeeRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/graph_cross_module.rs` の `node Employee(id: EmployeeId)`
     pub fn id(self) -> &'graph EmployeeId {
         self.graph
             .__graphite_node_employee
@@ -688,6 +748,9 @@ impl<'graph> EmployeeRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `tests/graph_cross_module.rs` の `node Employee(id: EmployeeId)`
     pub fn value(self) -> &'graph super::Employee {
         self.graph
             .__graphite_node_employee
@@ -898,6 +961,9 @@ pub struct DepartmentRef<'graph> {
     internal_position: __DepartmentInternalPosition,
 }
 impl<'graph> DepartmentRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/graph_cross_module.rs` の `node Department(id: DepartmentId)`
     pub fn id(self) -> &'graph DepartmentId {
         self.graph
             .__graphite_node_department
@@ -907,6 +973,9 @@ impl<'graph> DepartmentRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `tests/graph_cross_module.rs` の `node Department(id: DepartmentId)`
     pub fn value(self) -> &'graph super::Department {
         self.graph
             .__graphite_node_department
@@ -1073,10 +1142,16 @@ impl Builder {
             __graphite_construction_stamp: graphite::次の構築印を発行する(),
         }
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/graph_cross_module.rs` の `node Employee(id: EmployeeId)`
     pub fn employee(&mut self, id: EmployeeId, value: super::Employee) -> &mut Self {
         self.__graphite_node_employee.push((id, value));
         self
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/graph_cross_module.rs` の `node Department(id: DepartmentId)`
     pub fn department(
         &mut self,
         id: DepartmentId,
@@ -1085,10 +1160,16 @@ impl Builder {
         self.__graphite_node_department.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/graph_cross_module.rs` の `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1`
     pub fn belongs_to(&mut self, id: BelongsToId, value: BelongsTo) -> &mut Self {
         self.belongs_to.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/graph_cross_module.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
     pub fn boss(&mut self, id: BossId, value: Boss) -> &mut Self {
         self.boss.push((id, value));
         self

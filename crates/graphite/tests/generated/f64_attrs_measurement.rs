@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    13660263509569496911u64, 7375332562587754764u64, 12434210690260140089u64,
-    12545093015642914901u64,
+    12570417897850223988u64, 16038955546764264369u64, 3938972196542714070u64,
+    9930963148946055426u64,
 ];
 /// `Sensor` ノードの公開ID。
 ///
@@ -50,6 +50,9 @@ pub struct Measured {
     pub measurement: MeasuredEdge,
 }
 impl Measured {
+    /// 始点と終点の公開IDと積み荷から構築用の辺値を作る。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `edge Measured = (sensor: Sensor) -[measurement: MeasuredEdge]-> (reading: Reading)`
     pub fn new(from: SensorId, to: ReadingId, payload: MeasuredEdge) -> Self {
         Self {
             sensor: from,
@@ -57,6 +60,9 @@ impl Measured {
             measurement: payload,
         }
     }
+    /// この辺値が運ぶ積み荷を借用する。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `edge Measured = (sensor: Sensor) -[measurement: MeasuredEdge]-> (reading: Reading)`
     pub fn payload(&self) -> &MeasuredEdge {
         &self.measurement
     }
@@ -347,6 +353,9 @@ impl<'graph> MeasuredRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `edge Measured = (sensor: Sensor) -[measurement: MeasuredEdge]-> (reading: Reading)`
     pub fn id(self) -> &'graph MeasuredId {
         self.graph
             .measured
@@ -356,33 +365,57 @@ impl<'graph> MeasuredRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `edge Measured = (sensor: Sensor) -[measurement: MeasuredEdge]-> (reading: Reading)`
     pub fn sensor(self) -> SensorRef<'graph> {
         SensorRef {
             graph: self.graph,
             internal_position: __SensorInternalPosition(self.record().sensor.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `edge Measured = (sensor: Sensor) -[measurement: MeasuredEdge]-> (reading: Reading)`
     pub fn reading(self) -> ReadingRef<'graph> {
         ReadingRef {
             graph: self.graph,
             internal_position: __ReadingInternalPosition(self.record().reading.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `edge Measured = (sensor: Sensor) -[measurement: MeasuredEdge]-> (reading: Reading)`
     pub fn from(self) -> SensorRef<'graph> {
         self.sensor()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `edge Measured = (sensor: Sensor) -[measurement: MeasuredEdge]-> (reading: Reading)`
     pub fn to(self) -> ReadingRef<'graph> {
         self.reading()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `edge Measured = (sensor: Sensor) -[measurement: MeasuredEdge]-> (reading: Reading)`
     pub fn from_id(self) -> &'graph SensorId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `edge Measured = (sensor: Sensor) -[measurement: MeasuredEdge]-> (reading: Reading)`
     pub fn to_id(self) -> &'graph ReadingId {
         self.to().id()
     }
+    /// この辺個体が運ぶ積み荷を役割名で借用する。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `edge Measured = (sensor: Sensor) -[measurement: MeasuredEdge]-> (reading: Reading)`
     pub fn measurement(self) -> &'graph MeasuredEdge {
         &self.record().measurement
     }
+    /// この辺個体が運ぶ積み荷を、役割名によらない固定名で借用する。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `edge Measured = (sensor: Sensor) -[measurement: MeasuredEdge]-> (reading: Reading)`
     pub fn payload(self) -> &'graph MeasuredEdge {
         &self.record().measurement
     }
@@ -510,6 +543,9 @@ pub struct SensorRef<'graph> {
     internal_position: __SensorInternalPosition,
 }
 impl<'graph> SensorRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `node Sensor`
     pub fn id(self) -> &'graph SensorId {
         self.graph
             .__graphite_node_sensor
@@ -519,6 +555,9 @@ impl<'graph> SensorRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `node Sensor`
     pub fn value(self) -> &'graph super::Sensor {
         self.graph
             .__graphite_node_sensor
@@ -674,6 +713,9 @@ pub struct ReadingRef<'graph> {
     internal_position: __ReadingInternalPosition,
 }
 impl<'graph> ReadingRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `node Reading`
     pub fn id(self) -> &'graph ReadingId {
         self.graph
             .__graphite_node_reading
@@ -683,6 +725,9 @@ impl<'graph> ReadingRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `node Reading`
     pub fn value(self) -> &'graph super::Reading {
         self.graph
             .__graphite_node_reading
@@ -794,14 +839,23 @@ impl Builder {
             __graphite_construction_stamp: graphite::次の構築印を発行する(),
         }
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `node Sensor`
     pub fn sensor(&mut self, id: SensorId, value: super::Sensor) -> &mut Self {
         self.__graphite_node_sensor.push((id, value));
         self
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `node Reading`
     pub fn reading(&mut self, id: ReadingId, value: super::Reading) -> &mut Self {
         self.__graphite_node_reading.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/f64_attrs.rs` の `edge Measured = (sensor: Sensor) -[measurement: MeasuredEdge]-> (reading: Reading)`
     pub fn measured(&mut self, id: MeasuredId, value: Measured) -> &mut Self {
         self.measured.push((id, value));
         self

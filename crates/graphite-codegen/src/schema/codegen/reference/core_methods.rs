@@ -4,6 +4,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::Ident;
 
+use crate::schema::codegen::declaration_doc::宣言元への参照;
 use crate::schema::codegen::public_id_type::PublicIdType;
 
 /// 辺参照値の共通メソッド (内部レコードの取得、`id()`) を生成する。
@@ -14,6 +15,7 @@ pub(crate) fn edge_reference_core_methods(
     record: &Ident,
     id_ty: &PublicIdType,
     kind_span: proc_macro2::Span,
+    辺宣言元への参照: &宣言元への参照,
 ) -> TokenStream {
     let id_ident = Ident::new("id", kind_span);
     quote! {
@@ -24,6 +26,8 @@ pub(crate) fn edge_reference_core_methods(
                 .1
         }
 
+        /// この辺個体の公開IDを借用する。
+        #辺宣言元への参照
         pub fn #id_ident(self) -> &'graph #id_ty {
             self.graph.#accessor
                 .get_at(self.internal_position.0)

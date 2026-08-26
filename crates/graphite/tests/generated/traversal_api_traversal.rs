@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    15809853495906086336u64, 17962813462196197011u64, 8731195452438645562u64,
-    2579243092121913110u64,
+    7651869440706306506u64, 6422790041484436497u64, 16983234502384131108u64,
+    11365731358438552136u64,
 ];
 /// `Person` ノードの公開ID。
 ///
@@ -79,6 +79,9 @@ pub struct Purchase {
     pub product: ProductId,
 }
 impl Purchase {
+    /// 始点と終点の公開IDから構築用の辺値を作る。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `edge Purchase = (buyer: Person) -> (product: Product)`
     pub fn new(from: PersonId, to: ProductId) -> Self {
         Self { buyer: from, product: to }
     }
@@ -105,6 +108,9 @@ pub struct Mentor {
     pub superior: PersonId,
 }
 impl Mentor {
+    /// 始点と終点の公開IDから構築用の辺値を作る。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `edge Mentor = (subordinate: Person) -> (superior: Person) where each subordinate: 0..1`
     pub fn new(from: PersonId, to: PersonId) -> Self {
         Self {
             subordinate: from,
@@ -134,6 +140,9 @@ pub struct 関係 {
     pub 終点: PersonId,
 }
 impl 関係 {
+    /// 始点と終点の公開IDから構築用の辺値を作る。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `edge 関係 = (始点: Person) -> (終点: Person) where unique pair`
     pub fn new(from: PersonId, to: PersonId) -> Self {
         Self { 始点: from, 終点: to }
     }
@@ -159,11 +168,17 @@ pub struct Friends {
     endpoints: graphite::UnorderedPair<PersonId>,
 }
 impl Friends {
+    /// 両端の公開IDから構築用の辺値を作る。両端の順序は保たない。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `edge Friends = Person -- Person where unique pair`
     pub fn new(a: PersonId, b: PersonId) -> Self {
         Self {
             endpoints: graphite::UnorderedPair::new(a, b),
         }
     }
+    /// この辺値の両端の公開IDを順序なし対として借用する。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `edge Friends = Person -- Person where unique pair`
     pub fn endpoints(&self) -> (&PersonId, &PersonId) {
         self.endpoints.endpoints()
     }
@@ -690,6 +705,9 @@ impl<'graph> PurchaseRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `edge Purchase = (buyer: Person) -> (product: Product)`
     pub fn id(self) -> &'graph PurchaseId {
         self.graph
             .purchase
@@ -699,27 +717,45 @@ impl<'graph> PurchaseRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `edge Purchase = (buyer: Person) -> (product: Product)`
     pub fn buyer(self) -> PersonRef<'graph> {
         PersonRef {
             graph: self.graph,
             internal_position: __PersonInternalPosition(self.record().buyer.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `edge Purchase = (buyer: Person) -> (product: Product)`
     pub fn product(self) -> ProductRef<'graph> {
         ProductRef {
             graph: self.graph,
             internal_position: __ProductInternalPosition(self.record().product.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `edge Purchase = (buyer: Person) -> (product: Product)`
     pub fn from(self) -> PersonRef<'graph> {
         self.buyer()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `edge Purchase = (buyer: Person) -> (product: Product)`
     pub fn to(self) -> ProductRef<'graph> {
         self.product()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `edge Purchase = (buyer: Person) -> (product: Product)`
     pub fn from_id(self) -> &'graph PersonId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `edge Purchase = (buyer: Person) -> (product: Product)`
     pub fn to_id(self) -> &'graph ProductId {
         self.to().id()
     }
@@ -749,6 +785,9 @@ impl<'graph> MentorRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `edge Mentor = (subordinate: Person) -> (superior: Person) where each subordinate: 0..1`
     pub fn id(self) -> &'graph MentorId {
         self.graph
             .mentor
@@ -758,27 +797,45 @@ impl<'graph> MentorRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `edge Mentor = (subordinate: Person) -> (superior: Person) where each subordinate: 0..1`
     pub fn subordinate(self) -> PersonRef<'graph> {
         PersonRef {
             graph: self.graph,
             internal_position: __PersonInternalPosition(self.record().subordinate.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `edge Mentor = (subordinate: Person) -> (superior: Person) where each subordinate: 0..1`
     pub fn superior(self) -> PersonRef<'graph> {
         PersonRef {
             graph: self.graph,
             internal_position: __PersonInternalPosition(self.record().superior.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `edge Mentor = (subordinate: Person) -> (superior: Person) where each subordinate: 0..1`
     pub fn from(self) -> PersonRef<'graph> {
         self.subordinate()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `edge Mentor = (subordinate: Person) -> (superior: Person) where each subordinate: 0..1`
     pub fn to(self) -> PersonRef<'graph> {
         self.superior()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `edge Mentor = (subordinate: Person) -> (superior: Person) where each subordinate: 0..1`
     pub fn from_id(self) -> &'graph PersonId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `edge Mentor = (subordinate: Person) -> (superior: Person) where each subordinate: 0..1`
     pub fn to_id(self) -> &'graph PersonId {
         self.to().id()
     }
@@ -808,6 +865,9 @@ impl<'graph> 関係Ref<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `edge 関係 = (始点: Person) -> (終点: Person) where unique pair`
     pub fn id(self) -> &'graph 関係Id {
         self.graph
             .関係
@@ -817,27 +877,45 @@ impl<'graph> 関係Ref<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `edge 関係 = (始点: Person) -> (終点: Person) where unique pair`
     pub fn 始点(self) -> PersonRef<'graph> {
         PersonRef {
             graph: self.graph,
             internal_position: __PersonInternalPosition(self.record().始点.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `edge 関係 = (始点: Person) -> (終点: Person) where unique pair`
     pub fn 終点(self) -> PersonRef<'graph> {
         PersonRef {
             graph: self.graph,
             internal_position: __PersonInternalPosition(self.record().終点.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `edge 関係 = (始点: Person) -> (終点: Person) where unique pair`
     pub fn from(self) -> PersonRef<'graph> {
         self.始点()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `edge 関係 = (始点: Person) -> (終点: Person) where unique pair`
     pub fn to(self) -> PersonRef<'graph> {
         self.終点()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `edge 関係 = (始点: Person) -> (終点: Person) where unique pair`
     pub fn from_id(self) -> &'graph PersonId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `edge 関係 = (始点: Person) -> (終点: Person) where unique pair`
     pub fn to_id(self) -> &'graph PersonId {
         self.to().id()
     }
@@ -867,6 +945,9 @@ impl<'graph> FriendsRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `edge Friends = Person -- Person where unique pair`
     pub fn id(self) -> &'graph FriendsId {
         self.graph
             .friends
@@ -876,6 +957,9 @@ impl<'graph> FriendsRef<'graph> {
             )
             .0
     }
+    /// この辺個体の両端を順序なし対として返す。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `edge Friends = Person -- Person where unique pair`
     pub fn endpoints(self) -> (PersonRef<'graph>, PersonRef<'graph>) {
         let (first, second) = self.record().endpoints.endpoints();
         (
@@ -1016,6 +1100,9 @@ pub struct PersonRef<'graph> {
     internal_position: __PersonInternalPosition,
 }
 impl<'graph> PersonRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `node Person`
     pub fn id(self) -> &'graph PersonId {
         self.graph
             .__graphite_node_person
@@ -1025,6 +1112,9 @@ impl<'graph> PersonRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `node Person`
     pub fn value(self) -> &'graph super::Person {
         self.graph
             .__graphite_node_person
@@ -1379,6 +1469,9 @@ pub struct ProductRef<'graph> {
     internal_position: __ProductInternalPosition,
 }
 impl<'graph> ProductRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `node Product`
     pub fn id(self) -> &'graph ProductId {
         self.graph
             .__graphite_node_product
@@ -1388,6 +1481,9 @@ impl<'graph> ProductRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `node Product`
     pub fn value(self) -> &'graph super::Product {
         self.graph
             .__graphite_node_product
@@ -1661,26 +1757,44 @@ impl Builder {
             __graphite_construction_stamp: graphite::次の構築印を発行する(),
         }
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `node Person`
     pub fn person(&mut self, id: PersonId, value: super::Person) -> &mut Self {
         self.__graphite_node_person.push((id, value));
         self
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `node Product`
     pub fn product(&mut self, id: ProductId, value: super::Product) -> &mut Self {
         self.__graphite_node_product.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `edge Purchase = (buyer: Person) -> (product: Product)`
     pub fn purchase(&mut self, id: PurchaseId, value: Purchase) -> &mut Self {
         self.purchase.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `edge Mentor = (subordinate: Person) -> (superior: Person) where each subordinate: 0..1`
     pub fn mentor(&mut self, id: MentorId, value: Mentor) -> &mut Self {
         self.mentor.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `edge 関係 = (始点: Person) -> (終点: Person) where unique pair`
     pub fn 関係(&mut self, id: 関係Id, value: 関係) -> &mut Self {
         self.関係.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/traversal_api.rs` の `edge Friends = Person -- Person where unique pair`
     pub fn friends(&mut self, id: FriendsId, value: Friends) -> &mut Self {
         self.friends.push((id, value));
         self

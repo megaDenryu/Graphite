@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    6841833382225643455u64, 165223787344158926u64, 17516683087083152833u64,
-    16644393125325702221u64,
+    6066773567653659877u64, 16062781194532828008u64, 8191632050982398307u64,
+    10172178386434305271u64,
 ];
 /// `Widget` ノードの公開ID。
 ///
@@ -251,6 +251,9 @@ pub struct WidgetRef<'graph> {
     internal_position: __WidgetInternalPosition,
 }
 impl<'graph> WidgetRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/orphan_node_no_warning.rs` の `node Widget`
     pub fn id(self) -> &'graph WidgetId {
         self.graph
             .__graphite_node_widget
@@ -260,6 +263,9 @@ impl<'graph> WidgetRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `tests/orphan_node_no_warning.rs` の `node Widget`
     pub fn value(self) -> &'graph super::Widget {
         self.graph
             .__graphite_node_widget
@@ -300,6 +306,9 @@ impl Builder {
             __graphite_construction_stamp: graphite::次の構築印を発行する(),
         }
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/orphan_node_no_warning.rs` の `node Widget`
     pub fn widget(&mut self, id: WidgetId, value: super::Widget) -> &mut Self {
         self.__graphite_node_widget.push((id, value));
         self

@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    12843009966847353181u64, 609326044362201620u64, 14972640884828552223u64,
-    2690529994243094395u64,
+    7195870102631942398u64, 5553048313475904669u64, 6024262410825338760u64,
+    15940327280457298532u64,
 ];
 /// `Author` ノードの公開ID。
 ///
@@ -50,6 +50,9 @@ pub struct Wrote {
     pub byline: Byline,
 }
 impl Wrote {
+    /// 始点と終点の公開IDと積み荷から構築用の辺値を作る。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `edge Wrote = (writer: Author) -[byline: Byline]-> (article: Article) where each article: 1, each writer: 0..1`
     pub fn new(from: AuthorId, to: ArticleId, payload: Byline) -> Self {
         Self {
             writer: from,
@@ -57,6 +60,9 @@ impl Wrote {
             byline: payload,
         }
     }
+    /// この辺値が運ぶ積み荷を借用する。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `edge Wrote = (writer: Author) -[byline: Byline]-> (article: Article) where each article: 1, each writer: 0..1`
     pub fn payload(&self) -> &Byline {
         &self.byline
     }
@@ -355,6 +361,9 @@ impl<'graph> WroteRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `edge Wrote = (writer: Author) -[byline: Byline]-> (article: Article) where each article: 1, each writer: 0..1`
     pub fn id(self) -> &'graph WroteId {
         self.graph
             .wrote
@@ -364,33 +373,57 @@ impl<'graph> WroteRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `edge Wrote = (writer: Author) -[byline: Byline]-> (article: Article) where each article: 1, each writer: 0..1`
     pub fn writer(self) -> AuthorRef<'graph> {
         AuthorRef {
             graph: self.graph,
             internal_position: __AuthorInternalPosition(self.record().writer.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `edge Wrote = (writer: Author) -[byline: Byline]-> (article: Article) where each article: 1, each writer: 0..1`
     pub fn article(self) -> ArticleRef<'graph> {
         ArticleRef {
             graph: self.graph,
             internal_position: __ArticleInternalPosition(self.record().article.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `edge Wrote = (writer: Author) -[byline: Byline]-> (article: Article) where each article: 1, each writer: 0..1`
     pub fn from(self) -> AuthorRef<'graph> {
         self.writer()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `edge Wrote = (writer: Author) -[byline: Byline]-> (article: Article) where each article: 1, each writer: 0..1`
     pub fn to(self) -> ArticleRef<'graph> {
         self.article()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `edge Wrote = (writer: Author) -[byline: Byline]-> (article: Article) where each article: 1, each writer: 0..1`
     pub fn from_id(self) -> &'graph AuthorId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `edge Wrote = (writer: Author) -[byline: Byline]-> (article: Article) where each article: 1, each writer: 0..1`
     pub fn to_id(self) -> &'graph ArticleId {
         self.to().id()
     }
+    /// この辺個体が運ぶ積み荷を役割名で借用する。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `edge Wrote = (writer: Author) -[byline: Byline]-> (article: Article) where each article: 1, each writer: 0..1`
     pub fn byline(self) -> &'graph Byline {
         &self.record().byline
     }
+    /// この辺個体が運ぶ積み荷を、役割名によらない固定名で借用する。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `edge Wrote = (writer: Author) -[byline: Byline]-> (article: Article) where each article: 1, each writer: 0..1`
     pub fn payload(self) -> &'graph Byline {
         &self.record().byline
     }
@@ -523,6 +556,9 @@ pub struct AuthorRef<'graph> {
     internal_position: __AuthorInternalPosition,
 }
 impl<'graph> AuthorRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `node Author`
     pub fn id(self) -> &'graph AuthorId {
         self.graph
             .__graphite_node_author
@@ -532,6 +568,9 @@ impl<'graph> AuthorRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `node Author`
     pub fn value(self) -> &'graph super::Author {
         self.graph
             .__graphite_node_author
@@ -688,6 +727,9 @@ pub struct ArticleRef<'graph> {
     internal_position: __ArticleInternalPosition,
 }
 impl<'graph> ArticleRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `node Article`
     pub fn id(self) -> &'graph ArticleId {
         self.graph
             .__graphite_node_article
@@ -697,6 +739,9 @@ impl<'graph> ArticleRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `node Article`
     pub fn value(self) -> &'graph super::Article {
         self.graph
             .__graphite_node_article
@@ -804,14 +849,23 @@ impl Builder {
             __graphite_construction_stamp: graphite::次の構築印を発行する(),
         }
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `node Author`
     pub fn author(&mut self, id: AuthorId, value: super::Author) -> &mut Self {
         self.__graphite_node_author.push((id, value));
         self
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `node Article`
     pub fn article(&mut self, id: ArticleId, value: super::Article) -> &mut Self {
         self.__graphite_node_article.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/each_declaration_order.rs` の `edge Wrote = (writer: Author) -[byline: Byline]-> (article: Article) where each article: 1, each writer: 0..1`
     pub fn wrote(&mut self, id: WroteId, value: Wrote) -> &mut Self {
         self.wrote.push((id, value));
         self

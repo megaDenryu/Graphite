@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    3788130587226054953u64, 2478836144356936928u64, 1329503139732216231u64,
-    15368064369274593011u64,
+    7852308151439730094u64, 2683363424450092755u64, 15142755255336859964u64,
+    9809914432024657008u64,
 ];
 /// `Person` ノードの公開ID。
 ///
@@ -60,6 +60,9 @@ pub struct Purchase {
     pub info: PurchaseInfo,
 }
 impl Purchase {
+    /// 始点と終点の公開IDと積み荷から構築用の辺値を作る。
+    ///
+    /// 宣言: `tests/named_graph.rs` の `edge Purchase = (buyer: Person) -[info: PurchaseInfo]-> (item: Item)`
     pub fn new(from: PersonId, to: ItemId, payload: PurchaseInfo) -> Self {
         Self {
             buyer: from,
@@ -67,6 +70,9 @@ impl Purchase {
             info: payload,
         }
     }
+    /// この辺値が運ぶ積み荷を借用する。
+    ///
+    /// 宣言: `tests/named_graph.rs` の `edge Purchase = (buyer: Person) -[info: PurchaseInfo]-> (item: Item)`
     pub fn payload(&self) -> &PurchaseInfo {
         &self.info
     }
@@ -90,6 +96,9 @@ pub struct Knows {
     pub known: PersonId,
 }
 impl Knows {
+    /// 始点と終点の公開IDから構築用の辺値を作る。
+    ///
+    /// 宣言: `tests/named_graph.rs` の `edge Knows = (knower: Person) -> (known: Person)`
     pub fn new(from: PersonId, to: PersonId) -> Self {
         Self { knower: from, known: to }
     }
@@ -448,6 +457,9 @@ impl<'graph> PurchaseRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/named_graph.rs` の `edge Purchase = (buyer: Person) -[info: PurchaseInfo]-> (item: Item)`
     pub fn id(self) -> &'graph PurchaseId {
         self.graph
             .purchase
@@ -457,33 +469,57 @@ impl<'graph> PurchaseRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/named_graph.rs` の `edge Purchase = (buyer: Person) -[info: PurchaseInfo]-> (item: Item)`
     pub fn buyer(self) -> PersonRef<'graph> {
         PersonRef {
             graph: self.graph,
             internal_position: __PersonInternalPosition(self.record().buyer.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/named_graph.rs` の `edge Purchase = (buyer: Person) -[info: PurchaseInfo]-> (item: Item)`
     pub fn item(self) -> ItemRef<'graph> {
         ItemRef {
             graph: self.graph,
             internal_position: __ItemInternalPosition(self.record().item.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/named_graph.rs` の `edge Purchase = (buyer: Person) -[info: PurchaseInfo]-> (item: Item)`
     pub fn from(self) -> PersonRef<'graph> {
         self.buyer()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/named_graph.rs` の `edge Purchase = (buyer: Person) -[info: PurchaseInfo]-> (item: Item)`
     pub fn to(self) -> ItemRef<'graph> {
         self.item()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/named_graph.rs` の `edge Purchase = (buyer: Person) -[info: PurchaseInfo]-> (item: Item)`
     pub fn from_id(self) -> &'graph PersonId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/named_graph.rs` の `edge Purchase = (buyer: Person) -[info: PurchaseInfo]-> (item: Item)`
     pub fn to_id(self) -> &'graph ItemId {
         self.to().id()
     }
+    /// この辺個体が運ぶ積み荷を役割名で借用する。
+    ///
+    /// 宣言: `tests/named_graph.rs` の `edge Purchase = (buyer: Person) -[info: PurchaseInfo]-> (item: Item)`
     pub fn info(self) -> &'graph PurchaseInfo {
         &self.record().info
     }
+    /// この辺個体が運ぶ積み荷を、役割名によらない固定名で借用する。
+    ///
+    /// 宣言: `tests/named_graph.rs` の `edge Purchase = (buyer: Person) -[info: PurchaseInfo]-> (item: Item)`
     pub fn payload(self) -> &'graph PurchaseInfo {
         &self.record().info
     }
@@ -513,6 +549,9 @@ impl<'graph> KnowsRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/named_graph.rs` の `edge Knows = (knower: Person) -> (known: Person)`
     pub fn id(self) -> &'graph KnowsId {
         self.graph
             .knows
@@ -522,27 +561,45 @@ impl<'graph> KnowsRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/named_graph.rs` の `edge Knows = (knower: Person) -> (known: Person)`
     pub fn knower(self) -> PersonRef<'graph> {
         PersonRef {
             graph: self.graph,
             internal_position: __PersonInternalPosition(self.record().knower.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/named_graph.rs` の `edge Knows = (knower: Person) -> (known: Person)`
     pub fn known(self) -> PersonRef<'graph> {
         PersonRef {
             graph: self.graph,
             internal_position: __PersonInternalPosition(self.record().known.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/named_graph.rs` の `edge Knows = (knower: Person) -> (known: Person)`
     pub fn from(self) -> PersonRef<'graph> {
         self.knower()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/named_graph.rs` の `edge Knows = (knower: Person) -> (known: Person)`
     pub fn to(self) -> PersonRef<'graph> {
         self.known()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/named_graph.rs` の `edge Knows = (knower: Person) -> (known: Person)`
     pub fn from_id(self) -> &'graph PersonId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/named_graph.rs` の `edge Knows = (knower: Person) -> (known: Person)`
     pub fn to_id(self) -> &'graph PersonId {
         self.to().id()
     }
@@ -671,6 +728,9 @@ pub struct PersonRef<'graph> {
     internal_position: __PersonInternalPosition,
 }
 impl<'graph> PersonRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/named_graph.rs` の `node Person`
     pub fn id(self) -> &'graph PersonId {
         self.graph
             .__graphite_node_person
@@ -680,6 +740,9 @@ impl<'graph> PersonRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `tests/named_graph.rs` の `node Person`
     pub fn value(self) -> &'graph super::Person {
         self.graph
             .__graphite_node_person
@@ -910,6 +973,9 @@ pub struct ItemRef<'graph> {
     internal_position: __ItemInternalPosition,
 }
 impl<'graph> ItemRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/named_graph.rs` の `node Item`
     pub fn id(self) -> &'graph ItemId {
         self.graph
             .__graphite_node_item
@@ -919,6 +985,9 @@ impl<'graph> ItemRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `tests/named_graph.rs` の `node Item`
     pub fn value(self) -> &'graph super::Item {
         self.graph
             .__graphite_node_item
@@ -1080,18 +1149,30 @@ impl Builder {
             __graphite_construction_stamp: graphite::次の構築印を発行する(),
         }
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/named_graph.rs` の `node Person`
     pub fn person(&mut self, id: PersonId, value: super::Person) -> &mut Self {
         self.__graphite_node_person.push((id, value));
         self
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/named_graph.rs` の `node Item`
     pub fn item(&mut self, id: ItemId, value: super::Item) -> &mut Self {
         self.__graphite_node_item.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/named_graph.rs` の `edge Purchase = (buyer: Person) -[info: PurchaseInfo]-> (item: Item)`
     pub fn purchase(&mut self, id: PurchaseId, value: Purchase) -> &mut Self {
         self.purchase.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/named_graph.rs` の `edge Knows = (knower: Person) -> (known: Person)`
     pub fn knows(&mut self, id: KnowsId, value: Knows) -> &mut Self {
         self.knows.push((id, value));
         self

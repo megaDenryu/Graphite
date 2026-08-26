@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    11307484904839733897u64, 2209083261973990956u64, 17724300342354868031u64,
-    4551591011770306691u64,
+    3271529527118344069u64, 7360177668086881182u64, 10839754774253468179u64,
+    4079867618429221695u64,
 ];
 /// `BelongsTo` 辺の公開ID。
 ///
@@ -39,6 +39,9 @@ pub struct BelongsTo {
     pub department: DepartmentId,
 }
 impl BelongsTo {
+    /// 始点と終点の公開IDから構築用の辺値を作る。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge BelongsTo = (person: Person) -> (department: Department) where each person: 0..1`
     pub fn new(from: PersonId, to: DepartmentId) -> Self {
         Self {
             person: from,
@@ -334,6 +337,9 @@ impl<'graph> BelongsToRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge BelongsTo = (person: Person) -> (department: Department) where each person: 0..1`
     pub fn id(self) -> &'graph BelongsToId {
         self.graph
             .belongs_to
@@ -343,27 +349,45 @@ impl<'graph> BelongsToRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge BelongsTo = (person: Person) -> (department: Department) where each person: 0..1`
     pub fn person(self) -> PersonRef<'graph> {
         PersonRef {
             graph: self.graph,
             internal_position: __PersonInternalPosition(self.record().person.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge BelongsTo = (person: Person) -> (department: Department) where each person: 0..1`
     pub fn department(self) -> DepartmentRef<'graph> {
         DepartmentRef {
             graph: self.graph,
             internal_position: __DepartmentInternalPosition(self.record().department.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge BelongsTo = (person: Person) -> (department: Department) where each person: 0..1`
     pub fn from(self) -> PersonRef<'graph> {
         self.person()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge BelongsTo = (person: Person) -> (department: Department) where each person: 0..1`
     pub fn to(self) -> DepartmentRef<'graph> {
         self.department()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge BelongsTo = (person: Person) -> (department: Department) where each person: 0..1`
     pub fn from_id(self) -> &'graph PersonId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge BelongsTo = (person: Person) -> (department: Department) where each person: 0..1`
     pub fn to_id(self) -> &'graph DepartmentId {
         self.to().id()
     }
@@ -478,6 +502,9 @@ pub struct PersonRef<'graph> {
     internal_position: __PersonInternalPosition,
 }
 impl<'graph> PersonRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `node Person(id: PersonId)`
     pub fn id(self) -> &'graph PersonId {
         self.graph
             .__graphite_node_person
@@ -487,6 +514,9 @@ impl<'graph> PersonRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `node Person(id: PersonId)`
     pub fn value(self) -> &'graph super::Person {
         self.graph
             .__graphite_node_person
@@ -624,6 +654,9 @@ pub struct DepartmentRef<'graph> {
     internal_position: __DepartmentInternalPosition,
 }
 impl<'graph> DepartmentRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `node Department(id: DepartmentId)`
     pub fn id(self) -> &'graph DepartmentId {
         self.graph
             .__graphite_node_department
@@ -633,6 +666,9 @@ impl<'graph> DepartmentRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `node Department(id: DepartmentId)`
     pub fn value(self) -> &'graph super::Department {
         self.graph
             .__graphite_node_department
@@ -742,10 +778,16 @@ impl Builder {
             __graphite_construction_stamp: graphite::次の構築印を発行する(),
         }
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `node Person(id: PersonId)`
     pub fn person(&mut self, id: PersonId, value: super::Person) -> &mut Self {
         self.__graphite_node_person.push((id, value));
         self
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `node Department(id: DepartmentId)`
     pub fn department(
         &mut self,
         id: DepartmentId,
@@ -754,6 +796,9 @@ impl Builder {
         self.__graphite_node_department.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge BelongsTo = (person: Person) -> (department: Department) where each person: 0..1`
     pub fn belongs_to(&mut self, id: BelongsToId, value: BelongsTo) -> &mut Self {
         self.belongs_to.push((id, value));
         self

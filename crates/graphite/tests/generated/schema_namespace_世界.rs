@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    7034005210616407275u64, 12841320114650562594u64, 10177239937494079517u64,
-    7054417621798112897u64,
+    11711860795435610626u64, 6901705076280830225u64, 17068317966574931624u64,
+    7838666865494447140u64,
 ];
 /// `人物` ノードの公開ID。
 ///
@@ -40,6 +40,9 @@ pub struct 関係 {
     pub 明細: 取引情報,
 }
 impl 関係 {
+    /// 始点と終点の公開IDと積み荷から構築用の辺値を作る。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `edge 関係 = (始点: 人物) -[明細: 取引情報]-> (終点: 人物)`
     pub fn new(from: 人物Id, to: 人物Id, payload: 取引情報) -> Self {
         Self {
             始点: from,
@@ -47,6 +50,9 @@ impl 関係 {
             明細: payload,
         }
     }
+    /// この辺値が運ぶ積み荷を借用する。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `edge 関係 = (始点: 人物) -[明細: 取引情報]-> (終点: 人物)`
     pub fn payload(&self) -> &取引情報 {
         &self.明細
     }
@@ -279,6 +285,9 @@ impl<'graph> 関係Ref<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `edge 関係 = (始点: 人物) -[明細: 取引情報]-> (終点: 人物)`
     pub fn id(self) -> &'graph 関係Id {
         self.graph
             .関係
@@ -288,33 +297,57 @@ impl<'graph> 関係Ref<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `edge 関係 = (始点: 人物) -[明細: 取引情報]-> (終点: 人物)`
     pub fn 始点(self) -> 人物Ref<'graph> {
         人物Ref {
             graph: self.graph,
             internal_position: __人物InternalPosition(self.record().始点.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `edge 関係 = (始点: 人物) -[明細: 取引情報]-> (終点: 人物)`
     pub fn 終点(self) -> 人物Ref<'graph> {
         人物Ref {
             graph: self.graph,
             internal_position: __人物InternalPosition(self.record().終点.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `edge 関係 = (始点: 人物) -[明細: 取引情報]-> (終点: 人物)`
     pub fn from(self) -> 人物Ref<'graph> {
         self.始点()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `edge 関係 = (始点: 人物) -[明細: 取引情報]-> (終点: 人物)`
     pub fn to(self) -> 人物Ref<'graph> {
         self.終点()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `edge 関係 = (始点: 人物) -[明細: 取引情報]-> (終点: 人物)`
     pub fn from_id(self) -> &'graph 人物Id {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `edge 関係 = (始点: 人物) -[明細: 取引情報]-> (終点: 人物)`
     pub fn to_id(self) -> &'graph 人物Id {
         self.to().id()
     }
+    /// この辺個体が運ぶ積み荷を役割名で借用する。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `edge 関係 = (始点: 人物) -[明細: 取引情報]-> (終点: 人物)`
     pub fn 明細(self) -> &'graph 取引情報 {
         &self.record().明細
     }
+    /// この辺個体が運ぶ積み荷を、役割名によらない固定名で借用する。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `edge 関係 = (始点: 人物) -[明細: 取引情報]-> (終点: 人物)`
     pub fn payload(self) -> &'graph 取引情報 {
         &self.record().明細
     }
@@ -441,6 +474,9 @@ pub struct 人物Ref<'graph> {
     internal_position: __人物InternalPosition,
 }
 impl<'graph> 人物Ref<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `node 人物`
     pub fn id(self) -> &'graph 人物Id {
         self.graph
             .__graphite_node_人物
@@ -450,6 +486,9 @@ impl<'graph> 人物Ref<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `node 人物`
     pub fn value(self) -> &'graph super::人物 {
         self.graph
             .__graphite_node_人物
@@ -619,10 +658,16 @@ impl Builder {
             __graphite_construction_stamp: graphite::次の構築印を発行する(),
         }
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `node 人物`
     pub fn 人物(&mut self, id: 人物Id, value: super::人物) -> &mut Self {
         self.__graphite_node_人物.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `edge 関係 = (始点: 人物) -[明細: 取引情報]-> (終点: 人物)`
     pub fn 関係(&mut self, id: 関係Id, value: 関係) -> &mut Self {
         self.関係.push((id, value));
         self

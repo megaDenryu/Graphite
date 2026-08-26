@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    16154694621984903877u64, 2127343597048489250u64, 16293124793283629939u64,
-    5430245208932055031u64,
+    9840713623869115945u64, 1301473308110286996u64, 13911115435056183703u64,
+    10224331731645405323u64,
 ];
 /// `Person` ノードの公開ID。
 ///
@@ -89,6 +89,9 @@ pub struct BelongsTo {
     pub team: TeamId,
 }
 impl BelongsTo {
+    /// 始点と終点の公開IDから構築用の辺値を作る。
+    ///
+    /// 宣言: `src/main.rs` の `edge BelongsTo = (member: Person) -> (team: Team) where each member: 1`
     pub fn new(from: PersonId, to: TeamId) -> Self {
         Self { member: from, team: to }
     }
@@ -116,6 +119,9 @@ pub struct Boss {
     pub appointment: BossEdge,
 }
 impl Boss {
+    /// 始点と終点の公開IDと積み荷から構築用の辺値を作る。
+    ///
+    /// 宣言: `src/main.rs` の `edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1`
     pub fn new(from: PersonId, to: PersonId, payload: BossEdge) -> Self {
         Self {
             subordinate: from,
@@ -123,6 +129,9 @@ impl Boss {
             appointment: payload,
         }
     }
+    /// この辺値が運ぶ積み荷を借用する。
+    ///
+    /// 宣言: `src/main.rs` の `edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1`
     pub fn payload(&self) -> &BossEdge {
         &self.appointment
     }
@@ -146,6 +155,9 @@ pub struct Reports {
     pub recipient: PersonId,
 }
 impl Reports {
+    /// 始点と終点の公開IDから構築用の辺値を作る。
+    ///
+    /// 宣言: `src/main.rs` の `edge Reports = (reporter: Person) -> (recipient: Person) where unique pair`
     pub fn new(from: PersonId, to: PersonId) -> Self {
         Self {
             reporter: from,
@@ -176,6 +188,9 @@ pub struct ReviewedBy {
     pub review: ReviewEdge,
 }
 impl ReviewedBy {
+    /// 始点と終点の公開IDと積み荷から構築用の辺値を作る。
+    ///
+    /// 宣言: `src/main.rs` の `edge ReviewedBy = (reviewee: Person) -[review: ReviewEdge]-> (reviewer: Person)`
     pub fn new(from: PersonId, to: PersonId, payload: ReviewEdge) -> Self {
         Self {
             reviewee: from,
@@ -183,6 +198,9 @@ impl ReviewedBy {
             review: payload,
         }
     }
+    /// この辺値が運ぶ積み荷を借用する。
+    ///
+    /// 宣言: `src/main.rs` の `edge ReviewedBy = (reviewee: Person) -[review: ReviewEdge]-> (reviewer: Person)`
     pub fn payload(&self) -> &ReviewEdge {
         &self.review
     }
@@ -205,11 +223,17 @@ pub struct Friends {
     endpoints: graphite::UnorderedPair<PersonId>,
 }
 impl Friends {
+    /// 両端の公開IDから構築用の辺値を作る。両端の順序は保たない。
+    ///
+    /// 宣言: `src/main.rs` の `edge Friends = Person -- Person where unique pair`
     pub fn new(a: PersonId, b: PersonId) -> Self {
         Self {
             endpoints: graphite::UnorderedPair::new(a, b),
         }
     }
+    /// この辺値の両端の公開IDを順序なし対として借用する。
+    ///
+    /// 宣言: `src/main.rs` の `edge Friends = Person -- Person where unique pair`
     pub fn endpoints(&self) -> (&PersonId, &PersonId) {
         self.endpoints.endpoints()
     }
@@ -838,6 +862,9 @@ impl<'graph> BelongsToRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/main.rs` の `edge BelongsTo = (member: Person) -> (team: Team) where each member: 1`
     pub fn id(self) -> &'graph BelongsToId {
         self.graph
             .belongs_to
@@ -847,27 +874,45 @@ impl<'graph> BelongsToRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/main.rs` の `edge BelongsTo = (member: Person) -> (team: Team) where each member: 1`
     pub fn member(self) -> PersonRef<'graph> {
         PersonRef {
             graph: self.graph,
             internal_position: __PersonInternalPosition(self.record().member.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/main.rs` の `edge BelongsTo = (member: Person) -> (team: Team) where each member: 1`
     pub fn team(self) -> TeamRef<'graph> {
         TeamRef {
             graph: self.graph,
             internal_position: __TeamInternalPosition(self.record().team.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/main.rs` の `edge BelongsTo = (member: Person) -> (team: Team) where each member: 1`
     pub fn from(self) -> PersonRef<'graph> {
         self.member()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/main.rs` の `edge BelongsTo = (member: Person) -> (team: Team) where each member: 1`
     pub fn to(self) -> TeamRef<'graph> {
         self.team()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/main.rs` の `edge BelongsTo = (member: Person) -> (team: Team) where each member: 1`
     pub fn from_id(self) -> &'graph PersonId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/main.rs` の `edge BelongsTo = (member: Person) -> (team: Team) where each member: 1`
     pub fn to_id(self) -> &'graph TeamId {
         self.to().id()
     }
@@ -897,6 +942,9 @@ impl<'graph> BossRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/main.rs` の `edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1`
     pub fn id(self) -> &'graph BossId {
         self.graph
             .boss
@@ -906,33 +954,57 @@ impl<'graph> BossRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/main.rs` の `edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1`
     pub fn subordinate(self) -> PersonRef<'graph> {
         PersonRef {
             graph: self.graph,
             internal_position: __PersonInternalPosition(self.record().subordinate.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/main.rs` の `edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1`
     pub fn superior(self) -> PersonRef<'graph> {
         PersonRef {
             graph: self.graph,
             internal_position: __PersonInternalPosition(self.record().superior.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/main.rs` の `edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1`
     pub fn from(self) -> PersonRef<'graph> {
         self.subordinate()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/main.rs` の `edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1`
     pub fn to(self) -> PersonRef<'graph> {
         self.superior()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/main.rs` の `edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1`
     pub fn from_id(self) -> &'graph PersonId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/main.rs` の `edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1`
     pub fn to_id(self) -> &'graph PersonId {
         self.to().id()
     }
+    /// この辺個体が運ぶ積み荷を役割名で借用する。
+    ///
+    /// 宣言: `src/main.rs` の `edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1`
     pub fn appointment(self) -> &'graph BossEdge {
         &self.record().appointment
     }
+    /// この辺個体が運ぶ積み荷を、役割名によらない固定名で借用する。
+    ///
+    /// 宣言: `src/main.rs` の `edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1`
     pub fn payload(self) -> &'graph BossEdge {
         &self.record().appointment
     }
@@ -962,6 +1034,9 @@ impl<'graph> ReportsRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/main.rs` の `edge Reports = (reporter: Person) -> (recipient: Person) where unique pair`
     pub fn id(self) -> &'graph ReportsId {
         self.graph
             .reports
@@ -971,27 +1046,45 @@ impl<'graph> ReportsRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/main.rs` の `edge Reports = (reporter: Person) -> (recipient: Person) where unique pair`
     pub fn reporter(self) -> PersonRef<'graph> {
         PersonRef {
             graph: self.graph,
             internal_position: __PersonInternalPosition(self.record().reporter.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/main.rs` の `edge Reports = (reporter: Person) -> (recipient: Person) where unique pair`
     pub fn recipient(self) -> PersonRef<'graph> {
         PersonRef {
             graph: self.graph,
             internal_position: __PersonInternalPosition(self.record().recipient.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/main.rs` の `edge Reports = (reporter: Person) -> (recipient: Person) where unique pair`
     pub fn from(self) -> PersonRef<'graph> {
         self.reporter()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/main.rs` の `edge Reports = (reporter: Person) -> (recipient: Person) where unique pair`
     pub fn to(self) -> PersonRef<'graph> {
         self.recipient()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/main.rs` の `edge Reports = (reporter: Person) -> (recipient: Person) where unique pair`
     pub fn from_id(self) -> &'graph PersonId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/main.rs` の `edge Reports = (reporter: Person) -> (recipient: Person) where unique pair`
     pub fn to_id(self) -> &'graph PersonId {
         self.to().id()
     }
@@ -1021,6 +1114,9 @@ impl<'graph> ReviewedByRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/main.rs` の `edge ReviewedBy = (reviewee: Person) -[review: ReviewEdge]-> (reviewer: Person)`
     pub fn id(self) -> &'graph ReviewedById {
         self.graph
             .reviewed_by
@@ -1030,33 +1126,57 @@ impl<'graph> ReviewedByRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/main.rs` の `edge ReviewedBy = (reviewee: Person) -[review: ReviewEdge]-> (reviewer: Person)`
     pub fn reviewee(self) -> PersonRef<'graph> {
         PersonRef {
             graph: self.graph,
             internal_position: __PersonInternalPosition(self.record().reviewee.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/main.rs` の `edge ReviewedBy = (reviewee: Person) -[review: ReviewEdge]-> (reviewer: Person)`
     pub fn reviewer(self) -> PersonRef<'graph> {
         PersonRef {
             graph: self.graph,
             internal_position: __PersonInternalPosition(self.record().reviewer.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/main.rs` の `edge ReviewedBy = (reviewee: Person) -[review: ReviewEdge]-> (reviewer: Person)`
     pub fn from(self) -> PersonRef<'graph> {
         self.reviewee()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/main.rs` の `edge ReviewedBy = (reviewee: Person) -[review: ReviewEdge]-> (reviewer: Person)`
     pub fn to(self) -> PersonRef<'graph> {
         self.reviewer()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/main.rs` の `edge ReviewedBy = (reviewee: Person) -[review: ReviewEdge]-> (reviewer: Person)`
     pub fn from_id(self) -> &'graph PersonId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/main.rs` の `edge ReviewedBy = (reviewee: Person) -[review: ReviewEdge]-> (reviewer: Person)`
     pub fn to_id(self) -> &'graph PersonId {
         self.to().id()
     }
+    /// この辺個体が運ぶ積み荷を役割名で借用する。
+    ///
+    /// 宣言: `src/main.rs` の `edge ReviewedBy = (reviewee: Person) -[review: ReviewEdge]-> (reviewer: Person)`
     pub fn review(self) -> &'graph ReviewEdge {
         &self.record().review
     }
+    /// この辺個体が運ぶ積み荷を、役割名によらない固定名で借用する。
+    ///
+    /// 宣言: `src/main.rs` の `edge ReviewedBy = (reviewee: Person) -[review: ReviewEdge]-> (reviewer: Person)`
     pub fn payload(self) -> &'graph ReviewEdge {
         &self.record().review
     }
@@ -1086,6 +1206,9 @@ impl<'graph> FriendsRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/main.rs` の `edge Friends = Person -- Person where unique pair`
     pub fn id(self) -> &'graph FriendsId {
         self.graph
             .friends
@@ -1095,6 +1218,9 @@ impl<'graph> FriendsRef<'graph> {
             )
             .0
     }
+    /// この辺個体の両端を順序なし対として返す。
+    ///
+    /// 宣言: `src/main.rs` の `edge Friends = Person -- Person where unique pair`
     pub fn endpoints(self) -> (PersonRef<'graph>, PersonRef<'graph>) {
         let (first, second) = self.record().endpoints.endpoints();
         (
@@ -1236,6 +1362,9 @@ pub struct PersonRef<'graph> {
     internal_position: __PersonInternalPosition,
 }
 impl<'graph> PersonRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/main.rs` の `node Person`
     pub fn id(self) -> &'graph PersonId {
         self.graph
             .__graphite_node_person
@@ -1245,6 +1374,9 @@ impl<'graph> PersonRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `src/main.rs` の `node Person`
     pub fn value(self) -> &'graph super::Person {
         self.graph
             .__graphite_node_person
@@ -1682,6 +1814,9 @@ pub struct TeamRef<'graph> {
     internal_position: __TeamInternalPosition,
 }
 impl<'graph> TeamRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/main.rs` の `node Team`
     pub fn id(self) -> &'graph TeamId {
         self.graph
             .__graphite_node_team
@@ -1691,6 +1826,9 @@ impl<'graph> TeamRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `src/main.rs` の `node Team`
     pub fn value(self) -> &'graph super::Team {
         self.graph
             .__graphite_node_team
@@ -2016,30 +2154,51 @@ impl Builder {
             __graphite_construction_stamp: graphite::次の構築印を発行する(),
         }
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/main.rs` の `node Person`
     pub fn person(&mut self, id: PersonId, value: super::Person) -> &mut Self {
         self.__graphite_node_person.push((id, value));
         self
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/main.rs` の `node Team`
     pub fn team(&mut self, id: TeamId, value: super::Team) -> &mut Self {
         self.__graphite_node_team.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/main.rs` の `edge BelongsTo = (member: Person) -> (team: Team) where each member: 1`
     pub fn belongs_to(&mut self, id: BelongsToId, value: BelongsTo) -> &mut Self {
         self.belongs_to.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/main.rs` の `edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1`
     pub fn boss(&mut self, id: BossId, value: Boss) -> &mut Self {
         self.boss.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/main.rs` の `edge Reports = (reporter: Person) -> (recipient: Person) where unique pair`
     pub fn reports(&mut self, id: ReportsId, value: Reports) -> &mut Self {
         self.reports.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/main.rs` の `edge ReviewedBy = (reviewee: Person) -[review: ReviewEdge]-> (reviewer: Person)`
     pub fn reviewed_by(&mut self, id: ReviewedById, value: ReviewedBy) -> &mut Self {
         self.reviewed_by.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/main.rs` の `edge Friends = Person -- Person where unique pair`
     pub fn friends(&mut self, id: FriendsId, value: Friends) -> &mut Self {
         self.friends.push((id, value));
         self

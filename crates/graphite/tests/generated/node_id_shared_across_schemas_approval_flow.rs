@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    4600649020497813333u64, 15323196260887087560u64, 6865187099403271695u64,
-    1584010237700473939u64,
+    12761025758846785511u64, 3334523584074551280u64, 4676150184476861085u64,
+    16819518826142522625u64,
 ];
 /// `Approves` 辺の公開ID。
 ///
@@ -34,6 +34,9 @@ pub struct Approves {
     pub approved: PersonId,
 }
 impl Approves {
+    /// 始点と終点の公開IDから構築用の辺値を作る。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge Approves = (approver: Person) -> (approved: Person)`
     pub fn new(from: PersonId, to: PersonId) -> Self {
         Self {
             approver: from,
@@ -264,6 +267,9 @@ impl<'graph> ApprovesRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge Approves = (approver: Person) -> (approved: Person)`
     pub fn id(self) -> &'graph ApprovesId {
         self.graph
             .approves
@@ -273,27 +279,45 @@ impl<'graph> ApprovesRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge Approves = (approver: Person) -> (approved: Person)`
     pub fn approver(self) -> PersonRef<'graph> {
         PersonRef {
             graph: self.graph,
             internal_position: __PersonInternalPosition(self.record().approver.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge Approves = (approver: Person) -> (approved: Person)`
     pub fn approved(self) -> PersonRef<'graph> {
         PersonRef {
             graph: self.graph,
             internal_position: __PersonInternalPosition(self.record().approved.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge Approves = (approver: Person) -> (approved: Person)`
     pub fn from(self) -> PersonRef<'graph> {
         self.approver()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge Approves = (approver: Person) -> (approved: Person)`
     pub fn to(self) -> PersonRef<'graph> {
         self.approved()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge Approves = (approver: Person) -> (approved: Person)`
     pub fn from_id(self) -> &'graph PersonId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge Approves = (approver: Person) -> (approved: Person)`
     pub fn to_id(self) -> &'graph PersonId {
         self.to().id()
     }
@@ -407,6 +431,9 @@ pub struct PersonRef<'graph> {
     internal_position: __PersonInternalPosition,
 }
 impl<'graph> PersonRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `node Person(id: PersonId)`
     pub fn id(self) -> &'graph PersonId {
         self.graph
             .__graphite_node_person
@@ -416,6 +443,9 @@ impl<'graph> PersonRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `node Person(id: PersonId)`
     pub fn value(self) -> &'graph super::Person {
         self.graph
             .__graphite_node_person
@@ -593,10 +623,16 @@ impl Builder {
             __graphite_construction_stamp: graphite::次の構築印を発行する(),
         }
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `node Person(id: PersonId)`
     pub fn person(&mut self, id: PersonId, value: super::Person) -> &mut Self {
         self.__graphite_node_person.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge Approves = (approver: Person) -> (approved: Person)`
     pub fn approves(&mut self, id: ApprovesId, value: Approves) -> &mut Self {
         self.approves.push((id, value));
         self

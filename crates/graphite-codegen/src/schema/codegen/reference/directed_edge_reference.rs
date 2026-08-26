@@ -23,8 +23,11 @@ pub(crate) fn gen_directed_edge_reference_type(
     let internal_position = edge.internal_position_ident();
     let record = edge.record_ident();
     let kind_span = edge.kind.span();
-    let core_methods = edge_reference_core_methods(accessor, &record, id_ty, kind_span);
-    let payload_methods = edge_reference_payload_methods(edge.kind, edge.payload());
+    let 宣言元への参照 = &edge.宣言元への参照;
+    let core_methods =
+        edge_reference_core_methods(accessor, &record, id_ty, kind_span, 宣言元への参照);
+    let payload_methods =
+        edge_reference_payload_methods(edge.kind, edge.payload(), 宣言元への参照);
     let debug_impl = gen_reference_debug_impl(&reference, edge.id_ty.is_debug_printable());
     let from_reference = edge.from_node.reference_ident();
     let to_reference = edge.to_node.reference_ident();
@@ -36,7 +39,6 @@ pub(crate) fn gen_directed_edge_reference_type(
     let to_ident = Ident::new("to", kind_span);
     let from_id_ident = Ident::new("from_id", kind_span);
     let to_id_ident = Ident::new("to_id", kind_span);
-    let 宣言元への参照 = &edge.宣言元への参照;
     quote! {
         /// 完成済みグラフ上の有向辺個体。
         #宣言元への参照
@@ -49,6 +51,8 @@ pub(crate) fn gen_directed_edge_reference_type(
         impl<'graph> #reference<'graph> {
             #core_methods
 
+            /// この辺個体の始点側の端点を役割名で返す。
+            #宣言元への参照
             pub fn #from_role(self) -> #from_reference<'graph> {
                 #from_reference {
                     graph: self.graph,
@@ -56,6 +60,8 @@ pub(crate) fn gen_directed_edge_reference_type(
                 }
             }
 
+            /// この辺個体の終点側の端点を役割名で返す。
+            #宣言元への参照
             pub fn #to_role(self) -> #to_reference<'graph> {
                 #to_reference {
                     graph: self.graph,
@@ -63,18 +69,26 @@ pub(crate) fn gen_directed_edge_reference_type(
                 }
             }
 
+            /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+            #宣言元への参照
             pub fn #from_ident(self) -> #from_reference<'graph> {
                 self.#from_role()
             }
 
+            /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+            #宣言元への参照
             pub fn #to_ident(self) -> #to_reference<'graph> {
                 self.#to_role()
             }
 
+            /// この辺個体の始点側の端点の公開IDを借用する。
+            #宣言元への参照
             pub fn #from_id_ident(self) -> &'graph #from_id {
                 self.from().id()
             }
 
+            /// この辺個体の終点側の端点の公開IDを借用する。
+            #宣言元への参照
             pub fn #to_id_ident(self) -> &'graph #to_id {
                 self.to().id()
             }

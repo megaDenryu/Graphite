@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    15780425753874411893u64, 11623891638366838552u64, 12724208267906162191u64,
-    16184785050676734115u64,
+    12374571927562026118u64, 8817412689690194963u64, 14165532884362913080u64,
+    17779920763330741380u64,
 ];
 /// `Scene` ノードの公開ID。
 ///
@@ -60,6 +60,9 @@ pub struct Choice {
     pub choice: ChoiceEdge,
 }
 impl Choice {
+    /// 始点と終点の公開IDと積み荷から構築用の辺値を作る。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Choice = (scene: Scene) -[choice: ChoiceEdge]-> (next: Scene)`
     pub fn new(from: SceneId, to: SceneId, payload: ChoiceEdge) -> Self {
         Self {
             scene: from,
@@ -67,6 +70,9 @@ impl Choice {
             choice: payload,
         }
     }
+    /// この辺値が運ぶ積み荷を借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Choice = (scene: Scene) -[choice: ChoiceEdge]-> (next: Scene)`
     pub fn payload(&self) -> &ChoiceEdge {
         &self.choice
     }
@@ -90,6 +96,9 @@ pub struct Finale {
     pub ending: EndingId,
 }
 impl Finale {
+    /// 始点と終点の公開IDから構築用の辺値を作る。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Finale = (scene: Scene) -> (ending: Ending) where each scene: 0..1`
     pub fn new(from: SceneId, to: EndingId) -> Self {
         Self { scene: from, ending: to }
     }
@@ -455,6 +464,9 @@ impl<'graph> ChoiceRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Choice = (scene: Scene) -[choice: ChoiceEdge]-> (next: Scene)`
     pub fn id(self) -> &'graph ChoiceId {
         self.graph
             .choice
@@ -464,33 +476,57 @@ impl<'graph> ChoiceRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Choice = (scene: Scene) -[choice: ChoiceEdge]-> (next: Scene)`
     pub fn scene(self) -> SceneRef<'graph> {
         SceneRef {
             graph: self.graph,
             internal_position: __SceneInternalPosition(self.record().scene.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Choice = (scene: Scene) -[choice: ChoiceEdge]-> (next: Scene)`
     pub fn next(self) -> SceneRef<'graph> {
         SceneRef {
             graph: self.graph,
             internal_position: __SceneInternalPosition(self.record().next.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Choice = (scene: Scene) -[choice: ChoiceEdge]-> (next: Scene)`
     pub fn from(self) -> SceneRef<'graph> {
         self.scene()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Choice = (scene: Scene) -[choice: ChoiceEdge]-> (next: Scene)`
     pub fn to(self) -> SceneRef<'graph> {
         self.next()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Choice = (scene: Scene) -[choice: ChoiceEdge]-> (next: Scene)`
     pub fn from_id(self) -> &'graph SceneId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Choice = (scene: Scene) -[choice: ChoiceEdge]-> (next: Scene)`
     pub fn to_id(self) -> &'graph SceneId {
         self.to().id()
     }
+    /// この辺個体が運ぶ積み荷を役割名で借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Choice = (scene: Scene) -[choice: ChoiceEdge]-> (next: Scene)`
     pub fn choice(self) -> &'graph ChoiceEdge {
         &self.record().choice
     }
+    /// この辺個体が運ぶ積み荷を、役割名によらない固定名で借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Choice = (scene: Scene) -[choice: ChoiceEdge]-> (next: Scene)`
     pub fn payload(self) -> &'graph ChoiceEdge {
         &self.record().choice
     }
@@ -520,6 +556,9 @@ impl<'graph> FinaleRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Finale = (scene: Scene) -> (ending: Ending) where each scene: 0..1`
     pub fn id(self) -> &'graph FinaleId {
         self.graph
             .finale
@@ -529,27 +568,45 @@ impl<'graph> FinaleRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Finale = (scene: Scene) -> (ending: Ending) where each scene: 0..1`
     pub fn scene(self) -> SceneRef<'graph> {
         SceneRef {
             graph: self.graph,
             internal_position: __SceneInternalPosition(self.record().scene.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Finale = (scene: Scene) -> (ending: Ending) where each scene: 0..1`
     pub fn ending(self) -> EndingRef<'graph> {
         EndingRef {
             graph: self.graph,
             internal_position: __EndingInternalPosition(self.record().ending.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Finale = (scene: Scene) -> (ending: Ending) where each scene: 0..1`
     pub fn from(self) -> SceneRef<'graph> {
         self.scene()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Finale = (scene: Scene) -> (ending: Ending) where each scene: 0..1`
     pub fn to(self) -> EndingRef<'graph> {
         self.ending()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Finale = (scene: Scene) -> (ending: Ending) where each scene: 0..1`
     pub fn from_id(self) -> &'graph SceneId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Finale = (scene: Scene) -> (ending: Ending) where each scene: 0..1`
     pub fn to_id(self) -> &'graph EndingId {
         self.to().id()
     }
@@ -678,6 +735,9 @@ pub struct SceneRef<'graph> {
     internal_position: __SceneInternalPosition,
 }
 impl<'graph> SceneRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `node Scene`
     pub fn id(self) -> &'graph SceneId {
         self.graph
             .__graphite_node_scene
@@ -687,6 +747,9 @@ impl<'graph> SceneRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `node Scene`
     pub fn value(self) -> &'graph super::Scene {
         self.graph
             .__graphite_node_scene
@@ -913,6 +976,9 @@ pub struct EndingRef<'graph> {
     internal_position: __EndingInternalPosition,
 }
 impl<'graph> EndingRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `node Ending`
     pub fn id(self) -> &'graph EndingId {
         self.graph
             .__graphite_node_ending
@@ -922,6 +988,9 @@ impl<'graph> EndingRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `node Ending`
     pub fn value(self) -> &'graph super::Ending {
         self.graph
             .__graphite_node_ending
@@ -1085,18 +1154,30 @@ impl Builder {
             __graphite_construction_stamp: graphite::次の構築印を発行する(),
         }
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/schema.rs` の `node Scene`
     pub fn scene(&mut self, id: SceneId, value: super::Scene) -> &mut Self {
         self.__graphite_node_scene.push((id, value));
         self
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/schema.rs` の `node Ending`
     pub fn ending(&mut self, id: EndingId, value: super::Ending) -> &mut Self {
         self.__graphite_node_ending.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Choice = (scene: Scene) -[choice: ChoiceEdge]-> (next: Scene)`
     pub fn choice(&mut self, id: ChoiceId, value: Choice) -> &mut Self {
         self.choice.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/schema.rs` の `edge Finale = (scene: Scene) -> (ending: Ending) where each scene: 0..1`
     pub fn finale(&mut self, id: FinaleId, value: Finale) -> &mut Self {
         self.finale.push((id, value));
         self

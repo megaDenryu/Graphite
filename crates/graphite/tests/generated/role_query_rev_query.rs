@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    1050681397304745628u64, 14071316291043229305u64, 7621196281672177634u64,
-    4991461474677713358u64,
+    12806250406607328466u64, 6920247548302243091u64, 7590500245255236640u64,
+    11535999917689110220u64,
 ];
 /// `NodeA` ノードの公開ID。
 ///
@@ -83,6 +83,9 @@ pub struct Unconstrained {
     pub weight: Weight,
 }
 impl Unconstrained {
+    /// 始点と終点の公開IDと積み荷から構築用の辺値を作る。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge Unconstrained = (source: NodeA) -[weight: Weight]-> (target: NodeB)`
     pub fn new(from: NodeAId, to: NodeBId, payload: Weight) -> Self {
         Self {
             source: from,
@@ -90,6 +93,9 @@ impl Unconstrained {
             weight: payload,
         }
     }
+    /// この辺値が運ぶ積み荷を借用する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge Unconstrained = (source: NodeA) -[weight: Weight]-> (target: NodeB)`
     pub fn payload(&self) -> &Weight {
         &self.weight
     }
@@ -113,6 +119,9 @@ pub struct UnconstrainedNoPayload {
     pub target: NodeBId,
 }
 impl UnconstrainedNoPayload {
+    /// 始点と終点の公開IDから構築用の辺値を作る。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge UnconstrainedNoPayload = (source: NodeA) -> (target: NodeB)`
     pub fn new(from: NodeAId, to: NodeBId) -> Self {
         Self { source: from, target: to }
     }
@@ -139,6 +148,9 @@ pub struct AtMostOne {
     pub dst: NodeBId,
 }
 impl AtMostOne {
+    /// 始点と終点の公開IDから構築用の辺値を作る。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge AtMostOne = (src: NodeA) -> (dst: NodeB) where each dst: 0..1`
     pub fn new(from: NodeAId, to: NodeBId) -> Self {
         Self { src: from, dst: to }
     }
@@ -163,6 +175,9 @@ pub struct ExactlyOne {
     pub weight: Weight,
 }
 impl ExactlyOne {
+    /// 始点と終点の公開IDと積み荷から構築用の辺値を作る。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge ExactlyOne = (src: NodeA) -[weight: Weight]-> (dst: NodeB) where each dst: 1`
     pub fn new(from: NodeAId, to: NodeBId, payload: Weight) -> Self {
         Self {
             src: from,
@@ -170,6 +185,9 @@ impl ExactlyOne {
             weight: payload,
         }
     }
+    /// この辺値が運ぶ積み荷を借用する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge ExactlyOne = (src: NodeA) -[weight: Weight]-> (dst: NodeB) where each dst: 1`
     pub fn payload(&self) -> &Weight {
         &self.weight
     }
@@ -743,6 +761,9 @@ impl<'graph> UnconstrainedRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge Unconstrained = (source: NodeA) -[weight: Weight]-> (target: NodeB)`
     pub fn id(self) -> &'graph UnconstrainedId {
         self.graph
             .unconstrained
@@ -752,33 +773,57 @@ impl<'graph> UnconstrainedRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge Unconstrained = (source: NodeA) -[weight: Weight]-> (target: NodeB)`
     pub fn source(self) -> NodeARef<'graph> {
         NodeARef {
             graph: self.graph,
             internal_position: __NodeAInternalPosition(self.record().source.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge Unconstrained = (source: NodeA) -[weight: Weight]-> (target: NodeB)`
     pub fn target(self) -> NodeBRef<'graph> {
         NodeBRef {
             graph: self.graph,
             internal_position: __NodeBInternalPosition(self.record().target.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge Unconstrained = (source: NodeA) -[weight: Weight]-> (target: NodeB)`
     pub fn from(self) -> NodeARef<'graph> {
         self.source()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge Unconstrained = (source: NodeA) -[weight: Weight]-> (target: NodeB)`
     pub fn to(self) -> NodeBRef<'graph> {
         self.target()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge Unconstrained = (source: NodeA) -[weight: Weight]-> (target: NodeB)`
     pub fn from_id(self) -> &'graph NodeAId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge Unconstrained = (source: NodeA) -[weight: Weight]-> (target: NodeB)`
     pub fn to_id(self) -> &'graph NodeBId {
         self.to().id()
     }
+    /// この辺個体が運ぶ積み荷を役割名で借用する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge Unconstrained = (source: NodeA) -[weight: Weight]-> (target: NodeB)`
     pub fn weight(self) -> &'graph Weight {
         &self.record().weight
     }
+    /// この辺個体が運ぶ積み荷を、役割名によらない固定名で借用する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge Unconstrained = (source: NodeA) -[weight: Weight]-> (target: NodeB)`
     pub fn payload(self) -> &'graph Weight {
         &self.record().weight
     }
@@ -808,6 +853,9 @@ impl<'graph> UnconstrainedNoPayloadRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge UnconstrainedNoPayload = (source: NodeA) -> (target: NodeB)`
     pub fn id(self) -> &'graph UnconstrainedNoPayloadId {
         self.graph
             .unconstrained_no_payload
@@ -817,27 +865,45 @@ impl<'graph> UnconstrainedNoPayloadRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge UnconstrainedNoPayload = (source: NodeA) -> (target: NodeB)`
     pub fn source(self) -> NodeARef<'graph> {
         NodeARef {
             graph: self.graph,
             internal_position: __NodeAInternalPosition(self.record().source.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge UnconstrainedNoPayload = (source: NodeA) -> (target: NodeB)`
     pub fn target(self) -> NodeBRef<'graph> {
         NodeBRef {
             graph: self.graph,
             internal_position: __NodeBInternalPosition(self.record().target.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge UnconstrainedNoPayload = (source: NodeA) -> (target: NodeB)`
     pub fn from(self) -> NodeARef<'graph> {
         self.source()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge UnconstrainedNoPayload = (source: NodeA) -> (target: NodeB)`
     pub fn to(self) -> NodeBRef<'graph> {
         self.target()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge UnconstrainedNoPayload = (source: NodeA) -> (target: NodeB)`
     pub fn from_id(self) -> &'graph NodeAId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge UnconstrainedNoPayload = (source: NodeA) -> (target: NodeB)`
     pub fn to_id(self) -> &'graph NodeBId {
         self.to().id()
     }
@@ -867,6 +933,9 @@ impl<'graph> AtMostOneRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge AtMostOne = (src: NodeA) -> (dst: NodeB) where each dst: 0..1`
     pub fn id(self) -> &'graph AtMostOneId {
         self.graph
             .at_most_one
@@ -876,27 +945,45 @@ impl<'graph> AtMostOneRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge AtMostOne = (src: NodeA) -> (dst: NodeB) where each dst: 0..1`
     pub fn src(self) -> NodeARef<'graph> {
         NodeARef {
             graph: self.graph,
             internal_position: __NodeAInternalPosition(self.record().src.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge AtMostOne = (src: NodeA) -> (dst: NodeB) where each dst: 0..1`
     pub fn dst(self) -> NodeBRef<'graph> {
         NodeBRef {
             graph: self.graph,
             internal_position: __NodeBInternalPosition(self.record().dst.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge AtMostOne = (src: NodeA) -> (dst: NodeB) where each dst: 0..1`
     pub fn from(self) -> NodeARef<'graph> {
         self.src()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge AtMostOne = (src: NodeA) -> (dst: NodeB) where each dst: 0..1`
     pub fn to(self) -> NodeBRef<'graph> {
         self.dst()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge AtMostOne = (src: NodeA) -> (dst: NodeB) where each dst: 0..1`
     pub fn from_id(self) -> &'graph NodeAId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge AtMostOne = (src: NodeA) -> (dst: NodeB) where each dst: 0..1`
     pub fn to_id(self) -> &'graph NodeBId {
         self.to().id()
     }
@@ -926,6 +1013,9 @@ impl<'graph> ExactlyOneRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge ExactlyOne = (src: NodeA) -[weight: Weight]-> (dst: NodeB) where each dst: 1`
     pub fn id(self) -> &'graph ExactlyOneId {
         self.graph
             .exactly_one
@@ -935,33 +1025,57 @@ impl<'graph> ExactlyOneRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge ExactlyOne = (src: NodeA) -[weight: Weight]-> (dst: NodeB) where each dst: 1`
     pub fn src(self) -> NodeARef<'graph> {
         NodeARef {
             graph: self.graph,
             internal_position: __NodeAInternalPosition(self.record().src.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge ExactlyOne = (src: NodeA) -[weight: Weight]-> (dst: NodeB) where each dst: 1`
     pub fn dst(self) -> NodeBRef<'graph> {
         NodeBRef {
             graph: self.graph,
             internal_position: __NodeBInternalPosition(self.record().dst.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge ExactlyOne = (src: NodeA) -[weight: Weight]-> (dst: NodeB) where each dst: 1`
     pub fn from(self) -> NodeARef<'graph> {
         self.src()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge ExactlyOne = (src: NodeA) -[weight: Weight]-> (dst: NodeB) where each dst: 1`
     pub fn to(self) -> NodeBRef<'graph> {
         self.dst()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge ExactlyOne = (src: NodeA) -[weight: Weight]-> (dst: NodeB) where each dst: 1`
     pub fn from_id(self) -> &'graph NodeAId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge ExactlyOne = (src: NodeA) -[weight: Weight]-> (dst: NodeB) where each dst: 1`
     pub fn to_id(self) -> &'graph NodeBId {
         self.to().id()
     }
+    /// この辺個体が運ぶ積み荷を役割名で借用する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge ExactlyOne = (src: NodeA) -[weight: Weight]-> (dst: NodeB) where each dst: 1`
     pub fn weight(self) -> &'graph Weight {
         &self.record().weight
     }
+    /// この辺個体が運ぶ積み荷を、役割名によらない固定名で借用する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge ExactlyOne = (src: NodeA) -[weight: Weight]-> (dst: NodeB) where each dst: 1`
     pub fn payload(self) -> &'graph Weight {
         &self.record().weight
     }
@@ -1092,6 +1206,9 @@ pub struct NodeARef<'graph> {
     internal_position: __NodeAInternalPosition,
 }
 impl<'graph> NodeARef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `node NodeA`
     pub fn id(self) -> &'graph NodeAId {
         self.graph
             .__graphite_node_node_a
@@ -1101,6 +1218,9 @@ impl<'graph> NodeARef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `node NodeA`
     pub fn value(self) -> &'graph super::NodeA {
         self.graph
             .__graphite_node_node_a
@@ -1454,6 +1574,9 @@ pub struct NodeBRef<'graph> {
     internal_position: __NodeBInternalPosition,
 }
 impl<'graph> NodeBRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `node NodeB`
     pub fn id(self) -> &'graph NodeBId {
         self.graph
             .__graphite_node_node_b
@@ -1463,6 +1586,9 @@ impl<'graph> NodeBRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `tests/role_query.rs` の `node NodeB`
     pub fn value(self) -> &'graph super::NodeB {
         self.graph
             .__graphite_node_node_b
@@ -1790,14 +1916,23 @@ impl Builder {
             __graphite_construction_stamp: graphite::次の構築印を発行する(),
         }
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/role_query.rs` の `node NodeA`
     pub fn node_a(&mut self, id: NodeAId, value: super::NodeA) -> &mut Self {
         self.__graphite_node_node_a.push((id, value));
         self
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/role_query.rs` の `node NodeB`
     pub fn node_b(&mut self, id: NodeBId, value: super::NodeB) -> &mut Self {
         self.__graphite_node_node_b.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge Unconstrained = (source: NodeA) -[weight: Weight]-> (target: NodeB)`
     pub fn unconstrained(
         &mut self,
         id: UnconstrainedId,
@@ -1806,6 +1941,9 @@ impl Builder {
         self.unconstrained.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge UnconstrainedNoPayload = (source: NodeA) -> (target: NodeB)`
     pub fn unconstrained_no_payload(
         &mut self,
         id: UnconstrainedNoPayloadId,
@@ -1814,10 +1952,16 @@ impl Builder {
         self.unconstrained_no_payload.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge AtMostOne = (src: NodeA) -> (dst: NodeB) where each dst: 0..1`
     pub fn at_most_one(&mut self, id: AtMostOneId, value: AtMostOne) -> &mut Self {
         self.at_most_one.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/role_query.rs` の `edge ExactlyOne = (src: NodeA) -[weight: Weight]-> (dst: NodeB) where each dst: 1`
     pub fn exactly_one(&mut self, id: ExactlyOneId, value: ExactlyOne) -> &mut Self {
         self.exactly_one.push((id, value));
         self

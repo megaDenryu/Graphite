@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    5874037175148090942u64, 15608385234508356237u64, 5177389743803744232u64,
-    7628423289972410580u64,
+    5767895349172452783u64, 854066253280781012u64, 16789596717610189497u64,
+    12341138255170590525u64,
 ];
 /// `Person` ノードの公開ID。
 ///
@@ -60,6 +60,9 @@ pub struct Purchase {
     pub info: TransactionInfo,
 }
 impl Purchase {
+    /// 始点と終点の公開IDと積み荷から構築用の辺値を作る。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) where each buyer: 1..2, each product: 0..1, unique pair`
     pub fn new(from: PersonId, to: ProductId, payload: TransactionInfo) -> Self {
         Self {
             buyer: from,
@@ -67,6 +70,9 @@ impl Purchase {
             info: payload,
         }
     }
+    /// この辺値が運ぶ積み荷を借用する。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) where each buyer: 1..2, each product: 0..1, unique pair`
     pub fn payload(&self) -> &TransactionInfo {
         &self.info
     }
@@ -94,6 +100,9 @@ pub struct Subscription {
     pub product: ProductId,
 }
 impl Subscription {
+    /// 始点と終点の公開IDから構築用の辺値を作る。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Subscription = (member: Person) -> (product: Product) where each member: 1..*`
     pub fn new(from: PersonId, to: ProductId) -> Self {
         Self { member: from, product: to }
     }
@@ -504,6 +513,9 @@ impl<'graph> PurchaseRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) where each buyer: 1..2, each product: 0..1, unique pair`
     pub fn id(self) -> &'graph PurchaseId {
         self.graph
             .purchase
@@ -513,33 +525,57 @@ impl<'graph> PurchaseRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) where each buyer: 1..2, each product: 0..1, unique pair`
     pub fn buyer(self) -> PersonRef<'graph> {
         PersonRef {
             graph: self.graph,
             internal_position: __PersonInternalPosition(self.record().buyer.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) where each buyer: 1..2, each product: 0..1, unique pair`
     pub fn product(self) -> ProductRef<'graph> {
         ProductRef {
             graph: self.graph,
             internal_position: __ProductInternalPosition(self.record().product.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) where each buyer: 1..2, each product: 0..1, unique pair`
     pub fn from(self) -> PersonRef<'graph> {
         self.buyer()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) where each buyer: 1..2, each product: 0..1, unique pair`
     pub fn to(self) -> ProductRef<'graph> {
         self.product()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) where each buyer: 1..2, each product: 0..1, unique pair`
     pub fn from_id(self) -> &'graph PersonId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) where each buyer: 1..2, each product: 0..1, unique pair`
     pub fn to_id(self) -> &'graph ProductId {
         self.to().id()
     }
+    /// この辺個体が運ぶ積み荷を役割名で借用する。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) where each buyer: 1..2, each product: 0..1, unique pair`
     pub fn info(self) -> &'graph TransactionInfo {
         &self.record().info
     }
+    /// この辺個体が運ぶ積み荷を、役割名によらない固定名で借用する。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) where each buyer: 1..2, each product: 0..1, unique pair`
     pub fn payload(self) -> &'graph TransactionInfo {
         &self.record().info
     }
@@ -569,6 +605,9 @@ impl<'graph> SubscriptionRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Subscription = (member: Person) -> (product: Product) where each member: 1..*`
     pub fn id(self) -> &'graph SubscriptionId {
         self.graph
             .subscription
@@ -578,27 +617,45 @@ impl<'graph> SubscriptionRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Subscription = (member: Person) -> (product: Product) where each member: 1..*`
     pub fn member(self) -> PersonRef<'graph> {
         PersonRef {
             graph: self.graph,
             internal_position: __PersonInternalPosition(self.record().member.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Subscription = (member: Person) -> (product: Product) where each member: 1..*`
     pub fn product(self) -> ProductRef<'graph> {
         ProductRef {
             graph: self.graph,
             internal_position: __ProductInternalPosition(self.record().product.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Subscription = (member: Person) -> (product: Product) where each member: 1..*`
     pub fn from(self) -> PersonRef<'graph> {
         self.member()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Subscription = (member: Person) -> (product: Product) where each member: 1..*`
     pub fn to(self) -> ProductRef<'graph> {
         self.product()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Subscription = (member: Person) -> (product: Product) where each member: 1..*`
     pub fn from_id(self) -> &'graph PersonId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Subscription = (member: Person) -> (product: Product) where each member: 1..*`
     pub fn to_id(self) -> &'graph ProductId {
         self.to().id()
     }
@@ -727,6 +784,9 @@ pub struct PersonRef<'graph> {
     internal_position: __PersonInternalPosition,
 }
 impl<'graph> PersonRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `node Person`
     pub fn id(self) -> &'graph PersonId {
         self.graph
             .__graphite_node_person
@@ -736,6 +796,9 @@ impl<'graph> PersonRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `node Person`
     pub fn value(self) -> &'graph super::Person {
         self.graph
             .__graphite_node_person
@@ -949,6 +1012,9 @@ pub struct ProductRef<'graph> {
     internal_position: __ProductInternalPosition,
 }
 impl<'graph> ProductRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `node Product`
     pub fn id(self) -> &'graph ProductId {
         self.graph
             .__graphite_node_product
@@ -958,6 +1024,9 @@ impl<'graph> ProductRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `node Product`
     pub fn value(self) -> &'graph super::Product {
         self.graph
             .__graphite_node_product
@@ -1141,18 +1210,30 @@ impl Builder {
             __graphite_construction_stamp: graphite::次の構築印を発行する(),
         }
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `node Person`
     pub fn person(&mut self, id: PersonId, value: super::Person) -> &mut Self {
         self.__graphite_node_person.push((id, value));
         self
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `node Product`
     pub fn product(&mut self, id: ProductId, value: super::Product) -> &mut Self {
         self.__graphite_node_product.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) where each buyer: 1..2, each product: 0..1, unique pair`
     pub fn purchase(&mut self, id: PurchaseId, value: Purchase) -> &mut Self {
         self.purchase.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/edge_roles.rs` の `edge Subscription = (member: Person) -> (product: Product) where each member: 1..*`
     pub fn subscription(
         &mut self,
         id: SubscriptionId,

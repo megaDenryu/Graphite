@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    3879848870663051264u64, 1770760746580191631u64, 9579112365924869214u64,
-    9236133549682497858u64,
+    3898090682734428924u64, 1533011858791974477u64, 4993737066538129158u64,
+    11680789830919899354u64,
 ];
 /// `Person` ノードの公開ID。
 ///
@@ -39,6 +39,9 @@ pub struct Knows {
     pub known: PersonId,
 }
 impl Knows {
+    /// 始点と終点の公開IDから構築用の辺値を作る。
+    ///
+    /// 宣言: `tests/graph_splice.rs` の `edge Knows = (knower: Person) -> (known: Person)`
     pub fn new(from: PersonId, to: PersonId) -> Self {
         Self { knower: from, known: to }
     }
@@ -261,6 +264,9 @@ impl<'graph> KnowsRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/graph_splice.rs` の `edge Knows = (knower: Person) -> (known: Person)`
     pub fn id(self) -> &'graph KnowsId {
         self.graph
             .knows
@@ -270,27 +276,45 @@ impl<'graph> KnowsRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/graph_splice.rs` の `edge Knows = (knower: Person) -> (known: Person)`
     pub fn knower(self) -> PersonRef<'graph> {
         PersonRef {
             graph: self.graph,
             internal_position: __PersonInternalPosition(self.record().knower.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/graph_splice.rs` の `edge Knows = (knower: Person) -> (known: Person)`
     pub fn known(self) -> PersonRef<'graph> {
         PersonRef {
             graph: self.graph,
             internal_position: __PersonInternalPosition(self.record().known.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/graph_splice.rs` の `edge Knows = (knower: Person) -> (known: Person)`
     pub fn from(self) -> PersonRef<'graph> {
         self.knower()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/graph_splice.rs` の `edge Knows = (knower: Person) -> (known: Person)`
     pub fn to(self) -> PersonRef<'graph> {
         self.known()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/graph_splice.rs` の `edge Knows = (knower: Person) -> (known: Person)`
     pub fn from_id(self) -> &'graph PersonId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/graph_splice.rs` の `edge Knows = (knower: Person) -> (known: Person)`
     pub fn to_id(self) -> &'graph PersonId {
         self.to().id()
     }
@@ -417,6 +441,9 @@ pub struct PersonRef<'graph> {
     internal_position: __PersonInternalPosition,
 }
 impl<'graph> PersonRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/graph_splice.rs` の `node Person`
     pub fn id(self) -> &'graph PersonId {
         self.graph
             .__graphite_node_person
@@ -426,6 +453,9 @@ impl<'graph> PersonRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `tests/graph_splice.rs` の `node Person`
     pub fn value(self) -> &'graph super::Person {
         self.graph
             .__graphite_node_person
@@ -593,10 +623,16 @@ impl Builder {
             __graphite_construction_stamp: graphite::次の構築印を発行する(),
         }
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/graph_splice.rs` の `node Person`
     pub fn person(&mut self, id: PersonId, value: super::Person) -> &mut Self {
         self.__graphite_node_person.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/graph_splice.rs` の `edge Knows = (knower: Person) -> (known: Person)`
     pub fn knows(&mut self, id: KnowsId, value: Knows) -> &mut Self {
         self.knows.push((id, value));
         self

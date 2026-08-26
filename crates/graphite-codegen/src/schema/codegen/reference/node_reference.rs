@@ -42,6 +42,8 @@ pub(crate) fn gen_node_reference_type(
         }
 
         impl<'graph> #reference<'graph> {
+            /// このノード個体の公開IDを借用する。
+            #宣言元への参照
             pub fn #node_ref_id_ident(self) -> &'graph #id_ty {
                 self.graph.#field
                     .get_at(self.internal_position.0)
@@ -49,6 +51,8 @@ pub(crate) fn gen_node_reference_type(
                     .0
             }
 
+            /// このノード個体のノード値を借用する。
+            #宣言元への参照
             pub fn #node_ref_value_ident(self) -> &'graph super::#ty {
                 self.graph.#field
                     .get_at(self.internal_position.0)

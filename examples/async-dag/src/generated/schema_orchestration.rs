@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    11070449533699381343u64, 14589893563679700064u64, 10749971945199771769u64,
-    18019479751748654245u64,
+    1490184950160352411u64, 9082845947650639490u64, 7124890607361640969u64,
+    481641728589764581u64,
 ];
 /// `Service` ノードの公開ID。
 ///
@@ -39,6 +39,9 @@ pub struct DependsOn {
     pub dependency: ServiceId,
 }
 impl DependsOn {
+    /// 始点と終点の公開IDから構築用の辺値を作る。
+    ///
+    /// 宣言: `src/schema.rs` の `edge DependsOn = (dependent: Service) -> (dependency: Service) where unique pair`
     pub fn new(from: ServiceId, to: ServiceId) -> Self {
         Self {
             dependent: from,
@@ -282,6 +285,9 @@ impl<'graph> DependsOnRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge DependsOn = (dependent: Service) -> (dependency: Service) where unique pair`
     pub fn id(self) -> &'graph DependsOnId {
         self.graph
             .depends_on
@@ -291,27 +297,45 @@ impl<'graph> DependsOnRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge DependsOn = (dependent: Service) -> (dependency: Service) where unique pair`
     pub fn dependent(self) -> ServiceRef<'graph> {
         ServiceRef {
             graph: self.graph,
             internal_position: __ServiceInternalPosition(self.record().dependent.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge DependsOn = (dependent: Service) -> (dependency: Service) where unique pair`
     pub fn dependency(self) -> ServiceRef<'graph> {
         ServiceRef {
             graph: self.graph,
             internal_position: __ServiceInternalPosition(self.record().dependency.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge DependsOn = (dependent: Service) -> (dependency: Service) where unique pair`
     pub fn from(self) -> ServiceRef<'graph> {
         self.dependent()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `src/schema.rs` の `edge DependsOn = (dependent: Service) -> (dependency: Service) where unique pair`
     pub fn to(self) -> ServiceRef<'graph> {
         self.dependency()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge DependsOn = (dependent: Service) -> (dependency: Service) where unique pair`
     pub fn from_id(self) -> &'graph ServiceId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `edge DependsOn = (dependent: Service) -> (dependency: Service) where unique pair`
     pub fn to_id(self) -> &'graph ServiceId {
         self.to().id()
     }
@@ -443,6 +467,9 @@ pub struct ServiceRef<'graph> {
     internal_position: __ServiceInternalPosition,
 }
 impl<'graph> ServiceRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `node Service`
     pub fn id(self) -> &'graph ServiceId {
         self.graph
             .__graphite_node_service
@@ -452,6 +479,9 @@ impl<'graph> ServiceRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `src/schema.rs` の `node Service`
     pub fn value(self) -> &'graph super::Service {
         self.graph
             .__graphite_node_service
@@ -625,10 +655,16 @@ impl Builder {
             __graphite_construction_stamp: graphite::次の構築印を発行する(),
         }
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/schema.rs` の `node Service`
     pub fn service(&mut self, id: ServiceId, value: super::Service) -> &mut Self {
         self.__graphite_node_service.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/schema.rs` の `edge DependsOn = (dependent: Service) -> (dependency: Service) where unique pair`
     pub fn depends_on(&mut self, id: DependsOnId, value: DependsOn) -> &mut Self {
         self.depends_on.push((id, value));
         self

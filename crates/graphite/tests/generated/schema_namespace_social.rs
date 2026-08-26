@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    16512482574706984293u64, 10905076081082023616u64, 14906036235398993819u64,
-    18077129811460870175u64,
+    13578875658530976001u64, 10409584449235576542u64, 4773816095783826203u64,
+    6279140457376374143u64,
 ];
 /// `Person` ノードの公開ID。
 ///
@@ -39,6 +39,9 @@ pub struct Relation {
     pub target: PersonId,
 }
 impl Relation {
+    /// 始点と終点の公開IDから構築用の辺値を作る。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `edge Relation = (source: Person) -> (target: Person)`
     pub fn new(from: PersonId, to: PersonId) -> Self {
         Self { source: from, target: to }
     }
@@ -269,6 +272,9 @@ impl<'graph> RelationRef<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `edge Relation = (source: Person) -> (target: Person)`
     pub fn id(self) -> &'graph RelationId {
         self.graph
             .relation
@@ -278,27 +284,45 @@ impl<'graph> RelationRef<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `edge Relation = (source: Person) -> (target: Person)`
     pub fn source(self) -> PersonRef<'graph> {
         PersonRef {
             graph: self.graph,
             internal_position: __PersonInternalPosition(self.record().source.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `edge Relation = (source: Person) -> (target: Person)`
     pub fn target(self) -> PersonRef<'graph> {
         PersonRef {
             graph: self.graph,
             internal_position: __PersonInternalPosition(self.record().target.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `edge Relation = (source: Person) -> (target: Person)`
     pub fn from(self) -> PersonRef<'graph> {
         self.source()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `edge Relation = (source: Person) -> (target: Person)`
     pub fn to(self) -> PersonRef<'graph> {
         self.target()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `edge Relation = (source: Person) -> (target: Person)`
     pub fn from_id(self) -> &'graph PersonId {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `edge Relation = (source: Person) -> (target: Person)`
     pub fn to_id(self) -> &'graph PersonId {
         self.to().id()
     }
@@ -425,6 +449,9 @@ pub struct PersonRef<'graph> {
     internal_position: __PersonInternalPosition,
 }
 impl<'graph> PersonRef<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `node Person`
     pub fn id(self) -> &'graph PersonId {
         self.graph
             .__graphite_node_person
@@ -434,6 +461,9 @@ impl<'graph> PersonRef<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `node Person`
     pub fn value(self) -> &'graph super::Person {
         self.graph
             .__graphite_node_person
@@ -608,10 +638,16 @@ impl Builder {
             __graphite_construction_stamp: graphite::次の構築印を発行する(),
         }
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `node Person`
     pub fn person(&mut self, id: PersonId, value: super::Person) -> &mut Self {
         self.__graphite_node_person.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/schema_namespace.rs` の `edge Relation = (source: Person) -> (target: Person)`
     pub fn relation(&mut self, id: RelationId, value: Relation) -> &mut Self {
         self.relation.push((id, value));
         self

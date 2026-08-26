@@ -17,7 +17,10 @@ pub(crate) fn gen_builder_kind_methods(
         let field = &n.field_ident;
         let id_ty = &n.id_ty;
         let ty = &n.type_ident;
+        let 宣言元への参照 = &n.宣言元への参照;
         quote! {
+            /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+            #宣言元への参照
             pub fn #accessor(&mut self, id: #id_ty, value: super::#ty) -> &mut Self {
                 self.#field.push((id, value));
                 self
@@ -29,7 +32,10 @@ pub(crate) fn gen_builder_kind_methods(
         let accessor = &e.accessor_ident;
         let id_ty = &e.id_ty;
         let kind = e.kind;
+        let 宣言元への参照 = &e.宣言元への参照;
         quote! {
+            /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+            #宣言元への参照
             pub fn #accessor(&mut self, id: #id_ty, value: #kind) -> &mut Self {
                 self.#accessor.push((id, value));
                 self

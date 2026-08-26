@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    5914255542334073546u64, 12326481328718447183u64, 708698714642598896u64,
-    4268327312004563484u64,
+    18319251463648790547u64, 14372607373054647234u64, 6769988590113984945u64,
+    10662462479654044589u64,
 ];
 /// `人物` ノードの公開ID。
 ///
@@ -60,6 +60,9 @@ pub struct 購入 {
     pub 取引: 取引情報,
 }
 impl 購入 {
+    /// 始点と終点の公開IDと積み荷から構築用の辺値を作る。
+    ///
+    /// 宣言: `tests/graph_refs.rs` の `edge 購入 = (購入者: 人物) -[取引: 取引情報]-> (対象商品: 商品) where unique pair`
     pub fn new(from: 人物Id, to: 商品Id, payload: 取引情報) -> Self {
         Self {
             購入者: from,
@@ -67,6 +70,9 @@ impl 購入 {
             取引: payload,
         }
     }
+    /// この辺値が運ぶ積み荷を借用する。
+    ///
+    /// 宣言: `tests/graph_refs.rs` の `edge 購入 = (購入者: 人物) -[取引: 取引情報]-> (対象商品: 商品) where unique pair`
     pub fn payload(&self) -> &取引情報 {
         &self.取引
     }
@@ -89,11 +95,17 @@ pub struct 友人 {
     endpoints: graphite::UnorderedPair<人物Id>,
 }
 impl 友人 {
+    /// 両端の公開IDから構築用の辺値を作る。両端の順序は保たない。
+    ///
+    /// 宣言: `tests/graph_refs.rs` の `edge 友人 = 人物 -- 人物 where unique pair`
     pub fn new(a: 人物Id, b: 人物Id) -> Self {
         Self {
             endpoints: graphite::UnorderedPair::new(a, b),
         }
     }
+    /// この辺値の両端の公開IDを順序なし対として借用する。
+    ///
+    /// 宣言: `tests/graph_refs.rs` の `edge 友人 = 人物 -- 人物 where unique pair`
     pub fn endpoints(&self) -> (&人物Id, &人物Id) {
         self.endpoints.endpoints()
     }
@@ -464,6 +476,9 @@ impl<'graph> 購入Ref<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/graph_refs.rs` の `edge 購入 = (購入者: 人物) -[取引: 取引情報]-> (対象商品: 商品) where unique pair`
     pub fn id(self) -> &'graph 購入Id {
         self.graph
             .購入
@@ -473,33 +488,57 @@ impl<'graph> 購入Ref<'graph> {
             )
             .0
     }
+    /// この辺個体の始点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/graph_refs.rs` の `edge 購入 = (購入者: 人物) -[取引: 取引情報]-> (対象商品: 商品) where unique pair`
     pub fn 購入者(self) -> 人物Ref<'graph> {
         人物Ref {
             graph: self.graph,
             internal_position: __人物InternalPosition(self.record().購入者.0),
         }
     }
+    /// この辺個体の終点側の端点を役割名で返す。
+    ///
+    /// 宣言: `tests/graph_refs.rs` の `edge 購入 = (購入者: 人物) -[取引: 取引情報]-> (対象商品: 商品) where unique pair`
     pub fn 対象商品(self) -> 商品Ref<'graph> {
         商品Ref {
             graph: self.graph,
             internal_position: __商品InternalPosition(self.record().対象商品.0),
         }
     }
+    /// この辺個体の始点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/graph_refs.rs` の `edge 購入 = (購入者: 人物) -[取引: 取引情報]-> (対象商品: 商品) where unique pair`
     pub fn from(self) -> 人物Ref<'graph> {
         self.購入者()
     }
+    /// この辺個体の終点側の端点を、役割名によらない固定名で返す。
+    ///
+    /// 宣言: `tests/graph_refs.rs` の `edge 購入 = (購入者: 人物) -[取引: 取引情報]-> (対象商品: 商品) where unique pair`
     pub fn to(self) -> 商品Ref<'graph> {
         self.対象商品()
     }
+    /// この辺個体の始点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/graph_refs.rs` の `edge 購入 = (購入者: 人物) -[取引: 取引情報]-> (対象商品: 商品) where unique pair`
     pub fn from_id(self) -> &'graph 人物Id {
         self.from().id()
     }
+    /// この辺個体の終点側の端点の公開IDを借用する。
+    ///
+    /// 宣言: `tests/graph_refs.rs` の `edge 購入 = (購入者: 人物) -[取引: 取引情報]-> (対象商品: 商品) where unique pair`
     pub fn to_id(self) -> &'graph 商品Id {
         self.to().id()
     }
+    /// この辺個体が運ぶ積み荷を役割名で借用する。
+    ///
+    /// 宣言: `tests/graph_refs.rs` の `edge 購入 = (購入者: 人物) -[取引: 取引情報]-> (対象商品: 商品) where unique pair`
     pub fn 取引(self) -> &'graph 取引情報 {
         &self.record().取引
     }
+    /// この辺個体が運ぶ積み荷を、役割名によらない固定名で借用する。
+    ///
+    /// 宣言: `tests/graph_refs.rs` の `edge 購入 = (購入者: 人物) -[取引: 取引情報]-> (対象商品: 商品) where unique pair`
     pub fn payload(self) -> &'graph 取引情報 {
         &self.record().取引
     }
@@ -529,6 +568,9 @@ impl<'graph> 友人Ref<'graph> {
             )
             .1
     }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/graph_refs.rs` の `edge 友人 = 人物 -- 人物 where unique pair`
     pub fn id(self) -> &'graph 友人Id {
         self.graph
             .友人
@@ -538,6 +580,9 @@ impl<'graph> 友人Ref<'graph> {
             )
             .0
     }
+    /// この辺個体の両端を順序なし対として返す。
+    ///
+    /// 宣言: `tests/graph_refs.rs` の `edge 友人 = 人物 -- 人物 where unique pair`
     pub fn endpoints(self) -> (人物Ref<'graph>, 人物Ref<'graph>) {
         let (first, second) = self.record().endpoints.endpoints();
         (
@@ -676,6 +721,9 @@ pub struct 人物Ref<'graph> {
     internal_position: __人物InternalPosition,
 }
 impl<'graph> 人物Ref<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/graph_refs.rs` の `node 人物`
     pub fn id(self) -> &'graph 人物Id {
         self.graph
             .__graphite_node_人物
@@ -685,6 +733,9 @@ impl<'graph> 人物Ref<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `tests/graph_refs.rs` の `node 人物`
     pub fn value(self) -> &'graph super::人物 {
         self.graph
             .__graphite_node_人物
@@ -886,6 +937,9 @@ pub struct 商品Ref<'graph> {
     internal_position: __商品InternalPosition,
 }
 impl<'graph> 商品Ref<'graph> {
+    /// このノード個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/graph_refs.rs` の `node 商品`
     pub fn id(self) -> &'graph 商品Id {
         self.graph
             .__graphite_node_商品
@@ -895,6 +949,9 @@ impl<'graph> 商品Ref<'graph> {
             )
             .0
     }
+    /// このノード個体のノード値を借用する。
+    ///
+    /// 宣言: `tests/graph_refs.rs` の `node 商品`
     pub fn value(self) -> &'graph super::商品 {
         self.graph
             .__graphite_node_商品
@@ -1060,18 +1117,30 @@ impl Builder {
             __graphite_construction_stamp: graphite::次の構築印を発行する(),
         }
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/graph_refs.rs` の `node 人物`
     pub fn 人物(&mut self, id: 人物Id, value: super::人物) -> &mut Self {
         self.__graphite_node_人物.push((id, value));
         self
     }
+    /// この種別のノードを公開IDと値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/graph_refs.rs` の `node 商品`
     pub fn 商品(&mut self, id: 商品Id, value: super::商品) -> &mut Self {
         self.__graphite_node_商品.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/graph_refs.rs` の `edge 購入 = (購入者: 人物) -[取引: 取引情報]-> (対象商品: 商品) where unique pair`
     pub fn 購入(&mut self, id: 購入Id, value: 購入) -> &mut Self {
         self.購入.push((id, value));
         self
     }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/graph_refs.rs` の `edge 友人 = 人物 -- 人物 where unique pair`
     pub fn 友人(&mut self, id: 友人Id, value: 友人) -> &mut Self {
         self.友人.push((id, value));
         self
