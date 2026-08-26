@@ -4,23 +4,37 @@ use std::fs;
 
 use graphite_cli::with_path_context;
 
-use crate::document_reference::{DocumentReference, ReferenceOrigin, ReferenceTarget};
+use crate::document_reference::{
+    DocumentReference, ReferenceOrigin, ReferenceTarget, SourceCodeReference,
+};
 use crate::repository_root::RepositoryRoot;
+use crate::source_reference_check::InvalidSourceReferences;
 
-/// 走査対象の全ファイルから抜き出した文書参照の一覧。
+/// 歴史文書を置くディレクトリの先頭綴り。
+///
+/// 歴史文書 (`docs/history/`) は当時の綴りをそのまま保存するログ型文書であり、
+/// ファイル移動・行の増減で参照が腐っても現在の実体へ追随させない。ソース参照の
+/// 検査対象からこの配下だけを除く。
+const HISTORY_DOCUMENT_AREA: &str = "docs/history/";
+
+/// 走査対象の全ファイルから抜き出した文書参照とソース参照の一覧。
 ///
 /// 実在の判定にリポジトリルートが要るため、走査時に受け取ったルートを保持する。
 pub struct ReferenceScan<'root> {
     root: &'root RepositoryRoot,
     references: Vec<DocumentReference>,
+    source_references: Vec<SourceCodeReference>,
     external_reference_count: usize,
+    excluded_history_source_reference_count: usize,
 }
 
 impl<'root> ReferenceScan<'root> {
-    /// 走査対象ファイルを1件ずつ読み、書かれている文書参照を抜き出す。
+    /// 走査対象ファイルを1件ずつ読み、書かれている文書参照とソース参照を抜き出す。
     pub fn over(root: &'root RepositoryRoot) -> Result<Self, Box<dyn Error>> {
         let mut references = Vec::new();
+        let mut source_references = Vec::new();
         let mut external_reference_count = 0;
+        let mut excluded_history_source_reference_count = 0;
         for path in root.document_reference_sources()? {
             let origin_file = root.relative_display(&path);
             let text = with_path_context(fs::read_to_string(&path), &origin_file)?;
@@ -31,6 +45,14 @@ impl<'root> ReferenceScan<'root> {
                             let origin = ReferenceOrigin::new(origin_file.clone(), offset + 1);
                             references.push(DocumentReference::new(origin, target));
                         }
+                        Some(ReferenceTarget::SourceCode(target)) => {
+                            if origin_file.starts_with(HISTORY_DOCUMENT_AREA) {
+                                excluded_history_source_reference_count += 1;
+                            } else {
+                                let origin = ReferenceOrigin::new(origin_file.clone(), offset + 1);
+                                source_references.push(SourceCodeReference::new(origin, target));
+                            }
+                        }
                         Some(ReferenceTarget::ExternalDocument) => external_reference_count += 1,
                         None => {}
                     }
@@ -40,7 +62,9 @@ impl<'root> ReferenceScan<'root> {
         Ok(Self {
             root,
             references,
+            source_references,
             external_reference_count,
+            excluded_history_source_reference_count,
         })
     }
 
@@ -48,8 +72,16 @@ impl<'root> ReferenceScan<'root> {
         self.references.len()
     }
 
+    pub fn source_reference_count(&self) -> usize {
+        self.source_references.len()
+    }
+
     pub fn external_reference_count(&self) -> usize {
         self.external_reference_count
+    }
+
+    pub fn excluded_history_source_reference_count(&self) -> usize {
+        self.excluded_history_source_reference_count
     }
 
     /// 実在しない綴りを指している参照を全件返す。
@@ -62,6 +94,11 @@ impl<'root> ReferenceScan<'root> {
             .filter(|reference| !self.root.document_exists(reference.target()))
             .collect();
         MissingReferences { references }
+    }
+
+    /// 実在しないか行数を超えるソース参照を全件返す。
+    pub fn invalid_source_references(&self) -> InvalidSourceReferences<'_> {
+        InvalidSourceReferences::collect(&self.source_references, self.root)
     }
 }
 

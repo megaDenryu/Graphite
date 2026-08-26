@@ -244,7 +244,7 @@ const _: () = {
 
 指紋とは、生成先の相対パスと、整形済みの生成本文を連結した文字列に対して、
 FNV-1a (64bit) を4種の初期値でそれぞれ計算した `[u64; 4]` である
-(`crates/graphite-codegen/src/lib.rs:244-258`)。暗号強度のハッシュではなく、
+(`crates/graphite-codegen/src/fingerprint.rs:1-17`)。暗号強度のハッシュではなく、
 schemaの意味を変えて生成し忘れた場合に通常の `cargo build` を失敗させるための
 目印である。const評価で比較するため、照合の実行時費用はない。
 
@@ -349,7 +349,7 @@ pub fn person_len(&self) -> usize;
 メソッド名はノード型名を snake_case (単語を小文字にして下線で繋ぐ命名規則) にした形と
 固定接尾辞の機械的連結である。自然言語の
 複数形は生成しない。日本語のノード型名なら `人物_by_id` になる
-(`crates/graphite-codegen/src/naming.rs:103-105`)。
+(`crates/graphite-codegen/src/naming/method_names.rs:7-17`)。
 
 **8. 計算量**
 
@@ -709,7 +709,7 @@ PurchaseProductEachViolation { target: ProductId, count: usize },
 ```
 
 variant名は辺種別名と役割名から機械的に導出する
-(`crates/graphite-codegen/src/naming.rs:57-70`)。役割名が日本語なら
+(`crates/graphite-codegen/src/naming/violation_variant_names.rs:39-43`)。役割名が日本語なら
 `Ownership所有者EachViolation` になる
 (`generated/edge_roles_japanese_roles.rs:76`)。
 
@@ -1711,7 +1711,7 @@ impl graphite::NamedGraphElement<Graph> for __PersonNamedPosition {
 ```
 
 型名・フィールド名・型引数名の生成規則は
-`crates/graphite-codegen/src/naming.rs:37-49` にある。ラッパー型名は
+`crates/graphite-codegen/src/naming/instance_names.rs:6-19` にある。ラッパー型名は
 `__Graphite{Schema}NamedGraph`、位置フィールド名は `__graphite_named_{左辺名}`、
 型引数名は `__GraphiteNamedPosition{通番}` である。展開全体がブロック式で閉じるため、
 同じ関数内で `graph!` を複数回書いてもローカル型は衝突しない。
@@ -2065,7 +2065,7 @@ edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) wh
 **3. 公開生成物**
 
 探索メソッド名は辺種別名と役割名から機械的に導出する。自然言語の複数形や省略語を
-推測しない (`crates/graphite-codegen/src/naming.rs:107-121`)。
+推測しない (`crates/graphite-codegen/src/naming/method_names.rs:20-26`)。
 
 | 元の宣言 | 生成するメソッド |
 |---|---|

@@ -36,12 +36,21 @@ const USAGE: &str = "\
   cargo xtask check-external      ワークスペースの外の検証用パッケージで、生成の差分検査とビルドとテストを実行する
   cargo xtask check-docs          文書参照の綴りの実在と docs/README.md 索引の網羅を検査する
 
+check-docs が検査するもの (crates・examples・xtask・verification 配下の Rust
+ソースを指す参照): ファイルの実在と、行番号 (範囲なら終了行) がその実ファイルの
+行数に収まっていること。ただし docs/history 配下 (ログ型の歴史文書) は除く。
+歴史文書は当時の綴りをそのまま保存する運用であり、ファイル移動や行の増減で
+参照が腐っても現在の実体へ追随させない。ワイルドカード (`*`) やプレースホルダ
+(`<名前>` 等) を含む綴りは「該当するファイル群」を総称する散文とみなし、
+個別ファイルへの参照として検査しない。
+
 check-docs が検査しないもの:
   節番号とアンカーの実在
-  crates・examples 等のソースファイルを指す参照
-  行番号つき引用の中身 (generate --check が担当する)
+  ソース参照が引用している本文とコードの一致 (generate --check が別に担当する)
   外部URL
-  `../` で始まる別リポジトリの文書 (件数だけ報告する)";
+  `../` で始まる別リポジトリの文書 (件数だけ報告する)
+  docs/history 配下のソース参照 (歴史文書の当時の綴りは是正しない)
+  ワイルドカード・プレースホルダを含むソースらしき綴り (ファイル群の総称として扱う)";
 
 impl Command {
     fn from_arguments(arguments: &[String]) -> Result<Self, Box<dyn Error>> {

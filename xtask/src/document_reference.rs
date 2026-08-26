@@ -1,11 +1,21 @@
 use std::fmt;
 
+use crate::source_reference::SourceReference;
+
+/// リポジトリ内 Rust ソースを置くディレクトリの先頭綴り。
+///
+/// この一覧にある先頭を持つトークンだけをソース参照として分類する。
+/// `docs/` 配下の文書からの相対パスのような、ソースを指さない `.rs` に
+/// 似た綴りを誤って拾わないための絞り込みである。
+const SOURCE_AREAS: [&str; 4] = ["crates/", "examples/", "xtask/", "verification/"];
+
 /// 抽出したトークン1個が指す先の分類。
 ///
 /// このリポジトリの文書間参照は、ほぼ全てがバッククォートで囲んだリポジトリ
 /// ルート相対のプレーンテキスト (`docs/schema_v4.md` の形) である。先頭が
 /// `../` のものは別リポジトリ (Bullet) の文書を指すため、このリポジトリでは
-/// 実在を判定できない。
+/// 実在を判定できない。`crates/`・`examples/`・`xtask/`・`verification/` 始まりで
+/// `.rs` に終わるものはリポジトリ内 Rust ソースへの参照である。
 ///
 /// 注意: 分類はトークン全体で行う。部分文字列として `docs/` を切り出すと、
 /// 別リポジトリを正しく指した `../Bullet/docs/...` と、先頭の `../Bullet` が
@@ -13,21 +23,27 @@ use std::fmt;
 pub enum ReferenceTarget {
     /// このリポジトリの `docs/` 配下を指す綴り。実在を検査する。
     RepositoryDocument(DocumentPath),
+    /// このリポジトリ内 Rust ソースを指す綴り。実在と行番号範囲を検査する。
+    SourceCode(SourceReference),
     /// `../` で始まる別リポジトリの文書を指す綴り。件数だけ数える。
     ExternalDocument,
 }
 
 impl ReferenceTarget {
-    /// トークン1個を分類する。文書を指さないトークンは `None` を返す。
+    /// トークン1個を分類する。文書・ソースのいずれも指さないトークンは
+    /// `None` を返す。
     pub fn classify(token: &str) -> Option<Self> {
-        if !token.ends_with(".md") && !token.ends_with(".html") {
+        if token.ends_with(".md") || token.ends_with(".html") {
+            if token.starts_with("../") {
+                return Some(Self::ExternalDocument);
+            }
+            if token.starts_with("docs/") {
+                return Some(Self::RepositoryDocument(DocumentPath::new(token)));
+            }
             return None;
         }
-        if token.starts_with("../") {
-            return Some(Self::ExternalDocument);
-        }
-        if token.starts_with("docs/") {
-            return Some(Self::RepositoryDocument(DocumentPath::new(token)));
+        if SOURCE_AREAS.iter().any(|area| token.starts_with(area)) {
+            return SourceReference::parse(token).map(Self::SourceCode);
         }
         None
     }
@@ -96,6 +112,28 @@ impl DocumentReference {
 }
 
 impl fmt::Display for DocumentReference {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{} -> {}", self.origin, self.target)
+    }
+}
+
+/// 1箇所に書かれた自リポジトリソースへの参照。
+pub struct SourceCodeReference {
+    origin: ReferenceOrigin,
+    target: SourceReference,
+}
+
+impl SourceCodeReference {
+    pub fn new(origin: ReferenceOrigin, target: SourceReference) -> Self {
+        Self { origin, target }
+    }
+
+    pub fn target(&self) -> &SourceReference {
+        &self.target
+    }
+}
+
+impl fmt::Display for SourceCodeReference {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(formatter, "{} -> {}", self.origin, self.target)
     }

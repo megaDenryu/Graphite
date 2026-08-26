@@ -82,6 +82,16 @@ impl RepositoryRoot {
         self.path.join(document.spelling()).is_file()
     }
 
+    /// リポジトリ内 Rust ソースの実際の行数。実在しなければ `None`。
+    ///
+    /// 実在判定と行数取得を1回の読み込みで済ませる。存在確認だけを別の
+    /// `is_file` 呼び出しで行うと、走査対象が増えたときに二度手間になる。
+    pub fn source_file_line_count(&self, path: &str) -> Option<usize> {
+        fs::read_to_string(self.path.join(path))
+            .ok()
+            .map(|text| text.lines().count())
+    }
+
     /// 索引ファイル (docs/README.md) の本文を読む。
     pub fn document_index_text(&self) -> Result<String, Box<dyn Error>> {
         let path = self.path.join("docs").join("README.md");
