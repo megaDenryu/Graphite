@@ -2,7 +2,7 @@
 
 use proc_macro2::Ident;
 
-use crate::schema_dsl::{EachConstraint, EachSpec, EdgeDecl, EdgeShape};
+use crate::schema::syntax::{EachConstraint, EachSpec, EdgeDecl, EdgeShape};
 
 /// `where each <参照名>` が意味する側 (出次数/入次数)。
 ///

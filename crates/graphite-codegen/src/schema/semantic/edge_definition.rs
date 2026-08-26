@@ -15,7 +15,7 @@ use super::endpoint_pairing::{端点対のキーの形, 端点対の重複可否
 use super::node_definition::ノード定義番号;
 use super::public_id_type::公開ID型;
 use crate::naming::generated_id_ident;
-use crate::schema_dsl::{EdgeDecl, EdgePayload, EdgeShape};
+use crate::schema::syntax::{EdgeDecl, EdgePayload, EdgeShape};
 
 /// スキーマ定義が持つ辺定義の列の中の1件を指すハンドル。
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -62,7 +62,7 @@ impl 有向端点 {
 /// 辺が向きを持つかどうかと、その端点。
 ///
 /// 無向辺の両端は同じノード型でなければならない
-/// (`docs/edge_endpoints_v4_1.md` §2、`schema_validate` が検証済み) ため、
+/// (`docs/edge_endpoints_v4_1.md` §2、`schema::validate` が検証済み) ため、
 /// 端点は1つだけ持つ。
 pub enum 辺の向き {
     有向 {

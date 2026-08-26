@@ -7,3 +7,5 @@
 
 pub mod codegen;
 pub mod semantic;
+pub mod syntax;
+pub mod validate;

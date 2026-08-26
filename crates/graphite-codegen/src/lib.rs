@@ -7,8 +7,6 @@ mod declaration_site;
 mod generated_path;
 pub mod naming;
 mod schema;
-mod schema_dsl;
-mod schema_validate;
 
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -106,10 +104,10 @@ pub fn parse_tracked_schema(input: TokenStream) -> Result<TrackedSchema, Vec<syn
             reason,
         )]);
     }
-    let parsed = schema_dsl::SchemaInput::parse_recovering
+    let parsed = schema::syntax::SchemaInput::parse_recovering
         .parse2(tracked.schema_tokens.clone())
         .map_err(|error| vec![error])?;
-    let schema = validate(parsed)?;
+    let schema = schema::validate::validate(parsed)?;
     let スキーマ定義 =
         schema::semantic::検証済み構文からスキーマ定義を組み立てる(&schema);
     let generated = schema::codegen::generate_module_body(&スキーマ定義);
@@ -137,12 +135,12 @@ pub fn parse_tracked_schema(input: TokenStream) -> Result<TrackedSchema, Vec<syn
 
 /// 回復診断テスト専用のインライン schema 展開を返す。
 pub fn expand_inline_for_test(input: TokenStream) -> TokenStream {
-    let parsed = match schema_dsl::SchemaInput::parse_recovering.parse2(input) {
+    let parsed = match schema::syntax::SchemaInput::parse_recovering.parse2(input) {
         Ok(parsed) => parsed,
         Err(error) => return error.to_compile_error(),
     };
-    match validate_recovering(parsed) {
-        ValidationResult::Generated { schema, errors } => {
+    match schema::validate::validate_recovering(parsed) {
+        schema::validate::ValidationResult::Generated { schema, errors } => {
             let diagnostics: TokenStream =
                 errors.iter().map(syn::Error::to_compile_error).collect();
             let スキーマ定義 =
@@ -152,100 +150,8 @@ pub fn expand_inline_for_test(input: TokenStream) -> TokenStream {
             let generated = schema::codegen::generate(&スキーマ定義);
             quote! { #diagnostics #generated }
         }
-        ValidationResult::Rejected(errors) => {
+        schema::validate::ValidationResult::Rejected(errors) => {
             errors.iter().map(syn::Error::to_compile_error).collect()
-        }
-    }
-}
-
-fn validate(parsed: schema_dsl::SchemaParse) -> Result<schema_dsl::SchemaInput, Vec<syn::Error>> {
-    match validate_recovering(parsed) {
-        ValidationResult::Generated { schema, errors } if errors.is_empty() => Ok(schema),
-        ValidationResult::Generated { errors, .. } | ValidationResult::Rejected(errors) => {
-            Err(errors)
-        }
-    }
-}
-
-enum ValidationResult {
-    Generated {
-        schema: schema_dsl::SchemaInput,
-        errors: Vec<syn::Error>,
-    },
-    Rejected(Vec<syn::Error>),
-}
-
-fn validate_recovering(parsed: schema_dsl::SchemaParse) -> ValidationResult {
-    let schema_dsl::SchemaParse {
-        schema,
-        errors: parse_errors,
-    } = parsed;
-    let has_parse_errors = !parse_errors.is_empty();
-    let edges = if has_parse_errors {
-        schema_validate::filter_edges_with_known_endpoints(&schema.nodes, schema.edges)
-    } else {
-        schema.edges
-    };
-
-    let mut validate_errors = Vec::new();
-    let node_names_are_unique = collect_validation(
-        schema_validate::validate_unique_node_names(&schema.nodes),
-        &mut validate_errors,
-    );
-    if !has_parse_errors {
-        collect_validation(
-            schema_validate::validate_edge_endpoints(&schema.nodes, &edges),
-            &mut validate_errors,
-        );
-    }
-    let edge_names_are_unique = collect_validation(
-        schema_validate::validate_unique_edge_kinds(&edges),
-        &mut validate_errors,
-    );
-    if node_names_are_unique && edge_names_are_unique {
-        collect_validation(
-            schema_validate::validate_generated_type_names(
-                &schema.schema_name,
-                &schema.nodes,
-                &edges,
-            ),
-            &mut validate_errors,
-        );
-    }
-    collect_validation(
-        schema_validate::validate_undirected_same_type(&edges),
-        &mut validate_errors,
-    );
-    collect_validation(
-        schema_validate::validate_edge_roles(&edges),
-        &mut validate_errors,
-    );
-    collect_validation(
-        schema_validate::validate_each_reference(&edges),
-        &mut validate_errors,
-    );
-
-    if !validate_errors.is_empty() {
-        let mut errors = parse_errors;
-        errors.extend(validate_errors);
-        return ValidationResult::Rejected(errors);
-    }
-    ValidationResult::Generated {
-        schema: schema_dsl::SchemaInput {
-            schema_name: schema.schema_name,
-            nodes: schema.nodes,
-            edges,
-        },
-        errors: parse_errors,
-    }
-}
-
-fn collect_validation(result: syn::Result<()>, errors: &mut Vec<syn::Error>) -> bool {
-    match result {
-        Ok(()) => true,
-        Err(error) => {
-            errors.push(error);
-            false
         }
     }
 }

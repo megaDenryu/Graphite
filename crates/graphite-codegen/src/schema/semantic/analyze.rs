@@ -8,7 +8,7 @@ use proc_macro2::Ident;
 use super::edge_definition::{有向端点, 辺の向き, 辺定義};
 use super::node_definition::{ノード定義, ノード定義番号};
 use super::schema_definition::スキーマ定義;
-use crate::schema_dsl::{EdgeDecl, EdgeShape, NodeDecl, SchemaInput};
+use crate::schema::syntax::{EdgeDecl, EdgeShape, NodeDecl, SchemaInput};
 
 /// 検証済みの `schema` 宣言からスキーマ定義を組み立てる。
 pub fn 検証済み構文からスキーマ定義を組み立てる(

@@ -4,7 +4,7 @@ use proc_macro2::Ident;
 
 use super::public_id_type::公開ID型;
 use crate::naming::generated_id_ident;
-use crate::schema_dsl::NodeDecl;
+use crate::schema::syntax::NodeDecl;
 
 /// スキーマ定義が持つノード定義の列の中の1件を指すハンドル。
 ///
