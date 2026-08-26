@@ -1371,7 +1371,11 @@ let g = graphite::graph!(Org {
 `graph!` は `{Schema}::Graph::create_named` の呼び出しへ脱糖する。項の展開は
 「全ノード項 → (全辺項と全スプライス項を記述順)」の2段である。辺はノードのID束縛を
 参照するので、`let` が使用より前に来ている必要があるためである。検証は凍結時なので
-意味論は変わらない (`crates/graphite-macros/src/instance_codegen.rs:36-51`)。
+意味論は変わらない (`crates/graphite-macros/src/instance_codegen.rs:36-51`)。この
+並べ替えがあるため、利用者はリテラルの中で辺の項をノードの項より前に書いてよい。
+
+builderのクロージャ引数名が `b` ではなく `__graphite_b` なのは、ノードキーに `b` を
+使ったときに生成される `let b = ..;` がbuilder変数を隠す衝突を避けるためである。
 
 ```text
 Org::Graph::create_named(|__graphite_b, __graphite_permit| {
@@ -1442,6 +1446,17 @@ Org::Graph::create_named(|__graphite_b, __graphite_permit| {
 
 宣言した向きと柄の向きが一致しなければ、実装していないトレイトを要求することに
 なりコンパイルエラーになる。
+
+schemaに無いKind名を書いた場合も、脱糖後の `__graphite_b.{label}(..)` が素のrustcの
+「メソッドが見つからない」エラーへ落ちることで検出する。「利用可能なエッジ一覧」を
+添えた `compile_error!` は出さない。これは意図した取引であり、`graph!` が参照するのが
+通常の型とメソッドだけになる代わりに、診断の親切さを手放している。この構造のため、
+`graph_schema!` と `graph!` を同じファイルへ置く制約も無い (別モジュールから `use`
+すれば足りる。実証は `crates/graphite/tests/graph_cross_module.rs`)。
+
+マクロ呼び出しの中の `-[式]->` は `-`・`[`・`]`・`-`・`>` という独自のトークン列で
+あり、rustfmt がこれを式として整形しようとして崩す。`graph!` の呼び出しには
+`#[rustfmt::skip]` を付ける。
 
 **短縮形の正確な脱糖**。`alice = Person { .. }` は `insert_named("alice", ..)` へ
 脱糖し、生成ファイルの `insert_named` が束縛名の文字列から既定IDを作る
