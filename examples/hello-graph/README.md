@@ -23,16 +23,37 @@ cargo test
 cargo run
 ```
 
-`src/main.rs` は上から読める構成になっています:
+節ごとにファイルを分けています:
 
-| セクション | 内容 |
+| セクション | 置き場所 | 内容 |
+|---|---|---|
+| §1 | `src/main.rs` | ノード型・エッジ積み荷型の宣言 (普通の struct) |
+| §2 | `src/main.rs` | `graph_schema!` でのスキーマ宣言 (v4: `edge Kind = ...;` は新しい nominal 型の定義、`where` は制約) |
+| §2.5 | `src/main.rs` | 脱糖の実像。全要素キー・`KeyedTable` 格納・辺は名前付きフィールドの構造体として第一級、という実装を解説 |
+| §4 | `src/main.rs` | 「できないこと」— コメントアウトしたコード + 実際に採取したコンパイルエラー |
+| §3 | `src/cookbook.rs` とその配下 | クックブック — 生成される公開APIを1関数=1つのやりたいこと単位で全列挙 (`cargo run` で実行される) |
+| §5 | `src/flow_demo.rs` | `flow!` — 関数の辺 (`graph!` の宣言される辺との対比。`cargo run` で実行される) |
+
+§1・§2・§2.5・§4 が `src/main.rs` に同居しているのは、どれも schema 宣言
+そのものの意味を説明しているためです (§4 は §2 の宣言が弾く書き方の一覧)。
+§3 のクックブックは、確かめる内容ごとに `src/cookbook/` 配下のファイルへ
+分かれています:
+
+| ファイル | 実演する内容 |
 |---|---|
-| §1 | ノード型・エッジ積み荷型の宣言 (普通の struct) |
-| §2 | `graph_schema!` でのスキーマ宣言 (v4: `edge Kind = ...;` は新しい nominal 型の定義、`where` は制約) |
-| §2.5 | 脱糖の実像。全要素キー・`KeyedTable` 格納・辺は名前付きフィールドの構造体として第一級、という実装を解説 |
-| §3 | クックブック — 生成される公開APIを1関数=1つのやりたいこと単位で全列挙 (`cargo run` で実行される) |
-| §4 | 「できないこと」— コメントアウトしたコード + 実際に採取したコンパイルエラー |
-| §5 | `flow!` — 関数の辺 (`graph!` の宣言される辺との対比。`cargo run` で実行される) |
+| `src/cookbook.rs` | §3 の呼び出し順 (構築 → ノードを読む → エッジを辿る → 一覧する → 検証エラーを受ける) |
+| `src/cookbook/literal_construction.rs` | `graph!` リテラルで組み立てる3通り |
+| `src/cookbook/builder_construction.rs` | builder を直接呼んで組み立てる2通り |
+| `src/cookbook/node_reading.rs` | 公開IDからノードを1件読む |
+| `src/cookbook/edge_traversal.rs` | 役割探索・端点対検索の戻り型が `where` 制約で決まる |
+| `src/cookbook/listing.rs` | `{type}_ids`/`{kind}_iter`/`{kind}_len` で一覧する |
+| `src/cookbook/duplicate_key_violation.rs` | 同じキーを2回宣言した違反 |
+| `src/cookbook/unknown_endpoint_violation.rs` | 未宣言のキーへ辺を張った違反 |
+| `src/cookbook/constraint_violation.rs` | `where` 制約を満たさない違反 |
+| `src/cookbook/violation_reception.rs` | `create` の打ち切りと `create_collecting` の集約 |
+
+アサーションによる確認は `src/tests.rs` とその配下 (`traversal`・
+`key_violation`・`constraint_violation`・`edge_value`・`flow`) にあります。
 
 ## Kind (辺種別) は何者か
 
@@ -82,10 +103,10 @@ cargo run
 `__graphite_b.add_named(key, <Boss as graphite::DirectedEdgeLiteral<_, _, _>>::from_graph_literal(from.clone(), to.clone(), 積み荷式))` という
 通常のメソッド呼び出しと、内部位置handleを持つローカルwrapperへ脱糖されます。
 
-## クックブック チートシート (`src/main.rs` §3 と1対1対応)
+## クックブック チートシート (`src/cookbook.rs` 配下の §3 と1対1対応)
 
-`src/main.rs` §3 の各関数が、それぞれ生成APIの1つずつに対応しています。
-「やりたいこと」列の順は `main.rs` の呼び出し順 (構築 → ノードを読む →
+§3 の各関数が、それぞれ生成APIの1つずつに対応しています。
+「やりたいこと」列の順は `src/cookbook.rs` の呼び出し順 (構築 → ノードを読む →
 エッジを辿る → 一覧する → 検証エラーを受ける) と同じです。v4 では
 IDによる動的検索は**`Graph` に生えた種別APIのメソッド**です
 (`g.person_by_id(&id)` のようなノード種別のメソッド、`g.boss_by_id(&id)`
@@ -145,7 +166,7 @@ IDによる動的検索は**`Graph` に生えた種別APIのメソッド**です
 | 最初の1件の違反だけで止める | `Org::create(\|b\| ..)` | `Result<Org, OrgViolation>` |
 | 違反を全件集める | `Org::create_collecting(\|b\| ..)` | `Result<Org, Vec<OrgViolation>>` |
 
-## `flow!` — 関数の辺 (`src/main.rs` §5 と1対1対応)
+## `flow!` — 関数の辺 (`src/flow_demo.rs` の §5 と1対1対応)
 
 `graph_schema!`/`graph!` の辺は**宣言**(構築時にまとめて検証されるデータの
 繋がり) ですが、`graphite::flow!` (`docs/flow_macro.md`) の矢印 `-[関数式]->`
