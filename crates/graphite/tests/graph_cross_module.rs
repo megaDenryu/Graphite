@@ -1,4 +1,4 @@
-//! v3 (`docs/graph_literal_v3.md` §4): ハンドシェイクマクロ全廃により、
+//! v3 (`docs/history/graph_literal_v3.md` §4): ハンドシェイクマクロ全廃により、
 //! `graph_schema!` と `graph!` の同一ファイル制約 (旧 G5、
 //! `docs/development/ide_support_spec.md` 参照) が構造的に消滅したことを示すテスト。
 //! v4 でも同様に、`graph!` が参照するのは (a) スキーマ struct の `create`

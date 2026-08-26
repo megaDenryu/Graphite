@@ -4,9 +4,9 @@
 > 現行のエッジ宣言構文 (`edge Kind = From -> To;` / `where each ...`/`unique pair`
 > 制約・辺の第一級キー化) は `docs/schema_v4.md` を参照すること。
 
-2026-07-16 のユーザー決定。`docs/edge_syntax_v2.md` (v2) のエッジ宣言部の改訂。
+2026-07-16 のユーザー決定。`docs/history/edge_syntax_v2.md` (v2) のエッジ宣言部の改訂。
 設計考察はオーケストレータによる (経緯・比較検討は
-`docs/dev_history_2026-07-14_session2.md` 参照)。
+`docs/history/dev_history_2026-07-14_session2.md` 参照)。
 
 ## 1. 動機 (ユーザー指摘)
 

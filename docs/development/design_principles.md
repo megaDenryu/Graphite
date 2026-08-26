@@ -76,7 +76,7 @@ Rust 的な型安全性そのものを失う。
 
 **Graphite での具体例**: `{label}_pairs()` が返す `&K` を汎用
 `Graph<N, E, K>` へ射影する際に借用エラーを踏みやすかった問題
-(`docs/phase5_candidates.md` 項目b) に対し、`Graph::from_edges(nodes, edges)`
+(`docs/history/phase5_candidates.md` 項目b) に対し、`Graph::from_edges(nodes, edges)`
 という所有権ベースのヘルパーを追加し、`.cloned()` で値を渡せば済む形にした。
 
 ### 原則5: ゼロコスト志向
@@ -132,5 +132,5 @@ Rust 的な型安全性そのものを失う。
 ## 既知の残課題
 
 6 原則を新規適用する過程で見つかった、既存コードに残る違反・グレーゾーンは
-`docs/phase5_candidates.md` および各コミットメッセージに記録する。次フェーズ
+`docs/history/phase5_candidates.md` および各コミットメッセージに記録する。次フェーズ
 着手時はまずそこを確認すること。

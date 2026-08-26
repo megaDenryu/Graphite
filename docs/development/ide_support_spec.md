@@ -82,7 +82,7 @@ G6 の結論: 現状の rust-analyzer では関数様 proc-macro の入力トー
 
 ## 1.7 スキーマ宣言構文 v2 実装後の再計測 (2026-07-14、コミット `75f597e`/`86b715a`)
 
-構文 v2 (`docs/edge_syntax_v2.md`: ノード型・エッジ属性型を外部 struct 参照化)
+構文 v2 (`docs/history/edge_syntax_v2.md`: ノード型・エッジ属性型を外部 struct 参照化)
 の実装後、`crates/graphite/tests/orgchart_macro.rs` で再計測:
 
 | 操作 | 結果 |
@@ -96,7 +96,7 @@ G6 の結論: 現状の rust-analyzer では関数様 proc-macro の入力トー
 
 ## 1.8 graph! リテラル構文 v3 実装後の再計測 (2026-07-15)
 
-`docs/graph_literal_v3.md` (`-[label = 式]->` への変更、ハンドシェイクマクロ
+`docs/history/graph_literal_v3.md` (`-[label = 式]->` への変更、ハンドシェイクマクロ
 全廃) の実装後、`cargo expand -p graphite --test orgchart_macro` で実際の
 展開結果を確認した。§1.7 で「二段マクロ展開を rust-analyzer が追跡できない」
 と記録した制約は、**展開そのものが単段になったことで構造的に解消した**
@@ -401,7 +401,7 @@ compile-fail テストが検査する。この入口は診断テスト専用で�
 
 ### G5: `graph!` ↔ `graph_schema!` 同一ファイル制約 (v3 で解消済み)
 
-**2026-07-14/15 更新: `docs/graph_literal_v3.md` の実装により、この制約自体が
+**2026-07-14/15 更新: `docs/history/graph_literal_v3.md` の実装により、この制約自体が
 構造的に消滅した。** 以下は制約が存在していた当時 (構文 v0〜v2) の記録として
 残す。
 
@@ -419,7 +419,7 @@ compile-fail テストが検査する。この入口は診断テスト専用で�
   **method-not-found という正しいコンパイルエラー自体は出る** (ハンドシェイク
   は診断の上乗せであり健全性には関与しない) ため、実害は診断品質に限られる。
 
-**v3 での解消**: `docs/graph_literal_v3.md` でエッジ属性ペイロードを
+**v3 での解消**: `docs/history/graph_literal_v3.md` でエッジ属性ペイロードを
 `-[label = 式]->` という式渡しに変えたことで、ハンドシェイクマクロ
 (`__graphite_edge_{Schema}!`) 自体が完全に不要になった (属性の struct
 リテラル構築はユーザーの式そのものであり、マクロが介在する必要が無くなった)。

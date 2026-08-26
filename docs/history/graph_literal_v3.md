@@ -5,7 +5,7 @@
 > `key @ ID式 = Kind(from -[式]-> to)` で名前付きフィールドの構造体を構築) は `docs/schema_v4.md`
 > を参照すること。
 
-2026-07-14 セッション2 でのユーザー決定。`docs/edge_syntax_v2.md` (スキーマ宣言
+2026-07-14 セッション2 でのユーザー決定。`docs/history/edge_syntax_v2.md` (スキーマ宣言
 構文 v2) と対になる、リテラル側の改訂。決定3 (`../Bullet/docs/graph_design_sketches.md`)
 のリテラル形 `key: Type { .. }` / `-[label { .. }]->` を置き換える。
 

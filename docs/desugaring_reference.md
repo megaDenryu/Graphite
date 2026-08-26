@@ -27,8 +27,8 @@ Graphiteの独自構文を消去したときにどの普通のRustのファイ�
 する (`crates/graphite/src/lib.rs:10-11`)。
 
 書いてあるのは現行の実装だけである。過去の仕様は混在させない。歴史的な経緯は
-`docs/edge_syntax_v2.md`・`docs/edge_syntax_v3.md`・`docs/graph_literal_v3.md`・
-`docs/edge_view_api.md`・`docs/design_journal.html` にある。
+`docs/history/edge_syntax_v2.md`・`docs/history/edge_syntax_v3.md`・`docs/history/graph_literal_v3.md`・
+`docs/history/edge_view_api.md`・`docs/history/design_journal.html` にある。
 
 ## 目次
 

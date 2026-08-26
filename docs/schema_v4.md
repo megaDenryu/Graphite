@@ -236,7 +236,7 @@ g.b_boss();
 - 全テスト・trybuild (stderr 再採取)・examples 7 本・README・hello-graph
   (§2/§2.5/§3/§4 を v4 の概念 — 全要素キー・where 制約・Graph中心の種別API —
   で書き直し、エラー引用は実採取)
-- docs/edge_syntax_v3.md / graph_literal_v3.md / edge_view_api.md の冒頭に
+- docs/history/edge_syntax_v3.md / graph_literal_v3.md / edge_view_api.md の冒頭に
   「v4 (本ファイル) で置換済み」の注記
 
 ## 6. 見送り・保留 (根拠つき)

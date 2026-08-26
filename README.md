@@ -21,7 +21,7 @@ Vertex 側では「グラフ指向」を独立言語の構文・型システム�
   `graph!` の展開イメージはここで最初に書かれた
 
 v1〜v4.2 の全過程 (何を検討し、何を採用/棄却したか) を通読したい場合は
-`docs/design_journal.html` (このリポジトリ内のドキュメント) をローカルで
+`docs/history/design_journal.html` (このリポジトリ内のドキュメント) をローカルで
 ブラウザで開いてください。
 
 「ある値をグラフの要素 (ノード/エッジ) として書くべきか、それとも普通の
@@ -587,7 +587,7 @@ let result: Result<OrgChart::Graph, Vec<OrgChart::Violation>> = OrgChart::Graph:
 `HashMap` ラッパーで反復順序が未規定だったため)、dialogue-engine の v4 移行
 中に「制約なし辺の `of()` の並びがプロセスごとに変わる」flaky なテストとして
 発覚し、`KeyedTable` の内部構造を挿入順保持に変更する形で修正・仕様化された
-経緯がある (`docs/dev_history_2026-07-14_session2.md` §3.10 参照)。
+経緯がある (`docs/history/dev_history_2026-07-14_session2.md` §3.10 参照)。
 
 ただし、これは「同一始点キー内での順序」の保証であり、`iter()` が異なる
 始点キーをまたいで列挙する順序までは保証しません (始点キーの集合は内部の
@@ -781,7 +781,7 @@ schema生成コードは基本的に`orgchart_handwritten.rs`と同じ形を生�
   `get(&SrcId) -> Option<TRef<'graph>>` (属性付きは `Option<(TRef<'graph>, &Attrs)>`) を対で
   持ちます。`Vec` の `v[i]` (パニック) と `v.get(i)` (`Option`) の対と
   同じ関係です (フェーズ4では `{label}`/`try_{label}` という導出名の
-  メソッド対でしたが、`docs/edge_view_api.md` でビュー1個の `of`/`get`
+  メソッド対でしたが、`docs/history/edge_view_api.md` でビュー1個の `of`/`get`
   に統合されました)。
 - **`match` パターンでのクエリは非対応 — 一部緩和 (フェーズ4)、
   `match` 構文そのものは引き続き非対応**。Vertex 側で検討していた
@@ -807,7 +807,7 @@ schema生成コードは基本的に`orgchart_handwritten.rs`と同じ形を生�
   (`docs/graph_splice.md` §3)。内部フィールド名は常に素朴な `+ "s"` で
   生成されます。
 - **`graph!` のエラーメッセージ品質 (未知エッジラベル) — フェーズ4で
-  ハンドシェイクマクロにより一時解決、v3 (`docs/graph_literal_v3.md` §4) で
+  ハンドシェイクマクロにより一時解決、v3 (`docs/history/graph_literal_v3.md` §4) で
   全廃**。フェーズ4では `graph_schema!` が `__graphite_edge_{Schema}!` という
   宣言的マクロを追加生成し、未知のラベルに「利用可能なエッジ一覧」付きの
   `compile_error!` を出していましたが、この方式には `macro_rules!` の

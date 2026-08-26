@@ -18,7 +18,7 @@
 #![deny(unused_variables)]
 
 /// ノード型。`graph_schema!` はこの型を生成せず参照するだけ
-/// (`docs/edge_syntax_v2.md`)。
+/// (`docs/history/edge_syntax_v2.md`)。
 #[derive(Debug, Clone, PartialEq)]
 pub struct Widget {
     pub name: String,

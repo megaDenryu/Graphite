@@ -4,7 +4,7 @@
 
 ## 0. セッション開始指示
 
-> Graphite/docs/dev_history_2026-07-14_session1.md　を読んで。これの続きをしたい。やり方とかそのまま。この前のセッションのAIと同じように作業してほしい。Graphiteの課題は、人間がグラフ構造など独自構文を書くときにそれがちゃんとvscodeで反応して参照ジャンプとか、型追跡とか常識的に機能するようにしたいということです。ほかにも根本的な言語側の課題もあると思うんで、それに対して仕様を詰めて実装したいです。
+> Graphite/docs/history/dev_history_2026-07-14_session1.md　を読んで。これの続きをしたい。やり方とかそのまま。この前のセッションのAIと同じように作業してほしい。Graphiteの課題は、人間がグラフ構造など独自構文を書くときにそれがちゃんとvscodeで反応して参照ジャンプとか、型追跡とか常識的に機能するようにしたいということです。ほかにも根本的な言語側の課題もあると思うんで、それに対して仕様を詰めて実装したいです。
 
 運用体制は前セッション踏襲: オーケストレータ (Fable) は方針策定・タスク分解・レビュー・実測に徹し、実装・テスト・git 操作は Sonnet subagent (effort: high) に委譲。
 
@@ -77,7 +77,7 @@ proc-macro-dev スキルに「生成識別子はユーザートークン由来�
 
 > そもそもschemaの中でnodeの型って宣言する必要あるのか？nodeはどうせstructなんだから、graph_schemaの外でstructとして定義してedgeで始点と終点に外の型を指定すればよくないか？
 
-→ **スキーマ宣言構文 v2** (`docs/edge_syntax_v2.md`、決定3 の宣言側改訂) を策定・実装:
+→ **スキーマ宣言構文 v2** (`docs/history/edge_syntax_v2.md`、決定3 の宣言側改訂) を策定・実装:
 - ノード型・エッジ属性型は**ユーザーがマクロ外で普通の struct として宣言**し、
   schema は参照するだけ。マクロはグラフ機械 ({Node}Id・ストレージ・builder・
   アクセサ・違反enum) のみ生成 (ドメイン型を発明しない)
@@ -108,7 +108,7 @@ v2 実装直後の実測 (§3.5 末尾) で「`graph!` リテラル内の属性�
 > `let alice1 = Person { .. };` と作ってから `alice = alice1` のような変数渡し
 > もできる。
 
-→ **リテラル構文 v3** (`docs/graph_literal_v3.md`) を策定・実装:
+→ **リテラル構文 v3** (`docs/history/graph_literal_v3.md`) を策定・実装:
 
 - ノード項を `key: Type { .. }` から `key = 式` へ変更。属性ありエッジも
   `-[label { fields }]->` から `-[label = 式]->` (式ペイロード) へ変更。
@@ -144,7 +144,7 @@ v2 実装直後の実測 (§3.5 末尾) で「`graph!` リテラル内の属性�
     (`crates/graphite-macros/src/instance_codegen.rs`、回帰テスト
     `crates/graphite/tests/orphan_node_no_warning.rs`)。
 - この改訂で「**schema は `:` (型付け)、リテラルは `=` (代入)**」という
-  言語規則が確立した。schema 側 (`docs/edge_syntax_v2.md`) は型を宣言する
+  言語規則が確立した。schema 側 (`docs/history/edge_syntax_v2.md`) は型を宣言する
   ので `:`、graph! リテラル側は値をキーに束縛するので `=` という対応が、
   文法上も一貫した形で言語全体に定着した。
 
@@ -499,6 +499,6 @@ Fudaba #8 の議論をユーザーと実施。経緯の要点 (原文趣旨の�
 2. `graph!` の意味検査エラー (重複キー等) とパースエラーが併存すると、複数 compile_error! が式位置に並んで不正になりうる (lib.rs にコメントで文書化済み。実害は限定的)
 3. ハンドシェイクマクロの補完露出 (G5)。`#[doc(hidden)]` 相当の抑制手段は macro_rules には無い
 4. ケース変換を跨ぐ rename の残ケース: 違反バリアント (`BossMultiplicity`)・ノード型 rename 時の snake_case アクセサ (`g.employee()`)。v2 で主要ケース ({Label}Attrs) は消滅済み
-5. 前セッションからの継続: graph! の平坦名前空間 / plural の素朴な複数形化 / `{label}_ids` と `{node}_ids` の命名重なり (docs/phase5_candidates.md)
+5. 前セッションからの継続: graph! の平坦名前空間 / plural の素朴な複数形化 / `{label}_ids` と `{node}_ids` の命名重なり (docs/history/phase5_candidates.md)
 6. G6 の再挑戦: RA 側の進化 (関数様マクロ内補完) を定期的に再計測する価値あり
 7. 同一モジュール内で複数 schema が同じノード struct を共有すると `{Node}Id` 生成が衝突する制約 (README に記載済み) — 将来 `{Schema}` プレフィクス等の回避策を検討するか

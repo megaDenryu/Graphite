@@ -316,7 +316,7 @@ tests/
 - **多重度(0..1)アクセサから相手ノードのIDを得る手段**。
   現在の `Option<(EmployeeRef<'graph>, &BossEdge)>` は `EmployeeRef::id()` で相手IDを得られる。
   → **解決 (フェーズ5で `{label}_id` として追加、その後ビュー方式
-  (`docs/edge_view_api.md`) へ、さらにスキーマv4 (`docs/schema_v4.md`) で
+  (`docs/history/edge_view_api.md`) へ、さらにスキーマv4 (`docs/schema_v4.md`) で
   辺の第一級キー化へ移行)**: v4 では辺そのものがキー付き要素 (`{Kind}Id`)
   であり、`g.{kind}_iter()` が返す `{Kind}Ref<'graph>` の役割名メソッド
   (`subordinate()`/`superior()` 等) が `NodeRef` を返すため、相手キーは

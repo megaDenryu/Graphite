@@ -1,7 +1,7 @@
 //! スキーマ宣言 (`graph_schema!`) と、シナリオ本編・破損シナリオの
 //! `graph!` リテラル本体。
 //!
-//! v3 (`docs/graph_literal_v3.md` §4) でハンドシェイクマクロを全廃したため、
+//! v3 (`docs/history/graph_literal_v3.md` §4) でハンドシェイクマクロを全廃したため、
 //! `graph_schema!` と `graph!` を同一ファイルに置く必要は無くなった (`graph!`
 //! が参照するのは通常の型・メソッドだけになったため、別モジュールから `use`
 //! すれば足りる。実証は `crates/graphite/tests/graph_cross_module.rs`)。

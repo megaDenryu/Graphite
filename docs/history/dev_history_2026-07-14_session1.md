@@ -81,7 +81,7 @@ workspace + 2クレート + rust-toolchain.toml (1.94.0) + CLAUDE.md + agents/sk
 | `examples/org-analyzer` | LCG合成データ (社員120/部署8/PJ15) の組織分析。summary/chain/anomalies/reorg | テスト11件 |
 | `examples/dialogue-engine` | graph!リテラルで30シーン/4エンディング/56選択肢の分岐ノベル。play/validate/map/route/stats | テスト14件 |
 
-副産物: 実装エージェントが報告したAPI不足10件 (a)〜(j) を `docs/phase5_candidates.md` に集約。
+副産物: 実装エージェントが報告したAPI不足10件 (a)〜(j) を `docs/history/phase5_candidates.md` に集約。
 
 ---
 
@@ -125,7 +125,7 @@ workspace + 2クレート + rust-toolchain.toml (1.94.0) + CLAUDE.md + agents/sk
 1. `graph!` の平坦名前空間 (全ノード型でキー識別子が単一名前空間。原則1的には型別名前空間の検討余地。現状は診断+文書化で見送り)
 2. `plural_field_name` の素朴な英語複数形化 (`node Type(plural)` の明示指定で回避可能)
 3. `{label}_ids` (エッジ先ID) と `{node}_ids` (ノード全キー) の命名重なり (原則3観点のドキュメント整理課題)
-4. `docs/phase5_candidates.md` に各項目の解決記録あり
+4. `docs/history/phase5_candidates.md` に各項目の解決記録あり
 
 ## 6. 運用ルール (再確認)
 
