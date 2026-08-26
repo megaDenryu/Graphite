@@ -28,6 +28,16 @@ Graphite ではさらに2つの分割を加えている。マクロが生成す�
 `graphite::graph!` / `graphite::flow!` として re-export されたものを使い、
 `graphite-macros` へ直接依存させることはしない。
 
+## クレートの責務
+
+- `graphite-codegen` は schema の構文解析、意味検査、指紋計算、Rustコード生成を
+  行う純粋層である。
+- `graphite-macros` はコンパイル時の schema 検査と指紋照合、および `graph!` と
+  `flow!` の展開を行う。
+- `xtask` は宣言元の探索、生成先の検査、生成ファイルの読み書きと差分検査を行う。
+- `graphite` はグラフの実行時型を持ち、利用者が依存する入口としてマクロを
+  再公開する。
+
 ## 関連文書
 
 `crates/graphite` の実行時コードがどの概念をどのファイルへ置いているかは
