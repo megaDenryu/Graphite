@@ -46,7 +46,7 @@ pub fn verify(root: &RepositoryRoot) -> Result<(), Box<dyn Error>> {
 /// 生成の差分検査は `cargo graphite generate --check` と同じ経路を通り、続けて
 /// 検証用パッケージのビルドとテストを実行する。
 pub fn check_external_crate(root: &RepositoryRoot) -> Result<(), Box<dyn Error>> {
-    ExternalVerificationPackage::at(root.external_verification_directory()).check()
+    ExternalVerificationPackage::new(root.external_verification_package()?).check()
 }
 
 /// `cargo xtask check-docs` 相当: 文書参照の綴りが実在するかを検査する。

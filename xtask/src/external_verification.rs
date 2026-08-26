@@ -1,5 +1,4 @@
 use std::error::Error;
-use std::path::PathBuf;
 use std::process::Command;
 
 use graphite_cli::PackageRoot;
@@ -14,20 +13,18 @@ use graphite_cli::PackageRoot;
 /// 検査は `cargo graphite generate --check` と同じ経路を通す。つまり走査開始点を
 /// `PackageRoot` が決め、生成計画と差分の判定は `graphite-cli` が行う。
 pub struct ExternalVerificationPackage {
-    directory: PathBuf,
+    package: PackageRoot,
 }
 
 impl ExternalVerificationPackage {
-    pub fn at(directory: PathBuf) -> Self {
-        Self { directory }
+    pub fn new(package: PackageRoot) -> Self {
+        Self { package }
     }
 
     /// 生成物が最新であること、そのままビルドとテストが通ることを確かめる。
     pub fn check(&self) -> Result<(), Box<dyn Error>> {
-        let package = PackageRoot::at(self.directory.clone())?;
-        println!("検証用パッケージ: {}", package.display());
-        graphite_cli::verify(package.generation_tree())?;
-        println!("生成ファイルは最新です");
+        println!("検証用パッケージ: {}", self.package.display());
+        graphite_cli::verify(self.package.generation_tree())?;
         self.run_cargo("build")?;
         self.run_cargo("test")?;
         Ok(())
@@ -40,17 +37,18 @@ impl ExternalVerificationPackage {
     /// `cargo` を使う。
     fn run_cargo(&self, subcommand: &str) -> Result<(), Box<dyn Error>> {
         let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
-        println!("実行: cargo {subcommand} ({})", self.directory.display());
+        let directory = self.package.directory();
+        println!("実行: cargo {subcommand} ({})", directory.display());
         let status = Command::new(cargo)
             .arg(subcommand)
-            .current_dir(&self.directory)
+            .current_dir(directory)
             .status()?;
         if status.success() {
             Ok(())
         } else {
             Err(format!(
                 "検証用パッケージの `cargo {subcommand}` が失敗しました: {}",
-                self.directory.display()
+                directory.display()
             )
             .into())
         }

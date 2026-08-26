@@ -67,12 +67,14 @@ impl RepositoryRoot {
         Ok(packages)
     }
 
-    /// ワークスペースの外に置いた検証用パッケージの場所。
+    /// ワークスペースの外に置いた検証用パッケージ。
     ///
     /// 綴りをここ1箇所に閉じる。呼び出し側が `verification/external-crate` を
-    /// 組み立て直すと、移動したときに直し漏れる。
-    pub fn external_verification_directory(&self) -> PathBuf {
-        self.path.join("verification").join("external-crate")
+    /// 組み立て直すと、移動したときに直し漏れる。裸の `PathBuf` ではなく
+    /// `PackageRoot` を返すのは、受け取る側が同じ役割の型を作り直さずに済ませる
+    /// ためである。
+    pub fn external_verification_package(&self) -> Result<PackageRoot, Box<dyn Error>> {
+        PackageRoot::at(self.path.join("verification").join("external-crate"))
     }
 
     /// `docs/` 配下の文書がその綴りで実在するか。

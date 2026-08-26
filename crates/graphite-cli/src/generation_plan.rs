@@ -35,8 +35,17 @@ impl GenerationPlan {
         Ok(())
     }
 
-    /// 作業ツリーと異なる生成先を書き換え、書き換えた分を表示する。
-    pub fn write_stale_files(&self, tree: &GenerationTree) -> Result<(), Box<dyn Error>> {
+    /// 計画に載っている生成先の数。schema宣言1件につき1つである。
+    pub fn declaration_count(&self) -> usize {
+        self.expected.len()
+    }
+
+    /// 作業ツリーと異なる生成先を書き換え、書き換えた件数を返す。
+    ///
+    /// 書き換えた分はその場で1行ずつ表示する。件数を返すのは、呼び出し側が
+    /// 「宣言は何件あって、そのうち何件を書いたか」の要約を出すためである。
+    pub fn write_stale_files(&self, tree: &GenerationTree) -> Result<usize, Box<dyn Error>> {
+        let mut written = 0;
         for (target, content) in self.stale_files() {
             let target = target.as_path();
             if let Some(parent) = target.parent() {
@@ -61,8 +70,9 @@ impl GenerationPlan {
                 ),
             )?;
             println!("生成: {}", tree.relative_display(target));
+            written += 1;
         }
-        Ok(())
+        Ok(written)
     }
 
     /// 作業ツリーが期待内容と一致するかを検査し、一致しなければエラーにする。

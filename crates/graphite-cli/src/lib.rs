@@ -32,11 +32,25 @@ fn build_plan(tree: &GenerationTree) -> Result<GenerationPlan, Box<dyn Error>> {
 }
 
 /// `generate` 相当: 期待する生成ファイルを更新する。
+///
+/// 何件の宣言を読み何件書いたかを必ず1行で表示する。表示しないと、宣言が0件の
+/// パッケージ (置き場所を間違えた・拡張子を間違えた) でも無言で成功したように
+/// 見え、生成されていないことに気付けない。
 pub fn generate(tree: &GenerationTree) -> Result<(), Box<dyn Error>> {
-    build_plan(tree)?.write_stale_files(tree)
+    let plan = build_plan(tree)?;
+    let written = plan.write_stale_files(tree)?;
+    println!("schema宣言 {}件、生成 {written}件", plan.declaration_count());
+    Ok(())
 }
 
 /// `generate --check` 相当: 差分と孤児生成ファイルをエラーにする。
+///
+/// 差分が無ければ、読んだ宣言の件数を1行で表示する。`generate` と同じ理由で、
+/// 対象が0件のまま成功したことを黙って通さない。
 pub fn verify(tree: &GenerationTree) -> Result<(), Box<dyn Error>> {
-    build_plan(tree)?.verify(tree)
+    let plan = build_plan(tree)?;
+    plan.verify(tree)?;
+    let count = plan.declaration_count();
+    println!("schema宣言 {count}件、最新 {count}件");
+    Ok(())
 }
