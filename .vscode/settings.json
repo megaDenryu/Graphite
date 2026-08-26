@@ -9,5 +9,5 @@
     "examples/async-dag/Cargo.toml",
     "examples/reactive-cells/Cargo.toml"
   ],
-  "megadenryuLspMcp.port": 17800
+  "megadenryuLspMcp.port": 16598
 }
