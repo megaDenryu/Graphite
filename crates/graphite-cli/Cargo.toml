@@ -1,0 +1,10 @@
+[package]
+name = "graphite-cli"
+version = "0.1.0"
+edition = "2021"
+description = "Graphite schema から通常のRustソースを生成する道具。生成コアを持ち、xtask もこれを使う"
+
+[dependencies]
+graphite-codegen = { path = "../graphite-codegen", version = "0.1.0" }
+proc-macro2 = { workspace = true }
+syn = { workspace = true }

@@ -4,7 +4,7 @@ use std::fs;
 
 use crate::generated_target_path::GeneratedTargetPath;
 use crate::io_context::with_path_context;
-use crate::repository_root::RepositoryRoot;
+use crate::generation_tree::GenerationTree;
 
 /// 全schema宣言から集めた「生成先とその期待内容」の一覧。
 ///
@@ -21,11 +21,11 @@ impl GenerationPlan {
 
     pub fn add(
         &mut self,
-        root: &RepositoryRoot,
+        tree: &GenerationTree,
         target: GeneratedTargetPath,
         content: String,
     ) -> Result<(), Box<dyn Error>> {
-        let display = root.relative_display(target.as_path());
+        let display = tree.relative_display(target.as_path());
         if self.expected.insert(target, content).is_some() {
             return Err(format!(
                 "生成先が重複しています: {display}\n各宣言の generated パスを別の名前にしてください。"
@@ -36,11 +36,11 @@ impl GenerationPlan {
     }
 
     /// 作業ツリーと異なる生成先を書き換え、書き換えた分を表示する。
-    pub fn write_stale_files(&self, root: &RepositoryRoot) -> Result<(), Box<dyn Error>> {
+    pub fn write_stale_files(&self, tree: &GenerationTree) -> Result<(), Box<dyn Error>> {
         for (target, content) in self.stale_files() {
             let target = target.as_path();
             if let Some(parent) = target.parent() {
-                with_path_context(fs::create_dir_all(parent), &root.relative_display(parent))?;
+                with_path_context(fs::create_dir_all(parent), &tree.relative_display(parent))?;
             }
             // 生成の途中で落ちても半端な内容を残さないよう、一時ファイルを
             // 作ってから置き換える。`fs::rename` は Windows でも既存の
@@ -50,17 +50,17 @@ impl GenerationPlan {
             let temporary = target.with_extension("rs.graphite-tmp");
             with_path_context(
                 fs::write(&temporary, content),
-                &root.relative_display(&temporary),
+                &tree.relative_display(&temporary),
             )?;
             with_path_context(
                 fs::rename(&temporary, target),
                 &format!(
                     "{} -> {}",
-                    root.relative_display(&temporary),
-                    root.relative_display(target)
+                    tree.relative_display(&temporary),
+                    tree.relative_display(target)
                 ),
             )?;
-            println!("生成: {}", root.relative_display(target));
+            println!("生成: {}", tree.relative_display(target));
         }
         Ok(())
     }
@@ -72,14 +72,14 @@ impl GenerationPlan {
     /// 取り残された孤児) も検出する。孤児は自動削除せず、一覧をエラーで
     /// 報告するだけにとどめる (手編集されていないと機械的には断定できない
     /// ため)。
-    pub fn verify(&self, root: &RepositoryRoot) -> Result<(), Box<dyn Error>> {
+    pub fn verify(&self, tree: &GenerationTree) -> Result<(), Box<dyn Error>> {
         let mut sections = Vec::new();
 
         let stale = self.stale_files();
         if !stale.is_empty() {
             let paths = stale
                 .iter()
-                .map(|(target, _)| root.relative_display(target.as_path()))
+                .map(|(target, _)| tree.relative_display(target.as_path()))
                 .collect::<Vec<_>>()
                 .join("\n");
             sections.push(format!(
@@ -87,11 +87,11 @@ impl GenerationPlan {
             ));
         }
 
-        let orphans = self.orphan_files(root)?;
+        let orphans = self.orphan_files(tree)?;
         if !orphans.is_empty() {
             let paths = orphans
                 .iter()
-                .map(|target| root.relative_display(target.as_path()))
+                .map(|target| tree.relative_display(target.as_path()))
                 .collect::<Vec<_>>()
                 .join("\n");
             sections.push(format!(
@@ -116,9 +116,9 @@ impl GenerationPlan {
 
     fn orphan_files(
         &self,
-        root: &RepositoryRoot,
+        tree: &GenerationTree,
     ) -> Result<Vec<GeneratedTargetPath>, Box<dyn Error>> {
-        Ok(root
+        Ok(tree
             .existing_generated_files()?
             .into_iter()
             .filter(|path| !self.expected.contains_key(path))
@@ -135,25 +135,29 @@ mod tests {
         GeneratedTargetPath::new(PathBuf::from(path))
     }
 
+    fn tree_at(base: &str) -> GenerationTree {
+        GenerationTree::new(PathBuf::from(base), Vec::new())
+    }
+
     #[test]
     fn 同じ生成先を2回追加すると重複エラーになる() {
-        let root = RepositoryRoot::for_tests(PathBuf::from("/repo"));
+        let tree = tree_at("/repo");
         let mut plan = GenerationPlan::new();
-        plan.add(&root, target("/repo/generated/a.rs"), "one".to_string())
+        plan.add(&tree, target("/repo/generated/a.rs"), "one".to_string())
             .unwrap();
         let error = plan
-            .add(&root, target("/repo/generated/a.rs"), "two".to_string())
+            .add(&tree, target("/repo/generated/a.rs"), "two".to_string())
             .unwrap_err();
         assert!(error.to_string().contains("生成先が重複しています"));
     }
 
     #[test]
     fn 異なる生成先は両方追加できる() {
-        let root = RepositoryRoot::for_tests(PathBuf::from("/repo"));
+        let tree = tree_at("/repo");
         let mut plan = GenerationPlan::new();
-        plan.add(&root, target("/repo/generated/a.rs"), "one".to_string())
+        plan.add(&tree, target("/repo/generated/a.rs"), "one".to_string())
             .unwrap();
-        plan.add(&root, target("/repo/generated/b.rs"), "two".to_string())
+        plan.add(&tree, target("/repo/generated/b.rs"), "two".to_string())
             .unwrap();
         assert_eq!(plan.expected.len(), 2);
     }

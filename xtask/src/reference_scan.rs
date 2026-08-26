@@ -2,8 +2,9 @@ use std::error::Error;
 use std::fmt;
 use std::fs;
 
+use graphite_cli::with_path_context;
+
 use crate::document_reference::{DocumentReference, ReferenceOrigin, ReferenceTarget};
-use crate::io_context::with_path_context;
 use crate::repository_root::RepositoryRoot;
 
 /// 走査対象の全ファイルから抜き出した文書参照の一覧。

@@ -10,7 +10,7 @@ use syn::visit::{self, Visit};
 use crate::generated_target_path::GeneratedTargetPath;
 use crate::generation_plan::GenerationPlan;
 use crate::io_context::with_path_context;
-use crate::repository_root::RepositoryRoot;
+use crate::generation_tree::GenerationTree;
 
 /// schema宣言を含みうる、生成元のRustファイル。
 pub struct SchemaSourceFile {
@@ -24,17 +24,16 @@ impl SchemaSourceFile {
 
     /// このファイルの schema宣言を読み、生成すべき内容を計画へ積む。
     ///
-    /// このファイル自体がRustとして解析できない場合 (走査対象を workspace
-    /// 全体へ広げたことで、schemaと無関係な壊れたファイルも対象に入りうる)
-    /// は、全体を止めずに警告を表示してこのファイルの処理だけを飛ばす。
-    /// 読み取り失敗と、schema宣言を含むファイルの検証エラーはこれまで通り
-    /// 全体を止める。
+    /// このファイル自体がRustとして解析できない場合 (走査対象はディレクトリ木
+    /// 全体であり、schemaと無関係な壊れたファイルも対象に入りうる) は、全体を
+    /// 止めずに警告を表示してこのファイルの処理だけを飛ばす。読み取り失敗と、
+    /// schema宣言を含むファイルの検証エラーは全体を止める。
     pub fn collect_into(
         &self,
-        root: &RepositoryRoot,
+        tree: &GenerationTree,
         plan: &mut GenerationPlan,
     ) -> Result<(), Box<dyn Error>> {
-        let display_path = root.relative_display(&self.path);
+        let display_path = tree.relative_display(&self.path);
         let source = with_path_context(fs::read_to_string(&self.path), &display_path)?;
         let parsed_file = match syn::parse_file(&source) {
             Ok(parsed_file) => parsed_file,
@@ -49,13 +48,13 @@ impl SchemaSourceFile {
         collector.visit_file(&parsed_file);
         for invocation in collector.invocations {
             let schema = graphite_codegen::parse_tracked_schema(invocation.tokens)
-                .map_err(|errors| self.format_errors(root, errors))?;
-            let target = self.generated_target(root, &schema.generated_path().value())?;
+                .map_err(|errors| self.format_errors(tree, errors))?;
+            let target = self.generated_target(tree, &schema.generated_path().value())?;
             let site = DeclarationSite::new(display_path.clone(), invocation.line);
             let content = schema
                 .render_module_source(&site)
-                .map_err(|error| self.format_errors(root, vec![error]))?;
-            plan.add(root, target, content)?;
+                .map_err(|error| self.format_errors(tree, vec![error]))?;
+            plan.add(tree, target, content)?;
         }
         Ok(())
     }
@@ -69,11 +68,11 @@ impl SchemaSourceFile {
     /// ためである。
     fn generated_target(
         &self,
-        root: &RepositoryRoot,
+        tree: &GenerationTree,
         relative: &str,
     ) -> Result<GeneratedTargetPath, Box<dyn Error>> {
         graphite_codegen::validate_generated_relative_path(relative)
-            .map_err(|reason| format!("{}: {reason}", root.relative_display(&self.path)))?;
+            .map_err(|reason| format!("{}: {reason}", tree.relative_display(&self.path)))?;
         let target = self
             .path
             .parent()
@@ -82,7 +81,7 @@ impl SchemaSourceFile {
         Ok(GeneratedTargetPath::new(target))
     }
 
-    fn format_errors(&self, root: &RepositoryRoot, errors: Vec<syn::Error>) -> String {
+    fn format_errors(&self, tree: &GenerationTree, errors: Vec<syn::Error>) -> String {
         let details = errors
             .iter()
             .map(ToString::to_string)
@@ -90,7 +89,7 @@ impl SchemaSourceFile {
             .join("\n");
         format!(
             "{} のschemaを生成できません:\n{details}",
-            root.relative_display(&self.path)
+            tree.relative_display(&self.path)
         )
     }
 }
@@ -128,16 +127,16 @@ mod tests {
     use super::*;
     use std::path::Path;
 
-    fn root_at(path: &Path) -> RepositoryRoot {
-        RepositoryRoot::for_tests(path.to_path_buf())
+    fn tree_at(path: &Path) -> GenerationTree {
+        GenerationTree::new(path.to_path_buf(), Vec::new())
     }
 
     #[test]
     fn generatedディレクトリ配下の相対パスを受理する() {
-        let root = root_at(Path::new("/repo"));
+        let tree = tree_at(Path::new("/repo"));
         let source = SchemaSourceFile::new(PathBuf::from("/repo/crates/graphite/tests/x.rs"));
         let target = source
-            .generated_target(&root, "generated/world.rs")
+            .generated_target(&tree, "generated/world.rs")
             .unwrap();
         assert_eq!(
             target.as_path(),
@@ -147,26 +146,26 @@ mod tests {
 
     #[test]
     fn 絶対パスを拒否する() {
-        let root = root_at(Path::new("/repo"));
+        let tree = tree_at(Path::new("/repo"));
         let source = SchemaSourceFile::new(PathBuf::from("/repo/crates/graphite/tests/x.rs"));
-        assert!(source.generated_target(&root, "/etc/evil.rs").is_err());
+        assert!(source.generated_target(&tree, "/etc/evil.rs").is_err());
     }
 
     #[test]
     fn 上位ディレクトリへの脱出を拒否する() {
-        let root = root_at(Path::new("/repo"));
+        let tree = tree_at(Path::new("/repo"));
         let source = SchemaSourceFile::new(PathBuf::from("/repo/crates/graphite/tests/x.rs"));
         assert!(source
-            .generated_target(&root, "generated/../../evil.rs")
+            .generated_target(&tree, "generated/../../evil.rs")
             .is_err());
     }
 
     #[test]
     fn 拡張子がrs以外なら拒否する() {
-        let root = root_at(Path::new("/repo"));
+        let tree = tree_at(Path::new("/repo"));
         let source = SchemaSourceFile::new(PathBuf::from("/repo/crates/graphite/tests/x.rs"));
         assert!(source
-            .generated_target(&root, "generated/world.txt")
+            .generated_target(&tree, "generated/world.txt")
             .is_err());
     }
 }

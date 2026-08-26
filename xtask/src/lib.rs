@@ -1,44 +1,32 @@
-//! 生成元の探索と通常Rustファイルの読み書きを担う開発用入口のライブラリ側。
+//! Graphite リポジトリ自身の開発用入口のライブラリ側。
 //!
-//! バイナリ (`main.rs`) は引数解析とプロセス終了コードだけを担い、実処理は
-//! ここへ集約する。`xtask/tests/` の統合テストはこのライブラリを経由して
-//! `cargo xtask generate --check` 相当を `cargo test` から検査する。
+//! 生成そのものは `graphite-cli` が担い、ここはワークスペース全体という走査
+//! 開始点を決めてそれを呼ぶ。文書参照と索引の検査 (`check-docs`) はこの
+//! リポジトリ固有の検査であり、ここに置く。バイナリ (`main.rs`) は引数解析と
+//! プロセス終了コードだけを担う。`xtask/tests/` の統合テストはこのライブラリを
+//! 経由して `cargo xtask generate --check` 相当を `cargo test` から検査する。
 
 mod document_index;
 mod document_reference;
-mod generated_target_path;
-mod generation_plan;
-mod io_context;
 mod reference_scan;
 mod repository_root;
-mod schema_source_file;
 
 use std::error::Error;
 
 pub use document_reference::DocumentPath;
-pub use generation_plan::GenerationPlan;
 pub use repository_root::RepositoryRoot;
 
 use crate::document_index::DocumentIndex;
 use crate::reference_scan::ReferenceScan;
 
-/// 全schema宣言から `GenerationPlan` を組み立てる。
-fn build_plan(root: &RepositoryRoot) -> Result<GenerationPlan, Box<dyn Error>> {
-    let mut plan = GenerationPlan::new();
-    for source in root.schema_source_files()? {
-        source.collect_into(root, &mut plan)?;
-    }
-    Ok(plan)
-}
-
 /// `cargo xtask generate` 相当: 期待する生成ファイルを更新する。
 pub fn generate(root: &RepositoryRoot) -> Result<(), Box<dyn Error>> {
-    build_plan(root)?.write_stale_files(root)
+    graphite_cli::generate(root.generation_tree())
 }
 
 /// `cargo xtask generate --check` 相当: 差分と孤児生成ファイルをエラーにする。
 pub fn verify(root: &RepositoryRoot) -> Result<(), Box<dyn Error>> {
-    build_plan(root)?.verify(root)
+    graphite_cli::verify(root.generation_tree())
 }
 
 /// `cargo xtask check-docs` 相当: 文書参照の綴りが実在するかを検査する。

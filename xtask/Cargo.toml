@@ -5,7 +5,5 @@ edition = "2021"
 publish = false
 
 [dependencies]
-graphite-codegen = { path = "../crates/graphite-codegen" }
-proc-macro2 = { workspace = true }
-syn = { workspace = true }
+graphite-cli = { path = "../crates/graphite-cli" }
 

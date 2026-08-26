@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "crates/graphite",
+    "crates/graphite-cli",
     "crates/graphite-codegen",
     "crates/graphite-macros",
     "xtask",
