@@ -61,8 +61,8 @@ fn drain_rest(content: ParseStream) {
 `content.parse::<proc_macro2::TokenStream>()` は残りトークンを丸ごと読み捨てる
 ので、これを `Err` を返す全ての分岐の直前に呼ぶ。分岐が多い関数では
 「本体を別関数に切り出し、呼び出し元がエラー時に一括で drain する」形にすると
-書き漏らしにくい (実例は `crates/graphite-macros/src/schema_dsl.rs` の
-`parse_fields_block`/`Multiplicity::parse` を参照)。
+書き漏らしにくい (実例は `crates/graphite-codegen/src/schema/syntax/` の
+`identifier_type.rs::parse_optional_id_type`/`edge_endpoint.rs::parse_endpoint` を参照)。
 
 ## スパンポリシー
 

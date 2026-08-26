@@ -551,7 +551,8 @@ impl std::fmt::Debug for Subscription {
 
 辺値の `Debug` は、積み荷が無く両端の公開IDが既定生成ID型のときだけ端点を表示する。
 それ以外は種別名だけを書く。利用者定義の型へ `Debug` を要求しないためである
-(`crates/graphite-codegen/src/schema_codegen.rs:1500-1525`)。
+(`crates/graphite-codegen/src/schema/codegen/edge_value/debug_implementation.rs` の
+`gen_edge_value_debug_impl`)。
 
 既定ID型 `PurchaseId` (§2と同じ形)、`PurchaseRef<'graph>` (§11)、`Violation` の各
 variant (列挙型 `Violation` の1分岐。§20)、`Builder` の `purchase` メソッドも同時に
@@ -1195,7 +1196,8 @@ impl<'graph> std::fmt::Debug for PersonRef<'graph> {
 
 `Debug` の契約は次のとおりである。`&Graph` は表示しない。公開IDを表示するのは既定
 生成ID型のときだけで、明示ID型のときは型名だけを書く
-(`crates/graphite-codegen/src/schema_codegen.rs:1174-1206`)。値型は利用者定義であり
+(`crates/graphite-codegen/src/schema/codegen/reference/debug_implementation.rs` の
+`gen_reference_debug_impl`)。値型は利用者定義であり
 `Debug` を持つとは限らないため、常に表示しない。
 
 `NodeRef` は `&Graph` と `usize` の2語であり、`Copy + Clone` である。ヒープ確保・

@@ -230,7 +230,8 @@ g.b_boss();
 ## 5. 移行対象 (v3 の痕跡ゼロ)
 
 - crates/graphite: ビュー 6 型の撤去と要素表機構への置換、docs コメント
-- crates/graphite-macros: schema_dsl (where 節)・instance_dsl (全行 名前=値)・
+- crates/graphite-codegen: schema DSL の構文解析 (where 節)、crates/graphite-macros:
+  instance_dsl (全行 名前=値)・
   codegen 全面
 - 全テスト・trybuild (stderr 再採取)・examples 7 本・README・hello-graph
   (§2/§2.5/§3/§4 を v4 の概念 — 全要素キー・where 制約・Graph中心の種別API —

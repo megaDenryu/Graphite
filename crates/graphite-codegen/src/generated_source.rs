@@ -1,0 +1,53 @@
+//! 生成した schema module を、追跡可能な Rust ソースの本文へ整形する。
+
+use proc_macro2::TokenStream;
+use quote::quote;
+
+use crate::declaration_site::DeclarationSite;
+
+/// 生成ファイルへ書き出す本文を、先頭の案内コメントごと組み立てる。
+pub(crate) fn 生成ファイルの本文(
+    body: &TokenStream,
+    fingerprint: [u64; 4],
+    site: &DeclarationSite,
+) -> syn::Result<String> {
+    let generated: syn::File = syn::parse2(quote! {
+        #[allow(unused_imports)]
+        use super::*;
+
+        #[doc(hidden)]
+        pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
+            #(#fingerprint),*
+        ];
+
+        #body
+    })?;
+    let formatted = prettyplease::unparse(&generated);
+    // 再生成コマンドの実行場所は絶対パスで書かない。ここに機械固有のパスを
+    // 埋めると、別の作業環境で生成した内容が一致せず `--check` が落ちる。
+    let site = site.display();
+    Ok(format!(
+        "// このファイルは Graphite が生成したため手編集しないこと。\n\
+         // 生成元: {site}\n\
+         // 再生成: リポジトリルートで `cargo xtask generate` を実行する。\n\n\
+         {formatted}"
+    ))
+}
+
+/// 指紋の材料にする整形済みの生成コードを返す。指紋そのものを埋め込む前の形である。
+///
+/// 注意: 指紋は prettyplease が整形した後のテキストをハッシュするため、整形結果の
+/// 揺れ (prettyplease の版差) がそのまま指紋の揺れになる。ルート Cargo.toml で
+/// prettyplease を厳密ピン止め (`=0.2.37`) してこの依存を抑えているが、将来的には
+/// 整形前のトークン列を正規化してハッシュする方式へ移行し、フォーマッタの版に
+/// 依存しない指紋にすべきである。
+pub(crate) fn 指紋の材料になる整形済み本文(
+    body: &TokenStream,
+) -> syn::Result<String> {
+    let normalized: syn::File = syn::parse2(quote! {
+        #[allow(unused_imports)]
+        use super::*;
+        #body
+    })?;
+    Ok(prettyplease::unparse(&normalized))
+}

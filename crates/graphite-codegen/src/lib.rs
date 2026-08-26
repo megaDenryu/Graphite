@@ -2,16 +2,32 @@
 //!
 //! ファイル探索と読み書きは `xtask`、コンパイル時の入口は
 //! `graphite-macros` が担当する。このクレートはどちらも行わない。
+//!
+//! ## この module の役割
+//!
+//! ここは工程を配線するだけの Composition Root である。入力を受け取ってから
+//! 生成物を返すまでの順序 (構文解析 → 意味検査 → 意味モデルの組み立て →
+//! コード生成 → 指紋の計算) を知るのはここだけであり、各工程の中身は
+//! [`schema`] 配下の各層が持つ。工程どうしが互いを直接呼ぶことはしない。
 
 mod declaration_site;
+mod fingerprint;
 mod generated_path;
+mod generated_source;
 pub mod naming;
 mod schema;
+mod tracked_input;
 
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::parse::Parser;
-use syn::{Ident, LitStr, Token};
+use syn::{Ident, LitStr};
+
+use crate::fingerprint::fingerprint;
+use crate::generated_source::{
+    指紋の材料になる整形済み本文, 生成ファイルの本文
+};
+use crate::tracked_input::TrackedInput;
 
 pub use declaration_site::DeclarationSite;
 pub use generated_path::validate_generated_relative_path;
@@ -45,53 +61,7 @@ impl TrackedSchema {
     /// schema module の通常の Rust ソース本文を生成する。
     pub fn render_module_source(&self, site: &DeclarationSite) -> syn::Result<String> {
         let body = schema::codegen::generate_module_body(&self.スキーマ定義);
-        let fingerprint = self.fingerprint;
-        let generated: syn::File = syn::parse2(quote! {
-            #[allow(unused_imports)]
-            use super::*;
-
-            #[doc(hidden)]
-            pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-                #(#fingerprint),*
-            ];
-
-            #body
-        })?;
-        let formatted = prettyplease::unparse(&generated);
-        // 再生成コマンドの実行場所は絶対パスで書かない。ここに機械固有のパスを
-        // 埋めると、別の作業環境で生成した内容が一致せず `--check` が落ちる。
-        let site = site.display();
-        Ok(format!(
-            "// このファイルは Graphite が生成したため手編集しないこと。\n\
-             // 生成元: {site}\n\
-             // 再生成: リポジトリルートで `cargo xtask generate` を実行する。\n\n\
-             {formatted}"
-        ))
-    }
-}
-
-struct TrackedInput {
-    generated_path: LitStr,
-    schema_tokens: TokenStream,
-}
-
-impl syn::parse::Parse for TrackedInput {
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let key: Ident = input.parse()?;
-        if key != "generated" {
-            return Err(syn::Error::new_spanned(
-                key,
-                "追跡可能な生成先が指定されていません。最初の行に `generated = \"...\";` を書いてください",
-            ));
-        }
-        input.parse::<Token![=]>()?;
-        let generated_path = input.parse()?;
-        input.parse::<Token![;]>()?;
-        let schema_tokens = input.parse()?;
-        Ok(Self {
-            generated_path,
-            schema_tokens,
-        })
+        生成ファイルの本文(&body, self.fingerprint, site)
     }
 }
 
@@ -107,25 +77,14 @@ pub fn parse_tracked_schema(input: TokenStream) -> Result<TrackedSchema, Vec<syn
     let parsed = schema::syntax::SchemaInput::parse_recovering
         .parse2(tracked.schema_tokens.clone())
         .map_err(|error| vec![error])?;
-    let schema = schema::validate::validate(parsed)?;
+    let 検証済み構文 = schema::validate::validate(parsed)?;
     let スキーマ定義 =
-        schema::semantic::検証済み構文からスキーマ定義を組み立てる(&schema);
-    let generated = schema::codegen::generate_module_body(&スキーマ定義);
-    let normalized: syn::File = syn::parse2(quote! {
-        #[allow(unused_imports)]
-        use super::*;
-        #generated
-    })
-    .map_err(|error| vec![error])?;
-    // 指紋は prettyplease が整形した後のテキストをハッシュするため、整形結果の
-    // 揺れ (prettyplease の版差) がそのまま指紋の揺れになる。ルート
-    // Cargo.toml で prettyplease を厳密ピン止め (`=0.2.37`) してこの依存を
-    // 抑えているが、将来的には整形前のトークン列を正規化してハッシュする
-    // 方式へ移行し、フォーマッタの版に依存しない指紋にすべきである。
-    let fingerprint = fingerprint(
-        &tracked.generated_path.value(),
-        &prettyplease::unparse(&normalized),
-    );
+        schema::semantic::検証済み構文からスキーマ定義を組み立てる(
+            &検証済み構文,
+        );
+    let 生成コード = schema::codegen::generate_module_body(&スキーマ定義);
+    let 整形済み本文 = 指紋の材料になる整形済み本文(&生成コード).map_err(|error| vec![error])?;
+    let fingerprint = fingerprint(&tracked.generated_path.value(), &整形済み本文);
     Ok(TrackedSchema {
         generated_path: tracked.generated_path,
         スキーマ定義,
@@ -140,12 +99,15 @@ pub fn expand_inline_for_test(input: TokenStream) -> TokenStream {
         Err(error) => return error.to_compile_error(),
     };
     match schema::validate::validate_recovering(parsed) {
-        schema::validate::ValidationResult::Generated { schema, errors } => {
+        schema::validate::ValidationResult::Generated {
+            schema: 検証済み構文,
+            errors,
+        } => {
             let diagnostics: TokenStream =
                 errors.iter().map(syn::Error::to_compile_error).collect();
             let スキーマ定義 =
                 schema::semantic::検証済み構文からスキーマ定義を組み立てる(
-                    &schema,
+                    &検証済み構文,
                 );
             let generated = schema::codegen::generate(&スキーマ定義);
             quote! { #diagnostics #generated }
@@ -156,25 +118,10 @@ pub fn expand_inline_for_test(input: TokenStream) -> TokenStream {
     }
 }
 
-fn fingerprint(path: &str, normalized_schema: &str) -> [u64; 4] {
-    let canonical = format!("{path}\0{normalized_schema}");
-    [
-        fnv1a(canonical.as_bytes(), 0xcbf29ce484222325),
-        fnv1a(canonical.as_bytes(), 0x84222325cbf29ce4),
-        fnv1a(canonical.as_bytes(), 0x9e3779b185ebca87),
-        fnv1a(canonical.as_bytes(), 0xd6e8feb86659fd93),
-    ]
-}
-
-fn fnv1a(bytes: &[u8], seed: u64) -> u64 {
-    bytes.iter().fold(seed, |hash, byte| {
-        (hash ^ u64::from(*byte)).wrapping_mul(0x100000001b3)
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::fingerprint::fnv1a;
     use quote::quote;
 
     #[test]
