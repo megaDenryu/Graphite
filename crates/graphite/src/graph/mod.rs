@@ -31,7 +31,7 @@ mod key_correspondence;
 mod structure_graph;
 mod topology;
 
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::HashMap;
 use std::hash::Hash;
 
 pub use build_error::GraphError;
@@ -41,8 +41,8 @@ pub use cycle_error::CycleError;
 use assembly::構築中のグラフ;
 use key_correspondence::キー対応表;
 use topology::{
-    トポロジカル順序の算出, ノード位置, 依存レベルの分割, 循環の探索, 最長経路の算出,
-    有向トポロジー, 閉路の位置列,
+    トポロジカル順序の算出, ノード位置, 依存レベルの分割, 到達可能な位置の収集, 循環の探索,
+    最長経路の算出, 有向トポロジー, 辺数最短の経路探索, 閉路の位置列,
 };
 
 /// ノード種別 `N`、エッジ種別 `E` (既定は属性なしを表す `()`)、
@@ -262,12 +262,13 @@ where
     /// `key` が存在しなければ空。
     pub fn reachable_from(&self, key: &K) -> Vec<&K> {
         match self.キー対応.位置(key) {
-            Some(始点) => self
-                .トポロジー
-                .深さ優先で到達できる位置列(始点)
-                .into_iter()
-                .map(|位置| self.キー対応.キー(位置))
-                .collect(),
+            Some(始点) => {
+                到達可能な位置の収集::トポロジーから始める(&self.トポロジー)
+                    .始点から到達できる位置列(始点)
+                    .into_iter()
+                    .map(|位置| self.キー対応.キー(位置))
+                    .collect()
+            }
             None => Vec::new(),
         }
     }
@@ -277,42 +278,14 @@ where
     pub fn path(&self, from: &K, to: &K) -> Option<Vec<&K>> {
         let 始点 = self.キー対応.位置(from)?;
         let 終点 = self.キー対応.位置(to)?;
-
-        if 始点 == 終点 {
-            return Some(vec![self.キー対応.キー(始点)]);
-        }
-
-        let mut 訪問済み: HashSet<ノード位置> = HashSet::new();
-        let mut 待ち行列: VecDeque<ノード位置> = VecDeque::new();
-        let mut 先行: HashMap<ノード位置, ノード位置> = HashMap::new();
-
-        訪問済み.insert(始点);
-        待ち行列.push_back(始点);
-
-        while let Some(現在) = 待ち行列.pop_front() {
-            for 次 in self.トポロジー.出ていく先(現在) {
-                if 訪問済み.insert(次) {
-                    先行.insert(次, 現在);
-                    if 次 == 終点 {
-                        let mut 経路 = vec![次];
-                        let mut 遡り = 次;
-                        while let Some(&手前) = 先行.get(&遡り) {
-                            経路.push(手前);
-                            遡り = 手前;
-                        }
-                        経路.reverse();
-                        return Some(
-                            経路
-                                .into_iter()
-                                .map(|位置| self.キー対応.キー(位置))
-                                .collect(),
-                        );
-                    }
-                    待ち行列.push_back(次);
-                }
-            }
-        }
-        None
+        let 経路 = 辺数最短の経路探索::トポロジーから始める(&self.トポロジー)
+            .経路を求める(始点, 終点)?;
+        Some(
+            経路
+                .into_iter()
+                .map(|位置| self.キー対応.キー(位置))
+                .collect(),
+        )
     }
 
     /// 構造 (キー・トポロジー) を保ったまま、ノード値だけを `f` で変換する。
@@ -331,24 +304,11 @@ where
     where
         E: Clone,
     {
-        let mut トポロジー: 有向トポロジー<M, E> =
-            有向トポロジー::空のトポロジーを生成する();
-        let mut キー対応 = キー対応表::空の対応表を生成する();
-        let mut 位置の対応: HashMap<ノード位置, ノード位置> = HashMap::new();
-
-        for 変換前 in self.トポロジー.挿入順の位置列() {
-            let キー = self.キー対応.キー(変換前).clone();
-            let 新しい値 = f(&キー, self.トポロジー.ノード値(変換前));
-            let 変換後 = トポロジー.ノードを追加する(新しい値);
-            位置の対応.insert(変換前, 変換後);
-            キー対応.対応を登録する(キー, 変換後);
-        }
-
-        for (始点, 終点, 値) in self.トポロジー.辺の一覧() {
-            トポロジー.辺を追加する(位置の対応[&始点], 位置の対応[&終点], 値.clone());
-        }
-
-        Graph::部品から組み立てる(トポロジー, キー対応)
+        構築中のグラフ::元のグラフから選んで写して始める(
+            self,
+            |キー, 値| Some(f(キー, 値)),
+        )
+        .完成させる()
     }
 
     /// 述語 `pred` を満たすノードだけを残す。辺は両端が生き残ったものだけ残る。
@@ -369,35 +329,17 @@ where
         N: Clone,
         E: Clone,
     {
-        let mut トポロジー: 有向トポロジー<N, E> =
-            有向トポロジー::空のトポロジーを生成する();
-        let mut キー対応 = キー対応表::空の対応表を生成する();
-        let mut 位置の対応: HashMap<ノード位置, ノード位置> = HashMap::new();
-
-        for 変換前 in self.トポロジー.挿入順の位置列() {
-            let キー = self.キー対応.キー(変換前).clone();
-            if pred(&キー, self.トポロジー.ノード値(変換前)) {
-                let 変換後 =
-                    トポロジー.ノードを追加する(self.トポロジー.ノード値(変換前).clone());
-                位置の対応.insert(変換前, 変換後);
-                キー対応.対応を登録する(キー, 変換後);
-            }
-        }
-
-        for (始点, 終点, 値) in self.トポロジー.辺の一覧() {
-            if let (Some(&新しい始点), Some(&新しい終点)) =
-                (位置の対応.get(&始点), 位置の対応.get(&終点))
-            {
-                トポロジー.辺を追加する(新しい始点, 新しい終点, 値.clone());
-            }
-        }
-
-        Graph::部品から組み立てる(トポロジー, キー対応)
+        構築中のグラフ::元のグラフから選んで写して始める(self, |キー, 値| {
+            pred(キー, 値).then(|| 値.clone())
+        })
+        .完成させる()
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
+
     use super::*;
 
     #[derive(Debug, Clone, PartialEq)]

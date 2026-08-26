@@ -7,7 +7,7 @@ use std::hash::Hash;
 
 use super::build_error::GraphError;
 use super::key_correspondence::キー対応表;
-use super::topology::有向トポロジー;
+use super::topology::{トポロジーの作り直し, 有向トポロジー};
 use super::Graph;
 
 /// 検査の途中にあるグラフ。トポロジーとキー対応表を対で育てる。
@@ -82,5 +82,32 @@ where
     /// 検査を全部通った部品から、完成した不変のグラフを作る。
     pub(in crate::graph) fn 完成させる(self) -> Graph<N, E, K> {
         Graph::部品から組み立てる(self.トポロジー, self.キー対応)
+    }
+
+    /// 元のグラフのノードを挿入順に走査し、`写す` が値を返したノードと、両端が
+    /// 写されて残った辺だけを組み立てる。キーは元のグラフで一意なので、ここでは
+    /// 重複検査を通さない。
+    pub(in crate::graph) fn 元のグラフから選んで写して始める<M>(
+        元: &Graph<M, E, K>,
+        mut 写す: impl FnMut(&K, &M) -> Option<N>,
+    ) -> Self
+    where
+        E: Clone,
+    {
+        let mut 作り直し = トポロジーの作り直し::空から始める();
+        let mut キー対応 = キー対応表::空の対応表を生成する();
+        for 変換前 in 元.トポロジー.挿入順の位置列() {
+            let キー = 元.キー対応.キー(変換前);
+            if let Some(新しい値) = 写す(キー, 元.トポロジー.ノード値(変換前))
+            {
+                let 変換後 = 作り直し.ノードを写す(変換前, 新しい値);
+                キー対応.対応を登録する(キー.clone(), 変換後);
+            }
+        }
+        作り直し.両端が残った辺を写す(&元.トポロジー);
+        Self {
+            トポロジー: 作り直し.完成させる(),
+            キー対応,
+        }
     }
 }

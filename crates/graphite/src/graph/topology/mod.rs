@@ -9,6 +9,8 @@ pub(in crate::graph) mod longest_path;
 pub(in crate::graph) mod position;
 mod simple_cycle_extraction;
 pub(in crate::graph) mod topological_order;
+pub(in crate::graph) mod transform;
+pub(in crate::graph) mod traversal;
 
 use petgraph::graph::DiGraph;
 use petgraph::visit::EdgeRef;
@@ -19,6 +21,8 @@ pub(in crate::graph) use dependency_levels::依存レベルの分割;
 pub(in crate::graph) use longest_path::最長経路の算出;
 pub(in crate::graph) use position::ノード位置;
 pub(in crate::graph) use topological_order::トポロジカル順序の算出;
+pub(in crate::graph) use transform::トポロジーの作り直し;
+pub(in crate::graph) use traversal::{到達可能な位置の収集, 辺数最短の経路探索};
 
 /// ノード値 `N`・辺値 `E` を持つ有向グラフの形そのもの。ユーザーキーは持たない。
 #[derive(Debug)]
@@ -119,18 +123,5 @@ impl<N, E> 有向トポロジー<N, E> {
     /// だけが使い、トポロジーの外へは出さない。
     pub(in crate::graph::topology) fn 内部グラフ(&self) -> &DiGraph<N, E> {
         &self.内部グラフ
-    }
-
-    /// 始点から深さ優先で到達できる位置列 (始点自身を含む)。
-    pub(in crate::graph) fn 深さ優先で到達できる位置列(
-        &self,
-        始点: ノード位置,
-    ) -> Vec<ノード位置> {
-        let mut 探索 = petgraph::visit::Dfs::new(&self.内部グラフ, 始点.内部添字());
-        let mut 結果 = Vec::new();
-        while let Some(添字) = 探索.next(&self.内部グラフ) {
-            結果.push(ノード位置::内部添字から生成する(添字));
-        }
-        結果
     }
 }
