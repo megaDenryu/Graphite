@@ -21,7 +21,8 @@ pub fn violation_type_ident(schema_name: &Ident) -> Ident {
 /// ノード挿入トレイト名を導出する。`graph!` が値の型名を一切知らずに済ませる
 /// ための境界であり、名前を schema ごとに一意にして生成 module 内の
 /// `node Node;` のような宣言と衝突する余地を減らす
-/// (`schema_codegen.rs::gen_node_trait_and_impls` のドキュメントコメント参照)。
+/// (`schema::codegen::insertable_trait::marker_traits::gen_node_trait_and_impls`
+/// のドキュメントコメント参照)。
 pub fn node_trait_ident(schema_name: &Ident) -> Ident {
     format_ident!("{}Node", schema_name)
 }
@@ -34,8 +35,8 @@ pub fn edge_trait_ident(schema_name: &Ident) -> Ident {
 }
 
 /// ノード用・辺用の挿入トレイトを単一の `extend` へ橋渡しする共通 supertrait 名を
-/// 導出する (`schema_codegen.rs::gen_insertable_traits` のドキュメントコメントと
-/// `docs/graph_splice.md` §2 参照)。
+/// 導出する (`schema::codegen::insertable_trait::trait_definition::gen_insertable_traits`
+/// のドキュメントコメントと `docs/graph_splice.md` §2 参照)。
 pub fn insertable_trait_ident(schema_name: &Ident) -> Ident {
     format_ident!("{}Insertable", schema_name)
 }

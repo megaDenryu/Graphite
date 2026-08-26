@@ -16,7 +16,9 @@
 //! 保ったまま返す (`.claude/skills/proc-macro-dev/SKILL.md` の方針通り、
 //! panic は使わない)。
 //!
-//! ## G4a (宣言単位のエラー回復) との関係
+//! ## 宣言単位のエラー回復との関係
+//!
+//! 参照: `docs/ide_support_spec.md` の「G4: エラー回復展開」節。
 //!
 //! `SchemaInput` 全体ではなく `&[NodeDecl]`/`&[EdgeDecl]` というスライスを
 //! 受け取るシグネチャにしているのは、この module の配線がパース回復で「壊れた
@@ -24,8 +26,8 @@
 //! `validate_edge_endpoints`/`validate_each_reference` は、パース済みの
 //! 宣言が1件でも壊れていた場合に直接は呼ばず、代わりに
 //! [`filter_edges_with_known_endpoints`] で未知端点の辺を生成対象から除外する
-//! (二次エラー抑制)。重複ノード名・重複エッジ種別名の診断は回復の有無に
-//! よらず常に実行する (現行維持)。
+//! (二次エラー抑制)。重複ノード名・重複エッジ種別名の診断は、パース回復の
+//! 成否に関わらず必ず実行する。
 
 mod each_reference;
 mod edge_endpoint_declaration;

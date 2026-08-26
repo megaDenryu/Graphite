@@ -9,19 +9,21 @@
 //!
 //! ノード項・エッジの積み荷の値はいずれもユーザーの式トークンをそのまま
 //! 埋め込むだけで、値の型はマクロが一切パースしない。ノード項は
-//! `graph_schema!` が生成した総称 `insert_named` メソッド (`schema_codegen.rs::
-//! gen_node_trait_and_impls` 参照) にキー文字列と値の式をそのまま渡し、
+//! `graph_schema!` が生成した総称 `insert_named` メソッド (`graphite_codegen::
+//! schema::codegen::insertable_trait::marker_traits::gen_node_trait_and_impls`
+//! 参照) にキー文字列と値の式をそのまま渡し、
 //! `N::Id` の型推論を rustc に委ねる (許可証付き経路の詳細は
 //! `crates/graphite/src/lib.rs` の `NamedInsertPermit` 参照)。
 //!
 //! エッジ項 (`key = Kind(from -> to)` / `key = Kind(from -[式]-> to)`) は
 //! 名前付きフィールドの辺値型を、柄に対応する内部コンストラクタで構築したあと、
-//! 同じ形の総称 `add_named` メソッド (`schema_codegen.rs::gen_edge_trait_and_impls`
-//! 参照) へ渡す。**辺の名前も (ノードと同様) 常にキーの束縛**
+//! 同じ形の総称 `add_named` メソッド (`graphite_codegen::schema::codegen::
+//! insertable_trait::marker_traits::gen_edge_trait_and_impls` 参照) へ渡す。
+//! **辺の名前も (ノードと同様) 常にキーの束縛**
 //! (`docs/schema_v4.md` §0 規則1) なので、エッジ項も `let key = ..;` を生成する。
 //!
-//! スプライス項 (`..式`) は統一 `extend` (`schema_codegen.rs::
-//! gen_builder_impl` 参照) への呼び出し `__graphite_b.extend(式);` に脱糖する。
+//! スプライス項 (`..式`) は統一 `extend` (`graphite_codegen::schema::codegen::
+//! builder::gen_builder_impl` 参照) への呼び出し `__graphite_b.extend(式);` に脱糖する。
 //! 静的な項と異なり名前を持たないため `let` 束縛は作らず、戻り値の `Id` 列も
 //! 捨てる (`docs/graph_splice.md` §1)。
 //!
@@ -93,7 +95,8 @@ use graphite_codegen::naming::{
 /// 束縛であるため)。この制約下では「同じ識別子を2回宣言する」ミスが起きやすい
 /// ため、`HashSet` で重複を無視せず、2回目の宣言をその場で
 /// `syn::Error` として報告する。最初の宣言の span も添えて「どこが最初か」を
-/// 示す (`schema_validate.rs::validate_unique_node_names` と同じパターン)。
+/// 示す (`graphite_codegen::schema::validate::unique_declaration_names::
+/// validate_unique_node_names` と同じパターン)。
 ///
 /// 戻り値は `(全キーの集合, ノードキーだけの集合)`。エッジの端点検証は
 /// 「ノードとして宣言されているか」を見る必要があるため、ノードキーだけの

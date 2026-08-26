@@ -1,8 +1,8 @@
 //! schema module 内に生成する型名が互いに衝突しないことを検査する。
 //!
-//! 注意: 1ファイル100行の原則を満たせない箇所として明示的に許容している。
-//! 衝突検査は「1つの表へ全ての生成名を登録し、重複したらその場で診断を出す」
-//! という1本の手続きであり、登録する種類ごとに切ると表の共有が壊れる。
+//! このファイルは1ファイル100行の原則の例外である。衝突検査は「1つの表へ
+//! 全ての生成名を登録し、重複したらその場で診断を出す」という1本の手続きで
+//! あり、登録する種類ごとに切ると表の共有が壊れるため、まとめて置いている。
 
 use std::collections::HashMap;
 
@@ -48,7 +48,7 @@ pub fn validate_generated_type_names(
 ) -> syn::Result<()> {
     let mut names: HashMap<String, (proc_macro2::Span, String)> = HashMap::new();
 
-    // 予約表は生成側 (`schema_codegen::generate_module_body`) と共有する。
+    // 予約表は生成側 (`schema::codegen::generate_module_body`) と共有する。
     // 検査だけが知る文字列表を持つと、固定生成名を増やしたときに登録漏れが出る。
     let 予約表 = 固定生成名の予約表::schema名から導出する(schema_name);
     for (生成名, 説明) in 予約表.衝突検査へ登録する項目() {

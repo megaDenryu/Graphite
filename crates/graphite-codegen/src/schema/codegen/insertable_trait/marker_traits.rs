@@ -1,8 +1,9 @@
 //! ノード専用・辺専用の型境界となるマーカートレイトと、その実装一式を生成する。
 //!
-//! 注意: 行数の大半は「なぜこの2つのトレイトが要るか」を残した設計の説明であり、
-//! コード本体はノード側と辺側で対になる2関数だけである。説明を別ファイルへ切ると
-//! 読む順序が壊れるため、1ファイル100行の原則の例外として許容している。
+//! このファイルは1ファイル100行の原則の例外である。ノード側と辺側で対になる
+//! 2関数 (`gen_node_trait_and_impls`/`gen_edge_trait_and_impls`) が、それぞれ
+//! トレイト定義・マーカー実装・既定ID実装を束ねて生成するため、まとめて
+//! 置いている。
 
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -62,6 +63,11 @@ pub(crate) fn gen_node_trait_and_impls(
     let default_id_trait_ident = 予約表.既定id生成トレイト名();
     let builder_ident = 予約表.構築器型名();
     let graph_ident = 予約表.グラフ型名();
+    debug_assert_eq!(
+        nodes.len(),
+        探索計画の列.len(),
+        "探索計画の列はノード定義の列と同じ並びで1件ずつ対応する"
+    );
     let node_impls = nodes.iter().zip(探索計画の列).map(|(n, 探索計画)| {
         let ty = &n.type_ident;
         let reference = n.reference_ident();

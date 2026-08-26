@@ -137,7 +137,7 @@ fn main() {
 // して `cargo expand --bin hello-graph 2>&1 | Select-String -Context 5
 // "struct Boss"` のように確認できます) を元に、要点だけ抜き出して整理した
 // ものです。要約であって書き下ろしではありません — 生成ロジックそのものは
-// `crates/graphite-macros/src/schema_codegen.rs` を正としてください。
+// `crates/graphite-codegen/src/schema/codegen/` を正としてください。
 //
 // ## 1. 全要素がキー化される — ノードもエッジも
 //
@@ -190,7 +190,7 @@ fn main() {
 //
 // `edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1;` から
 // `graph_schema!` が生成する実際の型は次の通りです
-// (`schema_codegen.rs::gen_edge_value_structs`):
+// (`graphite_codegen::schema::codegen::edge_value::gen_edge_value_structs`):
 //
 // ```rust
 // #[derive(Debug, Clone, PartialEq)]
@@ -867,7 +867,7 @@ fn create_collectingで全違反を集める() {
 // 格納値は構築用の `Boss` 値そのものではなく非公開レコード型
 // `KeyedTable<BossId, __BossRecord>` です (§2.5 参照)。`graph_schema!` は
 // schema の中身全体を `pub mod Org { .. }` へ生成するため
-// (`crates/graphite-macros/src/schema_codegen.rs` の `generate` 参照)、この
+// (`crates/graphite-codegen/src/schema/codegen/mod.rs` の `generate` 参照)、この
 // ファイルの `fn section4_2` はマクロ呼び出しと同じソースファイルにあっても
 // `Org` module の**外側**にいます。したがって `g.boss` は型不一致以前に
 // 非公開フィールドへのアクセスとして弾かれます。

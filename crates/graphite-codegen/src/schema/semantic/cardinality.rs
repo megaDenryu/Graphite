@@ -109,29 +109,46 @@ pub fn each制約が指す端点の側を判定する(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::schema::semantic::analyze::検査用にdslからスキーマ定義を組み立てる;
 
     #[test]
     fn each制約の範囲を多重度3値へ分類できる() {
-        let ちょうど1 = EachSpec::検査用に作る(1, Some(1));
-        let 高々1 = EachSpec::検査用に作る(0, Some(1));
-        let 範囲 = EachSpec::検査用に作る(1, Some(3));
-        let 下限だけ = EachSpec::検査用に作る(2, None);
+        let 定義 = 検査用にdslからスキーマ定義を組み立てる(
+            "schema Org {
+                node Person;
+                node Team;
+                edge ExactOne = (member: Person) -> (team: Team) where each member: 1;
+                edge ZeroOrOne = (member: Person) -> (team: Team) where each member: 0..1;
+                edge RangeMulti = (member: Person) -> (team: Team) where each member: 1..3;
+                edge LowerOnly = (member: Person) -> (team: Team) where each member: 2..*;
+                edge NoConstraint = (member: Person) -> (team: Team);
+            }",
+        );
+        let 辺定義の列 = 定義.辺定義の列();
         assert_eq!(
-            RoleCardinality::classify(Some(ちょうど1)),
-            RoleCardinality::Exact
+            辺定義の列[0].側の多重度(EachSide::Source),
+            RoleCardinality::Exact,
+            "1 はちょうど1本"
         );
         assert_eq!(
-            RoleCardinality::classify(Some(高々1)),
-            RoleCardinality::Optional
+            辺定義の列[1].側の多重度(EachSide::Source),
+            RoleCardinality::Optional,
+            "0..1 は高々1本"
         );
         assert_eq!(
-            RoleCardinality::classify(Some(範囲)),
-            RoleCardinality::Multiple
+            辺定義の列[2].側の多重度(EachSide::Source),
+            RoleCardinality::Multiple,
+            "1..3 は範囲指定なので Multiple"
         );
         assert_eq!(
-            RoleCardinality::classify(Some(下限だけ)),
-            RoleCardinality::Multiple
+            辺定義の列[3].側の多重度(EachSide::Source),
+            RoleCardinality::Multiple,
+            "2..* は下限だけなので Multiple"
         );
-        assert_eq!(RoleCardinality::classify(None), RoleCardinality::Multiple);
+        assert_eq!(
+            辺定義の列[4].側の多重度(EachSide::Source),
+            RoleCardinality::Multiple,
+            "制約が無ければ Multiple"
+        );
     }
 }

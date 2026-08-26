@@ -13,7 +13,9 @@
 //!
 //! 生成名 (内部ストレージのフィールド名・索引名・違反 variant 名・アクセサ名)
 //! は意味ではなく生成物の都合なので、この層は持たない。コード生成層が
-//! [`crate::naming`] から導出する。
+//! [`crate::naming`] から導出する。ただし要素ごとの既定ID型名は例外で、
+//! 公開APIの一部であり意味の一部として、この層が [`crate::naming`] から
+//! 導出する (schema固定名は生成物の都合なので、生成層が予約表経由で導出する)。
 //!
 //! ## 自己参照を持たない理由
 //!
@@ -31,7 +33,7 @@ mod schema_definition;
 mod traversal_plan;
 mod violation_catalog;
 
-// 再公開するのは、この層の外 (`schema_codegen` / `schema_validate` / `lib.rs`)
+// 再公開するのは、この層の外 (`schema::codegen` / `schema::validate` / `lib.rs`)
 // が名前で参照するものだけに限る。層の内側だけで使う型は各ファイルに置いたまま
 // にする。
 pub use analyze::検証済み構文からスキーマ定義を組み立てる;

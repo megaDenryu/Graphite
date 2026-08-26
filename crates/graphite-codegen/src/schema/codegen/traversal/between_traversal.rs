@@ -8,7 +8,7 @@ use crate::naming::{
     construction_stamp_field_ident, kind_api_method_ident, pair_index_field_ident,
 };
 use crate::schema::codegen::edge_names::EdgeInfo;
-use crate::schema::semantic::辺の向き;
+use crate::schema::semantic::端点対のキーの形;
 
 /// 端点対検索 (`{kind}_between` / `{kind}_try_between`) の生成で、有向辺と
 /// 無向辺で異なる部分だけを束ねる。有向辺は端点対索引のキーが
@@ -26,13 +26,17 @@ pub(crate) struct EdgeQueryPairSpec {
 
 impl EdgeQueryPairSpec {
     fn from_edge(edge: &EdgeInfo<'_>) -> Self {
-        match edge.shape() {
-            辺の向き::有向 { .. } => EdgeQueryPairSpec {
+        // 端点対索引のキーの形は辺の向きから機械的に決まるが、判断の
+        // 出どころを意味モデル (`schema::semantic::edge_definition`) の
+        // 1系統へ寄せるため、ここでは向きを直接 match せず
+        // `端点対のキーの形()` を経由する。
+        match edge.定義.端点対のキーの形() {
+            端点対のキーの形::順序付きの対 => EdgeQueryPairSpec {
                 other_reference: edge.to_node.reference_ident(),
                 pair_key: quote! { (self.internal_position, other.internal_position) },
                 pair_order_description: "順序付き",
             },
-            辺の向き::無向 { .. } => EdgeQueryPairSpec {
+            端点対のキーの形::順序なしの対 => EdgeQueryPairSpec {
                 other_reference: edge.from_node.reference_ident(),
                 pair_key: quote! {
                     graphite::UnorderedPair::new(self.internal_position, other.internal_position)

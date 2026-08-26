@@ -4,6 +4,10 @@
 //! 並べるか」だけを知る。並び順は追跡可能な生成ファイルの中身そのものなので、
 //! 並べ替えると生成物が変わる。
 //!
+//! このファイルは1ファイル100行の原則の例外である。生成物1エッジ種別分の
+//! 全体像を1箇所で見せる地図を兼ねており、地図を分割すると読む場所が散る
+//! ため、まとめて置いている。
+//!
 //! 以下は生成物の全体像であり、配下の module を読むときの地図として置く
 //! (v4、`docs/schema_v4.md` §3 参照。
 //! v4.1 の役割名・無向辺は `docs/edge_endpoints_v4_1.md`、ID 型の既定生成と
@@ -127,8 +131,6 @@ pub(crate) fn generate_module_body(schema: &スキーマ定義) -> TokenStream {
     let graph_ident = 予約表.グラフ型名().clone();
     let violation_ident = 予約表.違反列挙型名().clone();
     let builder_ident = 予約表.構築器型名().clone();
-    let node_trait_ident = 予約表.ノード挿入トレイト名().clone();
-    let edge_trait_ident = 予約表.辺挿入トレイト名().clone();
     let insertable_trait_ident = 予約表.挿入可能トレイト名().clone();
     let default_id_trait_ident = 予約表.既定id生成トレイト名().clone();
 
@@ -161,16 +163,7 @@ pub(crate) fn generate_module_body(schema: &スキーマ定義) -> TokenStream {
         &edge_infos,
     );
     let builder_struct_def = gen_builder_struct(&builder_ident, &node_infos, &edge_infos);
-    let builder_impl = gen_builder_impl(
-        &builder_ident,
-        &violation_ident,
-        &node_trait_ident,
-        &edge_trait_ident,
-        &default_id_trait_ident,
-        &graph_ident,
-        &node_infos,
-        &edge_infos,
-    );
+    let builder_impl = gen_builder_impl(&予約表, &node_infos, &edge_infos);
     let insertable_trait_def = gen_insertable_traits(
         &insertable_trait_ident,
         &default_id_trait_ident,

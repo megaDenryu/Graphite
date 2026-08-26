@@ -210,8 +210,9 @@ impl FlowInput {
     ///
     /// 項はカンマ区切りなので、1項のパースに失敗したら次のトップレベルの
     /// `,` (もしくは入力終端) までトークン木を1つずつ読み飛ばす
-    /// ([`skip_to_comma_boundary`])。`instance_dsl.rs`/`schema_dsl.rs` と同じ
-    /// 境界定義。
+    /// ([`skip_to_comma_boundary`])。`instance_dsl.rs`/
+    /// `graphite_codegen::schema::syntax::schema_declaration`
+    /// (`skip_to_decl_boundary`) と同じ境界定義。
     pub fn parse_recovering(input: ParseStream) -> syn::Result<FlowParse> {
         let mut stmts = Vec::new();
         let mut errors = Vec::new();

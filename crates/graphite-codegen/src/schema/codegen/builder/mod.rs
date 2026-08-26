@@ -9,9 +9,8 @@ pub(crate) mod struct_definition;
 
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::Ident;
 
-use crate::naming::construction_stamp_field_ident;
+use crate::naming::{construction_stamp_field_ident, 固定生成名の予約表};
 use crate::schema::codegen::edge_names::EdgeInfo;
 use crate::schema::codegen::freeze::gen_freeze_body;
 use crate::schema::codegen::node_names::NodeInfo;
@@ -21,18 +20,21 @@ use freezable_implementation::gen_freezable_builder_impl;
 use kind_methods::gen_builder_kind_methods;
 use node_insert_api::gen_builder_node_insert_api;
 
-// 生成する構築器の型名群とスキーマ情報を一か所で受け取るため引数が多い。
-#[allow(clippy::too_many_arguments)]
+/// 構築器の impl 一式を生成する。固定生成名は予約表 (`schema::validate::
+/// generated_name_collision` と同じ表) から取り出し、生成側と検査側で
+/// 綴りを二重管理しない (`insertable_trait::marker_traits` と同じ方針)。
 pub(crate) fn gen_builder_impl(
-    builder_ident: &Ident,
-    violation_ident: &Ident,
-    node_trait_ident: &Ident,
-    edge_trait_ident: &Ident,
-    default_id_trait_ident: &Ident,
-    schema_name: &Ident,
+    予約表: &固定生成名の予約表,
     nodes: &[NodeInfo<'_>],
     edges: &[EdgeInfo<'_>],
 ) -> TokenStream {
+    let builder_ident = 予約表.構築器型名();
+    let violation_ident = 予約表.違反列挙型名();
+    let node_trait_ident = 予約表.ノード挿入トレイト名();
+    let edge_trait_ident = 予約表.辺挿入トレイト名();
+    let default_id_trait_ident = 予約表.既定id生成トレイト名();
+    let graph_ident = 予約表.グラフ型名();
+
     let node_field_inits = nodes.iter().map(|n| {
         let field = &n.field_ident;
         quote! { #field: Vec::new() }
@@ -45,8 +47,8 @@ pub(crate) fn gen_builder_impl(
     let node_insert_api = gen_builder_node_insert_api(node_trait_ident, default_id_trait_ident);
     let edge_insert_api = gen_builder_edge_insert_api(edge_trait_ident, default_id_trait_ident);
     let extend_api = gen_builder_extend_api(default_id_trait_ident);
-    let freeze_body = gen_freeze_body(schema_name, violation_ident, nodes, edges);
-    let freezable_impl = gen_freezable_builder_impl(builder_ident, schema_name, violation_ident);
+    let freeze_body = gen_freeze_body(graph_ident, violation_ident, nodes, edges);
+    let freezable_impl = gen_freezable_builder_impl(builder_ident, graph_ident, violation_ident);
     let stamp_field = construction_stamp_field_ident(builder_ident.span());
 
     quote! {

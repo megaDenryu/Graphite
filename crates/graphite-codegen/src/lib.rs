@@ -1,4 +1,4 @@
-//! Graphite の schema DSL を通常の Rust ソースへ変換する純粋層。
+//! Graphite の schema DSL を通常の Rust ソースへ変換する、純粋な層である。
 //!
 //! ファイル探索と読み書きは `xtask`、コンパイル時の入口は
 //! `graphite-macros` が担当する。このクレートはどちらも行わない。

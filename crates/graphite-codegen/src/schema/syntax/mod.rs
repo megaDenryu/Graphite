@@ -1,5 +1,5 @@
-//! `graph_schema!` の入力 DSL のパース (構文木を組み立てるだけで、
-//! ノード型の重複や未宣言参照といった意味検査は `schema_validate.rs` で行う)。
+//! `graph_schema!` の入力 DSL のパースを担う。構文木を組み立てるだけで、
+//! ノード型の重複や未宣言参照といった意味検査は `schema::validate` で行う。
 //!
 //! 対応する文法 (v4、`docs/schema_v4.md` §1 参照):
 //!
@@ -41,7 +41,7 @@
 //! - `unique pair` — 同じ (始点, 終点) の対に2本目を張ることを禁止
 //!
 //! `each` の役割名が宣言した始点か終点の役割名と一致するかは意味検査
-//! (`schema_validate.rs`) で行う。`each` と `unique pair` は独立した制約
+//! (`schema::validate::each_reference`) で行う。`each` と `unique pair` は独立した制約
 //! として扱い、両方を同時に書くことも許す (`each 0..1` の下では同対2本は
 //! 既に不可能なので `unique pair` の併記は冗長だが、実装を単純にするため
 //! 特別扱い・警告はしない — `docs/schema_v4.md` §1 が明記する「実装時に
@@ -56,7 +56,8 @@
 //!   意味検査でエラー)。無向辺は役割名を持たないため `each` を指定できない。
 //!   役割名により
 //!   終点側の入次数制約 (`each <終点役割名>: ..`) も書けるようになる
-//!   (意味解決は `schema_validate.rs::resolve_each_side`)。
+//!   (意味解決は `schema::semantic::cardinality` の
+//!   `each制約が指す端点の側を判定する`)。
 
 pub mod each_specification;
 pub mod edge_arrow;
