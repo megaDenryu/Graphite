@@ -265,24 +265,40 @@ NodeRef・EdgeRefのメソッド、役割アクセサ、`Graph`の種別API
 この例外はschemaに由来する公開APIへ広げない。生成と陳腐化検出の規約は
 `docs/code_generation.md`を参照する。
 
-**実測記録 (2026-08-26 レビュー)**: 対象メソッドをわざと誤った引数数で
-呼び出して`E0061`を発生させ、rustcが出す「note: method defined here」の
-着地行を`crates/graphite/tests/generated/traversal_api_traversal.rs`で確認した。
-いずれも生成ファイルの実装行そのものへ着地し、schema宣言トークンへは戻らない。
+**実測記録 (2026-08-26 レビュー)**: 次の7メソッドについて、定義ジャンプが
+`crates/graphite/tests/generated/traversal_api_traversal.rs`
+(schema `Traversal`) の実装へ着地することを確認した。いずれも生成ファイルの
+実装そのものへ着地し、schema宣言トークンへは戻らない。
 
-| メソッド | 着地行 (`traversal_api_traversal.rs`) |
+| メソッド | 着地する要素 |
 |---|---|
-| `person_by_id` | 397 |
-| `person_value_mut` | 412 |
-| `person_len` | 437 |
-| `purchase_iter` | 509 |
-| `purchase_as_buyer` | 1036 |
-| `関係_try_between` | 1201 |
-| `関係_between` | 1228 |
+| `person_by_id` | `impl Graph` の `person_by_id` の定義 |
+| `person_value_mut` | `impl Graph` の `person_value_mut` の定義 |
+| `person_len` | `impl Graph` の `person_len` の定義 |
+| `purchase_iter` | `impl Graph` の `purchase_iter` の定義 |
+| `purchase_as_buyer` | `impl<'graph> PersonRef<'graph>` の `purchase_as_buyer` の定義 |
+| `関係_try_between` | `impl<'graph> PersonRef<'graph>` の `関係_try_between` の定義 |
+| `関係_between` | `impl<'graph> PersonRef<'graph>` の `関係_between` の定義 |
 
-上表の着地行は 2026-08-26 の実測時に採った位置を、issue #17 の再生成
-(生成物の doc へ宣言元への参照を足した) による行の移動へ diff の行対応で
-写した値である。実測そのものはやり直していない。
+着地行の行番号は記録しない。生成ファイルの行は再生成のたびに動くため、記録した
+数値は次の再生成で実物とずれ、検証手段として機能しなくなるためである
+(実際に issue #17 の再生成で全行がずれた)。着地位置を確かめるときは、下の
+「着地位置の計測方法」でそのつど実測する。
+
+### 着地位置の計測方法
+
+1. ワークスペースの外に使い捨てのクレートを作り、`graphite` をパス依存で参照する。
+   ワークスペースの中に作ると、次の手順でわざと起こすコンパイルエラーによって
+   `cargo build` と `cargo test --workspace` が常に失敗するようになる。
+2. 使い捨てクレートのディレクトリで、対象メソッドをわざと誤った引数数で呼び出す
+   コードを書き、`cargo build` を実行して `E0061` を起こす。
+3. rustc が出す「note: method defined here」が指すファイルと要素を読む。これは
+   rust-analyzer の definition provider と同じスパン情報を使う診断である。
+4. 上表の「着地する要素」と一致することを確かめる。確かめ終えたら使い捨ての
+   クレートは消す。
+
+この手順は rustc の定義スパン表示による確認であり、rust-analyzer 実機での F12
+(go to definition) の再計測ではない。
 
 ## 2. 仕様項目
 

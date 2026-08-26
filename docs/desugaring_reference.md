@@ -310,7 +310,7 @@ struct __PersonInternalPosition(usize);
 **5. 構築時の処理**
 
 `Builder` は種別ごとの `Vec<(PersonId, super::Person)>` へ末尾追加するだけで、検査は
-一切行わない (`crates/graphite/tests/generated/edge_roles_commerce.rs:1204-1207`)。
+一切行わない (`crates/graphite/tests/generated/edge_roles_commerce.rs:1216-1219`)。
 
 ```rust
 pub fn person(&mut self, id: PersonId, value: super::Person) -> &mut Self {
@@ -322,7 +322,7 @@ pub fn person(&mut self, id: PersonId, value: super::Person) -> &mut Self {
 **6. 完成済みGraphの内部保存**
 
 `Graph` は種別ごとに1つのキー付き要素表を持つ
-(`crates/graphite/tests/generated/edge_roles_commerce.rs:250`)。
+(`crates/graphite/tests/generated/edge_roles_commerce.rs:251`)。
 
 ```rust
 __graphite_node_person: graphite::KeyedTable<PersonId, super::Person>,
@@ -723,7 +723,7 @@ variant名は辺種別名と役割名から機械的に導出する
 **6. 完成済みGraphの内部保存**
 
 `Graph` の役割索引フィールドの型が多重度で決まる
-(`crates/graphite/tests/generated/role_query_rev_query.rs:389, 418, 429`)。
+(`crates/graphite/tests/generated/role_query_rev_query.rs:390, 419, 430`)。
 
 ```rust
     unconstrained_to_index: graphite::MultipleRoleIndex<__UnconstrainedInternalPosition>,
@@ -981,7 +981,7 @@ struct __WireRecord {
 (`crates/graphite/tests/generated/undirected_edges_social.rs:649-670`)。
 
 ```rust
-    ///順序なし端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序なし端点対を平均 O(1)、追加確保なしで検索する。
     pub fn friends_try_between(
         self,
         other: PersonRef<'graph>,
@@ -1145,7 +1145,7 @@ fn 辺値はgraph外で名前付きフィールドから構築できる() {
 (`crates/graphite/tests/generated/edge_roles_commerce.rs:775-807`)。
 
 ```rust
-///完成済みグラフ上の `Person` ノード個体。
+/// 完成済みグラフ上の `Person` ノード個体。
 #[derive(Clone, Copy)]
 pub struct PersonRef<'graph> {
     graph: &'graph Graph,
@@ -2118,7 +2118,7 @@ edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) wh
 (`crates/graphite/tests/generated/edge_roles_commerce.rs:824-865`)。
 
 ```rust
-    ///順序付き端点対を平均 O(1)、追加確保なしで検索する。
+    /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
     pub fn purchase_try_between(
         self,
         other: ProductRef<'graph>,
@@ -2143,7 +2143,7 @@ edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) wh
     }
     /// # Panics
     /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
-    ///パニックを避けたい場合は対の [`Self::purchase_try_between`] を使う。
+    /// パニックを避けたい場合は対の [`Self::purchase_try_between`] を使う。
     pub fn purchase_between(
         self,
         other: ProductRef<'graph>,
@@ -2275,7 +2275,7 @@ pub enum Violation {
 (`crates/graphite/tests/generated/edge_roles_commerce.rs:1354, 1623`)。凍結を外から呼ぶ入口は
 `Graph::create` 系だけである。`graphite::build_named_graph` から具体型を知らずに
 凍結を呼ぶための橋渡しだけが公開されている
-(`crates/graphite/tests/generated/edge_roles_commerce.rs:1630-1636`)。
+(`crates/graphite/tests/generated/edge_roles_commerce.rs:1643-1649`)。
 
 ```rust
 impl graphite::FreezableBuilder for Builder {
@@ -2314,11 +2314,11 @@ impl graphite::FreezableBuilder for Builder {
 5. `Graph` を組み立てる。構築印は `Builder` からそのまま引き継ぐ。
 
 辺の内部位置は「辺表へ挿入する直前の長さ」であり、未知端点で捨てた辺の分は詰まる
-(`crates/graphite/tests/generated/edge_roles_commerce.rs:1416-1418`)。
+(`crates/graphite/tests/generated/edge_roles_commerce.rs:1425-1427`)。
 
 ```rust
                 let internal_edge_position = __PurchaseInternalPosition(
-                    __graphite_purchase.len(),
+                    graphite::TablePosition::from_index(__graphite_purchase.len()),
                 );
 ```
 
@@ -2346,7 +2346,7 @@ impl graphite::FreezableBuilder for Builder {
 ```
 
 生成コードには、IDE支援のためだけのゼロコストな型検査文も混ざる
-(`crates/graphite/tests/generated/edge_roles_commerce.rs:1441-1443`)。`where each <役割名>` の役割名
+(`crates/graphite/tests/generated/edge_roles_commerce.rs:1450-1452`)。`where each <役割名>` の役割名
 トークンを辺値型のフィールドへ結び付けるためのものであり、実行時の意味はない。
 
 ```rust
@@ -2382,7 +2382,7 @@ impl graphite::FreezableBuilder for Builder {
 **3. 公開生成物**
 
 `Graph` のdocコメントがこの契約を書いている
-(`crates/graphite/tests/generated/edge_roles_commerce.rs:245-247`)。
+(`crates/graphite/tests/generated/edge_roles_commerce.rs:246-250`)。
 
 ```rust
 /// 凍結済み図式グラフ。構築後の構造は不変で、ノード値と辺の積み荷だけを
