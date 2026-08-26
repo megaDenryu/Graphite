@@ -75,81 +75,69 @@
 
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
-use syn::{Ident, Path};
+use syn::Ident;
 
 use crate::naming::{
     accessor_ident, construction_stamp_field_ident, duplicate_edge_key_variant_ident,
     duplicate_node_key_variant_ident, each_violation_ident, edge_record_ident, edge_storage_ident,
-    generated_id_ident, incident_index_field_ident, incident_method_ident, internal_position_ident,
+    incident_index_field_ident, incident_method_ident, internal_position_ident,
     kind_api_method_ident, named_position_ident, node_storage_ident, pair_index_field_ident,
     reference_ident, source_role_index_field_ident, target_role_index_field_ident,
     traversal_method_ident, unique_pair_violation_variant_ident, unknown_endpoint_variant_ident,
     unknown_source_variant_ident, unknown_target_variant_ident, 固定生成名の予約表,
 };
-use crate::schema_dsl::{
-    EachSpec, EdgeDecl, EdgePayload, EdgeShape, NodeDecl, RoleCardinality, SchemaInput,
+use crate::schema::semantic::{
+    EachSide, RoleCardinality, スキーマ定義, ノード定義, 公開ID型, 積み荷, 辺の向き, 辺定義,
 };
-use crate::schema_validate::{self, EachSide};
 
-/// 宣言を省略した既定生成ID、または明示された既存ID型を表す。
-/// 生成コード内でどちらも同じ型位置へ展開できるよう、パスの調整もここへ集約する。
-struct PublicIdType {
-    generated_ident: Ident,
-    explicit_path: Option<Path>,
-}
+/// 意味モデルの公開ID型を、生成コードの型位置へそのまま置けるトークンとして扱う。
+///
+/// `self::` → `super::` の読み替えは意味モデルの構築時に1回だけ済ませてある。
+/// ここは確定済みの名前を書き出すだけで、意味の判断はしない。
+#[derive(Clone, Copy)]
+struct PublicIdType<'a>(&'a 公開ID型);
 
-impl PublicIdType {
-    fn is_generated(&self) -> bool {
-        self.explicit_path.is_none()
+impl<'a> PublicIdType<'a> {
+    /// スキーマが生成するID型ならその型名。明示ID型なら `None`。
+    fn generated_ident(self) -> Option<&'a Ident> {
+        self.0.スキーマが生成する型名()
+    }
+
+    fn is_debug_printable(self) -> bool {
+        self.0.デバッグ表示に使えるか()
     }
 }
 
-impl ToTokens for PublicIdType {
+impl ToTokens for PublicIdType<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let Some(path) = &self.explicit_path else {
-            self.generated_ident.to_tokens(tokens);
-            return;
-        };
-
-        let first = path
-            .segments
-            .first()
-            .map(|segment| segment.ident.to_string());
-        if path.leading_colon.is_some() || first.as_deref() == Some("crate") {
-            path.to_tokens(tokens);
-        } else if first.as_deref() == Some("self") {
-            let mut relative = path.clone();
-            relative.segments = path.segments.iter().skip(1).cloned().collect();
-            quote!(super::#relative).to_tokens(tokens);
-        } else {
-            // `use super::*` が呼び出し側の型名を取り込み、外部crate名と
-            // プリミティブ型は生成moduleでも同じパスで解決できる。
-            path.to_tokens(tokens);
+        match self.0 {
+            公開ID型::スキーマが生成するID型 { 型名 } => 型名.to_tokens(tokens),
+            公開ID型::利用者が宣言した既存のID型 {
+                生成module内から見たパス,
+            } => 生成module内から見たパス.to_tokens(tokens),
         }
     }
 }
 
-struct NodeInfo {
+struct NodeInfo<'a> {
     /// ノード値の型名 (`Person`)。ユーザー宣言型への参照。
     type_ident: Ident,
     /// スキーマ内限定で既定生成するID、または `(id: 型パス)` で指定された既存型。
-    id_ty: PublicIdType,
+    id_ty: PublicIdType<'a>,
     /// 内部ストレージのフィールド名 (`__graphite_node_person`)。
     field_ident: Ident,
     /// builder のノード追加メソッド名 = 単数形 snake_case (`person`)。
     accessor_ident: Ident,
 }
 
-impl NodeInfo {
-    fn new(decl: &NodeDecl) -> Self {
+impl<'a> NodeInfo<'a> {
+    fn new(定義: &'a ノード定義) -> Self {
+        let 型名 = 定義.ノード値型名();
         NodeInfo {
-            type_ident: decl.name.clone(),
-            id_ty: PublicIdType {
-                generated_ident: generated_id_ident(&decl.name),
-                explicit_path: decl.id_ty.clone(),
-            },
-            field_ident: node_storage_ident(&decl.name),
-            accessor_ident: accessor_ident(&decl.name),
+            type_ident: 型名.clone(),
+            id_ty: PublicIdType(定義.公開id型()),
+            field_ident: node_storage_ident(型名),
+            accessor_ident: accessor_ident(型名),
         }
     }
 
@@ -170,17 +158,18 @@ impl NodeInfo {
     }
 }
 
-/// エッジ宣言 1 つ分の、生成コードで使う識別子一式。
+/// エッジ種別 1 つ分の、生成コードで使う識別子一式。
 ///
-/// `from_node`/`to_node` は `node_infos` (呼び出し元 `generate` のローカル変数)
-/// への参照であり、両者の借用が同じ関数スコープに収まるよう単一のライフタイム
-/// パラメータで表現する。無向辺では `from_node`/`to_node` は常に同一の
-/// `NodeInfo` (両端同型、`schema_validate::validate_undirected_same_type` で
-/// 検証済み) を指す。
+/// 意味の問い合わせ (向き・多重度・端点対の重複可否) は `定義` へ委ね、この型は
+/// 生成名だけを持つ。`from_node`/`to_node` は `node_infos` (呼び出し元
+/// `generate_module_body` のローカル変数) への参照であり、両者の借用が同じ関数
+/// スコープに収まるよう単一のライフタイムパラメータで表現する。無向辺では
+/// `from_node`/`to_node` は常に同一の `NodeInfo` (両端同型) を指す。
 struct EdgeInfo<'a> {
+    定義: &'a 辺定義,
     kind: &'a Ident,
     /// エッジ種別の newtype キー型名 (`BossId`)。
-    id_ty: PublicIdType,
+    id_ty: PublicIdType<'a>,
     /// 内部ストレージのフィールド名 = builder 追加メソッド名 = 単数形
     /// snake_case (`boss`)。`Kind` は既に PascalCase (型名) なので
     /// ノードと同じ `to_snake_case` 変換で導出できる。
@@ -197,38 +186,31 @@ struct EdgeInfo<'a> {
     /// v4.1 で入次数 each 検証のためだけに一時構築していた索引を
     /// これに統合した。
     to_index_field_ident: Ident,
-    from_node: &'a NodeInfo,
-    to_node: &'a NodeInfo,
-    shape: EdgeInfoShape,
-    /// 端点の役割名ごとの多重度。両端へ独立に指定できる。
-    each: Vec<EdgeEach>,
-    unique_pair: bool,
-}
-
-enum EdgeInfoShape {
-    Directed {
-        from_role: Ident,
-        to_role: Ident,
-        payload: Option<EdgePayload>,
-    },
-    Undirected {
-        payload: Option<EdgePayload>,
-    },
-}
-
-struct EdgeEach {
-    role: Ident,
-    spec: EachSpec,
-    side: EachSide,
+    from_node: &'a NodeInfo<'a>,
+    to_node: &'a NodeInfo<'a>,
 }
 
 impl<'a> EdgeInfo<'a> {
-    fn payload(&self) -> Option<&EdgePayload> {
-        match &self.shape {
-            EdgeInfoShape::Directed { payload, .. } | EdgeInfoShape::Undirected { payload } => {
-                payload.as_ref()
-            }
-        }
+    fn shape(&self) -> &'a 辺の向き {
+        self.定義.向き()
+    }
+
+    fn is_directed(&self) -> bool {
+        self.定義.有向か()
+    }
+
+    fn payload(&self) -> Option<&'a 積み荷> {
+        self.定義.積み荷()
+    }
+
+    fn unique_pair(&self) -> bool {
+        self.定義.端点対の重複を禁止するか()
+    }
+
+    /// 指定した側の多重度。役割クエリの戻り型・索引の実装・凍結時の確定が
+    /// すべてこの1箇所を通る。
+    fn cardinality(&self, side: EachSide) -> RoleCardinality {
+        self.定義.側の多重度(side)
     }
 
     fn duplicate_key_variant(&self) -> Ident {
@@ -245,9 +227,6 @@ impl<'a> EdgeInfo<'a> {
         unknown_endpoint_variant_ident(self.kind)
     }
 
-    fn each_for(&self, side: EachSide) -> Option<&EdgeEach> {
-        self.each.iter().find(|constraint| constraint.side == side)
-    }
     fn unique_pair_violation_variant(&self) -> Ident {
         unique_pair_violation_variant_ident(self.kind)
     }
@@ -269,8 +248,8 @@ impl<'a> EdgeInfo<'a> {
     }
 }
 
-pub fn generate_module_body(schema: &SchemaInput) -> TokenStream {
-    let schema_name = &schema.schema_name;
+pub fn generate_module_body(schema: &スキーマ定義) -> TokenStream {
+    let schema_name = schema.スキーマ名();
     // 固定生成名は衝突検査 (`schema_validate::validate_generated_type_names`) と
     // 同じ予約表から取り出す。
     let 予約表 = 固定生成名の予約表::schema名から導出する(schema_name);
@@ -282,12 +261,12 @@ pub fn generate_module_body(schema: &SchemaInput) -> TokenStream {
     let insertable_trait_ident = 予約表.挿入可能トレイト名().clone();
     let default_id_trait_ident = 予約表.既定id生成トレイト名().clone();
 
-    let node_infos: Vec<NodeInfo> = schema.nodes.iter().map(NodeInfo::new).collect();
+    let node_infos: Vec<NodeInfo> = schema.ノード定義の列().iter().map(NodeInfo::new).collect();
 
     let edge_infos: Vec<EdgeInfo> = schema
-        .edges
+        .辺定義の列()
         .iter()
-        .map(|edge| build_edge_info(edge, &node_infos))
+        .map(|定義| build_edge_info(定義, &node_infos))
         .collect();
 
     let default_id_defs = gen_default_id_types(&node_infos, &edge_infos);
@@ -356,8 +335,8 @@ pub fn generate_module_body(schema: &SchemaInput) -> TokenStream {
     }
 }
 
-pub fn generate(schema: &SchemaInput) -> TokenStream {
-    let schema_name = &schema.schema_name;
+pub fn generate(schema: &スキーマ定義) -> TokenStream {
+    let schema_name = schema.スキーマ名();
     let body = generate_module_body(schema);
     quote! {
         #[allow(non_snake_case)]
@@ -368,72 +347,31 @@ pub fn generate(schema: &SchemaInput) -> TokenStream {
     }
 }
 
-fn build_edge_info<'a>(decl: &'a EdgeDecl, node_infos: &'a [NodeInfo]) -> EdgeInfo<'a> {
-    let (from_type, to_type, shape) = match &decl.shape {
-        EdgeShape::Directed { from, to, payload } => (
-            &from.ty,
-            &to.ty,
-            EdgeInfoShape::Directed {
-                from_role: from.role.clone(),
-                to_role: to.role.clone(),
-                payload: payload.clone(),
-            },
-        ),
-        EdgeShape::Undirected {
-            first,
-            second,
-            payload,
-        } => (
-            first,
-            second,
-            EdgeInfoShape::Undirected {
-                payload: payload.clone(),
-            },
-        ),
-    };
-    let from_node = node_infos
-        .iter()
-        .find(|n| n.type_ident == *from_type)
-        .expect("validate() を通過していれば必ず見つかるはず");
-    let to_node = node_infos
-        .iter()
-        .find(|n| n.type_ident == *to_type)
-        .expect("validate() を通過していれば必ず見つかるはず");
-    let kind = &decl.kind;
+/// 辺定義から、その辺種別の生成に使う識別子一式を導出する。
+///
+/// 端点のノードは意味モデルが確定済みのノード定義番号で持つため、ここでは同じ
+/// 並びで作った `node_infos` から取り出すだけで、名前の照合はしない。
+fn build_edge_info<'a>(定義: &'a 辺定義, node_infos: &'a [NodeInfo<'a>]) -> EdgeInfo<'a> {
+    let kind = 定義.辺種別名();
     let accessor = accessor_ident(kind);
     // 有向辺は始点側と終点側の2索引を持つため、位置を名前へ明示する。
-    let index_field_ident = match &decl.shape {
-        EdgeShape::Directed { .. } => source_role_index_field_ident(&accessor),
-        EdgeShape::Undirected { .. } => incident_index_field_ident(&accessor),
+    let index_field_ident = if 定義.有向か() {
+        source_role_index_field_ident(&accessor)
+    } else {
+        incident_index_field_ident(&accessor)
     };
     // 無向辺では使わないが、無条件に計算しておいて差し支えない (単なる
     // Ident の合成であり、無向辺では単に参照されないだけ)。
     let to_index_field_ident = target_role_index_field_ident(&accessor);
-    let each = decl
-        .constraints
-        .each
-        .iter()
-        .map(|constraint| EdgeEach {
-            role: constraint.role.clone(),
-            spec: constraint.spec,
-            side: schema_validate::resolve_each_side(decl, &constraint.role)
-                .expect("validate_each_reference() を通過していれば必ず解決できるはず"),
-        })
-        .collect();
     EdgeInfo {
+        定義,
         kind,
-        id_ty: PublicIdType {
-            generated_ident: generated_id_ident(kind),
-            explicit_path: decl.id_ty.clone(),
-        },
+        id_ty: PublicIdType(定義.公開id型()),
         accessor_ident: accessor,
         index_field_ident,
         to_index_field_ident,
-        from_node,
-        to_node,
-        shape,
-        each,
-        unique_pair: decl.constraints.unique_pair,
+        from_node: &node_infos[定義.始点のノード定義番号().添字()],
+        to_node: &node_infos[定義.終点のノード定義番号().添字()],
     }
 }
 
@@ -532,24 +470,30 @@ fn gen_insertable_traits(
 /// 端点対検索は位置0側 (有向辺は始点側、無向辺は唯一の端点型) の `NodeRef`
 /// にだけ生やす。両端が同じノード型の辺でも、生成を位置0側の一致だけで
 /// 判定するため1回しか生成されない。
-fn gen_node_traversal_methods(node: &NodeInfo, edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
+fn gen_node_traversal_methods(node: &NodeInfo<'_>, edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
     let node_type = &node.type_ident;
     edges
         .iter()
         .flat_map(|edge| {
             let mut methods = Vec::new();
-            match &edge.shape {
-                EdgeInfoShape::Directed {
-                    from_role, to_role, ..
-                } => {
+            match edge.shape() {
+                辺の向き::有向 { 始点, 終点 } => {
                     if edge.from_node.type_ident == *node_type {
-                        methods.push(gen_role_traversal_method(edge, from_role, EachSide::Source));
+                        methods.push(gen_role_traversal_method(
+                            edge,
+                            始点.役割名(),
+                            EachSide::Source,
+                        ));
                     }
                     if edge.to_node.type_ident == *node_type {
-                        methods.push(gen_role_traversal_method(edge, to_role, EachSide::Target));
+                        methods.push(gen_role_traversal_method(
+                            edge,
+                            終点.役割名(),
+                            EachSide::Target,
+                        ));
                     }
                 }
-                EdgeInfoShape::Undirected { .. } => {
+                辺の向き::無向 { .. } => {
                     if edge.from_node.type_ident == *node_type {
                         methods.push(gen_incident_traversal_method(edge));
                     }
@@ -575,7 +519,7 @@ fn gen_role_traversal_method(edge: &EdgeInfo<'_>, role: &Ident, side: EachSide) 
         EachSide::Source => &edge.index_field_ident,
         EachSide::Target => &edge.to_index_field_ident,
     };
-    match RoleCardinality::classify(edge.each_for(side).map(|each| each.spec)) {
+    match edge.cardinality(side) {
         RoleCardinality::Exact => quote! {
             /// この役割に接続する唯一の辺を O(1)、追加確保なしで返す。
             pub fn #method(self) -> #edge_reference<'graph> {
@@ -639,13 +583,13 @@ struct EdgeQueryPairSpec {
 
 impl EdgeQueryPairSpec {
     fn from_edge(edge: &EdgeInfo<'_>) -> Self {
-        match &edge.shape {
-            EdgeInfoShape::Directed { .. } => EdgeQueryPairSpec {
+        match edge.shape() {
+            辺の向き::有向 { .. } => EdgeQueryPairSpec {
                 other_reference: edge.to_node.reference_ident(),
                 pair_key: quote! { (self.internal_position, other.internal_position) },
                 pair_order_description: "順序付き",
             },
-            EdgeInfoShape::Undirected { .. } => EdgeQueryPairSpec {
+            辺の向き::無向 { .. } => EdgeQueryPairSpec {
                 other_reference: edge.from_node.reference_ident(),
                 pair_key: quote! {
                     graphite::UnorderedPair::new(self.internal_position, other.internal_position)
@@ -676,12 +620,12 @@ fn gen_between_traversal_methods(edge: &EdgeInfo<'_>) -> TokenStream {
     let edge_reference = edge.reference_ident();
     let stamp = construction_stamp_field_ident(edge.kind.span());
     let pair_index = pair_index_field_ident(edge.kind);
-    let between_result = if edge.unique_pair {
+    let between_result = if edge.unique_pair() {
         quote! { Option<#edge_reference<'graph>> }
     } else {
         quote! { impl Iterator<Item = #edge_reference<'graph>> + 'graph }
     };
-    let between_body = if edge.unique_pair {
+    let between_body = if edge.unique_pair() {
         quote! {
             let found = self.graph.#pair_index.get(&#pair_key).copied();
             Ok(found.map(|internal_position| #edge_reference { graph: self.graph, internal_position }))
@@ -726,7 +670,7 @@ struct InsertableNamedSpec<'a> {
     builder_ident: &'a Ident,
     graph_ident: &'a Ident,
     value_type: TokenStream,
-    id_ty: &'a PublicIdType,
+    id_ty: PublicIdType<'a>,
     named_position: &'a Ident,
     internal_position: &'a Ident,
     storage: &'a Ident,
@@ -831,7 +775,7 @@ fn gen_node_trait_and_impls(
     default_id_trait_ident: &Ident,
     builder_ident: &Ident,
     graph_ident: &Ident,
-    nodes: &[NodeInfo],
+    nodes: &[NodeInfo<'_>],
     edges: &[EdgeInfo<'_>],
 ) -> TokenStream {
     let node_impls = nodes.iter().map(|n| {
@@ -852,14 +796,14 @@ fn gen_node_trait_and_impls(
         let span = ty.span();
         let node_ref_id_ident = Ident::new("id", span);
         let node_ref_value_ident = Ident::new("value", span);
-        let node_debug_impl = gen_reference_debug_impl(&reference, n.id_ty.is_generated());
+        let node_debug_impl = gen_reference_debug_impl(&reference, n.id_ty.is_debug_printable());
         let traversal_methods = gen_node_traversal_methods(n, edges);
         let common_impl = gen_insertable_and_named_impl(InsertableNamedSpec {
             insertable_trait_ident,
             builder_ident,
             graph_ident,
             value_type: quote! { super::#ty },
-            id_ty: &n.id_ty,
+            id_ty: n.id_ty,
             named_position: &named_position,
             internal_position: &internal_position,
             storage: field,
@@ -868,8 +812,7 @@ fn gen_node_trait_and_impls(
             stamp_field: &stamp_field,
             span,
         });
-        let default_id_impl = if n.id_ty.is_generated() {
-            let generated_id = &n.id_ty.generated_ident;
+        let default_id_impl = if let Some(generated_id) = n.id_ty.generated_ident() {
             quote! {
                 impl #default_id_trait_ident for super::#ty {
                     fn insert_named_with_binding(
@@ -985,7 +928,7 @@ fn gen_edge_trait_and_impls(
             builder_ident,
             graph_ident,
             value_type: quote! { #kind },
-            id_ty: &e.id_ty,
+            id_ty: e.id_ty,
             named_position: &named_position,
             internal_position: &internal_position,
             storage: accessor,
@@ -994,8 +937,7 @@ fn gen_edge_trait_and_impls(
             stamp_field: &stamp_field,
             span: kind.span(),
         });
-        let default_id_impl = if e.id_ty.is_generated() {
-            let generated_id = &e.id_ty.generated_ident;
+        let default_id_impl = if let Some(generated_id) = e.id_ty.generated_ident() {
             quote! {
                 impl #default_id_trait_ident for #kind {
                     fn insert_named_with_binding(
@@ -1039,14 +981,13 @@ fn gen_edge_trait_and_impls(
 }
 
 /// 明示ID型がないノード・エッジのスキーマ内限定の型付き文字列IDを生成する。
-fn gen_default_id_types(nodes: &[NodeInfo], edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
+fn gen_default_id_types(nodes: &[NodeInfo<'_>], edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
     nodes
         .iter()
-        .map(|node| &node.id_ty)
-        .chain(edges.iter().map(|edge| &edge.id_ty))
-        .filter(|id_ty| id_ty.is_generated())
-        .map(|id_ty| {
-            let ident = &id_ty.generated_ident;
+        .map(|node| node.id_ty)
+        .chain(edges.iter().map(|edge| edge.id_ty))
+        .filter_map(PublicIdType::generated_ident)
+        .map(|ident| {
             quote! {
                 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
                 pub struct #ident(pub String);
@@ -1057,7 +998,7 @@ fn gen_default_id_types(nodes: &[NodeInfo], edges: &[EdgeInfo<'_>]) -> Vec<Token
 
 /// 公開IDとは別に、凍結済みグラフ内の内部位置を表す非公開型を生成する。
 /// 種別ごとのnewtypeにすることで、別のノード表・辺表の位置を取り違えない。
-fn gen_internal_position_types(nodes: &[NodeInfo], edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
+fn gen_internal_position_types(nodes: &[NodeInfo<'_>], edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
     nodes
         .iter()
         .map(NodeInfo::internal_position_ident)
@@ -1078,7 +1019,7 @@ fn gen_internal_position_types(nodes: &[NodeInfo], edges: &[EdgeInfo<'_>]) -> Ve
 /// 第2要素は構築印 (`u64`)。挿入時にその場の `Builder` が持つ構築印を
 /// そのまま埋め込み、`NamedGraphElement::bind` が `Graph` 側の構築印と
 /// 照合する (`crates/graphite/src/lib.rs` の構築印発行関数を参照)。
-fn gen_named_position_types(nodes: &[NodeInfo], edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
+fn gen_named_position_types(nodes: &[NodeInfo<'_>], edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
     nodes
         .iter()
         .map(|node| {
@@ -1105,12 +1046,12 @@ fn gen_named_position_types(nodes: &[NodeInfo], edges: &[EdgeInfo<'_>]) -> Vec<T
 /// 辺レコード構造体・辺参照値の積み荷フィールド `role: 型` を生成する
 /// (積み荷が無ければ空)。有向/無向で生成コードが同一なため
 /// `gen_edge_record_structs` から共有する純粋関数。
-fn edge_record_payload_fields(payload: &Option<EdgePayload>) -> Vec<TokenStream> {
+fn edge_record_payload_fields(payload: Option<&積み荷>) -> Vec<TokenStream> {
     payload
-        .iter()
+        .into_iter()
         .map(|payload| {
-            let role = &payload.role;
-            let ty = &payload.ty;
+            let role = payload.役割名();
+            let ty = payload.型パス();
             quote! { #role: #ty }
         })
         .collect()
@@ -1120,11 +1061,11 @@ fn edge_record_payload_fields(payload: &Option<EdgePayload>) -> Vec<TokenStream>
 /// 生成する (積み荷が無ければ空)。有向/無向で生成コードが同一なため
 /// `gen_edge_reference_types` から共有する純粋関数。`payload()` のスパンは
 /// 辺種別トークンを継承する (`docs/ide_support_spec.md` §1.9)。
-fn edge_reference_payload_methods(kind: &Ident, payload: &Option<EdgePayload>) -> TokenStream {
+fn edge_reference_payload_methods(kind: &Ident, payload: Option<&積み荷>) -> TokenStream {
     let payload_ident = Ident::new("payload", kind.span());
-    let methods = payload.iter().map(|payload| {
-        let role = &payload.role;
-        let ty = &payload.ty;
+    let methods = payload.into_iter().map(|payload| {
+        let role = payload.役割名();
+        let ty = payload.型パス();
         quote! {
             pub fn #role(self) -> &'graph #ty {
                 &self.record().#role
@@ -1208,13 +1149,11 @@ fn gen_edge_record_structs(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
             let record = edge.record_ident();
             let from_position = edge.from_node.internal_position_ident();
             let to_position = edge.to_node.internal_position_ident();
-            match &edge.shape {
-                EdgeInfoShape::Directed {
-                    from_role,
-                    to_role,
-                    payload,
-                } => {
-                    let payload_field = edge_record_payload_fields(payload);
+            let payload_field = edge_record_payload_fields(edge.payload());
+            match edge.shape() {
+                辺の向き::有向 { 始点, 終点 } => {
+                    let from_role = 始点.役割名();
+                    let to_role = 終点.役割名();
                     quote! {
                         #[allow(dead_code)]
                         struct #record {
@@ -1224,8 +1163,7 @@ fn gen_edge_record_structs(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
                         }
                     }
                 }
-                EdgeInfoShape::Undirected { payload } => {
-                    let payload_field = edge_record_payload_fields(payload);
+                辺の向き::無向 { .. } => {
                     quote! {
                         #[allow(dead_code)]
                         struct #record {
@@ -1252,24 +1190,22 @@ fn gen_edge_reference_types(graph_ident: &Ident, edges: &[EdgeInfo<'_>]) -> Vec<
             let record = edge.record_ident();
             let kind_span = edge.kind.span();
             let core_methods = edge_reference_core_methods(accessor, &record, id_ty, kind_span);
-            match &edge.shape {
-                EdgeInfoShape::Directed {
-                    from_role,
-                    to_role,
-                    payload,
-                } => {
+            let payload_methods = edge_reference_payload_methods(edge.kind, edge.payload());
+            let debug_impl = gen_reference_debug_impl(&reference, edge.id_ty.is_debug_printable());
+            match edge.shape() {
+                辺の向き::有向 { 始点, 終点 } => {
+                    let from_role = 始点.役割名();
+                    let to_role = 終点.役割名();
                     let from_reference = edge.from_node.reference_ident();
                     let to_reference = edge.to_node.reference_ident();
                     let from_position = edge.from_node.internal_position_ident();
                     let to_position = edge.to_node.internal_position_ident();
                     let from_id = &edge.from_node.id_ty;
                     let to_id = &edge.to_node.id_ty;
-                    let payload_methods = edge_reference_payload_methods(edge.kind, payload);
                     let from_ident = Ident::new("from", kind_span);
                     let to_ident = Ident::new("to", kind_span);
                     let from_id_ident = Ident::new("from_id", kind_span);
                     let to_id_ident = Ident::new("to_id", kind_span);
-                    let debug_impl = gen_reference_debug_impl(&reference, edge.id_ty.is_generated());
                     quote! {
                         /// 完成済みグラフ上の有向辺個体。
                         #[derive(Clone, Copy)]
@@ -1317,12 +1253,10 @@ fn gen_edge_reference_types(graph_ident: &Ident, edges: &[EdgeInfo<'_>]) -> Vec<
                         #debug_impl
                     }
                 }
-                EdgeInfoShape::Undirected { payload } => {
+                辺の向き::無向 { .. } => {
                     let node_reference = edge.from_node.reference_ident();
                     let node_position = edge.from_node.internal_position_ident();
-                    let payload_methods = edge_reference_payload_methods(edge.kind, payload);
                     let endpoints_ident = Ident::new("endpoints", kind_span);
-                    let debug_impl = gen_reference_debug_impl(&reference, edge.id_ty.is_generated());
                     quote! {
                         /// 完成済みグラフ上の無向辺個体。
                         #[derive(Clone, Copy)]
@@ -1370,12 +1304,11 @@ fn gen_edge_value_structs(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
             let p0_id = &e.from_node.id_ty;
             let p1_id = &e.to_node.id_ty;
 
-            let (struct_def, constructor, literal_impl, debug_endpoints) = match &e.shape {
-                EdgeInfoShape::Directed {
-                    from_role,
-                    to_role,
-                    payload: None,
-                } => (
+            let (struct_def, constructor, literal_impl, debug_endpoints) = match (e.shape(), e.payload()) {
+                (辺の向き::有向 { 始点, 終点 }, None) => {
+                    let from_role = 始点.役割名();
+                    let to_role = 終点.役割名();
+                    (
                         quote! {
                             pub struct #kind {
                                 pub #from_role: #p0_id,
@@ -1395,14 +1328,13 @@ fn gen_edge_value_structs(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
                             }
                         },
                         (quote! { self.#from_role }, quote! { self.#to_role }),
-                    ),
-                EdgeInfoShape::Directed {
-                    from_role,
-                    to_role,
-                    payload: Some(payload),
-                } => {
-                    let payload_role = &payload.role;
-                    let attrs = &payload.ty;
+                    )
+                }
+                (辺の向き::有向 { 始点, 終点 }, Some(payload)) => {
+                    let from_role = 始点.役割名();
+                    let to_role = 終点.役割名();
+                    let payload_role = payload.役割名();
+                    let attrs = payload.型パス();
                     (
                         quote! {
                             pub struct #kind {
@@ -1435,7 +1367,7 @@ fn gen_edge_value_structs(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
                         (quote! { self.#from_role }, quote! { self.#to_role }),
                     )
                 }
-                EdgeInfoShape::Undirected { payload: None } => (
+                (辺の向き::無向 { .. }, None) => (
                         quote! { pub struct #kind { endpoints: graphite::UnorderedPair<#p0_id> } },
                         quote! {
                             pub fn new(a: #p0_id, b: #p1_id) -> Self {
@@ -1454,11 +1386,9 @@ fn gen_edge_value_structs(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
                         },
                         (quote! { self.endpoints().0 }, quote! { self.endpoints().1 }),
                     ),
-                EdgeInfoShape::Undirected {
-                    payload: Some(payload),
-                } => {
-                    let payload_role = &payload.role;
-                    let attrs = &payload.ty;
+                (辺の向き::無向 { .. }, Some(payload)) => {
+                    let payload_role = payload.役割名();
+                    let attrs = payload.型パス();
                     (
                         quote! {
                             pub struct #kind {
@@ -1494,8 +1424,8 @@ fn gen_edge_value_structs(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
             // 利用者定義IDと積み荷へDebugを要求しない契約を守るため、端点を
             // 表示できるのは両端が自動生成IDで積み荷がない場合に限る。
             let debug_impl = if e.payload().is_none()
-                && e.from_node.id_ty.is_generated()
-                && e.to_node.id_ty.is_generated()
+                && e.from_node.id_ty.is_debug_printable()
+                && e.to_node.id_ty.is_debug_printable()
             {
                 let (first, second) = debug_endpoints;
                 quote! {
@@ -1547,7 +1477,7 @@ fn gen_edge_value_structs(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
 ///   `source`/`target`、無向なら順序の意味が無いため `a`/`b`。
 fn gen_violation_enum(
     violation_ident: &Ident,
-    nodes: &[NodeInfo],
+    nodes: &[NodeInfo<'_>],
     edges: &[EdgeInfo<'_>],
 ) -> TokenStream {
     let dup_variants = nodes.iter().map(|n| {
@@ -1558,7 +1488,7 @@ fn gen_violation_enum(
     let dup_display_arms = nodes.iter().map(|n| {
         let v = n.dup_variant();
         let type_name_str = n.type_ident.to_string();
-        if n.id_ty.is_generated() {
+        if n.id_ty.is_debug_printable() {
             quote! {
                 #violation_ident::#v(id) => write!(f, "{}のキーが重複しています: {:?}", #type_name_str, id)
             }
@@ -1581,7 +1511,7 @@ fn gen_violation_enum(
             /// このエッジ種別のキーが重複している。
             #dup_key(#edge_id)
         });
-        edge_display_arms.push(if edge.id_ty.is_generated() {
+        edge_display_arms.push(if edge.id_ty.is_debug_printable() {
             quote! {
                 #violation_ident::#dup_key(id) => write!(f, "{}のキーが重複しています: {:?}", #kind_str, id)
             }
@@ -1591,7 +1521,7 @@ fn gen_violation_enum(
             }
         });
 
-        if matches!(&edge.shape, EdgeInfoShape::Directed { .. }) {
+        if edge.is_directed() {
             let from_id = &edge.from_node.id_ty;
             let to_id = &edge.to_node.id_ty;
             let from_type_str = edge.from_node.type_ident.to_string();
@@ -1603,7 +1533,7 @@ fn gen_violation_enum(
                 #unk_src { edge: #edge_id, source: #from_id }
             });
             edge_display_arms.push(
-                if edge.id_ty.is_generated() && edge.from_node.id_ty.is_generated() {
+                if edge.id_ty.is_debug_printable() && edge.from_node.id_ty.is_debug_printable() {
                     quote! {
                         #violation_ident::#unk_src { edge, source } => write!(
                             f,
@@ -1628,7 +1558,7 @@ fn gen_violation_enum(
                 #unk_dst { edge: #edge_id, target: #to_id }
             });
             edge_display_arms.push(
-                if edge.id_ty.is_generated() && edge.to_node.id_ty.is_generated() {
+                if edge.id_ty.is_debug_printable() && edge.to_node.id_ty.is_debug_printable() {
                     quote! {
                         #violation_ident::#unk_dst { edge, target } => write!(
                             f,
@@ -1647,21 +1577,23 @@ fn gen_violation_enum(
                 },
             );
 
-            for constraint in &edge.each {
-                let spec = constraint.spec;
+            // variant の並びは DSL の `where` 節に書かれた順に従う (側ごとに
+            // 並べ替えない)。
+            for constraint in edge.定義.記述順の役割の多重度制約() {
+                let spec = constraint.指定された範囲();
                 let expected_str = match spec.max() {
                     Some(max) if spec.min() == max => format!("ちょうど{}", spec.min()),
                     Some(max) => format!("{}..{}", spec.min(), max),
                     None => format!("{}..*", spec.min()),
                 };
-                let v = each_violation_ident(edge.kind, &constraint.role);
-                match constraint.side {
+                let v = each_violation_ident(edge.kind, constraint.役割名());
+                match constraint.側() {
                     EachSide::Source => {
                         edge_variants.push(quote! {
                             /// このエッジ種別の `each` 制約違反 (出次数)。
                             #v { source: #from_id, count: usize }
                         });
-                        edge_display_arms.push(if edge.from_node.id_ty.is_generated() {
+                        edge_display_arms.push(if edge.from_node.id_ty.is_debug_printable() {
                             quote! {
                                 #violation_ident::#v { source, count } => write!(
                                     f,
@@ -1684,7 +1616,7 @@ fn gen_violation_enum(
                             /// このエッジ種別の `each` 制約違反 (入次数)。
                             #v { target: #to_id, count: usize }
                         });
-                        edge_display_arms.push(if edge.to_node.id_ty.is_generated() {
+                        edge_display_arms.push(if edge.to_node.id_ty.is_debug_printable() {
                             quote! {
                                 #violation_ident::#v { target, count } => write!(
                                     f,
@@ -1705,7 +1637,7 @@ fn gen_violation_enum(
                 }
             }
 
-            if edge.unique_pair {
+            if edge.unique_pair() {
                 let v = edge.unique_pair_violation_variant();
                 edge_variants.push(quote! {
                     /// このエッジ種別の `unique pair` 違反 (同じ始点・終点の対に
@@ -1713,7 +1645,9 @@ fn gen_violation_enum(
                     #v { source: #from_id, target: #to_id }
                 });
                 edge_display_arms.push(
-                    if edge.from_node.id_ty.is_generated() && edge.to_node.id_ty.is_generated() {
+                    if edge.from_node.id_ty.is_debug_printable()
+                        && edge.to_node.id_ty.is_debug_printable()
+                    {
                         quote! {
                             #violation_ident::#v { source, target } => write!(
                                 f,
@@ -1744,7 +1678,7 @@ fn gen_violation_enum(
                 #unk { edge: #edge_id, endpoint: #node_id }
             });
             edge_display_arms.push(
-                if edge.id_ty.is_generated() && edge.from_node.id_ty.is_generated() {
+                if edge.id_ty.is_debug_printable() && edge.from_node.id_ty.is_debug_printable() {
                     quote! {
                         #violation_ident::#unk { edge, endpoint } => write!(
                             f,
@@ -1763,14 +1697,14 @@ fn gen_violation_enum(
                 },
             );
 
-            if edge.unique_pair {
+            if edge.unique_pair() {
                 let v = edge.unique_pair_violation_variant();
                 edge_variants.push(quote! {
                     /// このエッジ種別の `unique pair` 違反 (無向のため
                     /// 順序を無視した対で判定)。
                     #v { a: #node_id, b: #node_id }
                 });
-                edge_display_arms.push(if edge.from_node.id_ty.is_generated() {
+                edge_display_arms.push(if edge.from_node.id_ty.is_debug_printable() {
                     quote! {
                         #violation_ident::#v { a, b } => write!(
                             f,
@@ -1820,7 +1754,7 @@ fn gen_violation_enum(
 
 fn gen_schema_struct(
     schema_name: &Ident,
-    nodes: &[NodeInfo],
+    nodes: &[NodeInfo<'_>],
     edges: &[EdgeInfo<'_>],
 ) -> TokenStream {
     let stamp_field = construction_stamp_field_ident(schema_name.span());
@@ -1843,12 +1777,12 @@ fn gen_schema_struct(
         // 一時構築していた索引をこれに統合した (無向辺は `index_field` が
         // 既に対称に両端を積むので不要)。
         let pair_index = pair_index_field_ident(e.kind);
-        let pair_value = if e.unique_pair {
+        let pair_value = if e.unique_pair() {
             quote! { #edge_position }
         } else {
             quote! { Vec<#edge_position> }
         };
-        let to_index_decl = if matches!(&e.shape, EdgeInfoShape::Directed { .. }) {
+        let to_index_decl = if e.is_directed() {
             let to_index_field = &e.to_index_field_ident;
             let to_key_position = e.to_node.internal_position_ident();
             let to_index_ty = role_index_type(e, EachSide::Target, &edge_position);
@@ -1865,7 +1799,7 @@ fn gen_schema_struct(
                 #pair_index: std::collections::HashMap<graphite::UnorderedPair<#key_position>, #pair_value>
             }
         };
-        let index_ty = if matches!(&e.shape, EdgeInfoShape::Directed { .. }) {
+        let index_ty = if e.is_directed() {
             role_index_type(e, EachSide::Source, &edge_position)
         } else {
             quote! { graphite::MultipleRoleIndex<#edge_position> }
@@ -1918,7 +1852,7 @@ fn gen_schema_impl(
     schema_name: &Ident,
     violation_ident: &Ident,
     builder_ident: &Ident,
-    nodes: &[NodeInfo],
+    nodes: &[NodeInfo<'_>],
     edges: &[EdgeInfo<'_>],
 ) -> TokenStream {
     let node_kind_apis = nodes.iter().map(gen_node_kind_api_methods);
@@ -2063,7 +1997,7 @@ fn gen_edge_kind_api_methods(edge: &EdgeInfo<'_>) -> TokenStream {
 
 fn gen_builder_struct(
     builder_ident: &Ident,
-    nodes: &[NodeInfo],
+    nodes: &[NodeInfo<'_>],
     edges: &[EdgeInfo<'_>],
 ) -> TokenStream {
     let stamp_field = construction_stamp_field_ident(builder_ident.span());
@@ -2102,7 +2036,7 @@ fn gen_builder_impl(
     edge_trait_ident: &Ident,
     default_id_trait_ident: &Ident,
     schema_name: &Ident,
-    nodes: &[NodeInfo],
+    nodes: &[NodeInfo<'_>],
     edges: &[EdgeInfo<'_>],
 ) -> TokenStream {
     let node_field_inits = nodes.iter().map(|n| {
@@ -2302,14 +2236,18 @@ fn gen_builder_impl(
 /// `<参照名>` は名前付きフィールドの辺値型の役割名フィールドへ参照させる。
 fn gen_each_type_check(edge: &EdgeInfo<'_>) -> TokenStream {
     let kind = edge.kind;
-    let checks = edge.each.iter().map(|constraint| {
-        let role = &constraint.role;
-        quote! {
-            let _: fn(&#kind) = |edge| {
-                let _ = &edge.#role;
-            };
-        }
-    });
+    let checks = edge
+        .定義
+        .記述順の役割の多重度制約()
+        .iter()
+        .map(|constraint| {
+            let role = constraint.役割名();
+            quote! {
+                let _: fn(&#kind) = |edge| {
+                    let _ = &edge.#role;
+                };
+            }
+        });
     quote! { #(#checks)* }
 }
 
@@ -2350,18 +2288,15 @@ fn gen_directed_edge_freeze_block(
     let unk_dst = edge.unknown_target_variant();
     let kind = edge.kind;
     let pair_index = pair_index_field_ident(kind);
-    let pair_index_type = if edge.unique_pair {
+    let pair_index_type = if edge.unique_pair() {
         quote! { std::collections::HashMap<(#from_position_type, #to_position_type), #edge_position> }
     } else {
         quote! { std::collections::HashMap<(#from_position_type, #to_position_type), Vec<#edge_position>> }
     };
 
-    let (destructure_value, build_record) = match &edge.shape {
-        EdgeInfoShape::Directed {
-            payload: Some(payload),
-            ..
-        } => {
-            let payload_role = &payload.role;
+    let (destructure_value, build_record) = match edge.payload() {
+        Some(payload) => {
+            let payload_role = payload.役割名();
             (
                 quote! {
                     let #kind { #from_role: from, #to_role: to, #payload_role } = value;
@@ -2371,7 +2306,7 @@ fn gen_directed_edge_freeze_block(
                 },
             )
         }
-        EdgeInfoShape::Directed { payload: None, .. } => (
+        None => (
             quote! {
                 let #kind { #from_role: from, #to_role: to } = value;
             },
@@ -2379,10 +2314,9 @@ fn gen_directed_edge_freeze_block(
                 #record { #from_role: from_position, #to_role: to_position }
             },
         ),
-        EdgeInfoShape::Undirected { .. } => unreachable!("有向辺の生成関数には有向辺だけを渡す"),
     };
 
-    let (unique_pair_check, pair_insert) = if edge.unique_pair {
+    let (unique_pair_check, pair_insert) = if edge.unique_pair() {
         let v = edge.unique_pair_violation_variant();
         (
             quote! {
@@ -2403,15 +2337,16 @@ fn gen_directed_edge_freeze_block(
     };
 
     let each_type_check = gen_each_type_check(edge);
-    let each_checks = edge.each.iter().map(|constraint| {
-        let min = constraint.spec.min();
-        let invalid_count = match constraint.spec.max() {
+    let each_checks = edge.定義.記述順の役割の多重度制約().iter().map(|constraint| {
+        let spec = constraint.指定された範囲();
+        let min = spec.min();
+        let invalid_count = match spec.max() {
             Some(max) if min == max => quote! { count != #min },
             Some(max) => quote! { !(#min..=#max).contains(&count) },
             None => quote! { count < #min },
         };
-        let v = each_violation_ident(edge.kind, &constraint.role);
-        match constraint.side {
+        let v = each_violation_ident(edge.kind, constraint.役割名());
+        match constraint.側() {
             EachSide::Source => quote! {
                 for position in #from_field.positions() {
                     let internal_position = #from_position_type(position);
@@ -2477,7 +2412,7 @@ fn finalize_role_index(
     node_field: &Ident,
     node_position: &Ident,
 ) -> TokenStream {
-    let constructor = match RoleCardinality::classify(edge.each_for(side).map(|each| each.spec)) {
+    let constructor = match edge.cardinality(side) {
         RoleCardinality::Exact => quote! { graphite::ExactlyOneRoleIndex::from_buckets },
         RoleCardinality::Optional => quote! { graphite::OptionalRoleIndex::from_buckets },
         RoleCardinality::Multiple => quote! { graphite::MultipleRoleIndex::from_buckets },
@@ -2513,17 +2448,15 @@ fn gen_undirected_edge_freeze_block(violation_ident: &Ident, edge: &EdgeInfo<'_>
     let unk = edge.unknown_endpoint_variant();
     let kind = edge.kind;
     let pair_index = pair_index_field_ident(kind);
-    let pair_index_type = if edge.unique_pair {
+    let pair_index_type = if edge.unique_pair() {
         quote! { std::collections::HashMap<graphite::UnorderedPair<#node_position_type>, #edge_position> }
     } else {
         quote! { std::collections::HashMap<graphite::UnorderedPair<#node_position_type>, Vec<#edge_position>> }
     };
 
-    let (destructure_value, build_record) = match &edge.shape {
-        EdgeInfoShape::Undirected {
-            payload: Some(payload),
-        } => {
-            let payload_role = &payload.role;
+    let (destructure_value, build_record) = match edge.payload() {
+        Some(payload) => {
+            let payload_role = payload.役割名();
             (
                 quote! {
                     let #kind { endpoints, #payload_role } = value;
@@ -2536,7 +2469,7 @@ fn gen_undirected_edge_freeze_block(violation_ident: &Ident, edge: &EdgeInfo<'_>
                 },
             )
         }
-        EdgeInfoShape::Undirected { payload: None } => (
+        None => (
             quote! {
                 let #kind { endpoints } = value;
             },
@@ -2546,12 +2479,11 @@ fn gen_undirected_edge_freeze_block(violation_ident: &Ident, edge: &EdgeInfo<'_>
                 }
             },
         ),
-        EdgeInfoShape::Directed { .. } => unreachable!("無向辺の生成関数には無向辺だけを渡す"),
     };
 
     // 無向辺の `unique pair` は `UnorderedPair` に同一性判定を委譲し、
     // ID型へ順序比較を要求せず (p0, p1) と (p1, p0) を同一視する。
-    let (unique_pair_check, pair_insert) = if edge.unique_pair {
+    let (unique_pair_check, pair_insert) = if edge.unique_pair() {
         let v = edge.unique_pair_violation_variant();
         (
             quote! {
@@ -2611,7 +2543,7 @@ fn gen_undirected_edge_freeze_block(violation_ident: &Ident, edge: &EdgeInfo<'_>
 fn gen_freeze_body(
     schema_name: &Ident,
     violation_ident: &Ident,
-    nodes: &[NodeInfo],
+    nodes: &[NodeInfo<'_>],
     edges: &[EdgeInfo<'_>],
 ) -> TokenStream {
     let node_table_builds = nodes.iter().map(|n| {
@@ -2627,19 +2559,19 @@ fn gen_freeze_body(
         }
     });
 
-    let edge_blocks = edges.iter().map(|e| match &e.shape {
-        EdgeInfoShape::Directed {
-            from_role, to_role, ..
-        } => gen_directed_edge_freeze_block(violation_ident, e, from_role, to_role),
-        EdgeInfoShape::Undirected { .. } => gen_undirected_edge_freeze_block(violation_ident, e),
+    let edge_blocks = edges.iter().map(|e| match e.shape() {
+        辺の向き::有向 { 始点, 終点 } => {
+            gen_directed_edge_freeze_block(violation_ident, e, 始点.役割名(), 終点.役割名())
+        }
+        辺の向き::無向 { .. } => gen_undirected_edge_freeze_block(violation_ident, e),
     });
 
     // 制約違反をすべて収集し終えてから、役割索引を公開クエリ向けの
     // 多重度別表現へ確定する。違反のある未完成索引を ExactlyOneRoleIndex/
     // OptionalRoleIndex 表現へ変換すると内部アサートになり、利用者向け
     // Violation を返せない。
-    let edge_index_finalizers = edges.iter().flat_map(|edge| match &edge.shape {
-        EdgeInfoShape::Directed { .. } => vec![
+    let edge_index_finalizers = edges.iter().flat_map(|edge| match edge.shape() {
+        辺の向き::有向 { .. } => vec![
             finalize_role_index(
                 edge,
                 EachSide::Source,
@@ -2655,7 +2587,7 @@ fn gen_freeze_body(
                 &edge.to_node.internal_position_ident(),
             ),
         ],
-        EdgeInfoShape::Undirected { .. } => vec![finalize_role_index(
+        辺の向き::無向 { .. } => vec![finalize_role_index(
             edge,
             EachSide::Source,
             &edge.index_field_ident,
@@ -2677,15 +2609,15 @@ fn gen_freeze_body(
         .iter()
         .flat_map(|e| {
             let pair = pair_index_field_ident(e.kind);
-            match &e.shape {
-                EdgeInfoShape::Directed { .. } => {
+            match e.shape() {
+                辺の向き::有向 { .. } => {
                     vec![
                         e.index_field_ident.clone(),
                         e.to_index_field_ident.clone(),
                         pair,
                     ]
                 }
-                EdgeInfoShape::Undirected { .. } => vec![e.index_field_ident.clone(), pair],
+                辺の向き::無向 { .. } => vec![e.index_field_ident.clone(), pair],
             }
         })
         .collect();
@@ -2727,7 +2659,7 @@ fn gen_freeze_body(
 }
 
 fn role_index_type(edge: &EdgeInfo<'_>, side: EachSide, edge_position: &Ident) -> TokenStream {
-    match RoleCardinality::classify(edge.each_for(side).map(|each| each.spec)) {
+    match edge.cardinality(side) {
         RoleCardinality::Exact => quote! { graphite::ExactlyOneRoleIndex<#edge_position> },
         RoleCardinality::Optional => quote! { graphite::OptionalRoleIndex<#edge_position> },
         RoleCardinality::Multiple => quote! { graphite::MultipleRoleIndex<#edge_position> },
@@ -2746,8 +2678,8 @@ fn gen_edge_payload_mut_method(edge: &EdgeInfo<'_>) -> TokenStream {
     let id_ty = &edge.id_ty;
     let accessor = &edge.accessor_ident;
     let record = edge.record_ident();
-    let payload_role = &payload.role;
-    let payload_ty = &payload.ty;
+    let payload_role = payload.役割名();
+    let payload_ty = payload.型パス();
     let payload_mut = kind_api_method_ident(accessor, "payload_mut");
     quote! {
         /// 辺の構造を保ったまま積み荷だけを可変借用する。

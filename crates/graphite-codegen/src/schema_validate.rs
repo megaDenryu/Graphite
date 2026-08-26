@@ -16,7 +16,7 @@
 //! `SchemaInput` 全体ではなく `&[NodeDecl]`/`&[EdgeDecl]` というスライスを
 //! 受け取るシグネチャにしているのは、`lib.rs` 側がパース回復で「壊れた宣言を
 //! 除いた残り」だけを検証にかけられるようにするため。特に
-//! `validate_edge_endpoints`/`validate_each_type_matches_from` は、パース済みの
+//! `validate_edge_endpoints`/`validate_each_reference` は、パース済みの
 //! 宣言が1件でも壊れていた場合に `lib.rs` が直接は呼ばず、代わりに
 //! [`filter_edges_with_known_endpoints`] で未知端点の辺を生成対象から除外する
 //! (二次エラー抑制)。重複ノード名・重複エッジ種別名の診断は回復の有無に
@@ -30,6 +30,7 @@ use syn::Ident;
 use crate::naming::{
     generated_id_ident, named_position_ident, reference_ident, 固定生成名の予約表,
 };
+use crate::schema::semantic::each制約が指す端点の側を判定する;
 use crate::schema_dsl::{EdgeDecl, EdgeShape, NodeDecl};
 
 pub fn validate_unique_node_names(nodes: &[NodeDecl]) -> syn::Result<()> {
@@ -297,50 +298,15 @@ pub fn validate_edge_endpoints(nodes: &[NodeDecl], edges: &[EdgeDecl]) -> syn::R
     Ok(())
 }
 
-/// `where each <参照名>` が意味する側 (出次数/入次数/次数)。
+/// `where each <参照名>: ..` の `<参照名>` がどちらの端点を指すか判定できるかを
+/// 検査する (`schema::semantic::each制約が指す端点の側を判定する` 参照)。
 ///
-/// - `Source`: 始点の役割名に対する出次数制約
-/// - `Target`: 終点の役割名に対する入次数制約
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum EachSide {
-    Source,
-    Target,
-}
-
-/// `where each <参照名>: ..` の `<参照名>` がどちら側 (どの制約) を指すかを
-/// 解決する。解決できない場合は診断つきの `syn::Error` を返す。
-///
-/// - 有向辺: `<参照名>` は始点/終点いずれかの役割名と一致する必要がある。
-/// - 無向辺: 端点の役割名が無いため `each` 自体を拒否する。
-pub fn resolve_each_side(edge: &EdgeDecl, each_ident: &Ident) -> syn::Result<EachSide> {
-    let (from_role, to_role) = match &edge.shape {
-        EdgeShape::Directed { from, to, .. } => (&from.role, &to.role),
-        EdgeShape::Undirected { .. } => return Err(syn::Error::new_spanned(
-            each_ident.to_token_stream(),
-            format!("無向辺 `{}` には端点の役割名が無いため `each` は使えません。使える制約は `unique pair` のみです", edge.kind),
-        )),
-    };
-    if each_ident == from_role {
-        Ok(EachSide::Source)
-    } else if each_ident == to_role {
-        Ok(EachSide::Target)
-    } else {
-        Err(syn::Error::new_spanned(
-            each_ident.to_token_stream(),
-            format!(
-                "辺 `{}` の `each` は端点の役割名 (`{}`/`{}`) を参照してください。役割名 `{}` は存在しません",
-                edge.kind, from_role, to_role, each_ident
-            ),
-        ))
-    }
-}
-
-/// `where each <参照名>: ..` の意味解決が成功するかを検査する
-/// (`resolve_each_side` 参照)。
+/// 判定そのものは意味層が持つ。検査側が意味層の判定を呼ぶのは、検査が
+/// 「意味として成立するか」を問う工程であるため依存の向きとして正しい。
 pub fn validate_each_reference(edges: &[EdgeDecl]) -> syn::Result<()> {
     for edge in edges {
         for constraint in &edge.constraints.each {
-            resolve_each_side(edge, &constraint.role)?;
+            each制約が指す端点の側を判定する(edge, &constraint.role)?;
         }
     }
     Ok(())

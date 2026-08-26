@@ -6,6 +6,7 @@
 mod declaration_site;
 mod generated_path;
 pub mod naming;
+mod schema;
 mod schema_codegen;
 mod schema_dsl;
 mod schema_validate;
@@ -18,17 +19,20 @@ use syn::{Ident, LitStr, Token};
 pub use declaration_site::DeclarationSite;
 pub use generated_path::validate_generated_relative_path;
 
-/// 追跡対象の schema 宣言を検証して生成に使える形へしたもの。
+/// 追跡対象の schema 宣言を検証し、意味モデルまで確定させたもの。
+///
+/// 構文モデルではなく意味モデルを保持するのは、指紋の計算とソース生成が同じ
+/// 解析結果を読むようにするためである (解析を2回走らせない)。
 pub struct TrackedSchema {
     generated_path: LitStr,
-    schema: schema_dsl::SchemaInput,
+    スキーマ定義: schema::semantic::スキーマ定義,
     fingerprint: [u64; 4],
 }
 
 impl TrackedSchema {
     /// DSL が宣言する schema module 名を返す。
     pub fn schema_name(&self) -> &Ident {
-        &self.schema.schema_name
+        self.スキーマ定義.スキーマ名()
     }
 
     /// 宣言元ファイルから見た生成先の相対パスを返す。
@@ -43,7 +47,7 @@ impl TrackedSchema {
 
     /// schema module の通常の Rust ソース本文を生成する。
     pub fn render_module_source(&self, site: &DeclarationSite) -> syn::Result<String> {
-        let body = schema_codegen::generate_module_body(&self.schema);
+        let body = schema_codegen::generate_module_body(&self.スキーマ定義);
         let fingerprint = self.fingerprint;
         let generated: syn::File = syn::parse2(quote! {
             #[allow(unused_imports)]
@@ -107,7 +111,9 @@ pub fn parse_tracked_schema(input: TokenStream) -> Result<TrackedSchema, Vec<syn
         .parse2(tracked.schema_tokens.clone())
         .map_err(|error| vec![error])?;
     let schema = validate(parsed)?;
-    let generated = schema_codegen::generate_module_body(&schema);
+    let スキーマ定義 =
+        schema::semantic::検証済み構文からスキーマ定義を組み立てる(&schema);
+    let generated = schema_codegen::generate_module_body(&スキーマ定義);
     let normalized: syn::File = syn::parse2(quote! {
         #[allow(unused_imports)]
         use super::*;
@@ -125,7 +131,7 @@ pub fn parse_tracked_schema(input: TokenStream) -> Result<TrackedSchema, Vec<syn
     );
     Ok(TrackedSchema {
         generated_path: tracked.generated_path,
-        schema,
+        スキーマ定義,
         fingerprint,
     })
 }
@@ -140,7 +146,11 @@ pub fn expand_inline_for_test(input: TokenStream) -> TokenStream {
         ValidationResult::Generated { schema, errors } => {
             let diagnostics: TokenStream =
                 errors.iter().map(syn::Error::to_compile_error).collect();
-            let generated = schema_codegen::generate(&schema);
+            let スキーマ定義 =
+                schema::semantic::検証済み構文からスキーマ定義を組み立てる(
+                    &schema,
+                );
+            let generated = schema_codegen::generate(&スキーマ定義);
             quote! { #diagnostics #generated }
         }
         ValidationResult::Rejected(errors) => {
