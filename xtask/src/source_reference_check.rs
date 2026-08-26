@@ -1,19 +1,82 @@
 use std::fmt;
 
-use crate::document_reference::SourceCodeReference;
+use crate::document_reference::ReferenceOrigin;
 use crate::repository_root::RepositoryRoot;
+use crate::source_reference::SourceReference;
 
-/// ソース参照1件の検査結果。実在しないファイルを指すか、行番号(範囲なら
-/// 終了行)が実ファイルの行数を超えるかのいずれか。
-enum Violation<'a> {
-    FileMissing(&'a SourceCodeReference),
-    LineOutOfRange {
-        reference: &'a SourceCodeReference,
-        actual_lines: usize,
-    },
+/// 1箇所に書かれた自リポジトリソースへの参照。
+pub struct SourceCodeReference {
+    origin: ReferenceOrigin,
+    target: SourceReference,
 }
 
-/// 実在しないか、行番号がファイルの行数を超えるソース参照の一覧。
+impl SourceCodeReference {
+    pub fn new(origin: ReferenceOrigin, target: SourceReference) -> Self {
+        Self { origin, target }
+    }
+
+    pub fn target(&self) -> &SourceReference {
+        &self.target
+    }
+}
+
+impl fmt::Display for SourceCodeReference {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{} -> {}", self.origin, self.target)
+    }
+}
+
+/// SOURCE_AREAS に該当し `.rs` を含むのに行指定などを解析できなかった、
+/// 1箇所の生の綴り。ワイルドカード・プレースホルダを含む綴り (ファイル群の
+/// 総称) はここに含めない。
+pub struct UnparsableSourceReference {
+    origin: ReferenceOrigin,
+    token: String,
+}
+
+impl UnparsableSourceReference {
+    pub fn new(origin: ReferenceOrigin, token: String) -> Self {
+        Self { origin, token }
+    }
+}
+
+impl fmt::Display for UnparsableSourceReference {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{} -> {}", self.origin, self.token)
+    }
+}
+
+/// ソース参照1件の検査結果。実在しないファイルを指すか、行番号 (範囲や
+/// 複数指定なら最大の終了行) が実ファイルの行数を超えるか、行指定などが
+/// 解析できなかったかのいずれか。
+pub(crate) enum Violation<'a> {
+    FileMissing(&'a SourceCodeReference),
+    LineOutOfRange { reference: &'a SourceCodeReference, actual_lines: usize },
+    Unparsable(&'a UnparsableSourceReference),
+}
+
+impl SourceCodeReference {
+    /// この参照が `root` の実ファイルに対して妥当かを評価する。妥当なら
+    /// `None`、実在しないかファイルの行数を超えるなら違反を返す。
+    ///
+    /// `ReferenceScan::invalid_source_references` が自分の保持する
+    /// `source_references` と `self.root` を使ってこのメソッドを呼び、検査を
+    /// 完結させる。所有者 (`RepositoryRoot`) を外部引数として受け取る
+    /// 集約関数はここには置かない。
+    pub(crate) fn evaluate(&self, root: &RepositoryRoot) -> Option<Violation<'_>> {
+        let Some(actual_lines) = root.source_file_line_count(self.target()) else {
+            return Some(Violation::FileMissing(self));
+        };
+        let last_line = self.target().line_span().last_line()?;
+        (last_line > actual_lines).then_some(Violation::LineOutOfRange {
+            reference: self,
+            actual_lines,
+        })
+    }
+}
+
+/// 実在しないか、行番号がファイルの行数を超えるか、解析できないソース参照の
+/// 一覧。整形は `Display` へ閉じる。
 ///
 /// 引用本文とコードの一致は検査しない。行番号の実在と行数範囲までが
 /// 検査の範囲であることは `main.rs` の使い方の説明にも明記する。
@@ -22,23 +85,7 @@ pub struct InvalidSourceReferences<'a> {
 }
 
 impl<'a> InvalidSourceReferences<'a> {
-    pub fn collect(references: &'a [SourceCodeReference], root: &RepositoryRoot) -> Self {
-        let mut violations = Vec::new();
-        for reference in references {
-            match root.source_file_line_count(reference.target().path()) {
-                None => violations.push(Violation::FileMissing(reference)),
-                Some(actual_lines) => {
-                    if let Some(last_line) = reference.target().line_span().last_line() {
-                        if last_line > actual_lines {
-                            violations.push(Violation::LineOutOfRange {
-                                reference,
-                                actual_lines,
-                            });
-                        }
-                    }
-                }
-            }
-        }
+    pub(crate) fn new(violations: Vec<Violation<'a>>) -> Self {
         Self { violations }
     }
 
@@ -54,7 +101,7 @@ impl fmt::Display for InvalidSourceReferences<'_> {
         }
         writeln!(
             formatter,
-            "実在しないか行数を超えるソース参照が{}件あります:",
+            "実在しないか行数を超えるか解析できないソース参照が{}件あります:",
             self.violations.len()
         )?;
         for violation in &self.violations {
@@ -62,14 +109,14 @@ impl fmt::Display for InvalidSourceReferences<'_> {
                 Violation::FileMissing(reference) => {
                     writeln!(formatter, "  {reference} (ファイルが実在しません)")?;
                 }
-                Violation::LineOutOfRange {
-                    reference,
-                    actual_lines,
-                } => {
+                Violation::LineOutOfRange { reference, actual_lines } => {
                     writeln!(
                         formatter,
                         "  {reference} (実ファイルは{actual_lines}行までです)"
                     )?;
+                }
+                Violation::Unparsable(reference) => {
+                    writeln!(formatter, "  {reference} (解析できないソース参照です)")?;
                 }
             }
         }
@@ -81,8 +128,8 @@ impl fmt::Display for InvalidSourceReferences<'_> {
 mod tests {
     use std::path::PathBuf;
 
-    use super::InvalidSourceReferences;
-    use crate::document_reference::{ReferenceOrigin, SourceCodeReference};
+    use super::{InvalidSourceReferences, SourceCodeReference, UnparsableSourceReference, Violation};
+    use crate::document_reference::ReferenceOrigin;
     use crate::repository_root::RepositoryRoot;
     use crate::source_reference::SourceReference;
 
@@ -100,25 +147,32 @@ mod tests {
     #[test]
     fn 実在し行数内のソース参照は違反にしない() {
         let root = root();
-        let references = vec![reference("xtask/src/main.rs")];
-        assert!(InvalidSourceReferences::collect(&references, &root).is_empty());
+        assert!(reference("xtask/src/main.rs").evaluate(&root).is_none());
     }
 
     #[test]
     fn 実在しないファイルは違反になる() {
         let root = root();
-        let references = vec![reference("xtask/src/存在しない.rs")];
-        let invalid = InvalidSourceReferences::collect(&references, &root);
-        assert!(!invalid.is_empty());
+        let reference = reference("xtask/src/存在しない.rs");
+        let violation = reference.evaluate(&root).expect("違反になること");
+        let invalid = InvalidSourceReferences::new(vec![violation]);
         assert!(invalid.to_string().contains("ファイルが実在しません"));
     }
 
     #[test]
     fn 行数を超える指定は違反になる() {
         let root = root();
-        let references = vec![reference("xtask/src/source_reference_check.rs:999999")];
-        let invalid = InvalidSourceReferences::collect(&references, &root);
-        assert!(!invalid.is_empty());
+        let reference = reference("xtask/src/source_reference_check.rs:999999");
+        let violation = reference.evaluate(&root).expect("違反になること");
+        let invalid = InvalidSourceReferences::new(vec![violation]);
         assert!(invalid.to_string().contains("行までです"));
+    }
+
+    #[test]
+    fn 解析できないソース参照は違反として表示される() {
+        let origin = ReferenceOrigin::new("テスト用の出典".to_string(), 1);
+        let unparsable = UnparsableSourceReference::new(origin, "xtask/src/lib.rs:0".to_string());
+        let invalid = InvalidSourceReferences::new(vec![Violation::Unparsable(&unparsable)]);
+        assert!(invalid.to_string().contains("解析できないソース参照です"));
     }
 }

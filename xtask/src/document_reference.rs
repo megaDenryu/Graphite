@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::source_reference::SourceReference;
+use crate::source_reference::{is_literal_path, SourceReference};
 
 /// リポジトリ内 Rust ソースを置くディレクトリの先頭綴り。
 ///
@@ -21,12 +21,10 @@ const SOURCE_AREAS: [&str; 4] = ["crates/", "examples/", "xtask/", "verification
 /// 別リポジトリを正しく指した `../Bullet/docs/...` と、先頭の `../Bullet` が
 /// 欠けたまま自リポジトリを指してしまう綴りを区別できなくなる。
 pub enum ReferenceTarget {
-    /// このリポジトリの `docs/` 配下を指す綴り。実在を検査する。
-    RepositoryDocument(DocumentPath),
-    /// このリポジトリ内 Rust ソースを指す綴り。実在と行番号範囲を検査する。
-    SourceCode(SourceReference),
-    /// `../` で始まる別リポジトリの文書を指す綴り。件数だけ数える。
-    ExternalDocument,
+    RepositoryDocument(DocumentPath), // このリポジトリの `docs/` 配下を指す綴り。実在を検査する。
+    SourceCode(SourceReference), // このリポジトリ内 Rust ソースを指す綴り。実在と行番号範囲を検査する。
+    UnparsableSourceCode(String), // SOURCE_AREAS内で`.rs`を含むが行指定などを解析できない綴り。総称ではなく違反として報告する。
+    ExternalDocument, // `../` で始まる別リポジトリの文書を指す綴り。件数だけ数える。
 }
 
 impl ReferenceTarget {
@@ -43,7 +41,13 @@ impl ReferenceTarget {
             return None;
         }
         if SOURCE_AREAS.iter().any(|area| token.starts_with(area)) {
-            return SourceReference::parse(token).map(Self::SourceCode);
+            if let Some(reference) = SourceReference::parse(token) {
+                return Some(Self::SourceCode(reference));
+            }
+            if token.contains(".rs") && is_literal_path(token) {
+                return Some(Self::UnparsableSourceCode(token.to_string()));
+            }
+            return None;
         }
         None
     }
@@ -112,28 +116,6 @@ impl DocumentReference {
 }
 
 impl fmt::Display for DocumentReference {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(formatter, "{} -> {}", self.origin, self.target)
-    }
-}
-
-/// 1箇所に書かれた自リポジトリソースへの参照。
-pub struct SourceCodeReference {
-    origin: ReferenceOrigin,
-    target: SourceReference,
-}
-
-impl SourceCodeReference {
-    pub fn new(origin: ReferenceOrigin, target: SourceReference) -> Self {
-        Self { origin, target }
-    }
-
-    pub fn target(&self) -> &SourceReference {
-        &self.target
-    }
-}
-
-impl fmt::Display for SourceCodeReference {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(formatter, "{} -> {}", self.origin, self.target)
     }

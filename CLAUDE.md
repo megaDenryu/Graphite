@@ -71,7 +71,7 @@ cargo test
 cargo xtask generate
 cargo xtask generate --check
 
-# 文書参照の綴りの実在と docs/README.md 索引の網羅を検査
+# 文書参照とリポジトリ内Rustソース参照の綴りの実在・行数範囲、docs/README.md 索引の網羅を検査
 cargo xtask check-docs
 
 # 外部crateからの生成経路 (verification/external-crate) を実走で検査
@@ -109,8 +109,9 @@ cargo graphite generate [--check]
   いない文書を置いてはならない。各文書の冒頭には状態 (Current reference /
   Current guide / Development document / Historical document。定義は
   `docs/README.md` を参照) を1行で表示する
-- 文書間の参照の綴りと索引の網羅は`cargo xtask check-docs`が検査する。文書を移動・
-  改名したら、このコマンドが通る状態にしてからコミットする
+- 文書間の参照の綴りと索引の網羅、リポジトリ内Rustソース参照の実在と行数範囲は
+  `cargo xtask check-docs`が検査する。文書を移動・改名したら、このコマンドが
+  通る状態にしてからコミットする
 - `docs/history/`の文書の本文は書き換えない。参照先の綴りの追随だけを行う
 - READMEの第一読者はGraphiteを使うRust利用者である。内部実装・開発規約・設計史を
   READMEへ書かず、`docs/development/`と`docs/history/`へ置いて案内だけを残す

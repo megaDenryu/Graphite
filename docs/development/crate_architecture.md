@@ -13,7 +13,7 @@ crates/graphite/         # ランタイムクレート。利用者が唯一 depe
 crates/graphite-codegen/ # schemaの構文解析・検証・指紋・Rust生成を担う純粋層
 crates/graphite-macros/  # コンパイル時検証・指紋照合とgraph!/flow!を担うproc-macroクレート
 crates/graphite-cli/     # 生成の中核(宣言の探索・生成計画・ファイルの読み書きと差分検査)と cargo-graphite バイナリ
-xtask/                   # Graphite リポジトリ自身の開発用入口。全パッケージの生成と、文書参照と索引の検査(check-docs)
+xtask/                   # Graphite リポジトリ自身の開発用入口。全パッケージの生成と、文書参照・ソース参照と索引の検査(check-docs)
 ```
 
 ## proc-macro クレートを分ける理由
@@ -68,9 +68,9 @@ generate` と、外部 crate 向けの `cargo graphite generate` である。こ
 - `graphite-cli` は宣言元の探索、生成先の検査、生成ファイルの読み書きと差分検査を
   行い、`cargo graphite generate [--check]` のバイナリ (`cargo-graphite`) を提供する。
 - `xtask` は Graphite リポジトリ自身の開発用入口である。`crates/*` と `examples/*`
-  の全パッケージを順に `graphite-cli` へ渡し、加えて文書参照と索引の検査
-  (`cargo xtask check-docs`)、外部 crate からの生成経路の実走検査
-  (`cargo xtask check-external`) を行う。
+  の全パッケージを順に `graphite-cli` へ渡し、加えて文書参照・リポジトリ内Rust
+  ソース参照の実在と行数範囲・索引の検査 (`cargo xtask check-docs`)、外部 crate
+  からの生成経路の実走検査 (`cargo xtask check-external`) を行う。
 - `graphite` はグラフの実行時型を持ち、利用者が依存する入口としてマクロを
   再公開する。
 

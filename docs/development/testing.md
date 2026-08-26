@@ -17,6 +17,9 @@ cargo xtask check-docs
 cargo xtask check-external
 ```
 
+`cargo xtask check-docs` は文書間の参照とリポジトリ内Rustソース参照 (実在と
+行数範囲) の両方を検査する。
+
 `examples/` 配下の7本はルートの Cargo workspace から独立したスタンドアロン
 クレートであり、ルートの `cargo test` の対象には含まれない。個別に `cd` して
 ビルド・実行する。

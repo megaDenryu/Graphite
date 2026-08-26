@@ -8,6 +8,7 @@ use graphite_cli::{relative_display, with_path_context, PackageRoot};
 
 use crate::document_reference::DocumentPath;
 use crate::repository_package::RepositoryPackage;
+use crate::source_reference::SourceReference;
 
 /// 生成と文書検査の基準となるリポジトリルート。
 ///
@@ -86,8 +87,8 @@ impl RepositoryRoot {
     ///
     /// 実在判定と行数取得を1回の読み込みで済ませる。存在確認だけを別の
     /// `is_file` 呼び出しで行うと、走査対象が増えたときに二度手間になる。
-    pub fn source_file_line_count(&self, path: &str) -> Option<usize> {
-        fs::read_to_string(self.path.join(path))
+    pub fn source_file_line_count(&self, reference: &SourceReference) -> Option<usize> {
+        fs::read_to_string(self.path.join(reference.path()))
             .ok()
             .map(|text| text.lines().count())
     }

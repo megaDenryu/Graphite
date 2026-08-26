@@ -1,21 +1,14 @@
 use std::error::Error;
-use std::fmt;
 use std::fs;
 
 use graphite_cli::with_path_context;
 
-use crate::document_reference::{
-    DocumentReference, ReferenceOrigin, ReferenceTarget, SourceCodeReference,
-};
+use crate::document_reference::{DocumentReference, ReferenceOrigin, ReferenceTarget};
+use crate::missing_references::MissingReferences;
 use crate::repository_root::RepositoryRoot;
-use crate::source_reference_check::InvalidSourceReferences;
-
-/// 歴史文書を置くディレクトリの先頭綴り。
-///
-/// 歴史文書 (`docs/history/`) は当時の綴りをそのまま保存するログ型文書であり、
-/// ファイル移動・行の増減で参照が腐っても現在の実体へ追随させない。ソース参照の
-/// 検査対象からこの配下だけを除く。
-const HISTORY_DOCUMENT_AREA: &str = "docs/history/";
+use crate::source_reference_check::{
+    InvalidSourceReferences, SourceCodeReference, UnparsableSourceReference, Violation,
+};
 
 /// 走査対象の全ファイルから抜き出した文書参照とソース参照の一覧。
 ///
@@ -24,8 +17,8 @@ pub struct ReferenceScan<'root> {
     root: &'root RepositoryRoot,
     references: Vec<DocumentReference>,
     source_references: Vec<SourceCodeReference>,
+    unparsable_source_references: Vec<UnparsableSourceReference>,
     external_reference_count: usize,
-    excluded_history_source_reference_count: usize,
 }
 
 impl<'root> ReferenceScan<'root> {
@@ -33,25 +26,24 @@ impl<'root> ReferenceScan<'root> {
     pub fn over(root: &'root RepositoryRoot) -> Result<Self, Box<dyn Error>> {
         let mut references = Vec::new();
         let mut source_references = Vec::new();
+        let mut unparsable_source_references = Vec::new();
         let mut external_reference_count = 0;
-        let mut excluded_history_source_reference_count = 0;
         for path in root.document_reference_sources()? {
             let origin_file = root.relative_display(&path);
             let text = with_path_context(fs::read_to_string(&path), &origin_file)?;
             for (offset, line) in text.lines().enumerate() {
                 for token in tokens_in(line) {
+                    let origin = || ReferenceOrigin::new(origin_file.clone(), offset + 1);
                     match ReferenceTarget::classify(token) {
                         Some(ReferenceTarget::RepositoryDocument(target)) => {
-                            let origin = ReferenceOrigin::new(origin_file.clone(), offset + 1);
-                            references.push(DocumentReference::new(origin, target));
+                            references.push(DocumentReference::new(origin(), target));
                         }
                         Some(ReferenceTarget::SourceCode(target)) => {
-                            if origin_file.starts_with(HISTORY_DOCUMENT_AREA) {
-                                excluded_history_source_reference_count += 1;
-                            } else {
-                                let origin = ReferenceOrigin::new(origin_file.clone(), offset + 1);
-                                source_references.push(SourceCodeReference::new(origin, target));
-                            }
+                            source_references.push(SourceCodeReference::new(origin(), target));
+                        }
+                        Some(ReferenceTarget::UnparsableSourceCode(token)) => {
+                            unparsable_source_references
+                                .push(UnparsableSourceReference::new(origin(), token));
                         }
                         Some(ReferenceTarget::ExternalDocument) => external_reference_count += 1,
                         None => {}
@@ -63,8 +55,8 @@ impl<'root> ReferenceScan<'root> {
             root,
             references,
             source_references,
+            unparsable_source_references,
             external_reference_count,
-            excluded_history_source_reference_count,
         })
     }
 
@@ -80,10 +72,6 @@ impl<'root> ReferenceScan<'root> {
         self.external_reference_count
     }
 
-    pub fn excluded_history_source_reference_count(&self) -> usize {
-        self.excluded_history_source_reference_count
-    }
-
     /// 実在しない綴りを指している参照を全件返す。
     ///
     /// 1件目で打ち切らないのは、綴りの是正を1周で終えられるようにするためである。
@@ -93,39 +81,18 @@ impl<'root> ReferenceScan<'root> {
             .iter()
             .filter(|reference| !self.root.document_exists(reference.target()))
             .collect();
-        MissingReferences { references }
+        MissingReferences::new(references)
     }
 
-    /// 実在しないか行数を超えるソース参照を全件返す。
+    /// 実在しないか行数を超えるか解析できないソース参照を全件返す。
     pub fn invalid_source_references(&self) -> InvalidSourceReferences<'_> {
-        InvalidSourceReferences::collect(&self.source_references, self.root)
-    }
-}
-
-/// 実在しない綴りを指している参照の一覧。整形は `Display` へ閉じる。
-///
-/// `document_index::IndexMismatch` と対の形である: 検査結果を保持し、
-/// 呼び出し側は組み立てと委譲だけを行う。
-pub struct MissingReferences<'a> {
-    references: Vec<&'a DocumentReference>,
-}
-
-impl MissingReferences<'_> {
-    pub fn is_empty(&self) -> bool {
-        self.references.is_empty()
-    }
-}
-
-impl fmt::Display for MissingReferences<'_> {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.references.is_empty() {
-            return Ok(());
-        }
-        writeln!(formatter, "実在しない文書を指す参照が{}件あります:", self.references.len())?;
-        for reference in &self.references {
-            writeln!(formatter, "  {reference}")?;
-        }
-        Ok(())
+        let mut violations: Vec<Violation<'_>> = self
+            .source_references
+            .iter()
+            .filter_map(|reference| reference.evaluate(self.root))
+            .collect();
+        violations.extend(self.unparsable_source_references.iter().map(Violation::Unparsable));
+        InvalidSourceReferences::new(violations)
     }
 }
 

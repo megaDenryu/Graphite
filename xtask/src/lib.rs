@@ -9,6 +9,7 @@
 mod document_index;
 mod document_reference;
 mod external_verification;
+mod missing_references;
 mod reference_scan;
 mod repository_package;
 mod repository_root;
@@ -63,12 +64,11 @@ pub fn check_documents(root: &RepositoryRoot) -> Result<(), Box<dyn Error>> {
     let invalid_sources = scan.invalid_source_references();
     println!(
         "文書参照 {}件・ソース参照 {}件と docs 配下の {}ファイルを検査しました\
-         (別リポジトリを指す参照 {}件、docs/history 配下のソース参照 {}件は検査対象外)",
+         (別リポジトリを指す参照 {}件は検査対象外)",
         scan.reference_count(),
         scan.source_reference_count(),
         existing.len(),
-        scan.external_reference_count(),
-        scan.excluded_history_source_reference_count()
+        scan.external_reference_count()
     );
     if missing.is_empty() && mismatch.is_empty() && invalid_sources.is_empty() {
         return Ok(());
