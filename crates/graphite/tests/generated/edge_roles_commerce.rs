@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    8589592126875526766u64, 9836752763228277499u64, 5439246706806984380u64,
-    8784210473907865344u64,
+    10697115368782407328u64, 2608266299376936611u64, 9754844789010380434u64,
+    3042117034582590502u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PersonId(pub String);
@@ -608,7 +608,7 @@ impl CommerceInsertable for super::Person {
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __PersonNamedPosition(
             __PersonInternalPosition(
-                graphite::TablePosition(b.__graphite_node_person.len()),
+                graphite::TablePosition::from_index(b.__graphite_node_person.len()),
             ),
             b.__graphite_construction_stamp,
         );
@@ -816,7 +816,7 @@ impl CommerceInsertable for super::Product {
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __ProductNamedPosition(
             __ProductInternalPosition(
-                graphite::TablePosition(b.__graphite_node_product.len()),
+                graphite::TablePosition::from_index(b.__graphite_node_product.len()),
             ),
             b.__graphite_construction_stamp,
         );
@@ -942,7 +942,9 @@ impl CommerceInsertable for Purchase {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __PurchaseNamedPosition(
-            __PurchaseInternalPosition(graphite::TablePosition(b.purchase.len())),
+            __PurchaseInternalPosition(
+                graphite::TablePosition::from_index(b.purchase.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -994,7 +996,7 @@ impl CommerceInsertable for Subscription {
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __SubscriptionNamedPosition(
             __SubscriptionInternalPosition(
-                graphite::TablePosition(b.subscription.len()),
+                graphite::TablePosition::from_index(b.subscription.len()),
             ),
             b.__graphite_construction_stamp,
         );
@@ -1252,7 +1254,7 @@ impl Builder {
                         });
                 }
                 let internal_edge_position = __PurchaseInternalPosition(
-                    graphite::TablePosition(__graphite_purchase.len()),
+                    graphite::TablePosition::from_index(__graphite_purchase.len()),
                 );
                 __graphite_purchase_by_pair
                     .insert((from_position, to_position), internal_edge_position);
@@ -1357,7 +1359,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __SubscriptionInternalPosition(
-                    graphite::TablePosition(__graphite_subscription.len()),
+                    graphite::TablePosition::from_index(__graphite_subscription.len()),
                 );
                 __graphite_subscription_by_pair
                     .entry((from_position, to_position))
@@ -1407,45 +1409,41 @@ impl Builder {
             return Err(__violations);
         }
         let purchase_from_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_person.len())
+            __graphite_node_person
+                .positions()
                 .map(|position| {
                     purchase_from_index
-                        .remove(
-                            &__PersonInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__PersonInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let purchase_to_index = graphite::OptionalRoleIndex::from_buckets(
-            (0..__graphite_node_product.len())
+            __graphite_node_product
+                .positions()
                 .map(|position| {
                     purchase_to_index
-                        .remove(
-                            &__ProductInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__ProductInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let subscription_from_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_person.len())
+            __graphite_node_person
+                .positions()
                 .map(|position| {
                     subscription_from_index
-                        .remove(
-                            &__PersonInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__PersonInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let subscription_to_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_product.len())
+            __graphite_node_product
+                .positions()
                 .map(|position| {
                     subscription_to_index
-                        .remove(
-                            &__ProductInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__ProductInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),

@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    891112838449020681u64, 17319964482069476464u64, 3695114057792110915u64,
-    15393856286737916519u64,
+    2313845253489516878u64, 8310628073181526105u64, 14257899276100957704u64,
+    10018217044800390228u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ApprovesId(pub String);
@@ -335,7 +335,7 @@ impl ApprovalFlowInsertable for super::Person {
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __PersonNamedPosition(
             __PersonInternalPosition(
-                graphite::TablePosition(b.__graphite_node_person.len()),
+                graphite::TablePosition::from_index(b.__graphite_node_person.len()),
             ),
             b.__graphite_construction_stamp,
         );
@@ -493,7 +493,9 @@ impl ApprovalFlowInsertable for Approves {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __ApprovesNamedPosition(
-            __ApprovesInternalPosition(graphite::TablePosition(b.approves.len())),
+            __ApprovesInternalPosition(
+                graphite::TablePosition::from_index(b.approves.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -721,7 +723,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __ApprovesInternalPosition(
-                    graphite::TablePosition(__graphite_approves.len()),
+                    graphite::TablePosition::from_index(__graphite_approves.len()),
                 );
                 __graphite_approves_by_pair
                     .entry((from_position, to_position))
@@ -750,23 +752,21 @@ impl Builder {
             return Err(__violations);
         }
         let approves_from_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_person.len())
+            __graphite_node_person
+                .positions()
                 .map(|position| {
                     approves_from_index
-                        .remove(
-                            &__PersonInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__PersonInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let approves_to_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_person.len())
+            __graphite_node_person
+                .positions()
                 .map(|position| {
                     approves_to_index
-                        .remove(
-                            &__PersonInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__PersonInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),

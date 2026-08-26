@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    4556646392419144218u64, 14625171556102665639u64, 17843842166113768952u64,
-    9524155786716796348u64,
+    5106925965304441446u64, 1471139130197875267u64, 15406725647618052524u64,
+    16810604678830995696u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SceneId(pub String);
@@ -559,7 +559,7 @@ impl DialogueGraphInsertable for super::Scene {
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __SceneNamedPosition(
             __SceneInternalPosition(
-                graphite::TablePosition(b.__graphite_node_scene.len()),
+                graphite::TablePosition::from_index(b.__graphite_node_scene.len()),
             ),
             b.__graphite_construction_stamp,
         );
@@ -778,7 +778,7 @@ impl DialogueGraphInsertable for super::Ending {
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __EndingNamedPosition(
             __EndingInternalPosition(
-                graphite::TablePosition(b.__graphite_node_ending.len()),
+                graphite::TablePosition::from_index(b.__graphite_node_ending.len()),
             ),
             b.__graphite_construction_stamp,
         );
@@ -891,7 +891,9 @@ impl DialogueGraphInsertable for Choice {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __ChoiceNamedPosition(
-            __ChoiceInternalPosition(graphite::TablePosition(b.choice.len())),
+            __ChoiceInternalPosition(
+                graphite::TablePosition::from_index(b.choice.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -942,7 +944,9 @@ impl DialogueGraphInsertable for Finale {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __FinaleNamedPosition(
-            __FinaleInternalPosition(graphite::TablePosition(b.finale.len())),
+            __FinaleInternalPosition(
+                graphite::TablePosition::from_index(b.finale.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1185,7 +1189,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __ChoiceInternalPosition(
-                    graphite::TablePosition(__graphite_choice.len()),
+                    graphite::TablePosition::from_index(__graphite_choice.len()),
                 );
                 __graphite_choice_by_pair
                     .entry((from_position, to_position))
@@ -1250,7 +1254,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __FinaleInternalPosition(
-                    graphite::TablePosition(__graphite_finale.len()),
+                    graphite::TablePosition::from_index(__graphite_finale.len()),
                 );
                 __graphite_finale_by_pair
                     .entry((from_position, to_position))
@@ -1300,45 +1304,41 @@ impl Builder {
             return Err(__violations);
         }
         let choice_from_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_scene.len())
+            __graphite_node_scene
+                .positions()
                 .map(|position| {
                     choice_from_index
-                        .remove(
-                            &__SceneInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__SceneInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let choice_to_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_scene.len())
+            __graphite_node_scene
+                .positions()
                 .map(|position| {
                     choice_to_index
-                        .remove(
-                            &__SceneInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__SceneInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let finale_from_index = graphite::OptionalRoleIndex::from_buckets(
-            (0..__graphite_node_scene.len())
+            __graphite_node_scene
+                .positions()
                 .map(|position| {
                     finale_from_index
-                        .remove(
-                            &__SceneInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__SceneInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let finale_to_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_ending.len())
+            __graphite_node_ending
+                .positions()
                 .map(|position| {
                     finale_to_index
-                        .remove(
-                            &__EndingInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__EndingInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),

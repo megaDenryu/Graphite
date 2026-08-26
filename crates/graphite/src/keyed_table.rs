@@ -13,20 +13,39 @@ use std::collections::HashMap;
 use std::hash::Hash;
 
 /// `KeyedTable` 内の挿入順の位置。その表の構造を変更しない間だけ安定し、
-/// その表の中でだけ意味を持つ (別の表の位置・辺の位置・配列の添字とは
-/// 取り違えられない)。`graph_schema!` の生成コードが凍結済みグラフの薄い
-/// 参照値を構築・復元するために使う。役割索引 ([`crate::MultipleRoleIndex`]
-/// 等) もこの型で位置を受け取り、同じドメイン概念を1つの型に揃える。
+/// その表の中でだけ意味を持つ。`graph_schema!` の生成コードが凍結済みグラフの
+/// 薄い参照値を構築するために使う。役割索引 ([`crate::MultipleRoleIndex`] 等)
+/// もこの型で位置を受け取り、同じドメイン概念を1つの型に揃える。
 ///
-/// フィールドは `pub` だが、生成コードは `graph_schema!` を展開した
-/// 利用者クレート側にあり `graphite` クレートの外から構築・分解する必要が
-/// あるため (`pub(crate)` では届かない)。利用者からは [`KeyedTable::position`]
-/// 等の再公開元メソッドに付けた `#[doc(hidden)]` で隠す。生値 (`usize`) へ
-/// 戻すのは `KeyedTable`・役割索引の内部 (`Vec` 添字アクセス) に限る。
+/// 裸の `usize` (件数・配列の添字・別の意味の整数) との取り違えを防ぐ
+/// newtype であり、どの表の位置かの区別は担わない (`TablePosition` は表に
+/// 対して非ジェネリックであり、別の表の位置を渡してもコンパイルは通る)。
+/// 種別間の取り違えは生成コード側の種別ごとの内部位置 newtype が防ぐ
+/// (`graphite-codegen` の `internal_position_type.rs` 参照)。
+///
+/// フィールドは private。構築口は [`Self::from_index`] の1つに絞り、生値へ
+/// 戻す口も [`Self::index`] の1つに絞る。構築口が `pub` (`#[doc(hidden)]` 付き)
+/// なのは、生成コードが `graph_schema!` を展開した利用者クレート側にあり
+/// `graphite` クレートの外から呼ぶため (`pub(crate)` では届かない)。利用者
+/// からは `#[doc(hidden)]` で隠す。
 #[doc(hidden)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(transparent)]
-pub struct TablePosition(pub usize);
+pub struct TablePosition(usize);
+
+impl TablePosition {
+    /// 挿入順の内部位置から構築する。唯一の構築口。
+    #[doc(hidden)]
+    pub fn from_index(index: usize) -> Self {
+        Self(index)
+    }
+
+    /// 生の `usize` へ戻す。`KeyedTable`・役割索引の内部 (`Vec` 添字アクセス)
+    /// に限って使う唯一の口。
+    pub(crate) fn index(&self) -> usize {
+        self.0
+    }
+}
 
 /// キー付き要素表。内部は「挿入順の本体 `Vec<(K, V)>`」+「キー→添字の
 /// `HashMap<K, usize>`」の組。
@@ -91,39 +110,26 @@ where
         self.entries.get(idx).map(|(_, v)| v)
     }
 
-    // 以下4メソッド (`position`/`get_at`/`get_mut`/`positions`) はどれも
-    // `#[doc(hidden)]` を付けただけの `pub` であり、`pub(crate)` にはしない。
-    // 生成コードは `graph_schema!` を展開した利用者クレート側にあり
-    // `graphite` クレートの外から呼ぶため、`pub(crate)` では生成コードから
-    // 呼べなくなる (issue #14)。利用者からは `#[doc(hidden)]` で隠し、内部
-    // 位置の取り違えは `TablePosition` newtype (`position`/`get_at`/
-    // `positions` の型) が防ぐ。
-    //
-    // `get_mut` だけは「構築後不変」という `Graph` 側の方針と見た目が
-    // 矛盾するように見えるが、矛盾しない。「構築後不変」が指すのは構造
-    // (キー・内部位置・辺の接続) であり、`get_mut` はキー→値の対応
-    // (`entries` の添字割り当て) を変えず値だけを差し替える。凍結済み
-    // `Graph` の `{node}_value_mut`/`{kind}_payload_mut`
-    // (`kind_api/node_kind_api.rs`/`kind_api/edge_payload_mutation.rs` が
-    // 生成) がこの経路を使い、構造を保ったまま値だけを可変借用する
-    // (`graph_construction_api.rs` の doc コメント「可変APIの主語は
-    // `&mut Graph` だけ」参照)。
-
     /// キーから挿入順の内部位置を求める。`graph_schema!` の生成コードが
     /// 凍結済みグラフの薄い参照値を構築するために使う。
     #[doc(hidden)]
     pub fn position(&self, key: &K) -> Option<TablePosition> {
-        self.index.get(key).copied().map(TablePosition)
+        self.index.get(key).copied().map(TablePosition::from_index)
     }
 
     /// 内部位置からキーと値を読み出す。内部位置は表の構造を変更しない間だけ
     /// 安定するため、凍結済みグラフの生成コードだけが使う。
     #[doc(hidden)]
     pub fn get_at(&self, position: TablePosition) -> Option<(&K, &V)> {
-        self.entries.get(position.0).map(|(key, value)| (key, value))
+        self.entries.get(position.index()).map(|(key, value)| (key, value))
     }
 
-    /// キーから値を可変借用する。構造を変更せず値だけを更新する。
+    /// キーから値を可変借用する。構造 (キー・内部位置・辺の接続) は変えず
+    /// 値だけを差し替える。「構築後不変」という `Graph` 側の方針が指すのは
+    /// 構造でありこの値の更新ではないため矛盾しない。凍結済み `Graph` の
+    /// `{node}_value_mut`/`{kind}_payload_mut` がこの経路を使う
+    /// (`graph_construction_api.rs` の doc コメント「可変APIの主語は
+    /// `&mut Graph` だけ」参照)。
     #[doc(hidden)]
     pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
         let position = *self.index.get(key)?;
@@ -133,7 +139,7 @@ where
     /// 内部位置を挿入順に列挙する。
     #[doc(hidden)]
     pub fn positions(&self) -> impl Iterator<Item = TablePosition> + Clone {
-        (0..self.entries.len()).map(TablePosition)
+        (0..self.entries.len()).map(TablePosition::from_index)
     }
 
     /// 全キーを走査するイテレータ。挿入順を保持する (仕様、上記構造体

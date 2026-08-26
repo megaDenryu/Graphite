@@ -51,7 +51,7 @@ pub(crate) fn gen_insertable_and_named_impl(spec: InsertableNamedSpec<'_>) -> To
                 _permit: &graphite::NamedInsertPermit,
             ) -> (Self::Id, Self::NamedPosition) {
                 let named_position = #named_position(
-                    #internal_position(graphite::TablePosition(b.#storage.len())),
+                    #internal_position(graphite::TablePosition::from_index(b.#storage.len())),
                     b.#stamp_field,
                 );
                 let returned_id = id.clone();

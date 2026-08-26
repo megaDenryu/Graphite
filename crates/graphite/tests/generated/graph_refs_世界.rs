@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    17503674311805345012u64, 8026416620468188899u64, 2501223811697693006u64,
-    13275752325398431986u64,
+    8970974021783401658u64, 6986230800155925293u64, 12651794326659512100u64,
+    430739519076458200u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct 人物Id(pub String);
@@ -557,7 +557,7 @@ impl 世界Insertable for super::人物 {
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __人物NamedPosition(
             __人物InternalPosition(
-                graphite::TablePosition(b.__graphite_node_人物.len()),
+                graphite::TablePosition::from_index(b.__graphite_node_人物.len()),
             ),
             b.__graphite_construction_stamp,
         );
@@ -753,7 +753,7 @@ impl 世界Insertable for super::商品 {
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __商品NamedPosition(
             __商品InternalPosition(
-                graphite::TablePosition(b.__graphite_node_商品.len()),
+                graphite::TablePosition::from_index(b.__graphite_node_商品.len()),
             ),
             b.__graphite_construction_stamp,
         );
@@ -868,7 +868,9 @@ impl 世界Insertable for 購入 {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __購入NamedPosition(
-            __購入InternalPosition(graphite::TablePosition(b.購入.len())),
+            __購入InternalPosition(
+                graphite::TablePosition::from_index(b.購入.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -919,7 +921,9 @@ impl 世界Insertable for 友人 {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __友人NamedPosition(
-            __友人InternalPosition(graphite::TablePosition(b.友人.len())),
+            __友人InternalPosition(
+                graphite::TablePosition::from_index(b.友人.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1166,7 +1170,7 @@ impl Builder {
                         });
                 }
                 let internal_edge_position = __購入InternalPosition(
-                    graphite::TablePosition(__graphite_購入.len()),
+                    graphite::TablePosition::from_index(__graphite_購入.len()),
                 );
                 __graphite_購入_by_pair
                     .insert((from_position, to_position), internal_edge_position);
@@ -1242,7 +1246,7 @@ impl Builder {
                         });
                 }
                 let internal_edge_position = __友人InternalPosition(
-                    graphite::TablePosition(__graphite_友人.len()),
+                    graphite::TablePosition::from_index(__graphite_友人.len()),
                 );
                 __graphite_友人_by_pair
                     .insert(
@@ -1276,34 +1280,31 @@ impl Builder {
             return Err(__violations);
         }
         let 購入_from_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_人物.len())
+            __graphite_node_人物
+                .positions()
                 .map(|position| {
                     購入_from_index
-                        .remove(
-                            &__人物InternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__人物InternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let 購入_to_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_商品.len())
+            __graphite_node_商品
+                .positions()
                 .map(|position| {
                     購入_to_index
-                        .remove(
-                            &__商品InternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__商品InternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let 友人_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_人物.len())
+            __graphite_node_人物
+                .positions()
                 .map(|position| {
                     友人_index
-                        .remove(
-                            &__人物InternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__人物InternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),

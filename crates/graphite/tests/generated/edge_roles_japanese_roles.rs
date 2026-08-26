@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    3768278566487226281u64, 14783650605310605246u64, 15081325271615256743u64,
-    13058048417270690771u64,
+    2568093042814413375u64, 6582658368770243370u64, 8998943530008602953u64,
+    16700517122804023557u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PersonId(pub String);
@@ -395,7 +395,7 @@ impl JapaneseRolesInsertable for super::Person {
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __PersonNamedPosition(
             __PersonInternalPosition(
-                graphite::TablePosition(b.__graphite_node_person.len()),
+                graphite::TablePosition::from_index(b.__graphite_node_person.len()),
             ),
             b.__graphite_construction_stamp,
         );
@@ -547,7 +547,7 @@ impl JapaneseRolesInsertable for super::Item {
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __ItemNamedPosition(
             __ItemInternalPosition(
-                graphite::TablePosition(b.__graphite_node_item.len()),
+                graphite::TablePosition::from_index(b.__graphite_node_item.len()),
             ),
             b.__graphite_construction_stamp,
         );
@@ -662,7 +662,9 @@ impl JapaneseRolesInsertable for Ownership {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __OwnershipNamedPosition(
-            __OwnershipInternalPosition(graphite::TablePosition(b.ownership.len())),
+            __OwnershipInternalPosition(
+                graphite::TablePosition::from_index(b.ownership.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -905,7 +907,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __OwnershipInternalPosition(
-                    graphite::TablePosition(__graphite_ownership.len()),
+                    graphite::TablePosition::from_index(__graphite_ownership.len()),
                 );
                 __graphite_ownership_by_pair
                     .entry((from_position, to_position))
@@ -955,23 +957,21 @@ impl Builder {
             return Err(__violations);
         }
         let ownership_from_index = graphite::ExactlyOneRoleIndex::from_buckets(
-            (0..__graphite_node_person.len())
+            __graphite_node_person
+                .positions()
                 .map(|position| {
                     ownership_from_index
-                        .remove(
-                            &__PersonInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__PersonInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let ownership_to_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_item.len())
+            __graphite_node_item
+                .positions()
                 .map(|position| {
                     ownership_to_index
-                        .remove(
-                            &__ItemInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__ItemInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),

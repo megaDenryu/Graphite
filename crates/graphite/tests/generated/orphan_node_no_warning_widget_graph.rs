@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    17482824746139825058u64, 5073956048645158329u64, 15487621947358228532u64,
-    2384497665447419424u64,
+    7296459078554486047u64, 7060194074588651672u64, 6241326006888784693u64,
+    13089057766897822985u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WidgetId(pub String);
@@ -179,7 +179,7 @@ impl WidgetGraphInsertable for super::Widget {
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __WidgetNamedPosition(
             __WidgetInternalPosition(
-                graphite::TablePosition(b.__graphite_node_widget.len()),
+                graphite::TablePosition::from_index(b.__graphite_node_widget.len()),
             ),
             b.__graphite_construction_stamp,
         );

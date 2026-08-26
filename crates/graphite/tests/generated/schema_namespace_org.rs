@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    1257136785981747943u64, 4059073928591908782u64, 10948654814836379953u64,
-    5314463344450942261u64,
+    6442814051296020944u64, 9294022651199462139u64, 17923143678368670682u64,
+    5956182913800294406u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PersonId(pub String);
@@ -337,7 +337,7 @@ impl OrgInsertable for super::Person {
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __PersonNamedPosition(
             __PersonInternalPosition(
-                graphite::TablePosition(b.__graphite_node_person.len()),
+                graphite::TablePosition::from_index(b.__graphite_node_person.len()),
             ),
             b.__graphite_construction_stamp,
         );
@@ -510,7 +510,9 @@ impl OrgInsertable for Relation {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __RelationNamedPosition(
-            __RelationInternalPosition(graphite::TablePosition(b.relation.len())),
+            __RelationInternalPosition(
+                graphite::TablePosition::from_index(b.relation.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -733,7 +735,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __RelationInternalPosition(
-                    graphite::TablePosition(__graphite_relation.len()),
+                    graphite::TablePosition::from_index(__graphite_relation.len()),
                 );
                 __graphite_relation_by_pair
                     .entry((from_position, to_position))
@@ -762,23 +764,21 @@ impl Builder {
             return Err(__violations);
         }
         let relation_from_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_person.len())
+            __graphite_node_person
+                .positions()
                 .map(|position| {
                     relation_from_index
-                        .remove(
-                            &__PersonInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__PersonInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let relation_to_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_person.len())
+            __graphite_node_person
+                .positions()
                 .map(|position| {
                     relation_to_index
-                        .remove(
-                            &__PersonInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__PersonInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),

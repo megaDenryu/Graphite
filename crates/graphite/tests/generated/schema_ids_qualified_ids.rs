@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    12147001169263669071u64, 16539494886525216914u64, 17671537396193176453u64,
-    3259210513988713425u64,
+    6891013191823055952u64, 10509677217583382341u64, 8146514354655229370u64,
+    3338216832743518670u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct KnowsId(pub String);
@@ -332,7 +332,7 @@ impl QualifiedIdsInsertable for super::Person {
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __PersonNamedPosition(
             __PersonInternalPosition(
-                graphite::TablePosition(b.__graphite_node_person.len()),
+                graphite::TablePosition::from_index(b.__graphite_node_person.len()),
             ),
             b.__graphite_construction_stamp,
         );
@@ -485,7 +485,7 @@ impl QualifiedIdsInsertable for Knows {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __KnowsNamedPosition(
-            __KnowsInternalPosition(graphite::TablePosition(b.knows.len())),
+            __KnowsInternalPosition(graphite::TablePosition::from_index(b.knows.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -708,7 +708,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __KnowsInternalPosition(
-                    graphite::TablePosition(__graphite_knows.len()),
+                    graphite::TablePosition::from_index(__graphite_knows.len()),
                 );
                 __graphite_knows_by_pair
                     .entry((from_position, to_position))
@@ -737,23 +737,21 @@ impl Builder {
             return Err(__violations);
         }
         let knows_from_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_person.len())
+            __graphite_node_person
+                .positions()
                 .map(|position| {
                     knows_from_index
-                        .remove(
-                            &__PersonInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__PersonInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let knows_to_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_person.len())
+            __graphite_node_person
+                .positions()
                 .map(|position| {
                     knows_to_index
-                        .remove(
-                            &__PersonInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__PersonInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),

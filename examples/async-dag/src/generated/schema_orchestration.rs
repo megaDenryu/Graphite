@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    6589183874192449320u64, 14539033295477262175u64, 12713513342889286238u64,
-    8388149290710359738u64,
+    4151295339179173757u64, 3403994502927273108u64, 10488141562894489211u64,
+    8899571619109037391u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ServiceId(pub String);
@@ -350,7 +350,7 @@ impl OrchestrationInsertable for super::Service {
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __ServiceNamedPosition(
             __ServiceInternalPosition(
-                graphite::TablePosition(b.__graphite_node_service.len()),
+                graphite::TablePosition::from_index(b.__graphite_node_service.len()),
             ),
             b.__graphite_construction_stamp,
         );
@@ -522,7 +522,9 @@ impl OrchestrationInsertable for DependsOn {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __DependsOnNamedPosition(
-            __DependsOnInternalPosition(graphite::TablePosition(b.depends_on.len())),
+            __DependsOnInternalPosition(
+                graphite::TablePosition::from_index(b.depends_on.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -763,7 +765,7 @@ impl Builder {
                         });
                 }
                 let internal_edge_position = __DependsOnInternalPosition(
-                    graphite::TablePosition(__graphite_depends_on.len()),
+                    graphite::TablePosition::from_index(__graphite_depends_on.len()),
                 );
                 __graphite_depends_on_by_pair
                     .insert((from_position, to_position), internal_edge_position);
@@ -790,23 +792,21 @@ impl Builder {
             return Err(__violations);
         }
         let depends_on_from_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_service.len())
+            __graphite_node_service
+                .positions()
                 .map(|position| {
                     depends_on_from_index
-                        .remove(
-                            &__ServiceInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__ServiceInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let depends_on_to_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_service.len())
+            __graphite_node_service
+                .positions()
                 .map(|position| {
                     depends_on_to_index
-                        .remove(
-                            &__ServiceInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__ServiceInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),

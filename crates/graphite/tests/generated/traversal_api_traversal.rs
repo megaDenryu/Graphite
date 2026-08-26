@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    2390679431758203756u64, 9631175040940765815u64, 15761920802152593070u64,
-    9127356853236581378u64,
+    3195029781262537336u64, 12699965332951711851u64, 14893182768935124954u64,
+    5447062971147241886u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PersonId(pub String);
@@ -867,7 +867,7 @@ impl TraversalInsertable for super::Person {
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __PersonNamedPosition(
             __PersonInternalPosition(
-                graphite::TablePosition(b.__graphite_node_person.len()),
+                graphite::TablePosition::from_index(b.__graphite_node_person.len()),
             ),
             b.__graphite_construction_stamp,
         );
@@ -1200,7 +1200,7 @@ impl TraversalInsertable for super::Product {
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __ProductNamedPosition(
             __ProductInternalPosition(
-                graphite::TablePosition(b.__graphite_node_product.len()),
+                graphite::TablePosition::from_index(b.__graphite_node_product.len()),
             ),
             b.__graphite_construction_stamp,
         );
@@ -1315,7 +1315,9 @@ impl TraversalInsertable for Purchase {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __PurchaseNamedPosition(
-            __PurchaseInternalPosition(graphite::TablePosition(b.purchase.len())),
+            __PurchaseInternalPosition(
+                graphite::TablePosition::from_index(b.purchase.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1366,7 +1368,9 @@ impl TraversalInsertable for Mentor {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __MentorNamedPosition(
-            __MentorInternalPosition(graphite::TablePosition(b.mentor.len())),
+            __MentorInternalPosition(
+                graphite::TablePosition::from_index(b.mentor.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1417,7 +1421,9 @@ impl TraversalInsertable for 関係 {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __関係NamedPosition(
-            __関係InternalPosition(graphite::TablePosition(b.関係.len())),
+            __関係InternalPosition(
+                graphite::TablePosition::from_index(b.関係.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1468,7 +1474,9 @@ impl TraversalInsertable for Friends {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __FriendsNamedPosition(
-            __FriendsInternalPosition(graphite::TablePosition(b.friends.len())),
+            __FriendsInternalPosition(
+                graphite::TablePosition::from_index(b.friends.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1717,7 +1725,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __PurchaseInternalPosition(
-                    graphite::TablePosition(__graphite_purchase.len()),
+                    graphite::TablePosition::from_index(__graphite_purchase.len()),
                 );
                 __graphite_purchase_by_pair
                     .entry((from_position, to_position))
@@ -1781,7 +1789,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __MentorInternalPosition(
-                    graphite::TablePosition(__graphite_mentor.len()),
+                    graphite::TablePosition::from_index(__graphite_mentor.len()),
                 );
                 __graphite_mentor_by_pair
                     .entry((from_position, to_position))
@@ -1874,7 +1882,7 @@ impl Builder {
                         });
                 }
                 let internal_edge_position = __関係InternalPosition(
-                    graphite::TablePosition(__graphite_関係.len()),
+                    graphite::TablePosition::from_index(__graphite_関係.len()),
                 );
                 __graphite_関係_by_pair
                     .insert((from_position, to_position), internal_edge_position);
@@ -1949,7 +1957,7 @@ impl Builder {
                         });
                 }
                 let internal_edge_position = __FriendsInternalPosition(
-                    graphite::TablePosition(__graphite_friends.len()),
+                    graphite::TablePosition::from_index(__graphite_friends.len()),
                 );
                 __graphite_friends_by_pair
                     .insert(
@@ -1983,78 +1991,71 @@ impl Builder {
             return Err(__violations);
         }
         let purchase_from_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_person.len())
+            __graphite_node_person
+                .positions()
                 .map(|position| {
                     purchase_from_index
-                        .remove(
-                            &__PersonInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__PersonInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let purchase_to_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_product.len())
+            __graphite_node_product
+                .positions()
                 .map(|position| {
                     purchase_to_index
-                        .remove(
-                            &__ProductInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__ProductInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let mentor_from_index = graphite::OptionalRoleIndex::from_buckets(
-            (0..__graphite_node_person.len())
+            __graphite_node_person
+                .positions()
                 .map(|position| {
                     mentor_from_index
-                        .remove(
-                            &__PersonInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__PersonInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let mentor_to_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_person.len())
+            __graphite_node_person
+                .positions()
                 .map(|position| {
                     mentor_to_index
-                        .remove(
-                            &__PersonInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__PersonInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let 関係_from_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_person.len())
+            __graphite_node_person
+                .positions()
                 .map(|position| {
                     関係_from_index
-                        .remove(
-                            &__PersonInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__PersonInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let 関係_to_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_person.len())
+            __graphite_node_person
+                .positions()
                 .map(|position| {
                     関係_to_index
-                        .remove(
-                            &__PersonInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__PersonInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let friends_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_person.len())
+            __graphite_node_person
+                .positions()
                 .map(|position| {
                     friends_index
-                        .remove(
-                            &__PersonInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__PersonInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),

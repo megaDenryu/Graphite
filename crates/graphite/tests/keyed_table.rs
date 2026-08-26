@@ -55,7 +55,7 @@ fn 内部位置から同じ要素を参照できる() {
     assert_eq!(table.get_at(position), Some((&"b".to_string(), &2)));
     assert_eq!(
         table.positions().collect::<Vec<_>>(),
-        vec![TablePosition(0), TablePosition(1)]
+        vec![TablePosition::from_index(0), TablePosition::from_index(1)]
     );
 }
 
@@ -67,5 +67,5 @@ fn get_mutは値だけを更新する() {
     *table.get_mut(&"a".to_string()).unwrap() = 2;
 
     assert_eq!(table.get(&"a".to_string()), Some(&2));
-    assert_eq!(table.position(&"a".to_string()), Some(TablePosition(0)));
+    assert_eq!(table.position(&"a".to_string()), Some(TablePosition::from_index(0)));
 }

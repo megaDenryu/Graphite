@@ -21,10 +21,11 @@ pub(crate) fn finalize_role_index(
     };
     quote! {
         let #index = #constructor(
-            (0..#node_field.len())
+            #node_field
+                .positions()
                 .map(|position| {
                     #index
-                        .remove(&#node_position(graphite::TablePosition(position)))
+                        .remove(&#node_position(position))
                         .unwrap_or_default()
                 })
                 .collect()

@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    17148409557744016707u64, 4002737975842997886u64, 15518565262442700493u64,
-    6506132226478591473u64,
+    6205495154744170985u64, 10572960664880946538u64, 4326759483971146215u64,
+    15536238120190972971u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SpeakerId(pub String);
@@ -378,7 +378,7 @@ impl DialogueInsertable for super::Speaker {
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __SpeakerNamedPosition(
             __SpeakerInternalPosition(
-                graphite::TablePosition(b.__graphite_node_speaker.len()),
+                graphite::TablePosition::from_index(b.__graphite_node_speaker.len()),
             ),
             b.__graphite_construction_stamp,
         );
@@ -531,7 +531,7 @@ impl DialogueInsertable for super::Line {
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __LineNamedPosition(
             __LineInternalPosition(
-                graphite::TablePosition(b.__graphite_node_line.len()),
+                graphite::TablePosition::from_index(b.__graphite_node_line.len()),
             ),
             b.__graphite_construction_stamp,
         );
@@ -644,7 +644,9 @@ impl DialogueInsertable for Choice {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __ChoiceNamedPosition(
-            __ChoiceInternalPosition(graphite::TablePosition(b.choice.len())),
+            __ChoiceInternalPosition(
+                graphite::TablePosition::from_index(b.choice.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -878,7 +880,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __ChoiceInternalPosition(
-                    graphite::TablePosition(__graphite_choice.len()),
+                    graphite::TablePosition::from_index(__graphite_choice.len()),
                 );
                 __graphite_choice_by_pair
                     .entry((from_position, to_position))
@@ -907,23 +909,21 @@ impl Builder {
             return Err(__violations);
         }
         let choice_from_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_speaker.len())
+            __graphite_node_speaker
+                .positions()
                 .map(|position| {
                     choice_from_index
-                        .remove(
-                            &__SpeakerInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__SpeakerInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let choice_to_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_line.len())
+            __graphite_node_line
+                .positions()
                 .map(|position| {
                     choice_to_index
-                        .remove(
-                            &__LineInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__LineInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),

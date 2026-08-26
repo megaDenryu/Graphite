@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    7483340841758638896u64, 18327796261436340095u64, 344871916874867030u64,
-    13871303959967253410u64,
+    17243085902354042950u64, 13058979948022301931u64, 13277057886466318336u64,
+    13883477713124033852u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SensorId(pub String);
@@ -407,7 +407,7 @@ impl MeasurementInsertable for super::Sensor {
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __SensorNamedPosition(
             __SensorInternalPosition(
-                graphite::TablePosition(b.__graphite_node_sensor.len()),
+                graphite::TablePosition::from_index(b.__graphite_node_sensor.len()),
             ),
             b.__graphite_construction_stamp,
         );
@@ -563,7 +563,7 @@ impl MeasurementInsertable for super::Reading {
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __ReadingNamedPosition(
             __ReadingInternalPosition(
-                graphite::TablePosition(b.__graphite_node_reading.len()),
+                graphite::TablePosition::from_index(b.__graphite_node_reading.len()),
             ),
             b.__graphite_construction_stamp,
         );
@@ -678,7 +678,9 @@ impl MeasurementInsertable for Measured {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __MeasuredNamedPosition(
-            __MeasuredInternalPosition(graphite::TablePosition(b.measured.len())),
+            __MeasuredInternalPosition(
+                graphite::TablePosition::from_index(b.measured.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -912,7 +914,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __MeasuredInternalPosition(
-                    graphite::TablePosition(__graphite_measured.len()),
+                    graphite::TablePosition::from_index(__graphite_measured.len()),
                 );
                 __graphite_measured_by_pair
                     .entry((from_position, to_position))
@@ -942,23 +944,21 @@ impl Builder {
             return Err(__violations);
         }
         let measured_from_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_sensor.len())
+            __graphite_node_sensor
+                .positions()
                 .map(|position| {
                     measured_from_index
-                        .remove(
-                            &__SensorInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__SensorInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let measured_to_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_reading.len())
+            __graphite_node_reading
+                .positions()
                 .map(|position| {
                     measured_to_index
-                        .remove(
-                            &__ReadingInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__ReadingInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),

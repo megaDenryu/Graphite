@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    18102795682094868793u64, 5190576148050303518u64, 17027296589393705755u64,
-    4746726718052842959u64,
+    482239076060089768u64, 12734828646537906915u64, 320350502868670534u64,
+    18240326121641809426u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CellId(pub String);
@@ -674,7 +674,7 @@ impl SheetInsertable for super::Cell {
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __CellNamedPosition(
             __CellInternalPosition(
-                graphite::TablePosition(b.__graphite_node_cell.len()),
+                graphite::TablePosition::from_index(b.__graphite_node_cell.len()),
             ),
             b.__graphite_construction_stamp,
         );
@@ -943,7 +943,7 @@ impl SheetInsertable for Feeds {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __FeedsNamedPosition(
-            __FeedsInternalPosition(graphite::TablePosition(b.feeds.len())),
+            __FeedsInternalPosition(graphite::TablePosition::from_index(b.feeds.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -994,7 +994,7 @@ impl SheetInsertable for Lhs {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __LhsNamedPosition(
-            __LhsInternalPosition(graphite::TablePosition(b.lhs.len())),
+            __LhsInternalPosition(graphite::TablePosition::from_index(b.lhs.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1045,7 +1045,7 @@ impl SheetInsertable for Rhs {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __RhsNamedPosition(
-            __RhsInternalPosition(graphite::TablePosition(b.rhs.len())),
+            __RhsInternalPosition(graphite::TablePosition::from_index(b.rhs.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1285,7 +1285,7 @@ impl Builder {
                         });
                 }
                 let internal_edge_position = __FeedsInternalPosition(
-                    graphite::TablePosition(__graphite_feeds.len()),
+                    graphite::TablePosition::from_index(__graphite_feeds.len()),
                 );
                 __graphite_feeds_by_pair
                     .insert((from_position, to_position), internal_edge_position);
@@ -1354,7 +1354,7 @@ impl Builder {
                         });
                 }
                 let internal_edge_position = __LhsInternalPosition(
-                    graphite::TablePosition(__graphite_lhs.len()),
+                    graphite::TablePosition::from_index(__graphite_lhs.len()),
                 );
                 __graphite_lhs_by_pair
                     .insert((from_position, to_position), internal_edge_position);
@@ -1423,7 +1423,7 @@ impl Builder {
                         });
                 }
                 let internal_edge_position = __RhsInternalPosition(
-                    graphite::TablePosition(__graphite_rhs.len()),
+                    graphite::TablePosition::from_index(__graphite_rhs.len()),
                 );
                 __graphite_rhs_by_pair
                     .insert((from_position, to_position), internal_edge_position);
@@ -1450,67 +1450,61 @@ impl Builder {
             return Err(__violations);
         }
         let feeds_from_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_cell.len())
+            __graphite_node_cell
+                .positions()
                 .map(|position| {
                     feeds_from_index
-                        .remove(
-                            &__CellInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__CellInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let feeds_to_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_cell.len())
+            __graphite_node_cell
+                .positions()
                 .map(|position| {
                     feeds_to_index
-                        .remove(
-                            &__CellInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__CellInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let lhs_from_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_cell.len())
+            __graphite_node_cell
+                .positions()
                 .map(|position| {
                     lhs_from_index
-                        .remove(
-                            &__CellInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__CellInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let lhs_to_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_cell.len())
+            __graphite_node_cell
+                .positions()
                 .map(|position| {
                     lhs_to_index
-                        .remove(
-                            &__CellInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__CellInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let rhs_from_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_cell.len())
+            __graphite_node_cell
+                .positions()
                 .map(|position| {
                     rhs_from_index
-                        .remove(
-                            &__CellInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__CellInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let rhs_to_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_cell.len())
+            __graphite_node_cell
+                .positions()
                 .map(|position| {
                     rhs_to_index
-                        .remove(
-                            &__CellInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__CellInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),

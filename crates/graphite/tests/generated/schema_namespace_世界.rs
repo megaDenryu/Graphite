@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    6014986878476587500u64, 6199135868213734803u64, 12832681802080626410u64,
-    2898659002093030350u64,
+    13973416088071532679u64, 8475457213188230478u64, 7792159078528778341u64,
+    122886907765868305u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct 人物Id(pub String);
@@ -351,7 +351,7 @@ impl 世界Insertable for super::人物 {
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __人物NamedPosition(
             __人物InternalPosition(
-                graphite::TablePosition(b.__graphite_node_人物.len()),
+                graphite::TablePosition::from_index(b.__graphite_node_人物.len()),
             ),
             b.__graphite_construction_stamp,
         );
@@ -519,7 +519,9 @@ impl 世界Insertable for 関係 {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __関係NamedPosition(
-            __関係InternalPosition(graphite::TablePosition(b.関係.len())),
+            __関係InternalPosition(
+                graphite::TablePosition::from_index(b.関係.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -742,7 +744,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __関係InternalPosition(
-                    graphite::TablePosition(__graphite_関係.len()),
+                    graphite::TablePosition::from_index(__graphite_関係.len()),
                 );
                 __graphite_関係_by_pair
                     .entry((from_position, to_position))
@@ -772,23 +774,21 @@ impl Builder {
             return Err(__violations);
         }
         let 関係_from_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_人物.len())
+            __graphite_node_人物
+                .positions()
                 .map(|position| {
                     関係_from_index
-                        .remove(
-                            &__人物InternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__人物InternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let 関係_to_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_人物.len())
+            __graphite_node_人物
+                .positions()
                 .map(|position| {
                     関係_to_index
-                        .remove(
-                            &__人物InternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__人物InternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),

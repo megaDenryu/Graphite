@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    14811729309707423349u64, 10295306348238286478u64, 15966561246731166735u64,
-    5865656057218939891u64,
+    13710700635947686275u64, 6078649940915151808u64, 4134419531749492517u64,
+    11353119870625566537u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AuthorId(pub String);
@@ -415,7 +415,7 @@ impl DeclarationOrderInsertable for super::Author {
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __AuthorNamedPosition(
             __AuthorInternalPosition(
-                graphite::TablePosition(b.__graphite_node_author.len()),
+                graphite::TablePosition::from_index(b.__graphite_node_author.len()),
             ),
             b.__graphite_construction_stamp,
         );
@@ -572,7 +572,7 @@ impl DeclarationOrderInsertable for super::Article {
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __ArticleNamedPosition(
             __ArticleInternalPosition(
-                graphite::TablePosition(b.__graphite_node_article.len()),
+                graphite::TablePosition::from_index(b.__graphite_node_article.len()),
             ),
             b.__graphite_construction_stamp,
         );
@@ -685,7 +685,7 @@ impl DeclarationOrderInsertable for Wrote {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __WroteNamedPosition(
-            __WroteInternalPosition(graphite::TablePosition(b.wrote.len())),
+            __WroteInternalPosition(graphite::TablePosition::from_index(b.wrote.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -932,7 +932,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __WroteInternalPosition(
-                    graphite::TablePosition(__graphite_wrote.len()),
+                    graphite::TablePosition::from_index(__graphite_wrote.len()),
                 );
                 __graphite_wrote_by_pair
                     .entry((from_position, to_position))
@@ -1004,23 +1004,21 @@ impl Builder {
             return Err(__violations);
         }
         let wrote_from_index = graphite::OptionalRoleIndex::from_buckets(
-            (0..__graphite_node_author.len())
+            __graphite_node_author
+                .positions()
                 .map(|position| {
                     wrote_from_index
-                        .remove(
-                            &__AuthorInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__AuthorInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let wrote_to_index = graphite::ExactlyOneRoleIndex::from_buckets(
-            (0..__graphite_node_article.len())
+            __graphite_node_article
+                .positions()
                 .map(|position| {
                     wrote_to_index
-                        .remove(
-                            &__ArticleInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__ArticleInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),

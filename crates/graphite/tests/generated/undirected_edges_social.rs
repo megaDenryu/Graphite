@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    18150482661205478275u64, 15846713430508204138u64, 17082960757853307541u64,
-    2923350083487536593u64,
+    594360863009716014u64, 1912780570926071469u64, 250009452544659368u64,
+    5193048946222574060u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PersonId(pub String);
@@ -473,7 +473,7 @@ impl SocialInsertable for super::Person {
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __PersonNamedPosition(
             __PersonInternalPosition(
-                graphite::TablePosition(b.__graphite_node_person.len()),
+                graphite::TablePosition::from_index(b.__graphite_node_person.len()),
             ),
             b.__graphite_construction_stamp,
         );
@@ -686,7 +686,9 @@ impl SocialInsertable for Friends {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __FriendsNamedPosition(
-            __FriendsInternalPosition(graphite::TablePosition(b.friends.len())),
+            __FriendsInternalPosition(
+                graphite::TablePosition::from_index(b.friends.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -737,7 +739,7 @@ impl SocialInsertable for Wire {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __WireNamedPosition(
-            __WireInternalPosition(graphite::TablePosition(b.wire.len())),
+            __WireInternalPosition(graphite::TablePosition::from_index(b.wire.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -978,7 +980,7 @@ impl Builder {
                         });
                 }
                 let internal_edge_position = __FriendsInternalPosition(
-                    graphite::TablePosition(__graphite_friends.len()),
+                    graphite::TablePosition::from_index(__graphite_friends.len()),
                 );
                 __graphite_friends_by_pair
                     .insert(
@@ -1049,7 +1051,7 @@ impl Builder {
                 second_position,
             ) {
                 let internal_edge_position = __WireInternalPosition(
-                    graphite::TablePosition(__graphite_wire.len()),
+                    graphite::TablePosition::from_index(__graphite_wire.len()),
                 );
                 __graphite_wire_by_pair
                     .entry(graphite::UnorderedPair::new(first_position, second_position))
@@ -1083,23 +1085,21 @@ impl Builder {
             return Err(__violations);
         }
         let friends_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_person.len())
+            __graphite_node_person
+                .positions()
                 .map(|position| {
                     friends_index
-                        .remove(
-                            &__PersonInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__PersonInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let wire_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_person.len())
+            __graphite_node_person
+                .positions()
                 .map(|position| {
                     wire_index
-                        .remove(
-                            &__PersonInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__PersonInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),

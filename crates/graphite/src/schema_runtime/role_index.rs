@@ -33,7 +33,7 @@ impl<P> MultipleRoleIndex<P> {
     #[doc(hidden)]
     pub fn get(&self, position: TablePosition) -> &[P] {
         self.ranges
-            .get(position.0)
+            .get(position.index())
             .map(|range| &self.positions[range.clone()])
             .unwrap_or(&[])
     }
@@ -62,7 +62,7 @@ impl<P> ExactlyOneRoleIndex<P> {
 
     #[doc(hidden)]
     pub fn get(&self, position: TablePosition) -> &P {
-        &self.0[position.0]
+        &self.0[position.index()]
     }
 }
 
@@ -88,6 +88,6 @@ impl<P> OptionalRoleIndex<P> {
 
     #[doc(hidden)]
     pub fn get(&self, position: TablePosition) -> Option<&P> {
-        self.0.get(position.0).and_then(Option::as_ref)
+        self.0.get(position.index()).and_then(Option::as_ref)
     }
 }

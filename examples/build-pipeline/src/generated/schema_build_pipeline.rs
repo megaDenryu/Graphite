@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    14062363214688290431u64, 10183297083612690350u64, 5254880447947502465u64,
-    4973777336275925061u64,
+    17042905339929178511u64, 8905530070458688262u64, 6474964121283827073u64,
+    17604770973997348229u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConsumesId(pub String);
@@ -552,7 +552,7 @@ impl BuildPipelineInsertable for super::Task {
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __TaskNamedPosition(
             __TaskInternalPosition(
-                graphite::TablePosition(b.__graphite_node_task.len()),
+                graphite::TablePosition::from_index(b.__graphite_node_task.len()),
             ),
             b.__graphite_construction_stamp,
         );
@@ -733,7 +733,7 @@ impl BuildPipelineInsertable for super::Artifact {
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __ArtifactNamedPosition(
             __ArtifactInternalPosition(
-                graphite::TablePosition(b.__graphite_node_artifact.len()),
+                graphite::TablePosition::from_index(b.__graphite_node_artifact.len()),
             ),
             b.__graphite_construction_stamp,
         );
@@ -847,7 +847,9 @@ impl BuildPipelineInsertable for Produces {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __ProducesNamedPosition(
-            __ProducesInternalPosition(graphite::TablePosition(b.produces.len())),
+            __ProducesInternalPosition(
+                graphite::TablePosition::from_index(b.produces.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -885,7 +887,9 @@ impl BuildPipelineInsertable for Consumes {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __ConsumesNamedPosition(
-            __ConsumesInternalPosition(graphite::TablePosition(b.consumes.len())),
+            __ConsumesInternalPosition(
+                graphite::TablePosition::from_index(b.consumes.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1142,7 +1146,7 @@ impl Builder {
                         });
                 }
                 let internal_edge_position = __ProducesInternalPosition(
-                    graphite::TablePosition(__graphite_produces.len()),
+                    graphite::TablePosition::from_index(__graphite_produces.len()),
                 );
                 __graphite_produces_by_pair
                     .insert((from_position, to_position), internal_edge_position);
@@ -1213,7 +1217,7 @@ impl Builder {
                         });
                 }
                 let internal_edge_position = __ConsumesInternalPosition(
-                    graphite::TablePosition(__graphite_consumes.len()),
+                    graphite::TablePosition::from_index(__graphite_consumes.len()),
                 );
                 __graphite_consumes_by_pair
                     .insert((from_position, to_position), internal_edge_position);
@@ -1240,49 +1244,41 @@ impl Builder {
             return Err(__violations);
         }
         let produces_from_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_task.len())
+            __graphite_node_task
+                .positions()
                 .map(|position| {
                     produces_from_index
-                        .remove(
-                            &__TaskInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__TaskInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let produces_to_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_artifact.len())
+            __graphite_node_artifact
+                .positions()
                 .map(|position| {
                     produces_to_index
-                        .remove(
-                            &__ArtifactInternalPosition(
-                                graphite::TablePosition(position),
-                            ),
-                        )
+                        .remove(&__ArtifactInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let consumes_from_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_task.len())
+            __graphite_node_task
+                .positions()
                 .map(|position| {
                     consumes_from_index
-                        .remove(
-                            &__TaskInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__TaskInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let consumes_to_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_artifact.len())
+            __graphite_node_artifact
+                .positions()
                 .map(|position| {
                     consumes_to_index
-                        .remove(
-                            &__ArtifactInternalPosition(
-                                graphite::TablePosition(position),
-                            ),
-                        )
+                        .remove(&__ArtifactInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),

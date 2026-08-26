@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    7394361690493849644u64, 5050865722630966175u64, 1423159577298144950u64,
-    6613890582500481722u64,
+    10120336357431590725u64, 7458874168771904500u64, 15004906976925199807u64,
+    8951862394347320987u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EmployeeId(pub String);
@@ -988,7 +988,7 @@ impl OrgChartInsertable for super::Employee {
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __EmployeeNamedPosition(
             __EmployeeInternalPosition(
-                graphite::TablePosition(b.__graphite_node_employee.len()),
+                graphite::TablePosition::from_index(b.__graphite_node_employee.len()),
             ),
             b.__graphite_construction_stamp,
         );
@@ -1264,7 +1264,7 @@ impl OrgChartInsertable for super::Department {
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __DepartmentNamedPosition(
             __DepartmentInternalPosition(
-                graphite::TablePosition(b.__graphite_node_department.len()),
+                graphite::TablePosition::from_index(b.__graphite_node_department.len()),
             ),
             b.__graphite_construction_stamp,
         );
@@ -1431,7 +1431,7 @@ impl OrgChartInsertable for super::Project {
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __ProjectNamedPosition(
             __ProjectInternalPosition(
-                graphite::TablePosition(b.__graphite_node_project.len()),
+                graphite::TablePosition::from_index(b.__graphite_node_project.len()),
             ),
             b.__graphite_construction_stamp,
         );
@@ -1560,7 +1560,9 @@ impl OrgChartInsertable for BelongsTo {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __BelongsToNamedPosition(
-            __BelongsToInternalPosition(graphite::TablePosition(b.belongs_to.len())),
+            __BelongsToInternalPosition(
+                graphite::TablePosition::from_index(b.belongs_to.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1611,7 +1613,7 @@ impl OrgChartInsertable for Boss {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __BossNamedPosition(
-            __BossInternalPosition(graphite::TablePosition(b.boss.len())),
+            __BossInternalPosition(graphite::TablePosition::from_index(b.boss.len())),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1662,7 +1664,9 @@ impl OrgChartInsertable for Assigned {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __AssignedNamedPosition(
-            __AssignedInternalPosition(graphite::TablePosition(b.assigned.len())),
+            __AssignedInternalPosition(
+                graphite::TablePosition::from_index(b.assigned.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1713,7 +1717,9 @@ impl OrgChartInsertable for Sponsors {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __SponsorsNamedPosition(
-            __SponsorsInternalPosition(graphite::TablePosition(b.sponsors.len())),
+            __SponsorsInternalPosition(
+                graphite::TablePosition::from_index(b.sponsors.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -1977,7 +1983,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __BelongsToInternalPosition(
-                    graphite::TablePosition(__graphite_belongs_to.len()),
+                    graphite::TablePosition::from_index(__graphite_belongs_to.len()),
                 );
                 __graphite_belongs_to_by_pair
                     .entry((from_position, to_position))
@@ -2062,7 +2068,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __BossInternalPosition(
-                    graphite::TablePosition(__graphite_boss.len()),
+                    graphite::TablePosition::from_index(__graphite_boss.len()),
                 );
                 __graphite_boss_by_pair
                     .entry((from_position, to_position))
@@ -2148,7 +2154,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __AssignedInternalPosition(
-                    graphite::TablePosition(__graphite_assigned.len()),
+                    graphite::TablePosition::from_index(__graphite_assigned.len()),
                 );
                 __graphite_assigned_by_pair
                     .entry((from_position, to_position))
@@ -2213,7 +2219,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __SponsorsInternalPosition(
-                    graphite::TablePosition(__graphite_sponsors.len()),
+                    graphite::TablePosition::from_index(__graphite_sponsors.len()),
                 );
                 __graphite_sponsors_by_pair
                     .entry((from_position, to_position))
@@ -2263,101 +2269,81 @@ impl Builder {
             return Err(__violations);
         }
         let belongs_to_from_index = graphite::ExactlyOneRoleIndex::from_buckets(
-            (0..__graphite_node_employee.len())
+            __graphite_node_employee
+                .positions()
                 .map(|position| {
                     belongs_to_from_index
-                        .remove(
-                            &__EmployeeInternalPosition(
-                                graphite::TablePosition(position),
-                            ),
-                        )
+                        .remove(&__EmployeeInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let belongs_to_to_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_department.len())
+            __graphite_node_department
+                .positions()
                 .map(|position| {
                     belongs_to_to_index
-                        .remove(
-                            &__DepartmentInternalPosition(
-                                graphite::TablePosition(position),
-                            ),
-                        )
+                        .remove(&__DepartmentInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let boss_from_index = graphite::OptionalRoleIndex::from_buckets(
-            (0..__graphite_node_employee.len())
+            __graphite_node_employee
+                .positions()
                 .map(|position| {
                     boss_from_index
-                        .remove(
-                            &__EmployeeInternalPosition(
-                                graphite::TablePosition(position),
-                            ),
-                        )
+                        .remove(&__EmployeeInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let boss_to_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_employee.len())
+            __graphite_node_employee
+                .positions()
                 .map(|position| {
                     boss_to_index
-                        .remove(
-                            &__EmployeeInternalPosition(
-                                graphite::TablePosition(position),
-                            ),
-                        )
+                        .remove(&__EmployeeInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let assigned_from_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_employee.len())
+            __graphite_node_employee
+                .positions()
                 .map(|position| {
                     assigned_from_index
-                        .remove(
-                            &__EmployeeInternalPosition(
-                                graphite::TablePosition(position),
-                            ),
-                        )
+                        .remove(&__EmployeeInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let assigned_to_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_project.len())
+            __graphite_node_project
+                .positions()
                 .map(|position| {
                     assigned_to_index
-                        .remove(
-                            &__ProjectInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__ProjectInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let sponsors_from_index = graphite::OptionalRoleIndex::from_buckets(
-            (0..__graphite_node_department.len())
+            __graphite_node_department
+                .positions()
                 .map(|position| {
                     sponsors_from_index
-                        .remove(
-                            &__DepartmentInternalPosition(
-                                graphite::TablePosition(position),
-                            ),
-                        )
+                        .remove(&__DepartmentInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let sponsors_to_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_project.len())
+            __graphite_node_project
+                .positions()
                 .map(|position| {
                     sponsors_to_index
-                        .remove(
-                            &__ProjectInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__ProjectInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),

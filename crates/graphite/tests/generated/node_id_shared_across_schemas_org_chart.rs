@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    3500761188421637376u64, 11232695631658892581u64, 1801213000581454842u64,
-    10820630690792309230u64,
+    5135998060487824920u64, 3106158079116086585u64, 16249029528023512138u64,
+    14902573304257488414u64,
 ];
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BelongsToId(pub String);
@@ -396,7 +396,7 @@ impl OrgChartInsertable for super::Person {
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __PersonNamedPosition(
             __PersonInternalPosition(
-                graphite::TablePosition(b.__graphite_node_person.len()),
+                graphite::TablePosition::from_index(b.__graphite_node_person.len()),
             ),
             b.__graphite_construction_stamp,
         );
@@ -534,7 +534,7 @@ impl OrgChartInsertable for super::Department {
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __DepartmentNamedPosition(
             __DepartmentInternalPosition(
-                graphite::TablePosition(b.__graphite_node_department.len()),
+                graphite::TablePosition::from_index(b.__graphite_node_department.len()),
             ),
             b.__graphite_construction_stamp,
         );
@@ -634,7 +634,9 @@ impl OrgChartInsertable for BelongsTo {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __BelongsToNamedPosition(
-            __BelongsToInternalPosition(graphite::TablePosition(b.belongs_to.len())),
+            __BelongsToInternalPosition(
+                graphite::TablePosition::from_index(b.belongs_to.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -872,7 +874,7 @@ impl Builder {
                 to_position,
             ) {
                 let internal_edge_position = __BelongsToInternalPosition(
-                    graphite::TablePosition(__graphite_belongs_to.len()),
+                    graphite::TablePosition::from_index(__graphite_belongs_to.len()),
                 );
                 __graphite_belongs_to_by_pair
                     .entry((from_position, to_position))
@@ -922,25 +924,21 @@ impl Builder {
             return Err(__violations);
         }
         let belongs_to_from_index = graphite::OptionalRoleIndex::from_buckets(
-            (0..__graphite_node_person.len())
+            __graphite_node_person
+                .positions()
                 .map(|position| {
                     belongs_to_from_index
-                        .remove(
-                            &__PersonInternalPosition(graphite::TablePosition(position)),
-                        )
+                        .remove(&__PersonInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
         );
         let belongs_to_to_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_department.len())
+            __graphite_node_department
+                .positions()
                 .map(|position| {
                     belongs_to_to_index
-                        .remove(
-                            &__DepartmentInternalPosition(
-                                graphite::TablePosition(position),
-                            ),
-                        )
+                        .remove(&__DepartmentInternalPosition(position))
                         .unwrap_or_default()
                 })
                 .collect(),
