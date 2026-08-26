@@ -6,10 +6,29 @@ use syn::Path;
 use super::cardinality::{
     each制約が指す端点の側を判定する, EachSide, RoleCardinality, 役割の多重度制約,
 };
+use super::endpoint_pairing::{端点対のキーの形, 端点対の重複可否};
 use super::node_definition::ノード定義番号;
 use super::public_id_type::公開ID型;
 use crate::naming::generated_id_ident;
 use crate::schema_dsl::{EdgeDecl, EdgePayload, EdgeShape};
+
+/// スキーマ定義が持つ辺定義の列の中の1件を指すハンドル。
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct 辺定義番号(usize);
+
+impl 辺定義番号 {
+    pub(super) fn 添字から作る(添字: usize) -> Self {
+        Self(添字)
+    }
+
+    /// 辺定義の列を引くための添字へ戻す。
+    ///
+    /// 注意: 生の添字へ戻してよいのは、辺定義の列 (またはそれと同じ順で作った列)
+    /// を引く場所だけである。
+    pub fn 添字(self) -> usize {
+        self.0
+    }
+}
 
 /// 有向辺の端点1つ分。役割名と、その役割が繋がるノード定義を持つ。
 pub struct 有向端点 {
@@ -74,7 +93,7 @@ pub struct 辺定義 {
     公開id型: 公開ID型,
     向き: 辺の向き,
     積み荷: Option<積み荷>,
-    端点対の重複を禁止するか: bool,
+    端点対の重複可否: 端点対の重複可否,
     記述順の役割の多重度制約: Vec<役割の多重度制約>,
     始点側の役割の多重度制約: Option<役割の多重度制約>,
     終点側の役割の多重度制約: Option<役割の多重度制約>,
@@ -105,7 +124,9 @@ impl 辺定義 {
                 宣言.id_ty.clone(),
             ),
             積み荷: 宣言の積み荷を写す(&宣言.shape),
-            端点対の重複を禁止するか: 宣言.constraints.unique_pair,
+            端点対の重複可否: 端点対の重複可否::unique_pair指定から作る(
+                宣言.constraints.unique_pair,
+            ),
             始点側の役割の多重度制約: 側の制約を探す(EachSide::Source),
             終点側の役割の多重度制約: 側の制約を探す(EachSide::Target),
             記述順の役割の多重度制約,
@@ -133,8 +154,17 @@ impl 辺定義 {
         self.積み荷.as_ref()
     }
 
-    pub fn 端点対の重複を禁止するか(&self) -> bool {
-        self.端点対の重複を禁止するか
+    pub fn 端点対の重複可否(&self) -> 端点対の重複可否 {
+        self.端点対の重複可否
+    }
+
+    /// 端点対索引のキーの形。向きから決まる。
+    pub fn 端点対のキーの形(&self) -> 端点対のキーの形 {
+        if self.有向か() {
+            端点対のキーの形::順序付きの対
+        } else {
+            端点対のキーの形::順序なしの対
+        }
     }
 
     /// 位置0側 (有向辺の始点、無向辺の唯一の端点型) のノード定義。

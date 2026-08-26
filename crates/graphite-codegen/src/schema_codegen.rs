@@ -87,7 +87,8 @@ use crate::naming::{
     unknown_source_variant_ident, unknown_target_variant_ident, 固定生成名の予約表,
 };
 use crate::schema::semantic::{
-    EachSide, RoleCardinality, スキーマ定義, ノード定義, 公開ID型, 積み荷, 辺の向き, 辺定義,
+    EachSide, RoleCardinality, スキーマ定義, ノードの探索計画, ノード定義, 公開ID型, 探索操作,
+    積み荷, 端点対のキーの形, 端点対の重複可否, 辺の向き, 辺定義, 違反定義,
 };
 
 /// 意味モデルの公開ID型を、生成コードの型位置へそのまま置けるトークンとして扱う。
@@ -204,7 +205,7 @@ impl<'a> EdgeInfo<'a> {
     }
 
     fn unique_pair(&self) -> bool {
-        self.定義.端点対の重複を禁止するか()
+        self.定義.端点対の重複可否().対ごとに1本だけか()
     }
 
     /// 指定した側の多重度。役割クエリの戻り型・索引の実装・凍結時の確定が
@@ -275,7 +276,12 @@ pub fn generate_module_body(schema: &スキーマ定義) -> TokenStream {
     let edge_value_struct_defs = gen_edge_value_structs(&edge_infos);
     let edge_record_defs = gen_edge_record_structs(&edge_infos);
     let edge_reference_defs = gen_edge_reference_types(&graph_ident, &edge_infos);
-    let violation_def = gen_violation_enum(&violation_ident, &node_infos, &edge_infos);
+    let violation_def = gen_violation_enum(
+        &violation_ident,
+        &node_infos,
+        &edge_infos,
+        schema.違反定義の列(),
+    );
     let schema_struct_def = gen_schema_struct(&graph_ident, &node_infos, &edge_infos);
     let schema_impl = gen_schema_impl(
         &graph_ident,
@@ -308,6 +314,7 @@ pub fn generate_module_body(schema: &スキーマ定義) -> TokenStream {
         &graph_ident,
         &node_infos,
         &edge_infos,
+        schema.ノードごとの探索計画(),
     );
     let edge_trait_and_impls = gen_edge_trait_and_impls(
         &edge_trait_ident,
@@ -467,42 +474,28 @@ fn gen_insertable_traits(
 /// - 無向辺の接続探索 `{kind}_incident()`
 /// - 端点対検索 `{kind}_between(other)` / `{kind}_try_between(other)`
 ///
-/// 端点対検索は位置0側 (有向辺は始点側、無向辺は唯一の端点型) の `NodeRef`
-/// にだけ生やす。両端が同じノード型の辺でも、生成を位置0側の一致だけで
-/// 判定するため1回しか生成されない。
-fn gen_node_traversal_methods(node: &NodeInfo<'_>, edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
-    let node_type = &node.type_ident;
-    edges
+/// どの操作をどの順で生やすかは意味モデルの探索計画が確定済みなので、ここは
+/// 操作1つずつをRustへ写すだけである。
+fn gen_node_traversal_methods(
+    探索計画: &ノードの探索計画,
+    edges: &[EdgeInfo<'_>],
+) -> Vec<TokenStream> {
+    探索計画
+        .操作の列()
         .iter()
-        .flat_map(|edge| {
-            let mut methods = Vec::new();
-            match edge.shape() {
-                辺の向き::有向 { 始点, 終点 } => {
-                    if edge.from_node.type_ident == *node_type {
-                        methods.push(gen_role_traversal_method(
-                            edge,
-                            始点.役割名(),
-                            EachSide::Source,
-                        ));
-                    }
-                    if edge.to_node.type_ident == *node_type {
-                        methods.push(gen_role_traversal_method(
-                            edge,
-                            終点.役割名(),
-                            EachSide::Target,
-                        ));
-                    }
-                }
-                辺の向き::無向 { .. } => {
-                    if edge.from_node.type_ident == *node_type {
-                        methods.push(gen_incident_traversal_method(edge));
-                    }
-                }
+        .map(|操作| match 操作 {
+            探索操作::役割による探索 {
+                辺,
+                役割名,
+                側,
+                多重度,
+            } => gen_role_traversal_method(&edges[辺.添字()], 役割名, *側, *多重度),
+            探索操作::接続による探索 { 辺 } => {
+                gen_incident_traversal_method(&edges[辺.添字()])
             }
-            if edge.from_node.type_ident == *node_type {
-                methods.push(gen_between_traversal_methods(edge));
+            探索操作::端点対による探索 { 辺 } => {
+                gen_between_traversal_methods(&edges[辺.添字()])
             }
-            methods
         })
         .collect()
 }
@@ -512,14 +505,19 @@ fn gen_node_traversal_methods(node: &NodeInfo<'_>, edges: &[EdgeInfo<'_>]) -> Ve
 /// 凍結時に構築済みの役割索引を内部位置で引くだけなので O(1)、追加確保なし。
 /// 戻り型は問い合わせた役割そのものの `each` 制約で決まる
 /// (`docs/schema_v4.md` §3.2)。
-fn gen_role_traversal_method(edge: &EdgeInfo<'_>, role: &Ident, side: EachSide) -> TokenStream {
+fn gen_role_traversal_method(
+    edge: &EdgeInfo<'_>,
+    role: &Ident,
+    side: EachSide,
+    cardinality: RoleCardinality,
+) -> TokenStream {
     let method = traversal_method_ident(edge.kind, role);
     let edge_reference = edge.reference_ident();
     let index = match side {
         EachSide::Source => &edge.index_field_ident,
         EachSide::Target => &edge.to_index_field_ident,
     };
-    match edge.cardinality(side) {
+    match cardinality {
         RoleCardinality::Exact => quote! {
             /// この役割に接続する唯一の辺を O(1)、追加確保なしで返す。
             pub fn #method(self) -> #edge_reference<'graph> {
@@ -777,8 +775,9 @@ fn gen_node_trait_and_impls(
     graph_ident: &Ident,
     nodes: &[NodeInfo<'_>],
     edges: &[EdgeInfo<'_>],
+    探索計画の列: &[ノードの探索計画],
 ) -> TokenStream {
-    let node_impls = nodes.iter().map(|n| {
+    let node_impls = nodes.iter().zip(探索計画の列).map(|(n, 探索計画)| {
         let ty = &n.type_ident;
         let id_ty = &n.id_ty;
         let accessor = &n.accessor_ident;
@@ -797,7 +796,7 @@ fn gen_node_trait_and_impls(
         let node_ref_id_ident = Ident::new("id", span);
         let node_ref_value_ident = Ident::new("value", span);
         let node_debug_impl = gen_reference_debug_impl(&reference, n.id_ty.is_debug_printable());
-        let traversal_methods = gen_node_traversal_methods(n, edges);
+        let traversal_methods = gen_node_traversal_methods(探索計画, edges);
         let common_impl = gen_insertable_and_named_impl(InsertableNamedSpec {
             insertable_trait_ident,
             builder_ident,
@@ -1479,265 +1478,27 @@ fn gen_violation_enum(
     violation_ident: &Ident,
     nodes: &[NodeInfo<'_>],
     edges: &[EdgeInfo<'_>],
+    違反定義の列: &[違反定義],
 ) -> TokenStream {
-    let dup_variants = nodes.iter().map(|n| {
-        let v = n.dup_variant();
-        let id = &n.id_ty;
-        quote! { #v(#id) }
-    });
-    let dup_display_arms = nodes.iter().map(|n| {
-        let v = n.dup_variant();
-        let type_name_str = n.type_ident.to_string();
-        if n.id_ty.is_debug_printable() {
-            quote! {
-                #violation_ident::#v(id) => write!(f, "{}のキーが重複しています: {:?}", #type_name_str, id)
-            }
-        } else {
-            quote! {
-                #violation_ident::#v(_) => write!(f, "{}のキーが重複しています", #type_name_str)
-            }
-        }
-    });
-
-    let mut edge_variants: Vec<TokenStream> = Vec::new();
-    let mut edge_display_arms: Vec<TokenStream> = Vec::new();
-
-    for edge in edges {
-        let kind_str = edge.kind.to_string();
-        let edge_id = &edge.id_ty;
-
-        let dup_key = edge.duplicate_key_variant();
-        edge_variants.push(quote! {
-            /// このエッジ種別のキーが重複している。
-            #dup_key(#edge_id)
-        });
-        edge_display_arms.push(if edge.id_ty.is_debug_printable() {
-            quote! {
-                #violation_ident::#dup_key(id) => write!(f, "{}のキーが重複しています: {:?}", #kind_str, id)
-            }
-        } else {
-            quote! {
-                #violation_ident::#dup_key(_) => write!(f, "{}のキーが重複しています", #kind_str)
-            }
-        });
-
-        if edge.is_directed() {
-            let from_id = &edge.from_node.id_ty;
-            let to_id = &edge.to_node.id_ty;
-            let from_type_str = edge.from_node.type_ident.to_string();
-            let to_type_str = edge.to_node.type_ident.to_string();
-
-            let unk_src = edge.unknown_source_variant();
-            edge_variants.push(quote! {
-                /// このエッジが未知の始点キーを参照している。
-                #unk_src { edge: #edge_id, source: #from_id }
-            });
-            edge_display_arms.push(
-                if edge.id_ty.is_debug_printable() && edge.from_node.id_ty.is_debug_printable() {
-                    quote! {
-                        #violation_ident::#unk_src { edge, source } => write!(
-                            f,
-                            "未知のキーが参照されています (辺 `{}` {:?} の始点, {}): {:?}",
-                            #kind_str, edge, #from_type_str, source
-                        )
-                    }
-                } else {
-                    quote! {
-                        #violation_ident::#unk_src { .. } => write!(
-                            f,
-                            "未知のキーが参照されています (辺 `{}` の始点, {})",
-                            #kind_str, #from_type_str
-                        )
-                    }
-                },
-            );
-
-            let unk_dst = edge.unknown_target_variant();
-            edge_variants.push(quote! {
-                /// このエッジが未知の終点キーを参照している。
-                #unk_dst { edge: #edge_id, target: #to_id }
-            });
-            edge_display_arms.push(
-                if edge.id_ty.is_debug_printable() && edge.to_node.id_ty.is_debug_printable() {
-                    quote! {
-                        #violation_ident::#unk_dst { edge, target } => write!(
-                            f,
-                            "未知のキーが参照されています (辺 `{}` {:?} の終点, {}): {:?}",
-                            #kind_str, edge, #to_type_str, target
-                        )
-                    }
-                } else {
-                    quote! {
-                        #violation_ident::#unk_dst { .. } => write!(
-                            f,
-                            "未知のキーが参照されています (辺 `{}` の終点, {})",
-                            #kind_str, #to_type_str
-                        )
-                    }
-                },
-            );
-
-            // variant の並びは DSL の `where` 節に書かれた順に従う (側ごとに
-            // 並べ替えない)。
-            for constraint in edge.定義.記述順の役割の多重度制約() {
-                let spec = constraint.指定された範囲();
-                let expected_str = match spec.max() {
-                    Some(max) if spec.min() == max => format!("ちょうど{}", spec.min()),
-                    Some(max) => format!("{}..{}", spec.min(), max),
-                    None => format!("{}..*", spec.min()),
-                };
-                let v = each_violation_ident(edge.kind, constraint.役割名());
-                match constraint.側() {
-                    EachSide::Source => {
-                        edge_variants.push(quote! {
-                            /// このエッジ種別の `each` 制約違反 (出次数)。
-                            #v { source: #from_id, count: usize }
-                        });
-                        edge_display_arms.push(if edge.from_node.id_ty.is_debug_printable() {
-                            quote! {
-                                #violation_ident::#v { source, count } => write!(
-                                    f,
-                                    "多重度制約違反: 辺 `{}` は {} {:?} について出次数 {} を期待しますが実際は {} 本です",
-                                    #kind_str, #from_type_str, source, #expected_str, count
-                                )
-                            }
-                        } else {
-                            quote! {
-                                #violation_ident::#v { count, .. } => write!(
-                                    f,
-                                    "多重度制約違反: 辺 `{}` は {} の出次数 {} を期待しますが実際は {} 本です",
-                                    #kind_str, #from_type_str, #expected_str, count
-                                )
-                            }
-                        });
-                    }
-                    EachSide::Target => {
-                        edge_variants.push(quote! {
-                            /// このエッジ種別の `each` 制約違反 (入次数)。
-                            #v { target: #to_id, count: usize }
-                        });
-                        edge_display_arms.push(if edge.to_node.id_ty.is_debug_printable() {
-                            quote! {
-                                #violation_ident::#v { target, count } => write!(
-                                    f,
-                                    "多重度制約違反: 辺 `{}` は {} {:?} について入次数 {} を期待しますが実際は {} 本です",
-                                    #kind_str, #to_type_str, target, #expected_str, count
-                                )
-                            }
-                        } else {
-                            quote! {
-                                #violation_ident::#v { count, .. } => write!(
-                                    f,
-                                    "多重度制約違反: 辺 `{}` は {} の入次数 {} を期待しますが実際は {} 本です",
-                                    #kind_str, #to_type_str, #expected_str, count
-                                )
-                            }
-                        });
-                    }
-                }
-            }
-
-            if edge.unique_pair() {
-                let v = edge.unique_pair_violation_variant();
-                edge_variants.push(quote! {
-                    /// このエッジ種別の `unique pair` 違反 (同じ始点・終点の対に
-                    /// 2本目の辺が張られた)。
-                    #v { source: #from_id, target: #to_id }
-                });
-                edge_display_arms.push(
-                    if edge.from_node.id_ty.is_debug_printable()
-                        && edge.to_node.id_ty.is_debug_printable()
-                    {
-                        quote! {
-                            #violation_ident::#v { source, target } => write!(
-                                f,
-                                "unique pair違反: 辺 `{}` は {:?} -> {:?} の対に既に辺が存在します",
-                                #kind_str, source, target
-                            )
-                        }
-                    } else {
-                        quote! {
-                            #violation_ident::#v { .. } => write!(
-                                f,
-                                "unique pair違反: 辺 `{}` の同じ始点・終点の対に既に辺が存在します",
-                                #kind_str
-                            )
-                        }
-                    },
-                );
-            }
-        } else {
-            // 無向辺: 両端は同じノード型 (validate 済み) なので from_node で代表する。
-            let node_id = &edge.from_node.id_ty;
-            let node_type_str = edge.from_node.type_ident.to_string();
-
-            let unk = edge.unknown_endpoint_variant();
-            edge_variants.push(quote! {
-                /// このエッジが未知の端点キーを参照している (無向のため位置の
-                /// 区別は無い)。
-                #unk { edge: #edge_id, endpoint: #node_id }
-            });
-            edge_display_arms.push(
-                if edge.id_ty.is_debug_printable() && edge.from_node.id_ty.is_debug_printable() {
-                    quote! {
-                        #violation_ident::#unk { edge, endpoint } => write!(
-                            f,
-                            "未知のキーが参照されています (辺 `{}` {:?} の端点, {}): {:?}",
-                            #kind_str, edge, #node_type_str, endpoint
-                        )
-                    }
-                } else {
-                    quote! {
-                        #violation_ident::#unk { .. } => write!(
-                            f,
-                            "未知のキーが参照されています (辺 `{}` の端点, {})",
-                            #kind_str, #node_type_str
-                        )
-                    }
-                },
-            );
-
-            if edge.unique_pair() {
-                let v = edge.unique_pair_violation_variant();
-                edge_variants.push(quote! {
-                    /// このエッジ種別の `unique pair` 違反 (無向のため
-                    /// 順序を無視した対で判定)。
-                    #v { a: #node_id, b: #node_id }
-                });
-                edge_display_arms.push(if edge.from_node.id_ty.is_debug_printable() {
-                    quote! {
-                        #violation_ident::#v { a, b } => write!(
-                            f,
-                            "unique pair違反: 辺 `{}` は {{{:?}, {:?}}} の対に既に辺が存在します",
-                            #kind_str, a, b
-                        )
-                    }
-                } else {
-                    quote! {
-                        #violation_ident::#v { .. } => write!(
-                            f,
-                            "unique pair違反: 辺 `{}` の同じ端点対に既に辺が存在します",
-                            #kind_str
-                        )
-                    }
-                });
-            }
-        }
+    let mut variants: Vec<TokenStream> = Vec::new();
+    let mut display_arms: Vec<TokenStream> = Vec::new();
+    for 違反 in 違反定義の列 {
+        let (variant, display_arm) = gen_violation_case(violation_ident, nodes, edges, 違反);
+        variants.push(variant);
+        display_arms.push(display_arm);
     }
 
     quote! {
         #[allow(clippy::enum_variant_names)]
         #[derive(Clone, PartialEq, Eq)]
         pub enum #violation_ident {
-            #(#dup_variants,)*
-            #(#edge_variants,)*
+            #(#variants,)*
         }
 
         impl std::fmt::Display for #violation_ident {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 match self {
-                    #(#dup_display_arms,)*
-                    #(#edge_display_arms,)*
+                    #(#display_arms,)*
                 }
             }
         }
@@ -1749,6 +1510,331 @@ fn gen_violation_enum(
         }
 
         impl std::error::Error for #violation_ident {}
+    }
+}
+
+/// 違反定義1件を、違反列挙型の variant とその `Display` の分岐へ写す。
+fn gen_violation_case(
+    violation_ident: &Ident,
+    nodes: &[NodeInfo<'_>],
+    edges: &[EdgeInfo<'_>],
+    違反: &違反定義,
+) -> (TokenStream, TokenStream) {
+    match 違反 {
+        違反定義::ノードのキーが重複した { ノード } => {
+            gen_node_duplicate_key_case(violation_ident, &nodes[ノード.添字()])
+        }
+        違反定義::辺のキーが重複した { 辺 } => {
+            gen_edge_duplicate_key_case(violation_ident, &edges[辺.添字()])
+        }
+        違反定義::未知の始点を参照した { 辺 } => {
+            gen_unknown_source_case(violation_ident, &edges[辺.添字()])
+        }
+        違反定義::未知の終点を参照した { 辺 } => {
+            gen_unknown_target_case(violation_ident, &edges[辺.添字()])
+        }
+        違反定義::未知の端点を参照した { 辺 } => {
+            gen_unknown_endpoint_case(violation_ident, &edges[辺.添字()])
+        }
+        違反定義::多重度に反した {
+            辺, 側, 役割名
+        } => gen_each_violation_case(violation_ident, &edges[辺.添字()], *側, 役割名),
+        違反定義::端点対が重複した { 辺 } => {
+            gen_unique_pair_violation_case(violation_ident, &edges[辺.添字()])
+        }
+    }
+}
+
+/// ノードのキー重複 (`Duplicate{Node}`、v3 から維持)。
+fn gen_node_duplicate_key_case(
+    violation_ident: &Ident,
+    node: &NodeInfo<'_>,
+) -> (TokenStream, TokenStream) {
+    let v = node.dup_variant();
+    let id = &node.id_ty;
+    let type_name_str = node.type_ident.to_string();
+    let variant = quote! { #v(#id) };
+    let display_arm = if node.id_ty.is_debug_printable() {
+        quote! {
+            #violation_ident::#v(id) => write!(f, "{}のキーが重複しています: {:?}", #type_name_str, id)
+        }
+    } else {
+        quote! {
+            #violation_ident::#v(_) => write!(f, "{}のキーが重複しています", #type_name_str)
+        }
+    };
+    (variant, display_arm)
+}
+
+/// 辺のキー重複 (`{Kind}DuplicateKey`、v4 で追加。辺も第一級キーを持つため)。
+fn gen_edge_duplicate_key_case(
+    violation_ident: &Ident,
+    edge: &EdgeInfo<'_>,
+) -> (TokenStream, TokenStream) {
+    let kind_str = edge.kind.to_string();
+    let edge_id = &edge.id_ty;
+    let dup_key = edge.duplicate_key_variant();
+    let variant = quote! {
+        /// このエッジ種別のキーが重複している。
+        #dup_key(#edge_id)
+    };
+    let display_arm = if edge.id_ty.is_debug_printable() {
+        quote! {
+            #violation_ident::#dup_key(id) => write!(f, "{}のキーが重複しています: {:?}", #kind_str, id)
+        }
+    } else {
+        quote! {
+            #violation_ident::#dup_key(_) => write!(f, "{}のキーが重複しています", #kind_str)
+        }
+    };
+    (variant, display_arm)
+}
+
+/// 有向辺が未知の始点キーを参照した場合 (`{Kind}UnknownSource`)。
+fn gen_unknown_source_case(
+    violation_ident: &Ident,
+    edge: &EdgeInfo<'_>,
+) -> (TokenStream, TokenStream) {
+    let kind_str = edge.kind.to_string();
+    let edge_id = &edge.id_ty;
+    let from_id = &edge.from_node.id_ty;
+    let from_type_str = edge.from_node.type_ident.to_string();
+    let unk_src = edge.unknown_source_variant();
+    let variant = quote! {
+        /// このエッジが未知の始点キーを参照している。
+        #unk_src { edge: #edge_id, source: #from_id }
+    };
+    let display_arm =
+        if edge.id_ty.is_debug_printable() && edge.from_node.id_ty.is_debug_printable() {
+            quote! {
+                #violation_ident::#unk_src { edge, source } => write!(
+                    f,
+                    "未知のキーが参照されています (辺 `{}` {:?} の始点, {}): {:?}",
+                    #kind_str, edge, #from_type_str, source
+                )
+            }
+        } else {
+            quote! {
+                #violation_ident::#unk_src { .. } => write!(
+                    f,
+                    "未知のキーが参照されています (辺 `{}` の始点, {})",
+                    #kind_str, #from_type_str
+                )
+            }
+        };
+    (variant, display_arm)
+}
+
+/// 有向辺が未知の終点キーを参照した場合 (`{Kind}UnknownTarget`)。
+fn gen_unknown_target_case(
+    violation_ident: &Ident,
+    edge: &EdgeInfo<'_>,
+) -> (TokenStream, TokenStream) {
+    let kind_str = edge.kind.to_string();
+    let edge_id = &edge.id_ty;
+    let to_id = &edge.to_node.id_ty;
+    let to_type_str = edge.to_node.type_ident.to_string();
+    let unk_dst = edge.unknown_target_variant();
+    let variant = quote! {
+        /// このエッジが未知の終点キーを参照している。
+        #unk_dst { edge: #edge_id, target: #to_id }
+    };
+    let display_arm = if edge.id_ty.is_debug_printable() && edge.to_node.id_ty.is_debug_printable()
+    {
+        quote! {
+            #violation_ident::#unk_dst { edge, target } => write!(
+                f,
+                "未知のキーが参照されています (辺 `{}` {:?} の終点, {}): {:?}",
+                #kind_str, edge, #to_type_str, target
+            )
+        }
+    } else {
+        quote! {
+            #violation_ident::#unk_dst { .. } => write!(
+                f,
+                "未知のキーが参照されています (辺 `{}` の終点, {})",
+                #kind_str, #to_type_str
+            )
+        }
+    };
+    (variant, display_arm)
+}
+
+/// 無向辺が未知の端点キーを参照した場合 (`{Kind}UnknownEndpoint`)。
+/// 無向辺は位置の区別が無いため1種類で足りる。両端は同じノード型なので
+/// `from_node` で代表する。
+fn gen_unknown_endpoint_case(
+    violation_ident: &Ident,
+    edge: &EdgeInfo<'_>,
+) -> (TokenStream, TokenStream) {
+    let kind_str = edge.kind.to_string();
+    let edge_id = &edge.id_ty;
+    let node_id = &edge.from_node.id_ty;
+    let node_type_str = edge.from_node.type_ident.to_string();
+    let unk = edge.unknown_endpoint_variant();
+    let variant = quote! {
+        /// このエッジが未知の端点キーを参照している (無向のため位置の
+        /// 区別は無い)。
+        #unk { edge: #edge_id, endpoint: #node_id }
+    };
+    let display_arm =
+        if edge.id_ty.is_debug_printable() && edge.from_node.id_ty.is_debug_printable() {
+            quote! {
+                #violation_ident::#unk { edge, endpoint } => write!(
+                    f,
+                    "未知のキーが参照されています (辺 `{}` {:?} の端点, {}): {:?}",
+                    #kind_str, edge, #node_type_str, endpoint
+                )
+            }
+        } else {
+            quote! {
+                #violation_ident::#unk { .. } => write!(
+                    f,
+                    "未知のキーが参照されています (辺 `{}` の端点, {})",
+                    #kind_str, #node_type_str
+                )
+            }
+        };
+    (variant, display_arm)
+}
+
+/// `each` 制約違反 (`{Kind}{Role}EachViolation`)。制約が指す側に応じて
+/// `source` (出次数) または `target` (入次数) を持つ。
+fn gen_each_violation_case(
+    violation_ident: &Ident,
+    edge: &EdgeInfo<'_>,
+    side: EachSide,
+    role: &Ident,
+) -> (TokenStream, TokenStream) {
+    let kind_str = edge.kind.to_string();
+    let spec = edge
+        .定義
+        .側の役割の多重度制約(side)
+        .expect("違反定義に載る多重度制約は同じ辺定義が保持している")
+        .指定された範囲();
+    let expected_str = match spec.max() {
+        Some(max) if spec.min() == max => format!("ちょうど{}", spec.min()),
+        Some(max) => format!("{}..{}", spec.min(), max),
+        None => format!("{}..*", spec.min()),
+    };
+    let v = each_violation_ident(edge.kind, role);
+    match side {
+        EachSide::Source => {
+            let from_id = &edge.from_node.id_ty;
+            let from_type_str = edge.from_node.type_ident.to_string();
+            let variant = quote! {
+                /// このエッジ種別の `each` 制約違反 (出次数)。
+                #v { source: #from_id, count: usize }
+            };
+            let display_arm = if edge.from_node.id_ty.is_debug_printable() {
+                quote! {
+                    #violation_ident::#v { source, count } => write!(
+                        f,
+                        "多重度制約違反: 辺 `{}` は {} {:?} について出次数 {} を期待しますが実際は {} 本です",
+                        #kind_str, #from_type_str, source, #expected_str, count
+                    )
+                }
+            } else {
+                quote! {
+                    #violation_ident::#v { count, .. } => write!(
+                        f,
+                        "多重度制約違反: 辺 `{}` は {} の出次数 {} を期待しますが実際は {} 本です",
+                        #kind_str, #from_type_str, #expected_str, count
+                    )
+                }
+            };
+            (variant, display_arm)
+        }
+        EachSide::Target => {
+            let to_id = &edge.to_node.id_ty;
+            let to_type_str = edge.to_node.type_ident.to_string();
+            let variant = quote! {
+                /// このエッジ種別の `each` 制約違反 (入次数)。
+                #v { target: #to_id, count: usize }
+            };
+            let display_arm = if edge.to_node.id_ty.is_debug_printable() {
+                quote! {
+                    #violation_ident::#v { target, count } => write!(
+                        f,
+                        "多重度制約違反: 辺 `{}` は {} {:?} について入次数 {} を期待しますが実際は {} 本です",
+                        #kind_str, #to_type_str, target, #expected_str, count
+                    )
+                }
+            } else {
+                quote! {
+                    #violation_ident::#v { count, .. } => write!(
+                        f,
+                        "多重度制約違反: 辺 `{}` は {} の入次数 {} を期待しますが実際は {} 本です",
+                        #kind_str, #to_type_str, #expected_str, count
+                    )
+                }
+            };
+            (variant, display_arm)
+        }
+    }
+}
+
+/// `unique pair` 違反 (`{Kind}UniquePairViolation`)。有向辺は `source`/`target`、
+/// 無向辺は順序の意味が無いため `a`/`b` を持つ。
+fn gen_unique_pair_violation_case(
+    violation_ident: &Ident,
+    edge: &EdgeInfo<'_>,
+) -> (TokenStream, TokenStream) {
+    let kind_str = edge.kind.to_string();
+    let v = edge.unique_pair_violation_variant();
+    if edge.is_directed() {
+        let from_id = &edge.from_node.id_ty;
+        let to_id = &edge.to_node.id_ty;
+        let variant = quote! {
+            /// このエッジ種別の `unique pair` 違反 (同じ始点・終点の対に
+            /// 2本目の辺が張られた)。
+            #v { source: #from_id, target: #to_id }
+        };
+        let display_arm = if edge.from_node.id_ty.is_debug_printable()
+            && edge.to_node.id_ty.is_debug_printable()
+        {
+            quote! {
+                #violation_ident::#v { source, target } => write!(
+                    f,
+                    "unique pair違反: 辺 `{}` は {:?} -> {:?} の対に既に辺が存在します",
+                    #kind_str, source, target
+                )
+            }
+        } else {
+            quote! {
+                #violation_ident::#v { .. } => write!(
+                    f,
+                    "unique pair違反: 辺 `{}` の同じ始点・終点の対に既に辺が存在します",
+                    #kind_str
+                )
+            }
+        };
+        (variant, display_arm)
+    } else {
+        let node_id = &edge.from_node.id_ty;
+        let variant = quote! {
+            /// このエッジ種別の `unique pair` 違反 (無向のため
+            /// 順序を無視した対で判定)。
+            #v { a: #node_id, b: #node_id }
+        };
+        let display_arm = if edge.from_node.id_ty.is_debug_printable() {
+            quote! {
+                #violation_ident::#v { a, b } => write!(
+                    f,
+                    "unique pair違反: 辺 `{}` は {{{:?}, {:?}}} の対に既に辺が存在します",
+                    #kind_str, a, b
+                )
+            }
+        } else {
+            quote! {
+                #violation_ident::#v { .. } => write!(
+                    f,
+                    "unique pair違反: 辺 `{}` の同じ端点対に既に辺が存在します",
+                    #kind_str
+                )
+            }
+        };
+        (variant, display_arm)
     }
 }
 
@@ -1770,33 +1856,26 @@ fn gen_schema_struct(
         let id_ty = &e.id_ty;
         let record = e.record_ident();
         let edge_position = e.internal_position_ident();
-        // 索引のキー型は位置0の内部位置型 (有向なら始点、無向なら両端同型)。
-        let key_position = e.from_node.internal_position_ident();
         // 有向辺のみ終点索引を永続化する (`docs/reverse_query.md`)。
         // 終点役割クエリの索引であり、v4.1 で入次数 each 検証のためだけに
         // 一時構築していた索引をこれに統合した (無向辺は `index_field` が
         // 既に対称に両端を積むので不要)。
         let pair_index = pair_index_field_ident(e.kind);
-        let pair_value = if e.unique_pair() {
-            quote! { #edge_position }
-        } else {
-            quote! { Vec<#edge_position> }
-        };
+        let pair_index_type = gen_pair_index_map_type(e);
         let to_index_decl = if e.is_directed() {
             let to_index_field = &e.to_index_field_ident;
-            let to_key_position = e.to_node.internal_position_ident();
             let to_index_ty = role_index_type(e, EachSide::Target, &edge_position);
             quote! {
                 ,
                 /// 位置1キー (終点) -> そこへ入るエッジキーの一覧 (凍結時に
                 /// 構築。終点役割クエリの索引、`docs/reverse_query.md`)。
                 #to_index_field: #to_index_ty,
-                #pair_index: std::collections::HashMap<(#key_position, #to_key_position), #pair_value>
+                #pair_index: #pair_index_type
             }
         } else {
             quote! {
                 ,
-                #pair_index: std::collections::HashMap<graphite::UnorderedPair<#key_position>, #pair_value>
+                #pair_index: #pair_index_type
             }
         };
         let index_ty = if e.is_directed() {
@@ -2288,11 +2367,7 @@ fn gen_directed_edge_freeze_block(
     let unk_dst = edge.unknown_target_variant();
     let kind = edge.kind;
     let pair_index = pair_index_field_ident(kind);
-    let pair_index_type = if edge.unique_pair() {
-        quote! { std::collections::HashMap<(#from_position_type, #to_position_type), #edge_position> }
-    } else {
-        quote! { std::collections::HashMap<(#from_position_type, #to_position_type), Vec<#edge_position>> }
-    };
+    let pair_index_type = gen_pair_index_map_type(edge);
 
     let (destructure_value, build_record) = match edge.payload() {
         Some(payload) => {
@@ -2448,11 +2523,7 @@ fn gen_undirected_edge_freeze_block(violation_ident: &Ident, edge: &EdgeInfo<'_>
     let unk = edge.unknown_endpoint_variant();
     let kind = edge.kind;
     let pair_index = pair_index_field_ident(kind);
-    let pair_index_type = if edge.unique_pair() {
-        quote! { std::collections::HashMap<graphite::UnorderedPair<#node_position_type>, #edge_position> }
-    } else {
-        quote! { std::collections::HashMap<graphite::UnorderedPair<#node_position_type>, Vec<#edge_position>> }
-    };
+    let pair_index_type = gen_pair_index_map_type(edge);
 
     let (destructure_value, build_record) = match edge.payload() {
         Some(payload) => {
@@ -2656,6 +2727,27 @@ fn gen_freeze_body(
             self.freeze_collecting().map_err(|mut violations| violations.remove(0))
         }
     }
+}
+
+/// 端点対索引の `HashMap` 型を組み立てる。
+///
+/// 凍結処理が作る一時変数と `Graph` のフィールドは同じ型でなければならないため、
+/// キーの形 (順序付き/順序なし) と値の形 (1本/複数本) の判断はここへ集約する。
+fn gen_pair_index_map_type(edge: &EdgeInfo<'_>) -> TokenStream {
+    let edge_position = edge.internal_position_ident();
+    let from_position = edge.from_node.internal_position_ident();
+    let to_position = edge.to_node.internal_position_ident();
+    let key = match edge.定義.端点対のキーの形() {
+        端点対のキーの形::順序付きの対 => quote! { (#from_position, #to_position) },
+        端点対のキーの形::順序なしの対 => {
+            quote! { graphite::UnorderedPair<#from_position> }
+        }
+    };
+    let value = match edge.定義.端点対の重複可否() {
+        端点対の重複可否::対ごとに1本だけ許す => quote! { #edge_position },
+        端点対の重複可否::対ごとに何本でも許す => quote! { Vec<#edge_position> },
+    };
+    quote! { std::collections::HashMap<#key, #value> }
 }
 
 fn role_index_type(edge: &EdgeInfo<'_>, side: EachSide, edge_position: &Ident) -> TokenStream {

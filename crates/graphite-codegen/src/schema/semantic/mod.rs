@@ -24,9 +24,12 @@
 mod analyze;
 mod cardinality;
 mod edge_definition;
+mod endpoint_pairing;
 mod node_definition;
 mod public_id_type;
 mod schema_definition;
+mod traversal_plan;
+mod violation_catalog;
 
 // 再公開するのは、この層の外 (`schema_codegen` / `schema_validate` / `lib.rs`)
 // が名前で参照するものだけに限る。層の内側だけで使う型は各ファイルに置いたまま
@@ -34,6 +37,9 @@ mod schema_definition;
 pub use analyze::検証済み構文からスキーマ定義を組み立てる;
 pub use cardinality::{each制約が指す端点の側を判定する, EachSide, RoleCardinality};
 pub use edge_definition::{積み荷, 辺の向き, 辺定義};
+pub use endpoint_pairing::{端点対のキーの形, 端点対の重複可否};
 pub use node_definition::ノード定義;
 pub use public_id_type::公開ID型;
 pub use schema_definition::スキーマ定義;
+pub use traversal_plan::{ノードの探索計画, 探索操作};
+pub use violation_catalog::違反定義;
