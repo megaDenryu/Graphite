@@ -9,7 +9,7 @@
 use std::path::PathBuf;
 
 #[test]
-fn 文書参照の綴りは全て実在する() {
+fn 文書参照とソース参照の綴りは全て実在する() {
     let repository_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
     let root = xtask::RepositoryRoot::at(repository_root)
         .expect("xtaskの実行場所からリポジトリルートを解決できること");
