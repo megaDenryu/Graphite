@@ -6,11 +6,13 @@
 //!
 //! ## 内部表現
 //!
-//! `petgraph::graph::DiGraph<N, E>` (キーは内部の `NodeIndex`) を土台にし、
-//! ユーザーキー `K` との相互変換のために `HashMap<K, NodeIndex>` (正引き) と
-//! `HashMap<NodeIndex, K>` (逆引き) を持つ。`petgraph::graphmap::GraphMap` は
-//! ノードキーに `Copy` を要求するため `String` のような非 `Copy` キーを直接
-//! 扱えず不採用 (`.claude/skills/proc-macro-dev/SKILL.md` の注意通り)。
+//! 「キーの世界」と「位置の世界」を分けている。位置の世界は
+//! [`topology::有向トポロジー`] が持ち、`petgraph::graph::DiGraph<N, E>` を包む。
+//! キーの世界は [`key_correspondence::キー対応表`] が持ち、ユーザーキー `K` と
+//! 内部位置の相互対応 (正引きと逆引き) を所有する。
+//! `petgraph::graphmap::GraphMap` はノードキーに `Copy` を要求するため
+//! `String` のような非 `Copy` キーを直接扱えず不採用
+//! (`.claude/skills/proc-macro-dev/SKILL.md` の注意通り)。
 //!
 //! ## 不変性
 //!
@@ -21,13 +23,19 @@
 //! であり、builder への参照をクロージャの外に持ち出すことを借用検査器が
 //! 静的に拒否する (`std::thread::scope` と同じ仕組み)。
 
-use petgraph::graph::{DiGraph, NodeIndex};
-use petgraph::visit::EdgeRef;
-use petgraph::Direction;
+mod build_error;
+mod cycle_error;
+mod key_correspondence;
+mod topology;
+
 use std::collections::{HashMap, HashSet, VecDeque};
-use std::error::Error as StdError;
-use std::fmt;
 use std::hash::Hash;
+
+pub use build_error::GraphError;
+pub use cycle_error::CycleError;
+
+use key_correspondence::キー対応表;
+use topology::{ノード位置, 有向トポロジー};
 
 /// ノード種別 `N`、エッジ種別 `E` (既定は属性なしを表す `()`)、
 /// ノードキー種別 `K` (既定は `String`) を持つ有向グラフ。
@@ -35,64 +43,9 @@ use std::hash::Hash;
 /// 構築後は不変 — 可変 API は公開しない。`build`/`create` でのみ作れる。
 #[derive(Debug)]
 pub struct Graph<N, E = (), K = String> {
-    inner: DiGraph<N, E>,
-    index: HashMap<K, NodeIndex>,
-    keys: HashMap<NodeIndex, K>,
+    トポロジー: 有向トポロジー<N, E>,
+    キー対応: キー対応表<K>,
 }
-
-/// [`Graph::build`] / [`Graph::create`] が返しうる構築エラー。
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum GraphError<K> {
-    /// ノード定義でキーが重複した。
-    DuplicateKey(K),
-    /// 辺が未知のキーを端点として参照している。
-    /// `missing` は `from`/`to` のうちどちらが未定義だったかを示す。
-    UnknownEndpoint { from: K, to: K, missing: K },
-}
-
-impl<K: fmt::Debug> fmt::Display for GraphError<K> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            GraphError::DuplicateKey(k) => write!(f, "ノードキーが重複しています: {k:?}"),
-            GraphError::UnknownEndpoint { from, to, missing } => write!(
-                f,
-                "辺 {from:?} -> {to:?} が未知のキー {missing:?} を参照しています"
-            ),
-        }
-    }
-}
-
-impl<K: fmt::Debug> StdError for GraphError<K> {}
-
-/// [`Graph::topological_sort`] / [`Graph::topological_levels`] /
-/// [`Graph::critical_path_by`] が循環検出時に返すエラー。
-///
-/// `cycle` は循環を構成するノードキーの列。`cycle[0]` から `cycle[1]`、
-/// ...、`cycle[last]` から `cycle[0]` へと辺を辿って戻ってこられる
-/// (閉路になっている) ことを保証する。自己ループの場合は `cycle` は
-/// 要素数 1 (`cycle[0]` 自身への辺)。
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CycleError<K> {
-    pub cycle: Vec<K>,
-}
-
-impl<K: fmt::Debug> fmt::Display for CycleError<K> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "グラフに循環があります: ")?;
-        for (i, k) in self.cycle.iter().enumerate() {
-            if i > 0 {
-                write!(f, " -> ")?;
-            }
-            write!(f, "{k:?}")?;
-        }
-        if let Some(first) = self.cycle.first() {
-            write!(f, " -> {first:?}")?;
-        }
-        Ok(())
-    }
-}
-
-impl<K: fmt::Debug> StdError for CycleError<K> {}
 
 /// [`Graph::create`] に貸し出される構築用 builder。
 ///
@@ -135,6 +88,19 @@ where
     }
 }
 
+impl<N, E, K> Graph<N, E, K> {
+    /// 部品からグラフを組み立てる、この型の唯一の私有コンストラクタ。
+    fn 部品から組み立てる(
+        トポロジー: 有向トポロジー<N, E>,
+        キー対応: キー対応表<K>,
+    ) -> Self {
+        Self {
+            トポロジー,
+            キー対応,
+        }
+    }
+}
+
 impl<N, E, K> Graph<N, E, K>
 where
     K: Hash + Eq + Clone,
@@ -145,36 +111,36 @@ where
         nodes: impl IntoIterator<Item = (K, N)>,
         edges: impl IntoIterator<Item = (K, K, E)>,
     ) -> Result<Self, GraphError<K>> {
-        let mut inner = DiGraph::new();
-        let mut index: HashMap<K, NodeIndex> = HashMap::new();
-        let mut keys: HashMap<NodeIndex, K> = HashMap::new();
+        let mut トポロジー = 有向トポロジー::空のトポロジーを生成する();
+        let mut キー対応 = キー対応表::空の対応表を生成する();
 
         for (key, value) in nodes {
-            if index.contains_key(&key) {
+            if キー対応.キーが登録済みか(&key) {
                 return Err(GraphError::DuplicateKey(key));
             }
-            let idx = inner.add_node(value);
-            keys.insert(idx, key.clone());
-            index.insert(key, idx);
+            let 位置 = トポロジー.ノードを追加する(value);
+            キー対応.対応を登録する(key, 位置);
         }
 
         for (from, to, value) in edges {
-            let from_idx = *index
-                .get(&from)
+            let 始点 = キー対応
+                .位置(&from)
                 .ok_or_else(|| GraphError::UnknownEndpoint {
                     from: from.clone(),
                     to: to.clone(),
                     missing: from.clone(),
                 })?;
-            let to_idx = *index.get(&to).ok_or_else(|| GraphError::UnknownEndpoint {
-                from: from.clone(),
-                to: to.clone(),
-                missing: to.clone(),
-            })?;
-            inner.add_edge(from_idx, to_idx, value);
+            let 終点 = キー対応
+                .位置(&to)
+                .ok_or_else(|| GraphError::UnknownEndpoint {
+                    from: from.clone(),
+                    to: to.clone(),
+                    missing: to.clone(),
+                })?;
+            トポロジー.辺を追加する(始点, 終点, value);
         }
 
-        Ok(Self { inner, index, keys })
+        Ok(Self::部品から組み立てる(トポロジー, キー対応))
     }
 
     /// builder をクロージャに貸し出し、戻ったら凍結して一括検証する。
@@ -193,38 +159,40 @@ where
 
     /// キーからノード値を引く。
     pub fn node(&self, key: &K) -> Option<&N> {
-        self.index.get(key).map(|&idx| &self.inner[idx])
+        self.キー対応
+            .位置(key)
+            .map(|位置| self.トポロジー.ノード値(位置))
     }
 
     /// 全ノードキーを走査するイテレータ (順序は未規定)。
     pub fn keys(&self) -> impl Iterator<Item = &K> {
-        self.index.keys()
+        self.キー対応.キーの一覧()
     }
 
     /// 全ノードを `(キー, 値)` で走査するイテレータ (順序は未規定)。
     pub fn nodes(&self) -> impl Iterator<Item = (&K, &N)> {
-        self.index
-            .iter()
-            .map(move |(k, &idx)| (k, &self.inner[idx]))
+        self.キー対応
+            .キーと位置の一覧()
+            .map(move |(キー, 位置)| (キー, self.トポロジー.ノード値(位置)))
     }
 
     /// ノード数。
     pub fn node_count(&self) -> usize {
-        self.inner.node_count()
+        self.トポロジー.ノード数()
     }
 
     /// 辺数。
     pub fn edge_count(&self) -> usize {
-        self.inner.edge_count()
+        self.トポロジー.辺数()
     }
 
     /// `key` から出て行く辺の終点キー一覧。`key` が存在しなければ空。
     pub fn out_neighbors(&self, key: &K) -> Vec<&K> {
-        match self.index.get(key) {
-            Some(&idx) => self
-                .inner
-                .neighbors_directed(idx, Direction::Outgoing)
-                .map(|n| &self.keys[&n])
+        match self.キー対応.位置(key) {
+            Some(位置) => self
+                .トポロジー
+                .出ていく先(位置)
+                .map(|隣| self.キー対応.キー(隣))
                 .collect(),
             None => Vec::new(),
         }
@@ -233,11 +201,11 @@ where
     /// `key` へ入ってくる辺の始点キー一覧 (`out_neighbors` と対称)。
     /// `key` が存在しなければ空。
     pub fn in_neighbors(&self, key: &K) -> Vec<&K> {
-        match self.index.get(key) {
-            Some(&idx) => self
-                .inner
-                .neighbors_directed(idx, Direction::Incoming)
-                .map(|n| &self.keys[&n])
+        match self.キー対応.位置(key) {
+            Some(位置) => self
+                .トポロジー
+                .入ってくる元(位置)
+                .map(|隣| self.キー対応.キー(隣))
                 .collect(),
             None => Vec::new(),
         }
@@ -245,23 +213,25 @@ where
 
     /// `from -> to` の辺属性を引く。辺が存在しない・端点キーが未知なら `None`。
     pub fn edge_weight(&self, from: &K, to: &K) -> Option<&E> {
-        let from_idx = *self.index.get(from)?;
-        let to_idx = *self.index.get(to)?;
-        let edge_idx = self.inner.find_edge(from_idx, to_idx)?;
-        self.inner.edge_weight(edge_idx)
+        let 始点 = self.キー対応.位置(from)?;
+        let 終点 = self.キー対応.位置(to)?;
+        self.トポロジー.辺値(始点, 終点)
     }
 
     /// グラフに循環があるか。
     pub fn has_cycle(&self) -> bool {
-        petgraph::algo::is_cyclic_directed(&self.inner)
+        self.トポロジー.循環があるか()
     }
 
     /// トポロジカルソート。循環がある場合は `CycleError` を返す。
     pub fn topological_sort(&self) -> Result<Vec<&K>, CycleError<K>> {
-        match petgraph::algo::toposort(&self.inner, None) {
-            Ok(order) => Ok(order.into_iter().map(|idx| &self.keys[&idx]).collect()),
-            Err(_) => Err(self.cycle_error(
-                self.find_cycle_indices()
+        match self.トポロジー.トポロジカル順序() {
+            Some(順序) => Ok(順序
+                .into_iter()
+                .map(|位置| self.キー対応.キー(位置))
+                .collect()),
+            None => Err(self.閉路をエラーへ翻訳する(
+                self.閉路を1本探す()
                     .expect("toposortが失敗したので循環が存在するはず"),
             )),
         }
@@ -272,56 +242,52 @@ where
     /// 集合であり、レベル内の順序はノードの挿入順 (`build`/`create` に
     /// 渡した順) で決定的。循環がある場合は `CycleError` を返す。
     pub fn topological_levels(&self) -> Result<Vec<Vec<&K>>, CycleError<K>> {
-        if let Some(cycle_indices) = self.find_cycle_indices() {
-            return Err(self.cycle_error(cycle_indices));
+        if let Some(閉路) = self.閉路を1本探す() {
+            return Err(self.閉路をエラーへ翻訳する(閉路));
         }
 
-        // ノード挿入順 (NodeIndex は `add_node` 呼び出し順に単調増加するため
-        // `node_indices()` の列がそのまま挿入順になる)。
-        let insertion_order: Vec<NodeIndex> = self.inner.node_indices().collect();
+        let 挿入順 = self.トポロジー.挿入順の位置列();
 
-        let mut in_degree: HashMap<NodeIndex, usize> = insertion_order
+        let mut 入次数: HashMap<ノード位置, usize> = 挿入順
             .iter()
-            .map(|&idx| {
-                (
-                    idx,
-                    self.inner
-                        .neighbors_directed(idx, Direction::Incoming)
-                        .count(),
-                )
-            })
+            .map(|&位置| (位置, self.トポロジー.入ってくる元(位置).count()))
             .collect();
-        let mut remaining: HashSet<NodeIndex> = insertion_order.iter().copied().collect();
+        let mut 未確定: HashSet<ノード位置> = 挿入順.iter().copied().collect();
 
-        let mut levels: Vec<Vec<&K>> = Vec::new();
+        let mut レベル列: Vec<Vec<&K>> = Vec::new();
 
-        while !remaining.is_empty() {
-            let frontier: Vec<NodeIndex> = insertion_order
+        while !未確定.is_empty() {
+            let 現在のレベル: Vec<ノード位置> = 挿入順
                 .iter()
                 .copied()
-                .filter(|idx| remaining.contains(idx) && in_degree[idx] == 0)
+                .filter(|位置| 未確定.contains(位置) && 入次数[位置] == 0)
                 .collect();
 
             debug_assert!(
-                !frontier.is_empty(),
+                !現在のレベル.is_empty(),
                 "循環なしを確認済みなのでフロンティアが空になることはない"
             );
 
-            for &idx in &frontier {
-                remaining.remove(&idx);
+            for &位置 in &現在のレベル {
+                未確定.remove(&位置);
             }
-            for &idx in &frontier {
-                for succ in self.inner.neighbors_directed(idx, Direction::Outgoing) {
-                    if let Some(d) = in_degree.get_mut(&succ) {
-                        *d = d.saturating_sub(1);
+            for &位置 in &現在のレベル {
+                for 次 in self.トポロジー.出ていく先(位置) {
+                    if let Some(残り) = 入次数.get_mut(&次) {
+                        *残り = 残り.saturating_sub(1);
                     }
                 }
             }
 
-            levels.push(frontier.iter().map(|idx| &self.keys[idx]).collect());
+            レベル列.push(
+                現在のレベル
+                    .iter()
+                    .map(|&位置| self.キー対応.キー(位置))
+                    .collect(),
+            );
         }
 
-        Ok(levels)
+        Ok(レベル列)
     }
 
     /// ノード重み付き最長経路 (クリティカルパス)。
@@ -383,80 +349,82 @@ where
         Ok((path, total))
     }
 
-    /// `indices` (循環を構成する `NodeIndex` 列) を `CycleError<K>` に変換する。
-    fn cycle_error(&self, indices: Vec<NodeIndex>) -> CycleError<K> {
+    /// 閉路を構成する位置列を、利用者が読むキー列のエラーへ翻訳する。
+    fn 閉路をエラーへ翻訳する(&self, 閉路: Vec<ノード位置>) -> CycleError<K> {
         CycleError {
-            cycle: indices
+            cycle: 閉路
                 .into_iter()
-                .map(|idx| self.keys[&idx].clone())
+                .map(|位置| self.キー対応.キー(位置).clone())
                 .collect(),
         }
     }
 
-    /// グラフ中の循環を 1 つ探して構成ノードの `NodeIndex` 列で返す
+    /// グラフ中の循環を 1 つ探して構成ノードの位置列で返す
     /// (循環がなければ `None`)。`cycle[0] -> cycle[1] -> .. -> cycle[last] ->
     /// cycle[0]` の閉路になっている。
     ///
-    /// `petgraph::algo::tarjan_scc` で強連結成分を求め、要素数が 2 以上の
-    /// 成分 (=循環を含む) か、要素数 1 かつ自己ループを持つ成分を探す。
-    /// 見つかった成分の中で DFS を行い、逆辺 (訪問中のノードへ戻る辺) を
-    /// 検出した時点で「その逆辺の宛先」から「現在のノード」までの DFS
-    /// パスを切り出せば、それがそのまま単純閉路になる。
-    fn find_cycle_indices(&self) -> Option<Vec<NodeIndex>> {
-        for scc in petgraph::algo::tarjan_scc(&self.inner) {
-            if scc.len() > 1 {
-                return Some(self.extract_cycle_from_scc(&scc));
+    /// 強連結成分を求め、要素数が 2 以上の成分 (=循環を含む) か、要素数 1
+    /// かつ自己ループを持つ成分を探す。見つかった成分の中で DFS を行い、
+    /// 逆辺 (訪問中のノードへ戻る辺) を検出した時点で「その逆辺の宛先」から
+    /// 「現在のノード」までの DFS パスを切り出せば、それがそのまま単純閉路
+    /// になる。
+    fn 閉路を1本探す(&self) -> Option<Vec<ノード位置>> {
+        for 成分 in self.トポロジー.強連結成分の一覧() {
+            if 成分.len() > 1 {
+                return Some(self.強連結成分から単純閉路を切り出す(&成分));
             }
-            if scc.len() == 1 {
-                let idx = scc[0];
-                if self.inner.find_edge(idx, idx).is_some() {
-                    return Some(vec![idx]);
+            if 成分.len() == 1 {
+                let 位置 = 成分[0];
+                if self.トポロジー.辺があるか(位置, 位置) {
+                    return Some(vec![位置]);
                 }
             }
         }
         None
     }
 
-    /// 強連結成分 `scc` (要素数 2 以上、循環を含むことが保証されている)
-    /// の中から単純閉路を 1 つ復元する。反復 DFS + パススタックによる
-    /// 逆辺検出。
-    fn extract_cycle_from_scc(&self, scc: &[NodeIndex]) -> Vec<NodeIndex> {
-        let scc_set: HashSet<NodeIndex> = scc.iter().copied().collect();
-        let start = scc[0];
+    /// 強連結成分 (要素数 2 以上、循環を含むことが保証されている) の中から
+    /// 単純閉路を 1 つ復元する。反復 DFS + パススタックによる逆辺検出。
+    fn 強連結成分から単純閉路を切り出す(
+        &self,
+        成分: &[ノード位置],
+    ) -> Vec<ノード位置> {
+        let 成分の集合: HashSet<ノード位置> = 成分.iter().copied().collect();
+        let 始点 = 成分[0];
 
-        let mut path: Vec<NodeIndex> = vec![start];
-        let mut path_pos: HashMap<NodeIndex, usize> = HashMap::new();
-        path_pos.insert(start, 0);
-        let mut visited: HashSet<NodeIndex> = HashSet::new();
-        visited.insert(start);
+        let mut 経路: Vec<ノード位置> = vec![始点];
+        let mut 経路上の順番: HashMap<ノード位置, usize> = HashMap::new();
+        経路上の順番.insert(始点, 0);
+        let mut 訪問済み: HashSet<ノード位置> = HashSet::new();
+        訪問済み.insert(始点);
 
-        let neighbors_of = |idx: NodeIndex| -> Vec<NodeIndex> {
-            self.inner
-                .neighbors_directed(idx, Direction::Outgoing)
-                .filter(|n| scc_set.contains(n))
+        let 成分内の行き先 = |位置: ノード位置| -> Vec<ノード位置> {
+            self.トポロジー
+                .出ていく先(位置)
+                .filter(|隣| 成分の集合.contains(隣))
                 .collect()
         };
 
-        let mut frames: Vec<(NodeIndex, std::vec::IntoIter<NodeIndex>)> =
-            vec![(start, neighbors_of(start).into_iter())];
+        let mut 未処理の枝: Vec<(ノード位置, std::vec::IntoIter<ノード位置>)> =
+            vec![(始点, 成分内の行き先(始点).into_iter())];
 
-        while let Some((_, iter)) = frames.last_mut() {
-            match iter.next() {
-                Some(next) => {
-                    if let Some(&pos) = path_pos.get(&next) {
-                        // 逆辺を発見: pos..end が単純閉路。
-                        return path[pos..].to_vec();
+        while let Some((_, 残り)) = 未処理の枝.last_mut() {
+            match 残り.next() {
+                Some(次) => {
+                    if let Some(&順番) = 経路上の順番.get(&次) {
+                        // 逆辺を発見: 順番..末尾 が単純閉路。
+                        return 経路[順番..].to_vec();
                     }
-                    if visited.insert(next) {
-                        path.push(next);
-                        path_pos.insert(next, path.len() - 1);
-                        frames.push((next, neighbors_of(next).into_iter()));
+                    if 訪問済み.insert(次) {
+                        経路.push(次);
+                        経路上の順番.insert(次, 経路.len() - 1);
+                        未処理の枝.push((次, 成分内の行き先(次).into_iter()));
                     }
                 }
                 None => {
-                    if let Some((node, _)) = frames.pop() {
-                        path.pop();
-                        path_pos.remove(&node);
+                    if let Some((位置, _)) = 未処理の枝.pop() {
+                        経路.pop();
+                        経路上の順番.remove(&位置);
                     }
                 }
             }
@@ -468,15 +436,13 @@ where
     /// `key` から到達可能な全ノードキー (`key` 自身も含む反射的な到達可能性)。
     /// `key` が存在しなければ空。
     pub fn reachable_from(&self, key: &K) -> Vec<&K> {
-        match self.index.get(key) {
-            Some(&start) => {
-                let mut dfs = petgraph::visit::Dfs::new(&self.inner, start);
-                let mut result = Vec::new();
-                while let Some(idx) = dfs.next(&self.inner) {
-                    result.push(&self.keys[&idx]);
-                }
-                result
-            }
+        match self.キー対応.位置(key) {
+            Some(始点) => self
+                .トポロジー
+                .深さ優先で到達できる位置列(始点)
+                .into_iter()
+                .map(|位置| self.キー対応.キー(位置))
+                .collect(),
             None => Vec::new(),
         }
     }
@@ -484,35 +450,40 @@ where
     /// `from` から `to` への (辺数最短の) 経路をキー列で返す。
     /// 到達不能・端点キーが未知なら `None`。`from == to` なら `[from]` を返す。
     pub fn path(&self, from: &K, to: &K) -> Option<Vec<&K>> {
-        let from_idx = *self.index.get(from)?;
-        let to_idx = *self.index.get(to)?;
+        let 始点 = self.キー対応.位置(from)?;
+        let 終点 = self.キー対応.位置(to)?;
 
-        if from_idx == to_idx {
-            return Some(vec![&self.keys[&from_idx]]);
+        if 始点 == 終点 {
+            return Some(vec![self.キー対応.キー(始点)]);
         }
 
-        let mut visited: HashSet<NodeIndex> = HashSet::new();
-        let mut queue: VecDeque<NodeIndex> = VecDeque::new();
-        let mut pred: HashMap<NodeIndex, NodeIndex> = HashMap::new();
+        let mut 訪問済み: HashSet<ノード位置> = HashSet::new();
+        let mut 待ち行列: VecDeque<ノード位置> = VecDeque::new();
+        let mut 先行: HashMap<ノード位置, ノード位置> = HashMap::new();
 
-        visited.insert(from_idx);
-        queue.push_back(from_idx);
+        訪問済み.insert(始点);
+        待ち行列.push_back(始点);
 
-        while let Some(cur) = queue.pop_front() {
-            for next in self.inner.neighbors_directed(cur, Direction::Outgoing) {
-                if visited.insert(next) {
-                    pred.insert(next, cur);
-                    if next == to_idx {
-                        let mut path = vec![next];
-                        let mut c = next;
-                        while let Some(&p) = pred.get(&c) {
-                            path.push(p);
-                            c = p;
+        while let Some(現在) = 待ち行列.pop_front() {
+            for 次 in self.トポロジー.出ていく先(現在) {
+                if 訪問済み.insert(次) {
+                    先行.insert(次, 現在);
+                    if 次 == 終点 {
+                        let mut 経路 = vec![次];
+                        let mut 遡り = 次;
+                        while let Some(&手前) = 先行.get(&遡り) {
+                            経路.push(手前);
+                            遡り = 手前;
                         }
-                        path.reverse();
-                        return Some(path.into_iter().map(|idx| &self.keys[&idx]).collect());
+                        経路.reverse();
+                        return Some(
+                            経路
+                                .into_iter()
+                                .map(|位置| self.キー対応.キー(位置))
+                                .collect(),
+                        );
                     }
-                    queue.push_back(next);
+                    待ち行列.push_back(次);
                 }
             }
         }
@@ -535,27 +506,24 @@ where
     where
         E: Clone,
     {
-        let mut inner: DiGraph<M, E> = DiGraph::new();
-        let mut index: HashMap<K, NodeIndex> = HashMap::new();
-        let mut keys: HashMap<NodeIndex, K> = HashMap::new();
-        let mut old_to_new: HashMap<NodeIndex, NodeIndex> = HashMap::new();
+        let mut トポロジー: 有向トポロジー<M, E> =
+            有向トポロジー::空のトポロジーを生成する();
+        let mut キー対応 = キー対応表::空の対応表を生成する();
+        let mut 位置の対応: HashMap<ノード位置, ノード位置> = HashMap::new();
 
-        for old_idx in self.inner.node_indices() {
-            let key = self.keys[&old_idx].clone();
-            let new_value = f(&key, &self.inner[old_idx]);
-            let new_idx = inner.add_node(new_value);
-            old_to_new.insert(old_idx, new_idx);
-            keys.insert(new_idx, key.clone());
-            index.insert(key, new_idx);
+        for 変換前 in self.トポロジー.挿入順の位置列() {
+            let キー = self.キー対応.キー(変換前).clone();
+            let 新しい値 = f(&キー, self.トポロジー.ノード値(変換前));
+            let 変換後 = トポロジー.ノードを追加する(新しい値);
+            位置の対応.insert(変換前, 変換後);
+            キー対応.対応を登録する(キー, 変換後);
         }
 
-        for edge in self.inner.edge_references() {
-            let new_from = old_to_new[&edge.source()];
-            let new_to = old_to_new[&edge.target()];
-            inner.add_edge(new_from, new_to, edge.weight().clone());
+        for (始点, 終点, 値) in self.トポロジー.辺の一覧() {
+            トポロジー.辺を追加する(位置の対応[&始点], 位置の対応[&終点], 値.clone());
         }
 
-        Graph { inner, index, keys }
+        Graph::部品から組み立てる(トポロジー, キー対応)
     }
 
     /// 述語 `pred` を満たすノードだけを残す。辺は両端が生き残ったものだけ残る。
@@ -576,31 +544,30 @@ where
         N: Clone,
         E: Clone,
     {
-        let mut inner: DiGraph<N, E> = DiGraph::new();
-        let mut index: HashMap<K, NodeIndex> = HashMap::new();
-        let mut keys: HashMap<NodeIndex, K> = HashMap::new();
-        let mut old_to_new: HashMap<NodeIndex, NodeIndex> = HashMap::new();
+        let mut トポロジー: 有向トポロジー<N, E> =
+            有向トポロジー::空のトポロジーを生成する();
+        let mut キー対応 = キー対応表::空の対応表を生成する();
+        let mut 位置の対応: HashMap<ノード位置, ノード位置> = HashMap::new();
 
-        for old_idx in self.inner.node_indices() {
-            let key = self.keys[&old_idx].clone();
-            if pred(&key, &self.inner[old_idx]) {
-                let new_idx = inner.add_node(self.inner[old_idx].clone());
-                old_to_new.insert(old_idx, new_idx);
-                keys.insert(new_idx, key.clone());
-                index.insert(key, new_idx);
+        for 変換前 in self.トポロジー.挿入順の位置列() {
+            let キー = self.キー対応.キー(変換前).clone();
+            if pred(&キー, self.トポロジー.ノード値(変換前)) {
+                let 変換後 =
+                    トポロジー.ノードを追加する(self.トポロジー.ノード値(変換前).clone());
+                位置の対応.insert(変換前, 変換後);
+                キー対応.対応を登録する(キー, 変換後);
             }
         }
 
-        for edge in self.inner.edge_references() {
-            if let (Some(&new_from), Some(&new_to)) = (
-                old_to_new.get(&edge.source()),
-                old_to_new.get(&edge.target()),
-            ) {
-                inner.add_edge(new_from, new_to, edge.weight().clone());
+        for (始点, 終点, 値) in self.トポロジー.辺の一覧() {
+            if let (Some(&新しい始点), Some(&新しい終点)) =
+                (位置の対応.get(&始点), 位置の対応.get(&終点))
+            {
+                トポロジー.辺を追加する(新しい始点, 新しい終点, 値.clone());
             }
         }
 
-        Graph { inner, index, keys }
+        Graph::部品から組み立てる(トポロジー, キー対応)
     }
 }
 
