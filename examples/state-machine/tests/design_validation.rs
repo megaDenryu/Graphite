@@ -4,8 +4,8 @@ use state_machine::fsm;
 use state_machine::schema::OrderStateId;
 use state_machine::validate;
 
-fn id(s: &str) -> OrderStateId {
-    OrderStateId(s.to_string())
+fn id(spelling: &str) -> OrderStateId {
+    OrderStateId(spelling.to_string())
 }
 
 #[test]

@@ -3,8 +3,8 @@
 use state_machine::fsm::{self, Event};
 use state_machine::schema::OrderStateId;
 
-fn id(s: &str) -> OrderStateId {
-    OrderStateId(s.to_string())
+fn id(spelling: &str) -> OrderStateId {
+    OrderStateId(spelling.to_string())
 }
 
 #[test]
