@@ -10,7 +10,9 @@
    `topological_sort`・`topological_levels`・`critical_path_by`・`reachable_from`・
    `path`・`map_nodes`・`filter_nodes`・`from_edges` を提供する。図式グラフ
    (`graph_schema!`) から射影して汎用アルゴリズムを使う経路と、計算グラフの構造検証の
-   両方がこれを使う。
+   両方がこれを使う。`Graph` の `Debug` 表示は内部構造に追随して変わり、安定契約では
+   ない。確保回数の不変主張は `Graph::build` に限る (`map_nodes`/`reachable_from` は
+   定数項+1、`filter_nodes` は -24 の差があるが、漸近計算量はいずれも不変)。
 2. **計算グラフ `ComputeGraph<V>`** (`compute/`) — 計算グラフを実行時の値として保持し、
    pull 型で遅延評価・差分再計算するランタイムエンジン。**リポジトリ内に呼び出し側は無い**
    (2026-08-26 時点。使っているのは自身のテスト
@@ -50,7 +52,7 @@
 | `graph/topology/transform.rs` | トポロジーの作り直しと、位置の対応の生成 |
 | `compute/mod.rs` | 計算グラフの公開API窓口。3部品の配線と遅延評価の入口 |
 | `compute/node_kind.rs` | ノード種別 (入力/計算) と、値を求める関数 |
-| `compute/node_table.rs` | 計算ノード表。キーから種別・依存キー列・計算を引く |
+| `compute/node_table.rs` | 計算ノード表。キーから種別・依存キー列・計算を読み出す |
 | `compute/builder.rs` | 凍結前の半端な宣言列を唯一所有する builder |
 | `compute/dependency_structure.rs` | 検証済みの依存グラフとトポロジカル位置 (凍結後不変) |
 | `compute/evaluation_state.rs` | 評価状態。現在値と未再計算集合の整合 |
@@ -102,9 +104,9 @@ Get-ChildItem crates\graphite\src -Recurse -Filter *.rs |
 
 1ファイル100行原則の例外は次の3つで、理由は各ファイルの冒頭にも書いてある。
 
-- `graph/mod.rs` — 公開契約20メソッドを1画面で読む場所。分岐・ループ・アルゴリズムを
-  書かず、1メソッドの本体は翻訳と委譲だけにする規則で運用する。行数の実体は公開API
-  のrustdocである。
+- `graph/mod.rs` — 公開契約20メソッドを1画面で読む場所。キーの有無の判定と
+  位置列⇄キー列の写し取り以外のロジックを書かない。アルゴリズムの本体は
+  `topology/` の型が所有する。行数の実体は公開APIのrustdocである。
 - `compute/mod.rs` — 公開API3つと、doctest付きのモジュールdoc。設計判断の説明は該当
   ファイル (動的ディスパッチ→`node_kind.rs`、再利用と内製→`dependency_structure.rs`、
   glitch-free→`recomputation.rs`) へ分配済み。
@@ -116,7 +118,7 @@ Get-ChildItem crates\graphite\src -Recurse -Filter *.rs |
 
 ## 生成コードが依存する再公開
 
-生成コードは `::graphite::` 直下の綴りを出力する。次の12件は移動しても必ず
+生成コードは `::graphite::` 直下の綴りを出力する。次の13件は移動しても必ず
 `lib.rs` から再公開し続ける。`次の構築印を発行する` を落とすと全ての生成コードが壊れる。
 
 `KeyedTable` / `UnorderedPair` / `MultipleRoleIndex` / `ExactlyOneRoleIndex` /

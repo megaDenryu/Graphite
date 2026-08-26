@@ -1,4 +1,4 @@
-//! 水準1相当: ジェネリックグラフ `Graph<N, E, K>`。
+//! `Graph<N, E, K>` — 水準1相当のジェネリックグラフを提供する。
 //!
 //! `docs/graph_design_sketches.md` の決定1 (ノードの同一性はユーザーキー)・
 //! 決定2 (可変性はクロージャスコープ builder → 凍結し、以後不変) をそのまま
@@ -22,6 +22,12 @@
 //! `create` に渡すクロージャの型は `for<'b> FnOnce(&'b mut GraphBuilder<..>)`
 //! であり、builder への参照をクロージャの外に持ち出すことを借用検査器が
 //! 静的に拒否する (`std::thread::scope` と同じ仕組み)。
+//!
+//! ## 100行原則の例外
+//!
+//! このファイルは公開契約20メソッドを1画面で読む場所として100行原則の例外に
+//! 数える。キーの有無の判定と位置列⇄キー列の写し取り以外のロジックを書かない。
+//! アルゴリズムの本体は [`topology`] 配下の型が所有する。
 
 mod assembly;
 mod build_error;
@@ -95,7 +101,7 @@ where
         builder.凍結する()
     }
 
-    /// キーからノード値を引く。
+    /// キーからノード値を読み出す。
     pub fn node(&self, key: &K) -> Option<&N> {
         self.キー対応
             .位置(key)
@@ -126,30 +132,32 @@ where
 
     /// `key` から出て行く辺の終点キー一覧。`key` が存在しなければ空。
     pub fn out_neighbors(&self, key: &K) -> Vec<&K> {
-        match self.キー対応.位置(key) {
-            Some(位置) => self
-                .トポロジー
-                .出ていく先(位置)
-                .map(|隣| self.キー対応.キー(隣))
-                .collect(),
-            None => Vec::new(),
-        }
+        self.キー対応
+            .位置(key)
+            .map(|位置| {
+                self.トポロジー
+                    .出ていく先(位置)
+                    .map(|隣| self.キー対応.キー(隣))
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 
     /// `key` へ入ってくる辺の始点キー一覧 (`out_neighbors` と対称)。
     /// `key` が存在しなければ空。
     pub fn in_neighbors(&self, key: &K) -> Vec<&K> {
-        match self.キー対応.位置(key) {
-            Some(位置) => self
-                .トポロジー
-                .入ってくる元(位置)
-                .map(|隣| self.キー対応.キー(隣))
-                .collect(),
-            None => Vec::new(),
-        }
+        self.キー対応
+            .位置(key)
+            .map(|位置| {
+                self.トポロジー
+                    .入ってくる元(位置)
+                    .map(|隣| self.キー対応.キー(隣))
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 
-    /// `from -> to` の辺属性を引く。辺が存在しない・端点キーが未知なら `None`。
+    /// `from -> to` の辺属性を読み出す。辺が存在しない・端点キーが未知なら `None`。
     pub fn edge_weight(&self, from: &K, to: &K) -> Option<&E> {
         let 始点 = self.キー対応.位置(from)?;
         let 終点 = self.キー対応.位置(to)?;
@@ -172,9 +180,7 @@ where
     /// 集合であり、レベル内の順序はノードの挿入順 (`build`/`create` に
     /// 渡した順) で決定的。循環がある場合は `CycleError` を返す。
     pub fn topological_levels(&self) -> Result<Vec<Vec<&K>>, CycleError<K>> {
-        if let Some(閉路) = self.閉路を1本探す() {
-            return Err(self.閉路をエラーへ翻訳する(閉路));
-        }
+        self.循環が無いことを確認する()?;
         Ok(依存レベルの分割::トポロジーから始める(&self.トポロジー)
             .レベル列を求める()
             .into_iter()
@@ -252,16 +258,28 @@ where
         循環の探索::トポロジーから始める(&self.トポロジー).閉路を1本探す()
     }
 
+    /// グラフ中に循環が無いことを確認する。循環があればキー列のエラーを返す。
+    fn 循環が無いことを確認する(&self) -> Result<(), CycleError<K>> {
+        match self.閉路を1本探す() {
+            None => Ok(()),
+            Some(閉路) => Err(self.閉路をエラーへ翻訳する(閉路)),
+        }
+    }
+
     /// `key` から到達可能な全ノードキー (`key` 自身も含む反射的な到達可能性)。
     /// `key` が存在しなければ空。
     pub fn reachable_from(&self, key: &K) -> Vec<&K> {
-        match self.キー対応.位置(key) {
-            Some(始点) => self.位置列をキー列へ翻訳する(
-                到達可能な位置の収集::トポロジーから始める(&self.トポロジー)
+        self.キー対応
+            .位置(key)
+            .map(|始点| {
+                self.位置列をキー列へ翻訳する(
+                    到達可能な位置の収集::トポロジーから始める(
+                        &self.トポロジー,
+                    )
                     .始点から到達できる位置列(始点),
-            ),
-            None => Vec::new(),
-        }
+                )
+            })
+            .unwrap_or_default()
     }
 
     /// `from` から `to` への (辺数最短の) 経路をキー列で返す。

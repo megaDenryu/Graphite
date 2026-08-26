@@ -1,3 +1,5 @@
+//! 順序を持たない同型値の対を提供する。
+
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 /// 順序を持たない同型値の対。

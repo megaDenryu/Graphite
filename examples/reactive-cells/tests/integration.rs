@@ -67,7 +67,7 @@ fn 循環する依存グラフはengine_newの時点でcycleerrorになる() {
     assert_eq!(err.cycle.len(), 3);
     // 循環パスが実際に閉路になっている (cycle[i] -> cycle[i+1] が
     // feedsエッジとして存在する) ことまでは、CycleError自体の保証
-    // (`crates/graphite/src/graph.rs`のドキュメント参照) に委ねる。
+    // (`crates/graphite/src/graph/cycle_error.rs`のドキュメント参照) に委ねる。
 }
 
 #[test]

@@ -1,4 +1,4 @@
-//! Graphite — グラフ指向データ構造のランタイムライブラリ。
+//! Graphite は、グラフ指向データ構造を Rust の型システムに乗せるランタイムライブラリである。
 //!
 //! このクレートは利用者が唯一 depend するクレートであり、
 //! `graphite-macros` (proc-macro クレート) の内容を re-export する
