@@ -4,15 +4,21 @@
 //! [`ノード位置`] を通してのみトポロジーへ触れる。
 
 pub(in crate::graph) mod cycle_search;
+pub(in crate::graph) mod dependency_levels;
+pub(in crate::graph) mod longest_path;
 pub(in crate::graph) mod position;
 mod simple_cycle_extraction;
+pub(in crate::graph) mod topological_order;
 
 use petgraph::graph::DiGraph;
 use petgraph::visit::EdgeRef;
 use petgraph::Direction;
 
 pub(in crate::graph) use cycle_search::{循環の探索, 閉路の位置列};
+pub(in crate::graph) use dependency_levels::依存レベルの分割;
+pub(in crate::graph) use longest_path::最長経路の算出;
 pub(in crate::graph) use position::ノード位置;
+pub(in crate::graph) use topological_order::トポロジカル順序の算出;
 
 /// ノード値 `N`・辺値 `E` を持つ有向グラフの形そのもの。ユーザーキーは持たない。
 #[derive(Debug)]
@@ -113,18 +119,6 @@ impl<N, E> 有向トポロジー<N, E> {
     /// だけが使い、トポロジーの外へは出さない。
     pub(in crate::graph::topology) fn 内部グラフ(&self) -> &DiGraph<N, E> {
         &self.内部グラフ
-    }
-
-    /// 全体のトポロジカル順序。循環があるときは `None`。
-    pub(in crate::graph) fn トポロジカル順序(&self) -> Option<Vec<ノード位置>> {
-        petgraph::algo::toposort(&self.内部グラフ, None)
-            .ok()
-            .map(|順序| {
-                順序
-                    .into_iter()
-                    .map(ノード位置::内部添字から生成する)
-                    .collect()
-            })
     }
 
     /// 始点から深さ優先で到達できる位置列 (始点自身を含む)。

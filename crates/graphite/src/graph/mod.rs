@@ -40,7 +40,10 @@ pub use cycle_error::CycleError;
 
 use assembly::構築中のグラフ;
 use key_correspondence::キー対応表;
-use topology::{ノード位置, 循環の探索, 有向トポロジー, 閉路の位置列};
+use topology::{
+    トポロジカル順序の算出, ノード位置, 依存レベルの分割, 循環の探索, 最長経路の算出,
+    有向トポロジー, 閉路の位置列,
+};
 
 /// ノード種別 `N`、エッジ種別 `E` (既定は属性なしを表す `()`)、
 /// ノードキー種別 `K` (既定は `String`) を持つ有向グラフ。
@@ -160,16 +163,11 @@ where
 
     /// トポロジカルソート。循環がある場合は `CycleError` を返す。
     pub fn topological_sort(&self) -> Result<Vec<&K>, CycleError<K>> {
-        match self.トポロジー.トポロジカル順序() {
-            Some(順序) => Ok(順序
-                .into_iter()
-                .map(|位置| self.キー対応.キー(位置))
-                .collect()),
-            None => Err(self.閉路をエラーへ翻訳する(
-                self.閉路を1本探す()
-                    .expect("toposortが失敗したので循環が存在するはず"),
-            )),
-        }
+        let 順序 = self.トポロジカル順序を求める()?;
+        Ok(順序
+            .into_iter()
+            .map(|位置| self.キー対応.キー(位置))
+            .collect())
     }
 
     /// 依存のないノードから順にレベル (波) 分割したトポロジカルソート。
@@ -180,49 +178,16 @@ where
         if let Some(閉路) = self.閉路を1本探す() {
             return Err(self.閉路をエラーへ翻訳する(閉路));
         }
-
-        let 挿入順 = self.トポロジー.挿入順の位置列();
-
-        let mut 入次数: HashMap<ノード位置, usize> = 挿入順
-            .iter()
-            .map(|&位置| (位置, self.トポロジー.入ってくる元(位置).count()))
-            .collect();
-        let mut 未確定: HashSet<ノード位置> = 挿入順.iter().copied().collect();
-
-        let mut レベル列: Vec<Vec<&K>> = Vec::new();
-
-        while !未確定.is_empty() {
-            let 現在のレベル: Vec<ノード位置> = 挿入順
-                .iter()
-                .copied()
-                .filter(|位置| 未確定.contains(位置) && 入次数[位置] == 0)
-                .collect();
-
-            debug_assert!(
-                !現在のレベル.is_empty(),
-                "循環なしを確認済みなのでフロンティアが空になることはない"
-            );
-
-            for &位置 in &現在のレベル {
-                未確定.remove(&位置);
-            }
-            for &位置 in &現在のレベル {
-                for 次 in self.トポロジー.出ていく先(位置) {
-                    if let Some(残り) = 入次数.get_mut(&次) {
-                        *残り = 残り.saturating_sub(1);
-                    }
-                }
-            }
-
-            レベル列.push(
-                現在のレベル
-                    .iter()
-                    .map(|&位置| self.キー対応.キー(位置))
-                    .collect(),
-            );
-        }
-
-        Ok(レベル列)
+        Ok(依存レベルの分割::トポロジーから始める(&self.トポロジー)
+            .レベル列を求める()
+            .into_iter()
+            .map(|レベル| {
+                レベル
+                    .into_iter()
+                    .map(|位置| self.キー対応.キー(位置))
+                    .collect()
+            })
+            .collect())
     }
 
     /// ノード重み付き最長経路 (クリティカルパス)。
@@ -238,50 +203,43 @@ where
     where
         W: Ord + Copy + Default + std::ops::Add<Output = W>,
     {
-        let order = self.topological_sort()?;
-        if order.is_empty() {
-            return Ok((Vec::new(), W::default()));
-        }
+        let 順序 = self.トポロジカル順序を求める()?;
+        let 重み = self.ノード重みの表を作る(順序.as_slice(), node_weight);
+        let (経路, 総和) = 最長経路の算出::トポロジカル順序と重みから始める(
+            &self.トポロジー,
+            順序,
+            重み,
+        )
+        .経路と総和を求める();
+        Ok((
+            経路
+                .into_iter()
+                .map(|位置| self.キー対応.キー(位置))
+                .collect(),
+            総和,
+        ))
+    }
 
-        let weight_of: HashMap<&K, W> = order
+    /// トポロジカル順序を位置列で求める。循環していたらキー列のエラーへ翻訳する。
+    fn トポロジカル順序を求める(&self) -> Result<Vec<ノード位置>, CycleError<K>> {
+        トポロジカル順序の算出::トポロジーから始める(&self.トポロジー)
+            .順序を求める()
+            .map_err(|閉路| self.閉路をエラーへ翻訳する(閉路))
+    }
+
+    /// 位置ごとのノード重みを、利用者が渡した重み付けから引いて表にする。
+    fn ノード重みの表を作る<W>(
+        &self,
+        位置列: &[ノード位置],
+        node_weight: impl Fn(&K, &N) -> W,
+    ) -> HashMap<ノード位置, W> {
+        位置列
             .iter()
-            .map(|&key| {
-                let value = self
-                    .node(key)
-                    .expect("topological_sortが返すキーは必ず存在する");
-                (key, node_weight(key, value))
+            .map(|&位置| {
+                let 重み = node_weight(self.キー対応.キー(位置), self.トポロジー.ノード値(位置));
+                (位置, 重み)
             })
-            .collect();
-
-        let mut dist: HashMap<&K, W> = order.iter().map(|&key| (key, weight_of[key])).collect();
-        let mut pred: HashMap<&K, &K> = HashMap::new();
-
-        for &key in &order {
-            let cur = dist[key];
-            for succ in self.out_neighbors(key) {
-                let candidate = cur + weight_of[succ];
-                if candidate > dist[succ] {
-                    dist.insert(succ, candidate);
-                    pred.insert(succ, key);
-                }
-            }
-        }
-
-        let end = *order
-            .iter()
-            .max_by_key(|&&key| dist[key])
-            .expect("orderは空でないことを上で確認済み");
-
-        let total = dist[end];
-        let mut path = vec![end];
-        let mut cur = end;
-        while let Some(&p) = pred.get(cur) {
-            path.push(p);
-            cur = p;
-        }
-        path.reverse();
-
-        Ok((path, total))
+            .collect()
     }
 
     /// 閉路を構成する位置列を、利用者が読むキー列のエラーへ翻訳する。
