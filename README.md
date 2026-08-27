@@ -231,27 +231,85 @@ graphite = { git = "https://github.com/megaDenryu/Graphite" }
 ### schema を使う場合
 
 `graph_schema!` は実装を展開せず、生成された通常の Rust ファイルとの指紋の一致を
-検査します。そのため、生成器を1つ入れる必要があります。任意の作業ディレクトリで
-実行します。
+検査します。そのため、生成器を1つ入れる必要があります。0 から最初のビルドが
+通るまでを、次の4段階で通します。
+
+**1. 生成器をインストールします。** clone してから `cargo install --path` する
+方法と、clone せずに1コマンドで入れる方法のどちらでもかまいません。任意の
+作業ディレクトリで実行します。
 
 ```powershell
 git clone https://github.com/megaDenryu/Graphite
 cargo install --path Graphite/crates/graphite-cli
 ```
 
-これで `cargo graphite` が使えます。自分のパッケージへ依存を足し、
+clone を省きたい場合は、次の1コマンドだけで同じ `cargo graphite` が入ります。
+
+```powershell
+cargo install --git https://github.com/megaDenryu/Graphite graphite-cli
+```
+
+**2. 自分のパッケージへ依存を1行足します。**
 
 ```toml
 [dependencies]
 graphite = { git = "https://github.com/megaDenryu/Graphite" }
 ```
 
-schema 宣言と生成moduleの `include!` を書いたら、そのパッケージのディレクトリで
-生成します。
+**3. schema 3点セットを `src/lib.rs` へ貼ります。** ノード値型・生成moduleの
+`include!` ・`graph_schema!` 宣言の3点です。次のコードはそのまま貼れば動く
+自己完結の例で、出典は `verification/external-crate/src/lib.rs` の実物
+(Book / Reader / Borrowed) です。
+
+```rust
+// ノード型・積み荷型は普通の Rust struct として宣言する。
+// graph_schema! はこれらの型を生成せず、参照するだけ。
+// 生成コードが Ref 型へ Clone / PartialEq を要求するため、ここでも derive する。
+#[derive(Debug, Clone, PartialEq)]
+pub struct Book { pub title: String }
+#[derive(Debug, Clone, PartialEq)]
+pub struct Reader { pub name: String }
+#[derive(Debug, Clone, PartialEq)]
+pub struct Loan { pub day: u32 }
+
+#[allow(non_snake_case, dead_code, private_interfaces)]
+#[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
+pub mod Library {
+    include!("generated/library.rs");
+}
+
+#[rustfmt::skip]
+graphite::graph_schema! {
+    generated = "generated/library.rs";
+    schema Library {
+        node Book;
+        node Reader;
+
+        edge Borrowed = (book: Book) -[loan: Loan]-> (reader: Reader) where each book: 0..1;
+    }
+}
+```
+
+`#[rustfmt::skip]` と `#[allow(...)]` の行は省略しないでください。省いても
+`cargo build` 自体は通りますが、`-[loan: Loan]->` は rustfmt が通常の式として
+整形しようとして崩す独自のトークン列なので `#[rustfmt::skip]` が要り、生成moduleは
+schema名をそのまま module 名にする・利用側が使わない生成物を含む・非公開の値型が
+公開APIに現れる、という3つの事情でそれぞれの警告を出すため `#[allow(...)]` が
+要ります。
+
+**4. 生成してビルドを通します。** 自分のパッケージのディレクトリ (`Cargo.toml`
+がある場所) で実行します。
 
 ```powershell
 cargo graphite generate          # 生成ファイルを更新する
-cargo graphite generate --check  # 差分と孤児をエラーにする (CI 向け)
+cargo build
+```
+
+生成ファイルに差分が無いことと孤児が無いことを CI で検査したい場合は、
+`generate` の代わりに次を使います (ファイルは書き換えません)。
+
+```powershell
+cargo graphite generate --check
 ```
 
 走査するのはパッケージ直下の `src` と `tests` の配下です。生成ファイルは
