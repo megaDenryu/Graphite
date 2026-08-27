@@ -20,7 +20,9 @@
   (積み荷とは辺そのものが持つ属性値のことです。詳細は「主要な概念」)。
 - **宣言から通常の Rust ソースを生成します。** `cargo graphite generate` が書き出した
   ファイルが唯一の実装であり、利用コードから定義ジャンプするとその実装行へ着地します。
-  マクロは宣言を検証したうえで、生成ファイルとの指紋の一致をコンパイル時に検査します。
+  マクロは宣言を検証したうえで、生成ファイルとの指紋 (schema の宣言内容から計算する
+  ハッシュ値。宣言と生成ファイルが対応しているかをコンパイル時に照合する) の一致を
+  検査します。
 - **完成したグラフを凍結して読みます。** `graph.alice()` や
   `person.belongs_to_as_member()` のように、関係を型のついたメソッドで辿ります。
   戻り値の型は宣言した多重度が決めるため、「1本に定まる」「無いかもしれない」
@@ -231,8 +233,8 @@ graphite = { git = "https://github.com/megaDenryu/Graphite" }
 ### schema を使う場合
 
 `graph_schema!` は実装を展開せず、生成された通常の Rust ファイルとの指紋の一致を
-検査します。そのため、生成器を1つ入れる必要があります。0 から最初のビルドが
-通るまでを、次の4段階で通します。
+検査します。そのため、生成器 (`cargo graphite` コマンドを提供する `graphite-cli`) を
+1つ入れる必要があります。0 から最初のビルドが通るまでを、次の4段階で通します。
 
 **1. 生成器をインストールします。** clone してから `cargo install --path` する
 方法と、clone せずに1コマンドで入れる方法のどちらでもかまいません。任意の
@@ -243,23 +245,24 @@ git clone https://github.com/megaDenryu/Graphite
 cargo install --path Graphite/crates/graphite-cli
 ```
 
-clone を省きたい場合は、次の1コマンドだけで同じ `cargo graphite` が入ります。
+clone を省きたい場合は、任意の作業ディレクトリで次の1コマンドだけを実行すれば
+同じ `cargo graphite` が入ります。
 
 ```powershell
 cargo install --git https://github.com/megaDenryu/Graphite graphite-cli
 ```
 
-**2. 自分のパッケージへ依存を1行足します。**
+**2. 自分のパッケージの `Cargo.toml` へ依存を1行足します。**
 
 ```toml
 [dependencies]
 graphite = { git = "https://github.com/megaDenryu/Graphite" }
 ```
 
-**3. schema 3点セットを `src/lib.rs` へ貼ります。** ノード値型・生成moduleの
-`include!` ・`graph_schema!` 宣言の3点です。次のコードはそのまま貼れば動く
-自己完結の例で、出典は `verification/external-crate/src/lib.rs` の実物
-(Book / Reader / Borrowed) です。
+**3. ノード値型・生成モジュールの `include!` ・`graph_schema!` 宣言の3点を
+`src/lib.rs` へ貼ります。** 次のコードはそのまま貼れば動く自己完結の例で、
+出典は `verification/external-crate/src/lib.rs` の実物 (Book / Reader / Borrowed)
+です。
 
 ```rust
 // ノード型・積み荷型は普通の Rust struct として宣言する。
@@ -292,10 +295,12 @@ graphite::graph_schema! {
 
 `#[rustfmt::skip]` と `#[allow(...)]` の行は省略しないでください。省いても
 `cargo build` 自体は通りますが、`-[loan: Loan]->` は rustfmt が通常の式として
-整形しようとして崩す独自のトークン列なので `#[rustfmt::skip]` が要り、生成moduleは
-schema名をそのまま module 名にする・利用側が使わない生成物を含む・非公開の値型が
-公開APIに現れる、という3つの事情でそれぞれの警告を出すため `#[allow(...)]` が
-要ります。
+整形しようとして崩す独自のトークン列なので、`#[rustfmt::skip]` が要ります。
+`#[allow(...)]` は、次の3つの事情で警告が出るため要ります。
+
+1. 生成モジュールは schema の名前をそのままモジュール名にする
+2. 利用側が使わない生成物を含む
+3. 非公開の値型が公開APIに現れる
 
 **4. 生成してビルドを通します。** 自分のパッケージのディレクトリ (`Cargo.toml`
 がある場所) で実行します。
@@ -305,7 +310,8 @@ cargo graphite generate          # 生成ファイルを更新する
 cargo build
 ```
 
-生成ファイルに差分が無いことと孤児が無いことを CI で検査したい場合は、
+自分のパッケージのディレクトリで、生成ファイルに差分が無いことと孤児 (どの schema
+宣言からも参照されなくなった生成ファイル) が無いことを CI で検査したい場合は、
 `generate` の代わりに次を使います (ファイルは書き換えません)。
 
 ```powershell
