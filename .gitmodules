@@ -1,0 +1,3 @@
+[submodule "GraphiteTS"]
+	path = GraphiteTS
+	url = git@github.com:megaDenryu/GraphiteTS.git
