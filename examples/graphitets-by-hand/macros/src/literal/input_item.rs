@@ -18,7 +18,7 @@ impl Parse for 宣言 {
         input.parse::<Token![=]>()?;
 
         let 先読み = input.fork();
-        let _型らしきもの: Ident = 先読み.parse().map_err(|_| 形式エラー(名前.span()))?;
+        let _型らしきもの: Ident = 先読み.parse().map_err(|_| 形式エラーを作る(名前.span()))?;
 
         if 先読み.peek(token::Brace) {
             let 式: ExprStruct = input.parse()?;
@@ -26,7 +26,7 @@ impl Parse for 宣言 {
                 .path
                 .segments
                 .last()
-                .ok_or_else(|| 形式エラー(名前.span()))?
+                .ok_or_else(|| 形式エラーを作る(名前.span()))?
                 .ident
                 .clone();
             Ok(宣言::ノード(ノード宣言 { 名前, 実体型, 式 }))
@@ -37,12 +37,12 @@ impl Parse for 宣言 {
             let 形状 = super::input_edge_body::辺形状を読む(&内容)?;
             Ok(宣言::辺(辺宣言 { 名前, 種別, 形状 }))
         } else {
-            Err(形式エラー(名前.span()))
+            Err(形式エラーを作る(名前.span()))
         }
     }
 }
 
-fn 形式エラー(span: proc_macro2::Span) -> syn::Error {
+fn 形式エラーを作る(span: proc_macro2::Span) -> syn::Error {
     syn::Error::new(
         span,
         "静的グラフ! のノードは `名前 = 型 { .. }`、辺は `名前 = 種別(..)` の形で書いてください",

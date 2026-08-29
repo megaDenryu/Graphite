@@ -40,8 +40,8 @@ pub struct ノード宣言 {
 }
 
 pub enum 辺中身 {
-    無Payload,
-    Payload(Expr),
+    無積み荷,
+    積み荷あり(Expr),
 }
 
 pub enum 辺形状 {
