@@ -1,23 +1,34 @@
-// 静的グラフ! の入力DSLの構文木とパーサ。
+// 静的グラフ! の入力DSLの構文木。
 //
-//   graph <グラフ名>;
-//   (node <ノード名>: <実体型>;)*
-//   (edge <辺名> = <種別>(<始点> -> <終点>);)*
+//   graph <グラフ名>: <schema名>;
+//   (<名前> = <型> { <フィールド式, ...> },)*
+//   (<名前> = <種別>(<始点> -> <終点>),)*
+//   (<名前> = <種別>(<始点> -[<積み荷式>]-> <終点>),)*
+//   (<名前> = <種別>(<始点> -- <終点>),)*
 //
-// エラーは `?` でそのまま呼び出し元まで伝播する素直な構成なので、
-// proc-macro-dev スキルが警告する ParseBuffer の drain 忘れは該当しない
-// (内側の Err を握りつぶして Ok を返す回復パーサではないため)。
+// ノードか辺かの判別は input_item.rs、辺の右辺 `(...)` の中身 (無payload/
+// payload/無向) の判別は input_edge_body.rs が担う。ここは骨格の構造体定義と
+// トップレベル (graph宣言 + カンマ区切りの宣言列) のパースだけを持つ。
+
+#[path = "input_edge_body.rs"]
+mod input_edge_body;
+#[path = "input_item.rs"]
+mod input_item;
 
 use proc_macro2::Ident;
 use syn::parse::{Parse, ParseStream};
-use syn::{parenthesized, Token};
+use syn::punctuated::Punctuated;
+use syn::{Expr, ExprStruct, Token};
 
 syn::custom_keyword!(graph);
-syn::custom_keyword!(node);
-syn::custom_keyword!(edge);
 
 pub struct 静的グラフ入力 {
     pub グラフ名: Ident,
+    // レイヤー1との結線はRustの型解決 (種別ラベル・種別契約) に委ねるため、
+    // schema名自体はコード生成に使わない。ヘッダとして読み捨てる目的だけで
+    // 保持する。
+    #[allow(dead_code)]
+    pub schema名: Ident,
     pub ノード宣言達: Vec<ノード宣言>,
     pub 辺宣言達: Vec<辺宣言>,
 }
@@ -25,59 +36,42 @@ pub struct 静的グラフ入力 {
 pub struct ノード宣言 {
     pub 名前: Ident,
     pub 実体型: Ident,
+    pub 式: ExprStruct,
+}
+
+pub enum 辺中身 {
+    無Payload,
+    Payload(Expr),
+}
+
+pub enum 辺形状 {
+    有向 { 始点: Ident, 終点: Ident, 中身: 辺中身 },
+    無向 { 端点1: Ident, 端点2: Ident },
 }
 
 pub struct 辺宣言 {
     pub 名前: Ident,
     pub 種別: Ident,
-    pub 始点: Ident,
-    pub 終点: Ident,
+    pub 形状: 辺形状,
 }
 
 impl Parse for 静的グラフ入力 {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         input.parse::<graph>()?;
         let グラフ名 = input.parse()?;
+        input.parse::<Token![:]>()?;
+        let schema名 = input.parse()?;
         input.parse::<Token![;]>()?;
 
+        let 宣言達 = Punctuated::<input_item::宣言, Token![,]>::parse_terminated(input)?;
         let mut ノード宣言達 = Vec::new();
         let mut 辺宣言達 = Vec::new();
-        while !input.is_empty() {
-            if input.peek(node) {
-                ノード宣言達.push(input.parse()?);
-            } else if input.peek(edge) {
-                辺宣言達.push(input.parse()?);
-            } else {
-                return Err(input.error("`node` または `edge` の宣言が必要です"));
+        for 宣言 in 宣言達 {
+            match 宣言 {
+                input_item::宣言::ノード(n) => ノード宣言達.push(n),
+                input_item::宣言::辺(e) => 辺宣言達.push(e),
             }
         }
-        Ok(静的グラフ入力 { グラフ名, ノード宣言達, 辺宣言達 })
-    }
-}
-
-impl Parse for ノード宣言 {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        input.parse::<node>()?;
-        let 名前 = input.parse()?;
-        input.parse::<Token![:]>()?;
-        let 実体型 = input.parse()?;
-        input.parse::<Token![;]>()?;
-        Ok(ノード宣言 { 名前, 実体型 })
-    }
-}
-
-impl Parse for 辺宣言 {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        input.parse::<edge>()?;
-        let 名前 = input.parse()?;
-        input.parse::<Token![=]>()?;
-        let 種別 = input.parse()?;
-        let 端点達;
-        parenthesized!(端点達 in input);
-        let 始点 = 端点達.parse()?;
-        端点達.parse::<Token![->]>()?;
-        let 終点 = 端点達.parse()?;
-        input.parse::<Token![;]>()?;
-        Ok(辺宣言 { 名前, 種別, 始点, 終点 })
+        Ok(静的グラフ入力 { グラフ名, schema名, ノード宣言達, 辺宣言達 })
     }
 }

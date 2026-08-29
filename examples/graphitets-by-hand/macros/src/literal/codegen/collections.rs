@@ -1,13 +1,14 @@
-// 生成物4c: 参照の層の集まりとグラフ本体。ノード参照達・辺参照達はいずれも
+// 生成物6: 参照の層の集まりとグラフ本体。ノード参照達・辺参照達はいずれも
 // このマクロ展開先で新しく定義するローカル型なので、他の生成物と違って
-// inherent impl のままでよい (孤児規則の対象は foreign な型だけ)。
+// inherent implのままでよい (孤児規則の対象はforeignな型だけ)。無向辺の参照は
+// 無向辺参照::new で組み立てる。
 
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
-use crate::literal::input::静的グラフ入力;
+use crate::literal::input::{辺形状, 静的グラフ入力};
 
-pub fn 参照達とグラフを生成する(入力: &静的グラフ入力) -> TokenStream {
+pub(super) fn 参照達とグラフを生成する(入力: &静的グラフ入力) -> TokenStream {
     let グラフ名 = &入力.グラフ名;
     let 台帳別名 = format_ident!("{}台帳", グラフ名);
 
@@ -27,7 +28,11 @@ pub fn 参照達とグラフを生成する(入力: &静的グラフ入力) -> T
     });
     let 辺参照初期化達 = 入力.辺宣言達.iter().map(|辺| {
         let 名前 = &辺.名前;
-        quote! { #名前: 辺参照::new(&辺達.#名前, 台帳) }
+        let 構築関数 = match &辺.形状 {
+            辺形状::有向 { .. } => quote! { 辺参照::new },
+            辺形状::無向 { .. } => quote! { 無向辺参照::new },
+        };
+        quote! { #名前: #構築関数(&辺達.#名前, 台帳) }
     });
 
     quote! {
