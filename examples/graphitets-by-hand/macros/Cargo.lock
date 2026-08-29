@@ -3,13 +3,6 @@
 version = 4
 
 [[package]]
-name = "graphitets-by-hand"
-version = "0.1.0"
-dependencies = [
- "graphitets-by-hand-macros",
-]
-
-[[package]]
 name = "graphitets-by-hand-macros"
 version = "0.1.0"
 dependencies = [

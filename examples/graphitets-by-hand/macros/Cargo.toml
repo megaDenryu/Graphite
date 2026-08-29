@@ -1,0 +1,17 @@
+[workspace]
+# 空の [workspace] テーブルを置くことで、ルートの Cargo workspace および
+# 親の graphitets-by-hand package からこの proc-macro crate を独立させる。
+
+[package]
+name = "graphitets-by-hand-macros"
+version = "0.1.0"
+edition = "2021"
+description = "graphitets-by-hand の静的グラフ! マクロ (issue #24 段階1)"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "2", features = ["full"] }
+quote = "1"
+proc-macro2 = "1"
