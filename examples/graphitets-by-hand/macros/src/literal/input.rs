@@ -55,6 +55,12 @@ pub struct 辺宣言 {
     pub 形状: 辺形状,
 }
 
+impl 静的グラフ入力 {
+    pub(crate) fn 個体の実体型(&self, 個体: &Ident) -> &Ident {
+        &self.ノード宣言達.iter().find(|n| &n.名前 == 個体).expect("検証済みなので端点は必ず宣言されている").実体型
+    }
+}
+
 impl Parse for 静的グラフ入力 {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         input.parse::<graph>()?;
