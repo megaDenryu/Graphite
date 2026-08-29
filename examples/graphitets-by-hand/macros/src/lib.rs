@@ -19,7 +19,7 @@ use input::静的グラフ入力;
 #[proc_macro]
 pub fn 静的グラフ(入力: TokenStream) -> TokenStream {
     let 入力 = parse_macro_input!(入力 as 静的グラフ入力);
-    if let Err(エラー) = validate::検証する(&入力) {
+    if let Err(エラー) = 入力.検証する() {
         return エラー.to_compile_error().into();
     }
     codegen::生成する(&入力).into()
