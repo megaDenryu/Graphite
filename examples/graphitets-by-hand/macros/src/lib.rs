@@ -24,7 +24,7 @@ pub fn 静的グラフ型(入力: TokenStream) -> TokenStream {
     if let Err(エラー) = 入力.検証する() {
         return エラー.to_compile_error().into();
     }
-    schema::codegen::生成する(&入力).into()
+    schema::codegen::スキーマコードを生成する(&入力).into()
 }
 
 #[proc_macro]
@@ -33,5 +33,5 @@ pub fn 静的グラフ(入力: TokenStream) -> TokenStream {
     if let Err(エラー) = 入力.検証する() {
         return エラー.to_compile_error().into();
     }
-    literal::codegen::生成する(&入力).into()
+    literal::codegen::リテラルコードを生成する(&入力).into()
 }

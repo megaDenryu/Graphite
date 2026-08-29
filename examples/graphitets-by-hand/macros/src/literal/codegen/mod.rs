@@ -19,7 +19,7 @@ use quote::quote;
 
 use crate::literal::input::静的グラフ入力;
 
-pub(crate) fn 生成する(入力: &静的グラフ入力) -> TokenStream {
+pub(crate) fn リテラルコードを生成する(入力: &静的グラフ入力) -> TokenStream {
     let 実体型索引: HashMap<String, proc_macro2::Ident> =
         入力.ノード宣言達.iter().map(|ノード| (ノード.名前.to_string(), ノード.実体型.clone())).collect();
 

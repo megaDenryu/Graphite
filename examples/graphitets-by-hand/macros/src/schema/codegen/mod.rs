@@ -12,7 +12,7 @@ use quote::quote;
 
 use crate::schema::input::静的グラフ型入力;
 
-pub(crate) fn 生成する(入力: &静的グラフ型入力) -> TokenStream {
+pub(crate) fn スキーマコードを生成する(入力: &静的グラフ型入力) -> TokenStream {
     let 種別ラベル達 = labels::種別ラベル達を生成する(&入力.辺宣言達);
     let 種別契約達 = contract::種別契約達を生成する(&入力.辺宣言達);
     let 役割アクセサ達 = role_accessors::役割アクセサ達を生成する(&入力.辺宣言達);
