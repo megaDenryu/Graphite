@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
 
-use crate::input::辺宣言;
+use crate::literal::input::辺宣言;
 
 pub fn 辺達を生成する(辺宣言達: &[辺宣言], 実体型索引: &HashMap<String, Ident>) -> TokenStream {
     let フィールド達 = 辺宣言達.iter().map(|辺| {

@@ -10,7 +10,7 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
-use crate::input::{ノード宣言, 辺宣言};
+use crate::literal::input::{ノード宣言, 辺宣言};
 
 pub fn 所属辺メソッド達を生成する(ノード宣言達: &[ノード宣言], 辺宣言達: &[辺宣言]) -> TokenStream {
     let 生成達 = ノード宣言達.iter().map(|ノード| 一個体分を生成する(ノード, 辺宣言達));

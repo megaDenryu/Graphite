@@ -7,7 +7,7 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
-use crate::input::{ノード宣言, 辺宣言, 静的グラフ入力};
+use crate::literal::input::{ノード宣言, 辺宣言, 静的グラフ入力};
 
 pub fn 型別名達を生成する(入力: &静的グラフ入力) -> TokenStream {
     let グラフ名 = &入力.グラフ名;

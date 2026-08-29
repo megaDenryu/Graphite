@@ -10,7 +10,7 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 
-use crate::input::ノード宣言;
+use crate::literal::input::ノード宣言;
 
 pub fn 個体タグ達を生成する(ノード宣言達: &[ノード宣言]) -> TokenStream {
     let 個体タグ達 = ノード宣言達.iter().map(|ノード| {

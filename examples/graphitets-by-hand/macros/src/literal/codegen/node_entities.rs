@@ -11,7 +11,7 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
-use crate::input::ノード宣言;
+use crate::literal::input::ノード宣言;
 
 pub fn ノード達を生成する(ノード宣言達: &[ノード宣言]) -> TokenStream {
     let フィールド達 = ノード宣言達.iter().map(|ノード| {

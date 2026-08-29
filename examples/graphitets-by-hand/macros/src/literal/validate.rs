@@ -4,7 +4,7 @@
 
 use std::collections::HashSet;
 
-use crate::input::静的グラフ入力;
+use crate::literal::input::静的グラフ入力;
 
 impl 静的グラフ入力 {
     pub fn 検証する(&self) -> syn::Result<()> {

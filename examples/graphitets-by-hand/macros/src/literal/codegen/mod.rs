@@ -15,7 +15,7 @@ use std::collections::HashMap;
 use proc_macro2::TokenStream;
 use quote::quote;
 
-use crate::input::静的グラフ入力;
+use crate::literal::input::静的グラフ入力;
 
 pub fn 生成する(入力: &静的グラフ入力) -> TokenStream {
     let 実体型索引: HashMap<String, proc_macro2::Ident> = 入力

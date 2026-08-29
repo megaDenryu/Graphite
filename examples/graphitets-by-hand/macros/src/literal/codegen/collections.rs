@@ -5,7 +5,7 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
-use crate::input::静的グラフ入力;
+use crate::literal::input::静的グラフ入力;
 
 pub fn 参照達とグラフを生成する(入力: &静的グラフ入力) -> TokenStream {
     let グラフ名 = &入力.グラフ名;
