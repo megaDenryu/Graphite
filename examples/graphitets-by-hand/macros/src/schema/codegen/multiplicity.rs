@@ -31,15 +31,23 @@ pub(super) fn 多重度契約達を生成する(ノード宣言達: &[ノード�
     quote! { #(#位置キー達)* #(#役割キー達)* #(#対一意達)* }
 }
 
-pub(super) fn 制約から多重度を取り出す(辺宣言: &辺宣言, 役割: &proc_macro2::Ident) -> (usize, usize) {
-    辺宣言
-        .制約達
-        .iter()
-        .find_map(|c| match c {
-            制約::多重度 { 役割: r, 下限, 上限 } if r == 役割 => Some((*下限, *上限)),
-            _ => None,
-        })
-        .unwrap_or((0, usize::MAX))
+// 制約::多重度 { 下限, 上限 } と同じ形の名前付き型。取り出した値をタプルへ
+// 剥がさず、下限・上限という名前を持ったまま呼び出し元へ運ぶ。
+pub(super) struct 多重度範囲 {
+    下限: usize,
+    上限: usize,
+}
+
+impl 辺宣言 {
+    pub(super) fn 多重度を求める(&self, 役割: &proc_macro2::Ident) -> 多重度範囲 {
+        self.制約達
+            .iter()
+            .find_map(|c| match c {
+                制約::多重度 { 役割: r, 下限, 上限 } if r == 役割 => Some(多重度範囲 { 下限: *下限, 上限: *上限 }),
+                _ => None,
+            })
+            .unwrap_or(多重度範囲 { 下限: 0, 上限: usize::MAX })
+    }
 }
 
 // 実体型ごとにimplする多重度trait本体 (トレイト名・トレイト引数は呼び出し元が
@@ -49,10 +57,10 @@ pub(super) fn 実体型ごとのimpl達を生成する(
     トレイト名: &proc_macro2::Ident,
     トレイト引数: TokenStream,
     対象型: &proc_macro2::Ident,
-    対象の多重度: (usize, usize),
+    対象の多重度: 多重度範囲,
     ノード宣言達: &[ノード宣言],
 ) -> TokenStream {
-    let (対象下限, 対象上限) = 対象の多重度;
+    let 多重度範囲 { 下限: 対象下限, 上限: 対象上限 } = 対象の多重度;
     let impl達 = ノード宣言達.iter().map(|n| {
         let 型 = &n.名前;
         let (下限, 上限) = if 型 == 対象型 { (対象下限, 対象上限) } else { (0usize, usize::MAX) };
