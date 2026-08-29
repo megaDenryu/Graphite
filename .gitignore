@@ -1,5 +1,6 @@
 /target
 examples/*/target
+examples/*/*/target
 verification/*/target
 build_errors.txt
 .vscode/settings.json
