@@ -18,15 +18,15 @@ use quote::quote;
 use crate::literal::input::静的グラフ入力;
 use crate::schema::input::静的グラフ型入力;
 
-pub(crate) fn 生成する(schema: &静的グラフ型入力, instance: &静的グラフ入力) -> TokenStream {
-    let 辺値struct達 = edge_value::生成する(schema);
-    let ノード達 = node_entities::生成する(&instance.ノード宣言達);
-    let 辺達 = edge_entities::生成する(schema, &instance.辺宣言達);
-    let 個体参照達 = node_ref::生成する(instance);
-    let 辺インスタンス参照達 = edge_ref::生成する(schema, instance);
+pub(crate) fn コードを生成する(schema: &静的グラフ型入力, instance: &静的グラフ入力) -> TokenStream {
+    let 辺値struct達 = edge_value::辺値struct達を生成する(schema);
+    let ノード達 = node_entities::ノード達を生成する(&instance.ノード宣言達);
+    let 辺達 = edge_entities::辺達を生成する(schema, &instance.辺宣言達);
+    let 個体参照達 = node_ref::個体参照達を生成する(instance);
+    let 辺インスタンス参照達 = edge_ref::辺インスタンス参照達を生成する(schema, instance);
     let ノード参照達 = ref_collections::ノード参照達を生成する(instance);
     let 辺参照達 = ref_collections::辺参照達を生成する(instance);
-    let グラフ本体 = graph_struct::生成する(instance);
+    let グラフ本体 = graph_struct::グラフ本体を生成する(instance);
 
     quote! {
         #辺値struct達

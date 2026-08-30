@@ -5,7 +5,7 @@ use quote::quote;
 
 use crate::literal::input::静的グラフ入力;
 
-pub(super) fn 生成する(instance: &静的グラフ入力) -> TokenStream {
+pub(super) fn グラフ本体を生成する(instance: &静的グラフ入力) -> TokenStream {
     let グラフ名 = &instance.グラフ名;
     quote! {
         struct #グラフ名<'a> {

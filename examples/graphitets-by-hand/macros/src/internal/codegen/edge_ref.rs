@@ -9,7 +9,7 @@ use quote::{format_ident, quote};
 use crate::literal::input::{辺形状 as 具体形状, 辺宣言 as 具体辺宣言, 静的グラフ入力};
 use crate::schema::input::{辺形状 as 型形状, 静的グラフ型入力};
 
-pub(super) fn 生成する(schema: &静的グラフ型入力, instance: &静的グラフ入力) -> TokenStream {
+pub(super) fn 辺インスタンス参照達を生成する(schema: &静的グラフ型入力, instance: &静的グラフ入力) -> TokenStream {
     let 生成達 = instance.辺宣言達.iter().map(|辺| {
         let 型宣言 = schema.辺宣言を種別名で探す(&辺.種別).expect("相互検証済みなので種別は必ず実在する");
         一辺分を生成する(辺, 型宣言)

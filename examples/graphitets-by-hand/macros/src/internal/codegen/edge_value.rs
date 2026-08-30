@@ -6,7 +6,7 @@ use quote::{format_ident, quote};
 
 use crate::schema::input::{辺形状, 辺宣言, 静的グラフ型入力};
 
-pub(super) fn 生成する(schema: &静的グラフ型入力) -> TokenStream {
+pub(super) fn 辺値struct達を生成する(schema: &静的グラフ型入力) -> TokenStream {
     let 生成達 = schema.辺宣言達.iter().map(一種別分を生成する);
     quote! { #(#生成達)* }
 }

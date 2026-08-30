@@ -44,7 +44,7 @@ pub(super) fn 検証する(schema: &静的グラフ型入力, instance: &静的�
                             役割,
                             本数,
                             下限,
-                            上限表示(上限),
+                            上限を表示する(上限),
                         ),
                     ));
                 }
@@ -54,6 +54,6 @@ pub(super) fn 検証する(schema: &静的グラフ型入力, instance: &静的�
     Ok(())
 }
 
-fn 上限表示(上限: usize) -> String {
+fn 上限を表示する(上限: usize) -> String {
     if 上限 == usize::MAX { "*".to_string() } else { 上限.to_string() }
 }

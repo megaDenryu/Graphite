@@ -46,6 +46,6 @@ impl 静的グラフ内部入力 {
     }
 
     pub fn コードを生成する(&self) -> proc_macro2::TokenStream {
-        codegen::生成する(&self.schema, &self.instance)
+        codegen::コードを生成する(&self.schema, &self.instance)
     }
 }

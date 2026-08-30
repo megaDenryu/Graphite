@@ -8,7 +8,7 @@ use quote::{format_ident, quote};
 
 use crate::literal::input::{ノード宣言, 辺形状, 辺宣言, 静的グラフ入力};
 
-pub(super) fn 生成する(instance: &静的グラフ入力) -> TokenStream {
+pub(super) fn 個体参照達を生成する(instance: &静的グラフ入力) -> TokenStream {
     let 生成達 = instance.ノード宣言達.iter().map(|個体| 一個体分を生成する(個体, &instance.辺宣言達));
     quote! { #(#生成達)* }
 }

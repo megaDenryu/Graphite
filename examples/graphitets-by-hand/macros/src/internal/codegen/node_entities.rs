@@ -6,7 +6,7 @@ use quote::quote;
 
 use crate::literal::input::ノード宣言;
 
-pub(super) fn 生成する(ノード宣言達: &[ノード宣言]) -> TokenStream {
+pub(super) fn ノード達を生成する(ノード宣言達: &[ノード宣言]) -> TokenStream {
     let フィールド達 = ノード宣言達.iter().map(|ノード| {
         let 名前 = &ノード.名前;
         let 実体型 = &ノード.実体型;
