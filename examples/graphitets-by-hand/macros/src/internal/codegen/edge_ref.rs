@@ -18,8 +18,8 @@ pub(super) fn 辺インスタンス参照達を生成する(schema: &静的グ�
 }
 
 fn 一辺分を生成する(辺: &具体辺宣言, 型宣言: &crate::schema::input::辺宣言) -> TokenStream {
-    let 参照名 = format_ident!("{}参照", 辺.名前);
-    let 型名 = format_ident!("{}の辺", 辺.種別);
+    let 参照名 = format_ident!("{}参照", 辺.名前, span = 辺.名前.span());
+    let 型名 = format_ident!("{}の辺", 辺.種別, span = 辺.種別.span());
 
     let ロールアクセサ達 = ロールアクセサ達を生成する(辺, 型宣言);
     let 積み荷アクセサ = 積み荷アクセサを生成する(型宣言);
@@ -44,7 +44,16 @@ fn ロールアクセサ達を生成する(辺: &具体辺宣言, 型宣言: &cr
             (始点役割.clone(), 始点, 終点役割.clone(), 終点)
         }
         (具体形状::無向 { 端点1, 端点2, .. }, 型形状::無向 { .. }) => {
-            (format_ident!("端点1"), 端点1, format_ident!("端点2"), 端点2)
+            // 端点1/端点2 は固定の役割名でDSL上の由来トークンを持たないため、
+            // この辺インスタンス自身の名前の位置を充てる (最も近いDSL上の
+            // 由来箇所)。
+            let 由来位置 = 辺.名前.span();
+            (
+                format_ident!("端点1", span = 由来位置),
+                端点1,
+                format_ident!("端点2", span = 由来位置),
+                端点2,
+            )
         }
         _ => unreachable!("相互検証済みなので向きは一致している"),
     };
@@ -60,7 +69,7 @@ fn ロールアクセサ達を生成する(辺: &具体辺宣言, 型宣言: &cr
 // 個体参照へ包む。self.ノード達 を個体名で引き直さない (辺が辿りの根拠、
 // static_graph.rs 冒頭コメントの方針と同じ)。
 fn 一アクセサを生成する(役割名: &proc_macro2::Ident, 個体名: &proc_macro2::Ident) -> TokenStream {
-    let 戻り値型 = format_ident!("{}参照", 個体名);
+    let 戻り値型 = format_ident!("{}参照", 個体名, span = 個体名.span());
     quote! {
         fn #役割名(&self) -> #戻り値型<'a> {
             #戻り値型 { 実体: self.実体.#役割名, ノード達: self.ノード達, 辺達: self.辺達 }

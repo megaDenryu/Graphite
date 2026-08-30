@@ -12,7 +12,7 @@ pub(super) fn 辺値struct達を生成する(schema: &静的グラフ型入力) 
 }
 
 fn 一種別分を生成する(辺: &辺宣言) -> TokenStream {
-    let 型名 = format_ident!("{}の辺", 辺.名前);
+    let 型名 = format_ident!("{}の辺", 辺.名前, span = 辺.名前.span());
     let 積み荷フィールド = 積み荷フィールドを生成する(辺.形状.積み荷());
     match &辺.形状 {
         辺形状::有向 { 始点役割, 始点型, 終点役割, 終点型, .. } => quote! {

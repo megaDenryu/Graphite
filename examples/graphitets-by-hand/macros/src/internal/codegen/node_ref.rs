@@ -15,11 +15,11 @@ pub(super) fn 個体参照達を生成する(instance: &静的グラフ入力) -
 fn 一個体分を生成する(個体: &ノード宣言, 辺宣言達: &[辺宣言]) -> TokenStream {
     let 個体名 = &個体.名前;
     let 実体型 = &個体.実体型;
-    let 参照名 = format_ident!("{}参照", 個体名);
+    let 参照名 = format_ident!("{}参照", 個体名, span = 個体名.span());
 
     let 所属辺メソッド達 = 辺宣言達.iter().filter(|辺| 辺.端点に含むか(個体名)).map(|辺| {
         let メソッド名 = &辺.名前;
-        let 戻り値型 = format_ident!("{}参照", 辺.名前);
+        let 戻り値型 = format_ident!("{}参照", 辺.名前, span = 辺.名前.span());
         quote! {
             fn #メソッド名(&self) -> #戻り値型<'a> {
                 #戻り値型 { 実体: &self.辺達.#メソッド名, ノード達: self.ノード達, 辺達: self.辺達 }

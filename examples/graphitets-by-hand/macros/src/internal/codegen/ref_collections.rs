@@ -8,12 +8,12 @@ use crate::literal::input::静的グラフ入力;
 pub(super) fn ノード参照達を生成する(instance: &静的グラフ入力) -> TokenStream {
     let フィールド達 = instance.ノード宣言達.iter().map(|n| {
         let 名前 = &n.名前;
-        let 参照型 = format_ident!("{}参照", 名前);
+        let 参照型 = format_ident!("{}参照", 名前, span = 名前.span());
         quote! { #名前: #参照型<'a> }
     });
     let 初期化達 = instance.ノード宣言達.iter().map(|n| {
         let 名前 = &n.名前;
-        let 参照型 = format_ident!("{}参照", 名前);
+        let 参照型 = format_ident!("{}参照", 名前, span = 名前.span());
         quote! { #名前: #参照型 { 実体: &ノード達.#名前, ノード達, 辺達 } }
     });
     quote! {
@@ -31,12 +31,12 @@ pub(super) fn ノード参照達を生成する(instance: &静的グラフ入力
 pub(super) fn 辺参照達を生成する(instance: &静的グラフ入力) -> TokenStream {
     let フィールド達 = instance.辺宣言達.iter().map(|e| {
         let 名前 = &e.名前;
-        let 参照型 = format_ident!("{}参照", 名前);
+        let 参照型 = format_ident!("{}参照", 名前, span = 名前.span());
         quote! { #名前: #参照型<'a> }
     });
     let 初期化達 = instance.辺宣言達.iter().map(|e| {
         let 名前 = &e.名前;
-        let 参照型 = format_ident!("{}参照", 名前);
+        let 参照型 = format_ident!("{}参照", 名前, span = 名前.span());
         quote! { #名前: #参照型 { 実体: &辺達.#名前, ノード達, 辺達 } }
     });
     quote! {
