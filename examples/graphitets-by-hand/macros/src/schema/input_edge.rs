@@ -22,15 +22,27 @@ impl Parse for 辺宣言 {
 
 fn 辺形状を読む(input: ParseStream) -> syn::Result<辺形状> {
     if !input.peek(syn::token::Paren) {
-        // 無向辺: <型> -- <型>
+        // 無向辺: <型> -- <型> (積み荷なし) / <型> -[<役割>: <型>]- <型> (積み荷あり)
         let 型1: Ident = input.parse()?;
-        input.parse::<Token![-]>()?;
-        input.parse::<Token![-]>()?;
+        let 積み荷 = if input.peek(Token![-]) && input.peek2(syn::token::Bracket) {
+            input.parse::<Token![-]>()?;
+            let 積み荷角括弧;
+            bracketed!(積み荷角括弧 in input);
+            let 積み荷役割: Ident = 積み荷角括弧.parse()?;
+            積み荷角括弧.parse::<Token![:]>()?;
+            let 積み荷型: Ident = 積み荷角括弧.parse()?;
+            input.parse::<Token![-]>()?;
+            Some((積み荷役割, 積み荷型))
+        } else {
+            input.parse::<Token![-]>()?;
+            input.parse::<Token![-]>()?;
+            None
+        };
         let 型2: Ident = input.parse()?;
         if 型1 != 型2 {
             return Err(syn::Error::new_spanned(&型2, "無向辺の両端は同じ型でなければなりません"));
         }
-        return Ok(辺形状::無向 { 型: 型1 });
+        return Ok(辺形状::無向 { 型: 型1, 積み荷 });
     }
 
     let 始点丸括弧;

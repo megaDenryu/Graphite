@@ -5,7 +5,11 @@
 //     (edge <名前> = (<役割>: <型>) -> (<役割>: <型>) [where <制約>(, <制約>)*];)*
 //     (edge <名前> = (<役割>: <型>) -[<役割>: <型>]-> (<役割>: <型>) [where ...];)*
 //     (edge <名前> = <型> -- <型> [where <制約>(, <制約>)*];)*
+//     (edge <名前> = <型> -[<役割>: <型>]- <型> [where <制約>(, <制約>)*];)*
 //   }
+//
+// 無向辺の積み荷付き記法 `-[役割: 型]-` は、有向の積み荷付き記法
+// `-[役割: 型]->` から矢尻 (`>`) を落とした形 (hello-graph の規約に倣う)。
 //
 // 辺宣言そのものの構文 (端点・積み荷) は input_edge.rs、where節の構文
 // (多重度・対一意) は input_constraint.rs が担う。ここは骨格の構造体定義と
@@ -25,10 +29,8 @@ syn::custom_keyword!(node);
 syn::custom_keyword!(edge);
 
 pub struct 静的グラフ型入力 {
-    // レイヤー1とレイヤー2の結線はRustの型解決 (種別ラベル・種別契約) に
-    // 委ねるため、schema名自体はコード生成に使わない (`graph <名前>: schema名;`
-    // の schema名 と同じ扱い)。ヘッダとして読み捨てる目的だけで保持する。
-    #[allow(dead_code)]
+    // `静的グラフ型!` がこの名前そのものを `macro_rules! {schema名}` の名前
+    // として使う (利用側は `<schema名>! { graph <名前>; .. }` と書く)。
     pub schema名: Ident,
     pub ノード宣言達: Vec<ノード宣言>,
     pub 辺宣言達: Vec<辺宣言>,
@@ -38,10 +40,11 @@ pub struct ノード宣言 {
     pub 名前: Ident,
 }
 
-// 積み荷は (役割名, 型) の組。有向辺だけが持てる。
+// 積み荷は (役割名, 型) の組。無向辺は端点の役割名を持たない (端点1/端点2に
+// 固定) が、積み荷の役割名はフィールド名・アクセサ名として使うため持つ。
 pub enum 辺形状 {
     有向 { 始点役割: Ident, 始点型: Ident, 積み荷: Option<(Ident, Ident)>, 終点役割: Ident, 終点型: Ident },
-    無向 { 型: Ident },
+    無向 { 型: Ident, 積み荷: Option<(Ident, Ident)> },
 }
 
 pub struct 辺宣言 {
@@ -53,6 +56,22 @@ pub struct 辺宣言 {
 pub enum 制約 {
     多重度 { 役割: Ident, 下限: usize, 上限: usize },
     対一意,
+}
+
+impl 静的グラフ型入力 {
+    pub(crate) fn 辺宣言を種別名で探す(&self, 種別: &Ident) -> Option<&辺宣言> {
+        self.辺宣言達.iter().find(|e| e.名前 == *種別)
+    }
+}
+
+impl 辺形状 {
+    // 積み荷の (役割名, 型) を返す。積み荷を持たない種別は None。
+    pub(crate) fn 積み荷(&self) -> Option<&(Ident, Ident)> {
+        match self {
+            辺形状::有向 { 積み荷, .. } => 積み荷.as_ref(),
+            辺形状::無向 { 積み荷, .. } => 積み荷.as_ref(),
+        }
+    }
 }
 
 impl Parse for 静的グラフ型入力 {
