@@ -9,7 +9,7 @@
     "examples/async-dag/Cargo.toml",
     "examples/reactive-cells/Cargo.toml",
     "examples/graphitets-by-hand/Cargo.toml",
-    "examples/graphitets-by-hand/macros/Cargo.toml"
+    "examples/static-org/Cargo.toml"
   ],
   "megadenryuLspMcp.port": 16598
 }

@@ -1,13 +1,6 @@
 [workspace]
 # 空の [workspace] テーブルを置くことで、ルートの Cargo workspace から
 # このクレートを独立させる (スタンドアロン example)。
-#
-# macros/ は静的グラフ! を提供する proc-macro crate で、それ自身も
-# 独立した [workspace] を持つ (issue #24 段階1)。path 依存のまま
-# この workspace の members へ自動で取り込ませると「複数の workspace root」
-# エラーになるため、明示的に exclude する (ルート Cargo.toml の
-# verification/external-crate と同じ理由)。
-exclude = ["macros"]
 
 [package]
 name = "graphitets-by-hand"
@@ -20,7 +13,6 @@ description = "GraphiteTS (issue #23) の設計を、マクロ無しの通常の
 # TS 版 (GraphiteTS) が拡張構文なしの素の TypeScript だけで書いたのと同じ条件にするため、
 # 素の Rust だけで書く。
 #
-# 唯一の例外が静的グラフ! を提供する graphitets-by-hand-macros (issue #24 段階1)。
-# proc-macro crate はランタイム型を持てないため分離が必須で (CLAUDE.md 参照)、
-# ここだけは素の Rust の制約そのものであり「拡張構文なし」の条件を破らない。
-graphitets-by-hand-macros = { path = "macros" }
+# 静的グラフ (issue #24) のマクロは graphite::static_schema! として本体へ
+# 統合済みであり (examples/static-org 参照)、この crate は手書き検証の記録
+# として凍結されているため、macro crateへの依存は無い。
