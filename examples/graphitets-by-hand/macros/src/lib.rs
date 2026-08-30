@@ -1,37 +1,59 @@
-//! graphitets-by-hand 用のマクロ (issue #24 段階2)。2層に分かれる。
+//! graphitets-by-hand 用のマクロ (issue #24 段階2)。公開するのは
+//! `静的グラフ型!` 1個だけ。schemaを構文解析・検証し、schemaの生トークンを
+//! 本体に焼き込んだ `macro_rules! {schema名}` を生成する。この生成される
+//! macro_rulesがschema名そのものをマクロ名にする (利用側は
+//! `<schema名>! { graph <名前>; .. }` と書く) ので、利用側が別途schema名を
+//! 書く必要はない。
 //!
-//! `静的グラフ型!` (レイヤー1、`graph_schema!` 相当) は型の骨組み (種別ラベル・
-//! 種別契約・役割アクセサ・多重度の契約) をグラフ名に依存しない形で1回生成
-//! する。`静的グラフ!` (レイヤー2、`graph!` リテラル相当) は個体タグ・
-//! ノード達・辺達・参照の層・グラフ本体を生成し、レイヤー1が用意した骨組みに
-//! 具体的な個体を接続する。両マクロは独立にexpandされるため、レイヤー2は
-//! レイヤー1が何を生成したかをトークンレベルで参照できない (詳細は各
-//! moduleのコメント参照)。
+//! macro_rules!が実際に個体宣言を受け取ると、schemaの生トークンと個体宣言の
+//! 生トークンを束ねて `#[doc(hidden)]` の内部proc macro `静的グラフ内部!`
+//! (`internal` module) へ転送する。schemaとinstanceを1回の展開で同時に見る
+//! ことで、多重度・対一意といった「両方が揃わないと検査できない」制約を
+//! 迂回機構 (位置キーtrait+const assert) なしで、通常のcompile_error!として
+//! 検出できる。
 //!
-//! 仕組み (台帳・ノード参照・辺参照・無向辺・無向辺参照・ノードタグ・
-//! 種別契約・辺・結ぶ) と、種別・実体型はマクロの外 (呼び出し側のスコープ)
-//! にある前提で展開する。
+//! 生成されたmacro_rulesは通常のmacro_rules!と同じテキスト順の制約を持つ:
+//! `静的グラフ型! { schema <名前> { .. } }` より後ろの行でしか
+//! `<名前>! { .. }` を呼べない (詳細はREADME参照)。
 
+mod internal;
 mod literal;
 mod schema;
 
 use proc_macro::TokenStream;
+use quote::quote;
 use syn::parse_macro_input;
 
 #[proc_macro]
 pub fn 静的グラフ型(入力: TokenStream) -> TokenStream {
-    let 入力 = parse_macro_input!(入力 as schema::input::静的グラフ型入力);
-    if let Err(エラー) = 入力.検証する() {
+    let 生トークン: proc_macro2::TokenStream = 入力.clone().into();
+    let 解析済み = parse_macro_input!(入力 as schema::input::静的グラフ型入力);
+    if let Err(エラー) = 解析済み.検証する() {
         return エラー.to_compile_error().into();
     }
-    schema::codegen::スキーマコードを生成する(&入力).into()
+
+    let macro_rules名 = &解析済み.schema名;
+    quote! {
+        macro_rules! #macro_rules名 {
+            ($($t:tt)*) => {
+                ::graphitets_by_hand_macros::静的グラフ内部! {
+                    #生トークン
+                    instance { $($t)* }
+                }
+            };
+        }
+    }
+    .into()
 }
 
+// 利用者が直接書くことを想定しない内部マクロ。`静的グラフ型!` が生成する
+// macro_rules!からだけ呼ばれる (詳細はmodule doc参照)。
+#[doc(hidden)]
 #[proc_macro]
-pub fn 静的グラフ(入力: TokenStream) -> TokenStream {
-    let 入力 = parse_macro_input!(入力 as literal::input::静的グラフ入力);
+pub fn 静的グラフ内部(入力: TokenStream) -> TokenStream {
+    let 入力 = parse_macro_input!(入力 as internal::静的グラフ内部入力);
     if let Err(エラー) = 入力.検証する() {
         return エラー.to_compile_error().into();
     }
-    literal::codegen::リテラルコードを生成する(&入力).into()
+    入力.コードを生成する().into()
 }
