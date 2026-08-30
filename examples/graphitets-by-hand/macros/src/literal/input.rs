@@ -1,19 +1,28 @@
 // instance宣言の入力DSLの構文木。
 //
 //   graph <グラフ名>;
-//   (<名前> = <型> { <フィールド式, ...> },)*
-//   (<名前> = <種別>(<始点> -> <終点>),)*
-//   (<名前> = <種別>(<始点> -[<積み荷式>]-> <終点>),)*
-//   (<名前> = <種別>(<始点> -- <終点>),)*
-//   (<名前> = <種別>(<始点> -[<積み荷式>]- <終点>),)*
+//   (node <名前> = <型> { <フィールド式, ...> };)*
+//   (node <名前>: <型> = <式>;)*
+//   (node <名前>: <型>;)*
+//   (edge <名前> = <種別>(<始点> -> <終点>);)*
+//   (edge <名前> = <種別>(<始点> -[<積み荷式>]-> <終点>);)*
+//   (edge <名前> = <種別>(<始点> -- <終点>);)*
+//   (edge <名前> = <種別>(<始点> -[<積み荷式>]- <終点>);)*
+//
+// 行の種類は先頭の `node`/`edge` キーワードで確定する (右辺の形からの推測
+// 判別はしない)。node は3形態を受理する:
+//   1. `名前 = 型 { .. };`   実体型はリテラルのパスから読む
+//   2. `名前: 型 = 式;`      型を明示すれば右辺は任意の式でよい
+//   3. `名前: 型;`           宣言のみ。実体値は `ノード達::初期値` へ実行時に渡す
 //
 // schema名を書かないのは、schema名がそのままマクロ名になり (利用側は
 // `<schema名>! { graph <名前>; .. }` と書く)、この構文木を組み立てる時点で
 // どのschemaかは既に確定しているため (issue #24 段階2)。
 //
-// ノードか辺かの判別は input_item.rs、辺の右辺 `(...)` の中身 (無payload/
-// payload/無向) の判別は input_edge_body.rs が担う。ここは骨格の構造体定義と
-// トップレベル (graph宣言 + カンマ区切りの宣言列) のパースだけを持つ。
+// node/edgeの各1件の宣言のパース (3形態の判別を含む) は input_item.rs、
+// 辺の右辺 `(...)` の中身 (無payload/payload/無向) の判別は input_edge_body.rs
+// が担う。ここは骨格の構造体定義とトップレベル (graph宣言 + node/edge宣言の
+// 列) のパースだけを持つ。
 
 #[path = "input_edge_body.rs"]
 mod input_edge_body;
@@ -22,10 +31,11 @@ mod input_item;
 
 use proc_macro2::Ident;
 use syn::parse::{Parse, ParseStream};
-use syn::punctuated::Punctuated;
-use syn::{Expr, ExprStruct, Token};
+use syn::{Expr, Token};
 
 syn::custom_keyword!(graph);
+syn::custom_keyword!(node);
+syn::custom_keyword!(edge);
 
 pub struct 静的グラフ入力 {
     pub グラフ名: Ident,
@@ -36,7 +46,9 @@ pub struct 静的グラフ入力 {
 pub struct ノード宣言 {
     pub 名前: Ident,
     pub 実体型: Ident,
-    pub 式: ExprStruct,
+    // 値なし宣言 (`node 名前: 型;`) は None。値は `ノード達::初期値` の
+    // 実行時引数として渡される (node_entities.rs)。
+    pub 値: Option<Expr>,
 }
 
 pub enum 辺中身 {
@@ -89,13 +101,15 @@ impl Parse for 静的グラフ入力 {
         let グラフ名 = input.parse()?;
         input.parse::<Token![;]>()?;
 
-        let 宣言達 = Punctuated::<input_item::宣言, Token![,]>::parse_terminated(input)?;
         let mut ノード宣言達 = Vec::new();
         let mut 辺宣言達 = Vec::new();
-        for 宣言 in 宣言達 {
-            match 宣言 {
-                input_item::宣言::ノード(n) => ノード宣言達.push(n),
-                input_item::宣言::辺(e) => 辺宣言達.push(e),
+        while !input.is_empty() {
+            if input.peek(node) {
+                ノード宣言達.push(input.parse()?);
+            } else if input.peek(edge) {
+                辺宣言達.push(input.parse()?);
+            } else {
+                return Err(input.error("`node` または `edge` の宣言が必要です"));
             }
         }
         Ok(静的グラフ入力 { グラフ名, ノード宣言達, 辺宣言達 })
