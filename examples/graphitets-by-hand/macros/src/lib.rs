@@ -1,7 +1,12 @@
 //! graphitets-by-hand 用のマクロ (issue #24 段階2)。公開するのは
-//! `静的グラフ型!` 1個だけ。schemaを構文解析・検証し、schemaの生トークンを
-//! 本体に焼き込んだ `macro_rules! {schema名}` を生成する。この生成される
-//! macro_rulesがschema名そのものをマクロ名にする (利用側は
+//! `静的グラフ型!` 1個だけ。schemaを構文解析・検証し、(1) schemaだけから
+//! 決まる生成物 (辺値struct群、`schema::codegen`) と
+//! (2) schemaの生トークンを本体に焼き込んだ `macro_rules! {schema名}` を
+//! 同じ展開の中で並べて出力する。(1) を macro_rules! の外へ出すことで、
+//! schema トークンが macro_rules! 本体に埋もれた不活性なトークン列ではなく
+//! rust-analyzer が解釈できる実際のRustアイテムになる (段階2コミット時点の
+//! 変更、以前は instance毎に `静的グラフ内部!` 側で生成していた)。
+//! 生成されるmacro_rulesがschema名そのものをマクロ名にする (利用側は
 //! `<schema名>! { graph <名前>; .. }` と書く) ので、利用側が別途schema名を
 //! 書く必要はない。
 //!
@@ -32,8 +37,10 @@ pub fn 静的グラフ型(入力: TokenStream) -> TokenStream {
         return エラー.to_compile_error().into();
     }
 
+    let 骨組み = schema::codegen::骨組みを生成する(&解析済み);
     let macro_rules名 = &解析済み.schema名;
     quote! {
+        #骨組み
         macro_rules! #macro_rules名 {
             ($($t:tt)*) => {
                 ::graphitets_by_hand_macros::静的グラフ内部! {

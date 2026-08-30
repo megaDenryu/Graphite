@@ -1,5 +1,8 @@
 // 生成物1: 種別ごとの辺値struct。schemaだけから決まる (instanceを見ない)。
-// 積み荷を持つ種別だけ積み荷フィールドを持つ。
+// 積み荷を持つ種別だけ積み荷フィールドを持つ。`静的グラフ型!` の展開へ
+// macro_rules!と並ぶ実アイテムとして出力するため、同一schemaから`組織!`を
+// 何度呼んでも (issue #24 段階2 コミット1のテスト参照)、この生成物自体は
+// 1回しか展開されず重複定義にならない。
 
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
