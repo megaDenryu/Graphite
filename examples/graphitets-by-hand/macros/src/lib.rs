@@ -1,6 +1,6 @@
 //! graphitets-by-hand 用のマクロ (issue #24 段階2)。公開するのは
 //! `静的グラフ型!` 1個だけ。schemaを構文解析・検証し、(1) schemaだけから
-//! 決まる生成物 (辺値struct群、`schema::codegen`) と
+//! 決まる生成物 (辺値struct群・node型アンカー、`schema::codegen`) と
 //! (2) schemaの生トークンを本体に焼き込んだ `macro_rules! {schema名}` を
 //! 同じ展開の中で並べて出力する。(1) を macro_rules! の外へ出すことで、
 //! schema トークンが macro_rules! 本体に埋もれた不活性なトークン列ではなく
