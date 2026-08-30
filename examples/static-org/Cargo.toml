@@ -1,0 +1,13 @@
+[workspace]
+# 空の [workspace] テーブルを置くことで、ルートの Cargo workspace および
+# 親の graphite crate からこの example crate を独立させる (スタンドアロン
+# example、hello-graph と同じ構成)。
+
+[package]
+name = "static-org"
+version = "0.1.0"
+edition = "2021"
+description = "graphite::static_schema! (issue #24、全個体がコンパイル時に確定するグラフ) の正式な利用例"
+
+[dependencies]
+graphite = { path = "../../crates/graphite" }
