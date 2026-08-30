@@ -74,6 +74,15 @@ impl 静的グラフ入力 {
     }
 }
 
+impl 辺宣言 {
+    pub(crate) fn 端点に含むか(&self, 個体名: &Ident) -> bool {
+        match &self.形状 {
+            辺形状::有向 { 始点, 終点, .. } => 始点 == 個体名 || 終点 == 個体名,
+            辺形状::無向 { 端点1, 端点2, .. } => 端点1 == 個体名 || 端点2 == 個体名,
+        }
+    }
+}
+
 impl Parse for 静的グラフ入力 {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         input.parse::<graph>()?;
