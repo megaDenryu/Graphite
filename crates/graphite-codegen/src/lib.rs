@@ -16,6 +16,7 @@ mod generated_path;
 mod generated_source;
 pub mod naming;
 mod schema;
+mod static_graph;
 mod tracked_input;
 
 use proc_macro2::TokenStream;
@@ -32,6 +33,7 @@ use crate::tracked_input::TrackedInput;
 
 pub use declaration_site::DeclarationSite;
 pub use generated_path::validate_generated_relative_path;
+pub use static_graph::{expand_static_graph_internal, parse_and_expand_static_schema};
 
 /// 追跡対象の schema 宣言を検証し、意味モデルまで確定させたもの。
 ///

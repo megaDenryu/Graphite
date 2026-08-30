@@ -179,6 +179,55 @@ pub fn graph(input: TokenStream) -> TokenStream {
     }
 }
 
+/// 全個体がコンパイル時に確定する静的グラフの schema を宣言する
+/// (issue #24)。`graph_schema!`/`graph!` は実行時に個体を追加できる
+/// グラフ向けだが、`static_schema!` は個体・辺の集合そのものが
+/// コンパイル時に固定されているグラフ向けであり、多重度・対一意といった
+/// `where` 制約を実行時検証ではなくコンパイルエラーとして検出する。
+///
+/// schema を検証し、schema 名そのものを名前にした `macro_rules!` を生成する
+/// (macro_rules!転送)。利用側はこの生成された `macro_rules!` へ個体宣言を
+/// 渡して具体グラフを組み立てる。
+///
+/// ```text
+/// graphite::static_schema! {
+///     schema Organization {
+///         node Employee;
+///         node Department;
+///         edge BelongsTo = (member: Employee) -> (team: Department) where each member: 1;
+///         edge Boss = (subordinate: Employee) -[appointment: Appointment]-> (superior: Employee) where each subordinate: 0..1;
+///     }
+/// }
+///
+/// Organization! {
+///     graph DevTeam;
+///     node alice = Employee { name: "alice".into() };
+///     node dev: Department = Department { name: "dev".into() };
+///     edge alice_belongs = BelongsTo(alice -> dev);
+/// }
+/// ```
+///
+/// `node` は3形態を受理する: `node 名前 = 型 { .. };` (型はリテラルのパスから
+/// 読む)、`node 名前: 型 = 式;` (任意の式)、`node 名前: 型;` (実体値は
+/// `Nodes::new(..)` へ実行時に渡す)。
+///
+/// 生成される `macro_rules!` はschema宣言と同じテキスト順の制約を持つ:
+/// `static_schema! { schema <名前> { .. } }` より後ろの行でしか
+/// `<名前>! { .. }` を呼べない。構文・生成される名前の公開契約・
+/// コンパイル時検査の一覧は `docs/static_graph.md` を参照。
+#[proc_macro]
+pub fn static_schema(input: TokenStream) -> TokenStream {
+    graphite_codegen::parse_and_expand_static_schema(input.into()).into()
+}
+
+/// `static_schema!` が生成する `macro_rules!` からだけ呼ばれる内部マクロ。
+/// 利用者が直接書くことは想定しない。
+#[doc(hidden)]
+#[proc_macro]
+pub fn __static_graph_impl(input: TokenStream) -> TokenStream {
+    graphite_codegen::expand_static_graph_internal(input.into()).into()
+}
+
 /// データフロー矢印 `始点 -[関数式]-> 束縛名` を並べる文位置マクロ
 /// (`docs/flow_macro.md` 参照)。
 ///
