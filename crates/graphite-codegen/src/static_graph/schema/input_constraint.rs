@@ -7,7 +7,7 @@ use proc_macro2::Ident;
 use syn::parse::ParseStream;
 use syn::{LitInt, Token};
 
-use super::制約;
+use super::{制約, 多重度範囲};
 
 syn::custom_keyword!(each);
 syn::custom_keyword!(unique);
@@ -42,14 +42,17 @@ fn 単一の制約を読む(input: ParseStream) -> syn::Result<制約> {
     let 下限: LitInt = input.parse()?;
     let 下限値: usize = 下限.base10_parse()?;
     if !input.peek(Token![..]) {
-        return Ok(制約::多重度 { 役割, 下限: 下限値, 上限: 下限値 });
+        let 範囲 = 多重度範囲::new(下限値, Some(下限値), 下限.span())?;
+        return Ok(制約::多重度 { 役割, 範囲 });
     }
     input.parse::<Token![..]>()?;
     if input.peek(Token![*]) {
         input.parse::<Token![*]>()?;
-        return Ok(制約::多重度 { 役割, 下限: 下限値, 上限: usize::MAX });
+        let 範囲 = 多重度範囲::new(下限値, None, 下限.span())?;
+        return Ok(制約::多重度 { 役割, 範囲 });
     }
     let 上限: LitInt = input.parse()?;
     let 上限値: usize = 上限.base10_parse()?;
-    Ok(制約::多重度 { 役割, 下限: 下限値, 上限: 上限値 })
+    let 範囲 = 多重度範囲::new(下限値, Some(上限値), 上限.span())?;
+    Ok(制約::多重度 { 役割, 範囲 })
 }

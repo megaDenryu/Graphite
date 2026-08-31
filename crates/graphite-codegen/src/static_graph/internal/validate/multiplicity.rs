@@ -15,8 +15,8 @@ pub(super) fn 検証する(schema: &静的グラフ型入力, instance: &静的�
         };
 
         for 制約 in &型宣言.制約達 {
-            let (役割, 下限, 上限) = match 制約 {
-                制約::多重度 { 役割, 下限, 上限 } => (役割, *下限, *上限),
+            let (役割, 範囲) = match 制約 {
+                制約::多重度 { 役割, 範囲 } => (役割, *範囲),
                 制約::対一意 => continue,
             };
             let 始点側か = 役割 == 始点役割;
@@ -34,7 +34,8 @@ pub(super) fn 検証する(schema: &静的グラフ型入力, instance: &静的�
                         具体形状::無向 { .. } => false,
                     })
                     .count();
-                if 本数 < 下限 || 本数 > 上限 {
+                let 上限超過 = 範囲.上限().is_some_and(|上限| 本数 > 上限);
+                if 本数 < 範囲.下限() || 上限超過 {
                     return Err(syn::Error::new_spanned(
                         &個体.名前,
                         format!(
@@ -43,8 +44,8 @@ pub(super) fn 検証する(schema: &静的グラフ型入力, instance: &静的�
                             型宣言.名前,
                             役割,
                             本数,
-                            下限,
-                            上限を表示する(上限),
+                            範囲.下限(),
+                            上限を表示する(範囲.上限()),
                         ),
                     ));
                 }
@@ -54,6 +55,9 @@ pub(super) fn 検証する(schema: &静的グラフ型入力, instance: &静的�
     Ok(())
 }
 
-fn 上限を表示する(上限: usize) -> String {
-    if 上限 == usize::MAX { "*".to_string() } else { 上限.to_string() }
+fn 上限を表示する(上限: Option<usize>) -> String {
+    match 上限 {
+        Some(上限) => 上限.to_string(),
+        None => "*".to_string(),
+    }
 }

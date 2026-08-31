@@ -19,10 +19,14 @@
 mod input_constraint;
 #[path = "input_edge.rs"]
 mod input_edge;
+#[path = "multiplicity_range.rs"]
+mod multiplicity_range;
 
 use proc_macro2::Ident;
 use syn::parse::{Parse, ParseStream};
 use syn::Token;
+
+pub use multiplicity_range::多重度範囲;
 
 syn::custom_keyword!(schema);
 syn::custom_keyword!(node);
@@ -54,7 +58,7 @@ pub struct 辺宣言 {
 }
 
 pub enum 制約 {
-    多重度 { 役割: Ident, 下限: usize, 上限: usize },
+    多重度 { 役割: Ident, 範囲: 多重度範囲 },
     対一意,
 }
 
