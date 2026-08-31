@@ -7,7 +7,7 @@ use syn::parse::{Parse, ParseStream};
 use syn::{bracketed, parenthesized, Token};
 
 use super::edge;
-use super::{辺形状, 辺宣言};
+use super::{積み荷宣言, 辺形状, 辺宣言};
 
 impl Parse for 辺宣言 {
     fn parse(input: ParseStream) -> syn::Result<Self> {
@@ -31,10 +31,10 @@ fn 辺形状を読む(input: ParseStream) -> syn::Result<辺形状> {
         input.parse::<Token![-]>()?;
         let 積み荷角括弧;
         bracketed!(積み荷角括弧 in input);
-        let 積み荷役割: Ident = 積み荷角括弧.parse()?;
+        let 役割: Ident = 積み荷角括弧.parse()?;
         積み荷角括弧.parse::<Token![:]>()?;
-        let 積み荷型: Ident = 積み荷角括弧.parse()?;
-        let 積み荷 = Some((積み荷役割, 積み荷型));
+        let 型: Ident = 積み荷角括弧.parse()?;
+        let 積み荷 = Some(積み荷宣言 { 役割, 型 });
 
         if input.peek(Token![->]) {
             input.parse::<Token![->]>()?;
@@ -74,7 +74,7 @@ fn 役割付き端点を読む(input: ParseStream) -> syn::Result<(Ident, Ident)
 fn 無向を組み立てる(
     第1役割: Ident,
     第1型: Ident,
-    積み荷: Option<(Ident, Ident)>,
+    積み荷: Option<積み荷宣言>,
     第2役割: Ident,
     第2型: Ident,
 ) -> syn::Result<辺形状> {

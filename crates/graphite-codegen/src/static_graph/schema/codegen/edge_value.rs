@@ -4,10 +4,10 @@
 // 同一schemaから個体宣言のmacro_rulesを何度呼んでも、この生成物自体は
 // 1回しか展開されず重複定義にならない。
 
-use proc_macro2::{Ident, TokenStream};
+use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
-use crate::static_graph::schema::input::{辺形状, 辺宣言, 静的グラフ型入力};
+use crate::static_graph::schema::input::{辺形状, 辺宣言, 積み荷宣言, 静的グラフ型入力};
 
 pub(super) fn 辺値struct達を生成する(schema: &静的グラフ型入力) -> TokenStream {
     let 生成達 = schema.辺宣言達.iter().map(一種別分を生成する);
@@ -35,9 +35,9 @@ fn 一種別分を生成する(辺: &辺宣言) -> TokenStream {
     }
 }
 
-fn 積み荷フィールドを生成する(積み荷: Option<&(Ident, Ident)>) -> TokenStream {
+fn 積み荷フィールドを生成する(積み荷: Option<&積み荷宣言>) -> TokenStream {
     match 積み荷 {
-        Some((役割, 型)) => quote! { #役割: #型, },
+        Some(積み荷宣言 { 役割, 型 }) => quote! { #役割: #型, },
         None => TokenStream::new(),
     }
 }

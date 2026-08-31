@@ -15,6 +15,8 @@
 // (多重度・対一意) は input_constraint.rs が担う。ここは骨格の構造体定義と
 // トップレベル (schema { .. }) のパースだけを持つ。
 
+#[path = "edge_payload.rs"]
+mod edge_payload;
 #[path = "input_constraint.rs"]
 mod input_constraint;
 #[path = "input_edge.rs"]
@@ -26,6 +28,7 @@ use proc_macro2::Ident;
 use syn::parse::{Parse, ParseStream};
 use syn::Token;
 
+pub use edge_payload::積み荷宣言;
 pub use multiplicity_range::多重度範囲;
 
 syn::custom_keyword!(schema);
@@ -44,11 +47,11 @@ pub struct ノード宣言 {
     pub 名前: Ident,
 }
 
-// 積み荷は (役割名, 型) の組。無向辺も有向辺と同じく両端の役割名を持つ
-// (端点1/端点2への合成は廃止。issue #24 段階2、オーナー裁定)。
+// 無向辺も有向辺と同じく両端の役割名を持つ (端点1/端点2への合成は廃止。
+// issue #24 段階2、オーナー裁定)。積み荷は名前付きの 積み荷宣言 で持つ。
 pub enum 辺形状 {
-    有向 { 始点役割: Ident, 始点型: Ident, 積み荷: Option<(Ident, Ident)>, 終点役割: Ident, 終点型: Ident },
-    無向 { 第1役割: Ident, 第1型: Ident, 積み荷: Option<(Ident, Ident)>, 第2役割: Ident, 第2型: Ident },
+    有向 { 始点役割: Ident, 始点型: Ident, 積み荷: Option<積み荷宣言>, 終点役割: Ident, 終点型: Ident },
+    無向 { 第1役割: Ident, 第1型: Ident, 積み荷: Option<積み荷宣言>, 第2役割: Ident, 第2型: Ident },
 }
 
 pub struct 辺宣言 {
@@ -69,8 +72,8 @@ impl 静的グラフ型入力 {
 }
 
 impl 辺形状 {
-    // 積み荷の (役割名, 型) を返す。積み荷を持たない種別は None。
-    pub(crate) fn 積み荷(&self) -> Option<&(Ident, Ident)> {
+    // 積み荷の宣言を返す。積み荷を持たない種別は None。
+    pub(crate) fn 積み荷(&self) -> Option<&積み荷宣言> {
         match self {
             辺形状::有向 { 積み荷, .. } => 積み荷.as_ref(),
             辺形状::無向 { 積み荷, .. } => 積み荷.as_ref(),

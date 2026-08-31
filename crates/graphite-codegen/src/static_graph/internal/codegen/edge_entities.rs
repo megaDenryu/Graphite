@@ -6,7 +6,7 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
 use crate::static_graph::literal::input::{辺形状 as 具体形状, 辺宣言 as 具体辺宣言};
-use crate::static_graph::schema::input::{辺形状 as 型形状, 静的グラフ型入力};
+use crate::static_graph::schema::input::{辺形状 as 型形状, 積み荷宣言, 静的グラフ型入力};
 
 pub(super) fn 辺達を生成する(schema: &静的グラフ型入力, 辺宣言達: &[具体辺宣言]) -> TokenStream {
     let フィールド達 = 辺宣言達.iter().map(フィールドを生成する);
@@ -49,7 +49,7 @@ fn 配線を生成する(辺: &具体辺宣言, 型宣言: &crate::static_graph:
 
 fn 積み荷フィールドを生成する(型宣言: &crate::static_graph::schema::input::辺宣言, 辺: &具体辺宣言) -> TokenStream {
     match (型宣言.形状.積み荷(), 辺.形状.積み荷式()) {
-        (Some((役割, _)), Some(式)) => quote! { #役割: #式, },
+        (Some(積み荷宣言 { 役割, .. }), Some(式)) => quote! { #役割: #式, },
         (None, None) => TokenStream::new(),
         _ => unreachable!("相互検証済みなので積み荷有無は一致している"),
     }

@@ -7,7 +7,7 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
 use crate::static_graph::literal::input::{辺形状 as 具体形状, 辺宣言 as 具体辺宣言, 静的グラフ入力};
-use crate::static_graph::schema::input::{辺形状 as 型形状, 静的グラフ型入力};
+use crate::static_graph::schema::input::{辺形状 as 型形状, 積み荷宣言, 静的グラフ型入力};
 
 pub(super) fn 辺インスタンス参照達を生成する(schema: &静的グラフ型入力, instance: &静的グラフ入力) -> TokenStream {
     let 生成達 = instance.辺宣言達.iter().map(|辺| {
@@ -70,7 +70,7 @@ fn 一アクセサを生成する(役割名: &proc_macro2::Ident, 個体名: &pr
 
 fn 積み荷アクセサを生成する(型宣言: &crate::static_graph::schema::input::辺宣言) -> TokenStream {
     match 型宣言.形状.積み荷() {
-        Some((役割, 型)) => quote! {
+        Some(積み荷宣言 { 役割, 型 }) => quote! {
             fn #役割(&self) -> &'a #型 { &self.entity.#役割 }
         },
         None => TokenStream::new(),
