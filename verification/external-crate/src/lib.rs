@@ -64,9 +64,43 @@ pub fn 貸出中の蔵書を1件持つ図書グラフを組み立てる() -> Lib
     .into_graph()
 }
 
+// static_schema! (issue #24、全個体がコンパイル時に確定するグラフ) が外部
+// crateでも動くことを確かめる。graph_schema!/graph! と違いインライン展開の
+// まま完結し、ファイル生成トラッキングに参加しないため (docs/static_graph.md
+// 参照)、include! も generated/ への出力も不要。既存の Book/Reader 型を
+// そのまま再利用する。
+
+#[rustfmt::skip]
+graphite::static_schema! {
+    schema ReadingCircle {
+        node Book;
+        node Reader;
+        edge Assigned = (book: Book) -> (reader: Reader) where each book: 1;
+    }
+}
+
+#[rustfmt::skip]
+ReadingCircle! {
+    graph Circle;
+    node 本 = Book { title: "型で守るグラフ".to_string() };
+    node 読者 = Reader { name: "検証".to_string() };
+    edge 割り当て = Assigned(本 -> 読者);
+}
+
+/// `static_schema!` で組み立てた読書会グラフの割り当て (どの本を誰が読むか)
+/// を返す。`graph_schema!`/`graph!` と異なり、個体・辺の集合自体がコンパイル
+/// 時に固定されているため `freeze()` を呼ばない。
+pub fn 読書会グラフの割り当てを求める() -> (String, String) {
+    let nodes = Nodes::new();
+    let edges = Edges::new(&nodes);
+    let g = Circle::new(&nodes, &edges);
+    let 割り当て = g.edge_refs.割り当て;
+    (割り当て.book().entity().title.clone(), 割り当て.reader().entity().name.clone())
+}
+
 #[cfg(test)]
 mod tests {
-    use super::貸出中の蔵書を1件持つ図書グラフを組み立てる;
+    use super::{貸出中の蔵書を1件持つ図書グラフを組み立てる, 読書会グラフの割り当てを求める};
 
     #[test]
     fn 外部crateから生成した公開apiを呼べる() {
@@ -76,5 +110,10 @@ mod tests {
         let 貸出 = graph.borrowed_iter().next().expect("辺が1本ある");
         assert_eq!(貸出.loan().day, 1);
         assert_eq!(貸出.reader().name, "検証");
+    }
+
+    #[test]
+    fn 外部crateからstatic_schemaの公開apiを呼べる() {
+        assert_eq!(読書会グラフの割り当てを求める(), ("型で守るグラフ".to_string(), "検証".to_string()));
     }
 }

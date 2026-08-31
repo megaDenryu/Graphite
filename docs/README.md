@@ -29,6 +29,7 @@
 | `docs/bulk_construction.md` | Current reference | 実行時データから構築する `Builder::extend` の契約 |
 | `docs/graph_splice.md` | Current reference | `graph!` のスプライス構文 (`..式`) と `extend` への統一 |
 | `docs/code_generation.md` | Current reference | 生成の配線・生成先・陳腐化の検出という生成規約 |
+| `docs/static_graph.md` | Current reference | `static_schema!` (issue #24、全個体がコンパイル時に確定するグラフ) の構文・生成される名前の公開契約・コンパイル時検査の一覧 |
 | `docs/modeling_guide.md` | Current guide | 何をグラフの要素として書き、何を構造体のフィールドとして書くかの判断基準 |
 | `docs/flow_macro.md` | Current guide | `flow!` の構文と意味論 |
 | `docs/compute_graph.md` | Current guide | `ComputeGraph<V>` の遅延評価と差分再計算の使い方 |
