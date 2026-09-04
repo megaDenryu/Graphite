@@ -31,6 +31,19 @@ impl LineExtent {
             Self::Range(_, end) => end,
         }
     }
+
+    /// この指定が指すソース行だけを取り出す。終了行が実ファイルの末尾を
+    /// 超える場合は末尾で止める。行数の超過そのものは
+    /// `SourceCodeReference::evaluate` が別に違反として報告するため、ここで
+    /// 二重に報告しない。
+    pub fn lines_within<'a>(&self, lines: &'a [String]) -> &'a [String] {
+        let (start, end) = match *self {
+            Self::Single(line) => (line, line),
+            Self::Range(start, end) => (start, end),
+        };
+        let begin = (start - 1).min(lines.len());
+        &lines[begin..end.min(lines.len()).max(begin)]
+    }
 }
 
 impl fmt::Display for LineExtent {
@@ -73,6 +86,20 @@ impl SourceLineSpan {
             extents.push(LineExtent::parse(part.trim())?);
         }
         Some(Self::List(extents))
+    }
+
+    /// 範囲ごとに分けた指定の一覧。行番号なしの参照では空になる。
+    ///
+    /// カンマ区切りの複数指定を1本へ連結せずに範囲ごとへ分けるのは、引用本文の
+    /// 照合が範囲ごとに本文を作る必要があるためである。連結すると、飛ばした
+    /// 区間の境界をまたぐ偽の一致が起きる。
+    pub fn extents(&self) -> Vec<LineExtent> {
+        match self {
+            Self::Unspecified => Vec::new(),
+            Self::Single(line) => vec![LineExtent::Single(*line)],
+            Self::Range(start, end) => vec![LineExtent::Range(*start, *end)],
+            Self::List(extents) => extents.clone(),
+        }
     }
 
     /// 実ファイルの行数と比較すべき最終行番号。指定が無ければ比較不要。

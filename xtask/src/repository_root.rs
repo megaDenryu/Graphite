@@ -88,9 +88,16 @@ impl RepositoryRoot {
     /// 実在判定と行数取得を1回の読み込みで済ませる。存在確認だけを別の
     /// `is_file` 呼び出しで行うと、走査対象が増えたときに二度手間になる。
     pub fn source_file_line_count(&self, reference: &SourceReference) -> Option<usize> {
+        self.source_file_lines(reference).map(|lines| lines.len())
+    }
+
+    /// リポジトリ内 Rust ソースの本文を行ごとに読む。実在しなければ `None`。
+    ///
+    /// 引用本文の照合が指定の行範囲を切り出すために使う。
+    pub fn source_file_lines(&self, reference: &SourceReference) -> Option<Vec<String>> {
         fs::read_to_string(self.path.join(reference.path()))
             .ok()
-            .map(|text| text.lines().count())
+            .map(|text| text.lines().map(str::to_string).collect())
     }
 
     /// 索引ファイル (docs/README.md) の本文を読む。

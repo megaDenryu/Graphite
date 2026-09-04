@@ -10,6 +10,7 @@ mod document_index;
 mod document_reference;
 mod external_verification;
 mod missing_references;
+mod quoted_excerpt;
 mod reference_scan;
 mod repository_package;
 mod repository_root;
@@ -62,16 +63,23 @@ pub fn check_documents(root: &RepositoryRoot) -> Result<(), Box<dyn Error>> {
     let mismatch = DocumentIndex::read_from(root)?.compare_with(&existing);
     let missing = scan.missing_targets();
     let invalid_sources = scan.invalid_source_references();
+    let mismatched_excerpts = scan.mismatched_excerpts();
     println!(
-        "文書参照 {}件・ソース参照 {}件と docs 配下の {}ファイルを検査しました\
+        "文書参照 {}件・ソース参照 {}件 (うち直後のコードフェンス本文を照合した引用 {}件)\
+         と docs 配下の {}ファイルを検査しました\
          (別リポジトリを指す参照 {}件は検査対象外)",
         scan.reference_count(),
         scan.source_reference_count(),
+        scan.quoted_excerpt_count(),
         existing.len(),
         scan.external_reference_count()
     );
-    if missing.is_empty() && mismatch.is_empty() && invalid_sources.is_empty() {
+    if missing.is_empty()
+        && mismatch.is_empty()
+        && invalid_sources.is_empty()
+        && mismatched_excerpts.is_empty()
+    {
         return Ok(());
     }
-    Err(format!("{missing}{mismatch}{invalid_sources}").into())
+    Err(format!("{missing}{mismatch}{invalid_sources}{mismatched_excerpts}").into())
 }

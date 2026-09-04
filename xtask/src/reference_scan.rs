@@ -5,18 +5,20 @@ use graphite_cli::with_path_context;
 
 use crate::document_reference::{DocumentReference, ReferenceOrigin, ReferenceTarget};
 use crate::missing_references::MissingReferences;
+use crate::quoted_excerpt::{MismatchedExcerpts, QuotedExcerpt};
 use crate::repository_root::RepositoryRoot;
 use crate::source_reference_check::{
     InvalidSourceReferences, SourceCodeReference, UnparsableSourceReference, Violation,
 };
 
-/// 走査対象の全ファイルから抜き出した文書参照とソース参照の一覧。
+/// 走査対象の全ファイルから抜き出した文書参照・ソース参照・引用の一覧。
 ///
 /// 実在の判定にリポジトリルートが要るため、走査時に受け取ったルートを保持する。
 pub struct ReferenceScan<'root> {
     root: &'root RepositoryRoot,
     references: Vec<DocumentReference>,
     source_references: Vec<SourceCodeReference>,
+    quoted_excerpts: Vec<QuotedExcerpt>,
     unparsable_source_references: Vec<UnparsableSourceReference>,
     external_reference_count: usize,
 }
@@ -26,12 +28,18 @@ impl<'root> ReferenceScan<'root> {
     pub fn over(root: &'root RepositoryRoot) -> Result<Self, Box<dyn Error>> {
         let mut references = Vec::new();
         let mut source_references = Vec::new();
+        let mut quoted_excerpts = Vec::new();
         let mut unparsable_source_references = Vec::new();
         let mut external_reference_count = 0;
         for path in root.document_reference_sources()? {
             let origin_file = root.relative_display(&path);
             let text = with_path_context(fs::read_to_string(&path), &origin_file)?;
-            for (offset, line) in text.lines().enumerate() {
+            // 引用の照合は Markdown のファイルだけを対象にする。コードフェンスは
+            // Markdown の構文であり、行頭が `///` で始まる Rust の doc コメントの
+            // 中の同じ記法を同じ規則では扱えない。
+            let quotable = origin_file.ends_with(".md");
+            let lines: Vec<&str> = text.lines().collect();
+            for (offset, line) in lines.iter().enumerate() {
                 for token in tokens_in(line) {
                     let origin = || ReferenceOrigin::new(origin_file.clone(), offset + 1);
                     match ReferenceTarget::classify(token) {
@@ -39,6 +47,14 @@ impl<'root> ReferenceScan<'root> {
                             references.push(DocumentReference::new(origin(), target));
                         }
                         Some(ReferenceTarget::SourceCode(target)) => {
+                            if quotable {
+                                quoted_excerpts.extend(QuotedExcerpt::following_fence(
+                                    &lines,
+                                    offset,
+                                    origin(),
+                                    target.clone(),
+                                ));
+                            }
                             source_references.push(SourceCodeReference::new(origin(), target));
                         }
                         Some(ReferenceTarget::UnparsableSourceCode(token)) => {
@@ -55,6 +71,7 @@ impl<'root> ReferenceScan<'root> {
             root,
             references,
             source_references,
+            quoted_excerpts,
             unparsable_source_references,
             external_reference_count,
         })
@@ -66,6 +83,10 @@ impl<'root> ReferenceScan<'root> {
 
     pub fn source_reference_count(&self) -> usize {
         self.source_references.len()
+    }
+
+    pub fn quoted_excerpt_count(&self) -> usize {
+        self.quoted_excerpts.len()
     }
 
     pub fn external_reference_count(&self) -> usize {
@@ -82,6 +103,16 @@ impl<'root> ReferenceScan<'root> {
             .filter(|reference| !self.root.document_exists(reference.target()))
             .collect();
         MissingReferences::new(references)
+    }
+
+    /// 参照先の行範囲に引用本文が実在しない引用を全件返す。
+    pub fn mismatched_excerpts(&self) -> MismatchedExcerpts<'_> {
+        MismatchedExcerpts::new(
+            self.quoted_excerpts
+                .iter()
+                .filter_map(|excerpt| excerpt.evaluate(self.root))
+                .collect(),
+        )
     }
 
     /// 実在しないか行数を超えるか解析できないソース参照を全件返す。
