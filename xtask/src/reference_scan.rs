@@ -39,7 +39,9 @@ impl<'root> ReferenceScan<'root> {
             // 中の同じ記法を同じ規則では扱えない。
             let quotable = origin_file.ends_with(".md");
             let lines: Vec<&str> = text.lines().collect();
+            let mut fence_tracker = FenceTracker::new();
             for (offset, line) in lines.iter().enumerate() {
+                let quotable_line = quotable && fence_tracker.outside_fence(line);
                 for token in tokens_in(line) {
                     let origin = || ReferenceOrigin::new(origin_file.clone(), offset + 1);
                     match ReferenceTarget::classify(token) {
@@ -47,7 +49,7 @@ impl<'root> ReferenceScan<'root> {
                             references.push(DocumentReference::new(origin(), target));
                         }
                         Some(ReferenceTarget::SourceCode(target)) => {
-                            if quotable {
+                            if quotable_line {
                                 quoted_excerpts.extend(QuotedExcerpt::following_fence(
                                     &lines,
                                     offset,
@@ -127,6 +129,32 @@ impl<'root> ReferenceScan<'root> {
     }
 }
 
+/// 文書の行を先頭から順に読み、その行がコードフェンスの中にあるかを追う。
+///
+/// フェンスの中に書かれた行番号付きソース参照へ引用の照合を適用すると、
+/// フェンスを閉じるバッククォート3つをこの検査が引用の開始と読み違え、その
+/// 後ろの散文をフェンス本文として照合してしまう。閉じないフェンスがある場合も
+/// 同じ形で誤る。行をまたいで開閉を覚える必要があるため、状態を持つ型にする。
+struct FenceTracker {
+    inside: bool,
+}
+
+impl FenceTracker {
+    fn new() -> Self {
+        Self { inside: false }
+    }
+
+    /// 次の1行を読み、その行が引用の照合を適用してよい位置 (フェンスの外) に
+    /// あるかを返す。フェンスの開始行と終了行はどちらも外とみなさない。
+    fn outside_fence(&mut self, line: &str) -> bool {
+        let delimiter = line.trim_start().starts_with("```");
+        if delimiter {
+            self.inside = !self.inside;
+        }
+        !self.inside && !delimiter
+    }
+}
+
 /// 1行から、バッククォートで囲まれた区間と `](...)` の中身を抜き出す。
 ///
 /// 注意: 抜き出すのは区間の全体であり、`docs/` を部分文字列として切り出さない。
@@ -148,7 +176,25 @@ pub(crate) fn tokens_in(line: &str) -> Vec<&str> {
 
 #[cfg(test)]
 mod tests {
-    use super::tokens_in;
+    use super::{tokens_in, FenceTracker};
+
+    /// 各行を順に読ませ、引用の照合を適用してよい行だけを真にした一覧を得る。
+    fn 照合を適用してよい行(lines: &[&str]) -> Vec<bool> {
+        let mut tracker = FenceTracker::new();
+        lines.iter().map(|line| tracker.outside_fence(line)).collect()
+    }
+
+    #[test]
+    fn コードフェンスの中に書かれた参照は照合の対象にならない() {
+        let lines = ["散文", "```rust", "`xtask/src/lib.rs:1-5`", "```", "続く散文"];
+        assert_eq!(照合を適用してよい行(&lines), vec![true, false, false, false, true]);
+    }
+
+    #[test]
+    fn 閉じないフェンスの後ろの散文も照合の対象にならない() {
+        let lines = ["```rust", "`xtask/src/lib.rs:1-5`", "後ろの散文"];
+        assert_eq!(照合を適用してよい行(&lines), vec![false, false, false]);
+    }
 
     #[test]
     fn バッククォート区間とマークダウンリンクの両方を抜き出す() {

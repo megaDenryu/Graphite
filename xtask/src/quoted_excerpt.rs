@@ -1,11 +1,11 @@
 //! 行番号付きソース参照の直後に書かれたコードフェンスの本文と、参照先の
 //! 行範囲との照合。
 //!
-//! 引用の収集 (どのフェンスを引用とみなし、どの行を照合するか)・照合 (正規化
-//! して部分文字列で比べる)・違反の整形をこのファイルへ統合している。3つは
-//! 「文書に書かれた引用1件」という同じ概念の3つの面であり、正規化の規則は
-//! 収集と照合の両方が使う。分けると、どちらのファイルも単独では引用の意味を
-//! 説明できない流れの一片になる。
+//! このファイルは、引用の収集 (どのフェンスを引用とみなし、どの行を照合するか)・
+//! 照合 (正規化して部分文字列で比べる)・違反の整形の3つを1つにまとめて持つ。
+//! 3つは「文書に書かれた引用1件」という同じ概念の3つの面であり、正規化の規則は
+//! 収集と照合の両方が使う。別のファイルへ分けると、どちらのファイルも単独では
+//! 引用の意味を説明できず、読み手は2つを並べて読むことになる。
 
 use std::fmt;
 
@@ -16,16 +16,49 @@ use crate::source_reference::SourceReference;
 /// 照合する引用行の上限。
 ///
 /// 先頭3行に限るのは、引用の後半が途中を畳んだ抜粋であることが多く、全行を
-/// 要求すると正当な省略まで違反になるためである (このリポジトリの引用63件で
-/// 実測すると、全行照合では19件が落ち、その大半が正当な省略・畳み込みだった)。
+/// 要求すると正当な省略まで違反になるためである。issue #21 の検収でオーケスト
+/// レータがこのリポジトリの引用63件を実測したところ、全行の一致を要求すると
+/// 19件が違反になり、その19件は先頭3行だけの照合では全件が合格した。
 /// 引用の先頭は引用した宣言の頭にあたるため、ここが一致していれば「宣言した
 /// 行範囲と引用本文が全く別物」という事故は止まる。
 const ANCHOR_LIMIT: usize = 3;
 
 /// 照合に使う引用行1行。文書に書かれたままの綴りと、正規化した綴りを持つ。
+///
+/// 正規化した綴りが空でないことを不変条件にする。空の綴りはどの範囲にも
+/// 含まれてしまい、照合しても何も判定しないためである。
 struct ExcerptAnchor {
     written: String, // 違反として表示する、文書に書かれたままの綴り
     normalized: String, // 照合に使う、空白と区切りの違いを吸収した綴り
+}
+
+impl ExcerptAnchor {
+    /// フェンス本文の1行から引用行を作る。照合の対象にしない行なら `None` を返す。
+    fn from_line(line: &str) -> Option<Self> {
+        if line.trim().is_empty() || Self::is_ellipsis(line) {
+            return None;
+        }
+        let normalized = normalize(line);
+        if Self::matches_any_range(&normalized) {
+            return None;
+        }
+        Some(Self { written: line.trim().to_string(), normalized })
+    }
+
+    /// 正規化すると空になり、どの行範囲にも含まれてしまう行か。
+    ///
+    /// `{` だけの行・`,` だけの行のように、正規化が空白と末尾の区切りを落とした
+    /// 結果として何も残らない行がこれにあたる。空の綴りはどの本文にも含まれる
+    /// ため、照合しても常に一致になり検査として何も判定しない。
+    fn matches_any_range(normalized: &str) -> bool {
+        normalized.is_empty()
+    }
+
+    /// 省略を表すだけの行か。`...` と `// ...` のように記号と斜線だけからなる行は、
+    /// 引用の途中を畳んだ印であってコードに実在しないため照合しない。
+    fn is_ellipsis(line: &str) -> bool {
+        line.trim().trim_matches(['/', ' ']) == "..."
+    }
 }
 
 /// 文書がソース参照の直後のコードフェンスへ書いた引用1件。
@@ -39,10 +72,11 @@ impl QuotedExcerpt {
     /// 参照が書かれた行の直後に、空行だけを挟んでコードフェンスが始まるなら、
     /// その本文を引用として取り込む。
     ///
-    /// 照合の対象から外すのは、対象外である条件を書き下せる3つだけである。
+    /// 照合の対象から外すのは、対象外である条件を書き下せる4つだけである。
     /// 行番号を持たない参照 (ファイル全体を指すため照合すべき範囲が無い)、
-    /// 直後にコードフェンスが無い参照、およびフェンス本文のうち空行と省略記号
-    /// だけの行である。
+    /// 直後にコードフェンスが無い参照、フェンス本文のうち空行と省略記号だけの
+    /// 行、および正規化すると空になる行 (`ExcerptAnchor::matches_any_range`)
+    /// である。
     pub fn following_fence(
         lines: &[&str],
         reference_line_index: usize,
@@ -114,11 +148,7 @@ fn anchors_in(after_fence_start: &[&str]) -> Vec<ExcerptAnchor> {
         if line.trim_start().starts_with("```") {
             break;
         }
-        let normalized = normalize(line);
-        if line.trim().is_empty() || is_ellipsis(line) || normalized.is_empty() {
-            continue;
-        }
-        anchors.push(ExcerptAnchor { written: line.trim().to_string(), normalized });
+        anchors.extend(ExcerptAnchor::from_line(line));
         if anchors.len() == ANCHOR_LIMIT {
             break;
         }
@@ -142,12 +172,6 @@ fn normalize(text: &str) -> String {
         .replace(",)", ")")
         .trim_end_matches(['{', ';', ','])
         .to_string()
-}
-
-/// 省略を表すだけの行か。`...` と `// ...` のように記号と斜線だけからなる行は、
-/// 引用の途中を畳んだ印であってコードに実在しないため照合しない。
-fn is_ellipsis(line: &str) -> bool {
-    line.trim().trim_matches(['/', ' ']) == "..."
 }
 
 /// 引用1件の照合結果のうち、参照先の行範囲に見つからなかった引用行。
@@ -253,6 +277,12 @@ struct 五行目より後;
         let lines = ["参照", "```rust", "fn 先頭(引数: usize) -> bool;", "```"];
         let excerpt = excerpt("xtask/src/lib.rs:1-5", &lines).expect("引用として取り込むこと");
         assert!(excerpt.compare_with(&source(SOURCE)).is_none());
+    }
+
+    #[test]
+    fn 正規化すると空になる行だけのフェンスは引用として取り込まない() {
+        let lines = ["参照", "```rust", "{", ",", "```"];
+        assert!(excerpt("xtask/src/lib.rs:1-5", &lines).is_none());
     }
 
     #[test]
