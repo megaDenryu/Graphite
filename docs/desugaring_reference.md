@@ -282,7 +282,7 @@ Graphiteは生成しない。`NodeRef` の
 
 **3. 公開生成物**
 
-既定ID型を1つ生成する (`crates/graphite/tests/generated/edge_roles_commerce.rs:12-16`)。
+既定ID型を1つ生成する (`crates/graphite/tests/generated/edge_roles_commerce.rs:13-17`)。
 
 ```rust
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -298,11 +298,11 @@ pub struct PersonId(pub String);
 
 **4. private生成物**
 
-内部位置型を生成する (`crates/graphite/tests/generated/edge_roles_commerce.rs:32-33`)。
+内部位置型を生成する (`crates/graphite/tests/generated/edge_roles_commerce.rs:33-34`)。
 
 ```rust
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __PersonInternalPosition(usize);
+struct __PersonInternalPosition(graphite::TablePosition);
 ```
 
 名前付き位置型は `#[doc(hidden)] pub` である (§14 で扱う)。
@@ -563,11 +563,11 @@ variant (列挙型 `Violation` の1分岐。§20)、`Builder` の `purchase` メ
 **4. private生成物**
 
 内部位置型と、凍結後の辺記録を生成する
-(`crates/graphite/tests/generated/edge_roles_commerce.rs:36-37, 122-127`)。
+(`crates/graphite/tests/generated/edge_roles_commerce.rs:37-38, 123-128`)。
 
 ```rust
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct __PurchaseInternalPosition(usize);
+struct __PurchaseInternalPosition(graphite::TablePosition);
 
 #[allow(dead_code)]
 struct __PurchaseRecord {
@@ -767,7 +767,7 @@ edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) wh
 
 **3. 公開生成物**
 
-違反variantを1つ追加する (`crates/graphite/tests/generated/edge_roles_commerce.rs:151-153`)。
+違反variantを1つ追加する (`crates/graphite/tests/generated/edge_roles_commerce.rs:152-154`)。
 
 ```rust
 /// このエッジ種別の `unique pair` 違反 (同じ始点・終点の対に
@@ -1461,7 +1461,7 @@ schemaに無いKind名を書いた場合も、脱糖後の `__graphite_b.{label}
 
 **短縮形の正確な脱糖**。`alice = Person { .. }` は `insert_named("alice", ..)` へ
 脱糖し、生成ファイルの `insert_named` が束縛名の文字列から既定IDを作る
-(`crates/graphite/tests/generated/edge_roles_commerce.rs:1256-1266` と `637-645`)。
+(`crates/graphite/tests/generated/edge_roles_commerce.rs:1265-1275` と `764-775`)。
 
 ```rust
     pub fn insert_named<N>(
@@ -2322,11 +2322,12 @@ impl graphite::FreezableBuilder for Builder {
                 );
 ```
 
-確定形への変換は次の形である (`crates/graphite/tests/generated/edge_roles_commerce.rs:1571-1588`)。
+確定形への変換は次の形である (`crates/graphite/tests/generated/edge_roles_commerce.rs:1580-1599`)。
 
 ```rust
         let purchase_from_index = graphite::MultipleRoleIndex::from_buckets(
-            (0..__graphite_node_person.len())
+            __graphite_node_person
+                .positions()
                 .map(|position| {
                     purchase_from_index
                         .remove(&__PersonInternalPosition(position))
@@ -2335,7 +2336,8 @@ impl graphite::FreezableBuilder for Builder {
                 .collect(),
         );
         let purchase_to_index = graphite::OptionalRoleIndex::from_buckets(
-            (0..__graphite_node_product.len())
+            __graphite_node_product
+                .positions()
                 .map(|position| {
                     purchase_to_index
                         .remove(&__ProductInternalPosition(position))
