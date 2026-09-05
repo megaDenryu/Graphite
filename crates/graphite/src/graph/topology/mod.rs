@@ -2,6 +2,11 @@
 //!
 //! この配下だけが `petgraph` を名指しする。キーの世界 (`crate::graph` 直下) は
 //! [`ノード位置`] を通してのみトポロジーへ触れる。
+//!
+//! このファイルは1ファイル100行の原則の例外である (区分: 統合による超過)。`impl
+//! 有向トポロジー` を1ファイルへ集める規約
+//! (`docs/development/runtime_structure.md` の分解の禁止事項1) の結果である。超
+//! 過を許す根拠の台帳は `docs/development/line_count_ledger.md` にある。
 
 pub(in crate::graph) mod cycle_search;
 pub(in crate::graph) mod dependency_levels;

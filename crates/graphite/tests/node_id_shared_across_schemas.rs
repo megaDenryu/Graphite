@@ -8,6 +8,10 @@
 //! 同じ `Person` 値型を共有しても問い合わせ名は衝突しない。`PersonId` という
 //! 値は module を跨いで自由に受け渡せ、問い合わせ先はどちらの `Graph` の
 //! `person_by_id` を呼ぶかで決まる。
+//!
+//! このファイルは1ファイル100行の原則の例外である (区分: 統合による超過)。検証
+//! 対象1つ (明示ID型の複数スキーマ共有) に対する2つのスキーマとテスト関数の列で
+//! ある。超過を許す根拠の台帳は `docs/development/line_count_ledger.md` にある。
 
 /// 2つのschemaから明示的に参照する共有ID型。
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

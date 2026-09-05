@@ -1,3 +1,7 @@
+//! このファイルは1ファイル100行の原則の例外である (区分: 統合による超過)。検証
+//! 対象1つ (走査API) に対するテスト用スキーマとテスト関数の列である。超過を許す
+//! 根拠の台帳は `docs/development/line_count_ledger.md` にある。
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Person {
     name: String,

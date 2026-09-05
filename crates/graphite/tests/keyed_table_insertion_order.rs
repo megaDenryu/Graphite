@@ -13,6 +13,11 @@
 //! `#accessor.iter()` が挿入順を返すようになるため)。
 //!
 //! builder 直接経由・`graph!` リテラル経由の両方で確認する。
+//!
+//! このファイルは1ファイル100行の原則の例外である (区分: 統合による超過)。検証
+//! 対象1つ (挿入順の保持) に対するテスト用スキーマとテスト関数の列である。本体
+//! は27行である。超過を許す根拠の台帳は `docs/development/line_count_ledger.md`
+//! にある。
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Speaker {

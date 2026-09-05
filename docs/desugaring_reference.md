@@ -125,17 +125,17 @@ Graphiteの独自構文を消去したときにどの普通のRustのファイ�
 
 | 宣言元 | 生成ファイル | 内容 |
 |---|---|---|
-| `crates/graphite/tests/edge_roles.rs:27` | `crates/graphite/tests/generated/edge_roles_commerce.rs` | 有向辺・積み荷・多重度・`unique pair` |
+| `crates/graphite/tests/edge_roles.rs:31` | `crates/graphite/tests/generated/edge_roles_commerce.rs` | 有向辺・積み荷・多重度・`unique pair` |
 | `crates/graphite/tests/undirected_edges.rs:30` | `crates/graphite/tests/generated/undirected_edges_social.rs` | 無向辺 |
 | `crates/graphite/tests/role_query.rs:45` | `crates/graphite/tests/generated/role_query_rev_query.rs` | 多重度ごとの索引形状と戻り型 |
-| `crates/graphite/tests/schema_ids.rs:70` | `crates/graphite/tests/generated/schema_ids_mixed_ids.rs` | 既定IDと明示IDの混在 |
-| `crates/graphite/tests/edge_roles.rs:50` | `crates/graphite/tests/generated/edge_roles_japanese_roles.rs` | 日本語の役割名 |
-| `crates/graphite/tests/traversal_api.rs:23` | `crates/graphite/tests/generated/traversal_api_traversal.rs` | 日本語の種別名と探索メソッド |
+| `crates/graphite/tests/schema_ids.rs:74` | `crates/graphite/tests/generated/schema_ids_mixed_ids.rs` | 既定IDと明示IDの混在 |
+| `crates/graphite/tests/edge_roles.rs:54` | `crates/graphite/tests/generated/edge_roles_japanese_roles.rs` | 日本語の役割名 |
+| `crates/graphite/tests/traversal_api.rs:27` | `crates/graphite/tests/generated/traversal_api_traversal.rs` | 日本語の種別名と探索メソッド |
 
 以降、生成ファイルは `crates/graphite/tests/generated/<名前>.rs` の完全な綴りで書く。
 
 `Commerce` schemaの宣言は次のとおりである
-(`crates/graphite/tests/edge_roles.rs:15-36` から引用)。
+(`crates/graphite/tests/edge_roles.rs:19-40` から引用)。
 
 ```rust
 #[allow(non_snake_case, dead_code, private_interfaces)]
@@ -197,7 +197,7 @@ moduleは利用者が書いた `pub mod Commerce { include!(...); }` そのも�
 
 ```rust
 // このファイルは Graphite が生成したため手編集しないこと。
-// 生成元: tests/edge_roles.rs:27
+// 生成元: tests/edge_roles.rs:31
 // 再生成: パッケージのディレクトリで `cargo graphite generate` を実行する
 //         (Graphite リポジトリ自身の開発では `cargo xtask generate`)。
 
@@ -225,7 +225,7 @@ moduleを囲む親のモジュール (宣言を書いたファイル) に展開�
 
 `graph_schema!` が展開するのは、指紋を照合する `const` ブロック1つだけである。
 展開するトークンのテンプレートは次のとおりである
-(`crates/graphite-macros/src/lib.rs:93-106`)。
+(`crates/graphite-macros/src/lib.rs:98-111`)。
 
 ```rust
 let schema_name = schema.schema_name();
@@ -278,7 +278,7 @@ node Person;
 **2. 利用者定義**
 
 ノード値型は利用者が普通のRustで書く
-(`crates/graphite/tests/edge_roles.rs:1-2` から引用)。
+(`crates/graphite/tests/edge_roles.rs:5-6` から引用)。
 
 ```rust
 #[derive(Clone, PartialEq)]
@@ -375,7 +375,7 @@ node ExternalNode(id: ExternalNodeId);
 **2. 利用者定義**
 
 明示ID型とノード値型は利用者が普通のRustで書く
-(`crates/graphite/tests/schema_ids.rs:3-4, 9-11` から引用)。
+(`crates/graphite/tests/schema_ids.rs:7-8, 13-15` から引用)。
 
 ```rust
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -475,7 +475,7 @@ edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product);
 **2. 利用者定義**
 
 積み荷型は利用者が普通のRustで書く
-(`crates/graphite/tests/edge_roles.rs:10-13` から引用)。
+(`crates/graphite/tests/edge_roles.rs:14-17` から引用)。
 
 ```rust
 #[derive(Clone, PartialEq)]
@@ -1057,7 +1057,7 @@ edge ExternalLink(id: ExternalEdgeId) = (source: ExternalNode) -> (target: Exter
 **2. 利用者定義**
 
 明示ID型は利用者が普通のRustで書く
-(`crates/graphite/tests/schema_ids.rs:6-7` から引用)。
+(`crates/graphite/tests/schema_ids.rs:10-11` から引用)。
 
 ```rust
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -1124,7 +1124,7 @@ impl std::fmt::Debug for ExternalLink {
 **5. 構築時の処理**
 
 辺値はGraphを借用しないため、Graphへ登録する前に自由に構築・保持・移動できる。
-`crates/graphite/tests/edge_roles.rs:60-71` がこれを固定している。
+`crates/graphite/tests/edge_roles.rs:64-75` がこれを固定している。
 
 ```rust
 #[test]
@@ -1239,7 +1239,7 @@ impl<'graph> std::fmt::Debug for PersonRef<'graph> {
 
 `NodeRef` は `&Graph` と `usize` の2語であり、`Copy + Clone` である。ヒープ確保・
 自己参照・`Rc`・`RefCell`・実行時リフレクションを使わない。
-`crates/graphite/tests/graph_refs.rs:48-59` がこの大きさを固定している。
+`crates/graphite/tests/graph_refs.rs:52-63` がこの大きさを固定している。
 
 ノード値型が `id` / `value` という名のメソッドを持つ場合、`NodeRef` の同名の固有
 メソッドが優先される。値側のメソッドを呼ぶには `(*node_ref).id()` と明示的に
@@ -1535,7 +1535,7 @@ impl CommerceDefaultId for super::Person {
 `graph!` の左辺名は、ノードと辺を通じて1つの平坦な名前空間である。同じ識別子を
 2回宣言するとコンパイルエラーになる。`into_graph` は名前付きラッパーの予約メソッド
 名なので左辺名に使えない。この検査は意味層が行う
-(`crates/graphite-macros/src/instance_semantic.rs:123-145`)。
+(`crates/graphite-macros/src/instance_semantic.rs:128-150`)。
 
 ```rust
     for item in items {
@@ -1595,7 +1595,7 @@ let graph = graphite::graph!(MixedIds {
 
 `@` の右側は普通のRust式である (`boolean` の行は `1 == 1` という式をそのまま
 `bool` のID値として渡している。`node BooleanNode(id: bool);` と宣言してある)。
-`crates/graphite/tests/schema_ids.rs:84-119` が実際に動く形である。
+`crates/graphite/tests/schema_ids.rs:88-123` が実際に動く形である。
 
 **2. 利用者定義**
 
@@ -1803,7 +1803,7 @@ impl graphite::NamedGraphElement<Graph> for __PersonNamedPosition {
 - `into_graph()`。素の `Graph` を取り出す。公開境界で素の `Graph` を返す場合は
   これを明示する。
 
-`crates/graphite/tests/named_graph.rs:43-51` が名前と公開IDの独立を固定している。
+`crates/graphite/tests/named_graph.rs:47-55` が名前と公開IDの独立を固定している。
 
 ```rust
     let graph = graphite::graph!(NamedWorld {

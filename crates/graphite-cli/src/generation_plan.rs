@@ -1,3 +1,8 @@
+//! このファイルは1ファイル100行の原則の例外である (区分: 統合による超過)。生成
+//! 計画1つを所有し、追加・古いファイルの書き出し・差分検査・孤児の検出がその計
+//! 画表への操作である。本体は105行で、残りは同居する単体テストである。超過を許
+//! す根拠の台帳は `docs/development/line_count_ledger.md` にある。
+
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::fs;

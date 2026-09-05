@@ -1,5 +1,5 @@
 // このファイルは Graphite が生成したため手編集しないこと。
-// 生成元: tests/node_id_shared_across_schemas.rs:41
+// 生成元: tests/node_id_shared_across_schemas.rs:45
 // 再生成: パッケージのディレクトリで `cargo graphite generate` を実行する
 //         (Graphite リポジトリ自身の開発では `cargo xtask generate`)。
 

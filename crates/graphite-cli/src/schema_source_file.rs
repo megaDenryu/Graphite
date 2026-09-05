@@ -1,3 +1,8 @@
+//! このファイルは1ファイル100行の原則の例外である (区分: 統合による超過)。
+//! schema 宣言を持つソースファイル1件の読み取りと宣言の切り出しが1つの流れであ
+//! る。本体は98行で、残りは同居する単体テストである。超過を許す根拠の台帳は
+//! `docs/development/line_count_ledger.md` にある。
+
 use std::error::Error;
 use std::fs;
 use std::path::PathBuf;

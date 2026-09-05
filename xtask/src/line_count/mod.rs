@@ -5,6 +5,7 @@
 //! する。読めなかったファイルは対象から外さず違反として数える。
 
 mod code_line_count;
+mod judgement;
 mod ledger;
 mod report;
 

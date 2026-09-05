@@ -1,3 +1,8 @@
+//! このファイルは1ファイル100行の原則の例外である (区分: 統合による超過)。走査
+//! 対象のディレクトリ木1つを所有し、Rust ファイルと生成ファイルの収集がその木の
+//! 操作である。本体は114行である。超過を許す根拠の台帳は
+//! `docs/development/line_count_ledger.md` にある。
+
 use std::error::Error;
 use std::ffi::OsStr;
 use std::fs;

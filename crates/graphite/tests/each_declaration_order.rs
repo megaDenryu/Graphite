@@ -9,6 +9,10 @@
 //! 生成物 (`generated/each_declaration_order_declaration_order.rs`) が正本であり、
 //! `Violation` の variant は `記事ごとの著者` (終点側) が `著者ごとの記事` (始点側)
 //! より先に並ぶ。
+//!
+//! このファイルは1ファイル100行の原則の例外である (区分: 統合による超過)。検証
+//! 対象1つ (`where each` の記述順) に対するテスト関数の列である。本体は29行であ
+//! る。超過を許す根拠の台帳は `docs/development/line_count_ledger.md` にある。
 
 /// ノード型。`graph_schema!` はこの型を生成せず参照するだけ。
 #[derive(Debug, Clone, PartialEq)]

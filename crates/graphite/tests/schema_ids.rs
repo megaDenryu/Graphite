@@ -1,4 +1,8 @@
 //! schema module内の既定IDと既存ID型の明示指定を検証する。
+//!
+//! このファイルは1ファイル100行の原則の例外である (区分: 統合による超過)。検証
+//! 対象1つ (既定IDと明示ID型) に対するテスト用スキーマとテスト関数の列である。
+//! 超過を許す根拠の台帳は `docs/development/line_count_ledger.md` にある。
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct ExternalNodeId(pub u64);

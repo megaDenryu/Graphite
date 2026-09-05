@@ -1,6 +1,6 @@
 //! 検査結果の集計と表示。
 //!
-//! 集計する数は4種類の違反と、検査が届いた範囲 (検査したファイル数・台帳の件数・
+//! 集計する数は6種類の違反と、検査が届いた範囲 (検査したファイル数・台帳の件数・
 //! 再設計待ちの件数) である。範囲を出すのは、通ったことを「全部を見た」と
 //! 読み違えないようにするためである。
 
@@ -8,6 +8,7 @@ use std::collections::BTreeSet;
 use std::fmt::Write;
 
 use super::code_line_count::CodeLineCount;
+use super::judgement::FileJudgement;
 use super::ledger::LineCountLedger;
 
 // 検査1回分の結果。違反の一覧と、検査が届いた範囲の件数を持つ。
@@ -25,7 +26,7 @@ pub(crate) struct LineCountReport {
 }
 
 impl LineCountReport {
-    // ファイル1件の数え上げを台帳と突き合わせる。
+    // ファイル1件の数え上げを台帳と突き合わせ、判定ごとの一覧へ振り分ける。
     pub(crate) fn record(
         &mut self,
         spelling: &str,
@@ -35,23 +36,12 @@ impl LineCountReport {
         self.inspected_file_count += 1;
         self.inspected_spellings.insert(spelling.to_string());
         let measured = format!("{spelling} ({}行)", count.value());
-        let Some(category) = ledger.category_of(spelling) else {
-            if count.exceeds_principle() {
-                self.unregistered_excesses.push(measured);
-            }
-            return;
-        };
-        if !count.exceeds_principle() {
-            self.shrunk_entries.push(measured);
-            return;
-        }
-        if category.awaits_redesign() {
-            self.awaiting_redesign.push(measured);
-            return;
-        }
-        if category.applies_upper_limit() && count.exceeds_upper_limit() {
-            self.upper_limit_excesses
-                .push(format!("{measured} 区分: {}", category.label()));
+        match FileJudgement::of(count, ledger.category_of(spelling)) {
+            FileJudgement::Acceptable => {}
+            FileJudgement::Unregistered => self.unregistered_excesses.push(measured),
+            FileJudgement::Shrunk => self.shrunk_entries.push(measured),
+            FileJudgement::AwaitingRedesign => self.awaiting_redesign.push(measured),
+            FileJudgement::UpperLimitExceeded => self.upper_limit_excesses.push(measured),
         }
     }
 
@@ -94,7 +84,7 @@ impl LineCountReport {
     }
 
     fn render_violations(&self, text: &mut String) {
-        let sections = [
+        let sections: [(&str, &Vec<String>); 6] = [
             (
                 "台帳に無いのに100行を超えています",
                 &self.unregistered_excesses,
@@ -112,13 +102,18 @@ impl LineCountReport {
             ("台帳の行として読めません", &self.invalid_ledger_rows),
         ];
         for (title, entries) in sections {
-            if entries.is_empty() {
-                continue;
-            }
-            let _ = writeln!(text, "{title} ({}件):", entries.len());
-            for entry in entries {
-                let _ = writeln!(text, "  {entry}");
-            }
+            render_section(text, title, entries);
         }
+    }
+}
+
+// 違反1種類分を、件数付きの見出しと一覧で書く。空なら何も書かない。
+fn render_section(text: &mut String, title: &str, entries: &[String]) {
+    if entries.is_empty() {
+        return;
+    }
+    let _ = writeln!(text, "{title} ({}件):", entries.len());
+    for entry in entries {
+        let _ = writeln!(text, "  {entry}");
     }
 }

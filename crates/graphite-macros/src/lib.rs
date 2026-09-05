@@ -40,6 +40,11 @@
 //! `graphite_codegen::expand_inline_for_test` に残っている。`graph_schema!`
 //! は回復展開せず診断を全件返し、回復の挙動は `#[doc(hidden)]` の
 //! `__graph_schema_inline_for_test!` を通じて compile-fail テストが検査する。
+//!
+//! このファイルは1ファイル100行の原則の例外である (区分: 統合による超過)。
+//! proc-macro クレートの公開面である。6つのマクロ入口は同じ場所に並んでいること
+//! が公開面の一覧性そのものである。超過を許す根拠の台帳は
+//! `docs/development/line_count_ledger.md` にある。
 
 mod flow_codegen;
 mod flow_dsl;

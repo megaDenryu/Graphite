@@ -1,3 +1,8 @@
+//! このファイルは1ファイル100行の原則の例外である (区分: 統合による超過)。
+//! ソース参照1件の実在と行数範囲の判定と、その違反の整形が1本の流れである。本体
+//! は92行で、残りは同居する単体テストである。超過を許す根拠の台帳は
+//! `docs/development/line_count_ledger.md` にある。
+
 use std::fmt;
 
 use crate::document_reference::ReferenceOrigin;

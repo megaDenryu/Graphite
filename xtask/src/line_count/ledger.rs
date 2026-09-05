@@ -28,14 +28,6 @@ impl ExceptionCategory {
         }
     }
 
-    pub(crate) fn label(self) -> &'static str {
-        match self {
-            Self::Consolidated => "統合による超過",
-            Self::DeclarativeData => "宣言的データリテラル",
-            Self::AwaitingRedesign => "再設計待ち",
-        }
-    }
-
     // 宣言的データリテラルだけは150行の上限を適用しない (規約の別枠)。
     pub(crate) fn applies_upper_limit(self) -> bool {
         !matches!(self, Self::DeclarativeData)
