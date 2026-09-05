@@ -4,33 +4,30 @@ use std::collections::{HashMap, HashSet};
 
 use crate::schema::{EmployeeId, OrgChart};
 
-/// 管理チェーン中の 1 エントリ。
+// 管理チェーン中の 1 エントリ。
 #[derive(Debug, Clone, PartialEq)]
 pub struct ChainEntry {
-    /// 起点からの深さ (起点自身は0)。
-    pub depth: usize,
+    pub depth: usize, // 起点からの深さ (起点自身は0)。
     pub employee: EmployeeId,
     pub name: String,
     pub title: String,
-    /// このエントリの上司との在任年 (起点自身は `None`)。
-    pub since: Option<i32>,
+    pub since: Option<i32>, // このエントリの上司との在任年 (起点自身は `None`)。
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ChainResult {
     pub entries: Vec<ChainEntry>,
-    /// 途中で循環を検出して打ち切った場合 `Some(戻り先のキー)`。
-    pub cycle_back_to: Option<EmployeeId>,
+    pub cycle_back_to: Option<EmployeeId>, // 途中で循環を検出して打ち切った場合 `Some(戻り先のキー)`。
 }
 
-/// 指定した社員から `Boss` 辺を根 (トップ層) まで辿る。
-///
-/// `boss_iter` が返すEdgeRefの役割名getterから両端のNodeRefを取り、
-/// `EmployeeId -> (EmployeeId, since)` の索引を先に作って辿る。
-///
-/// 訪問済み集合を持ちながら辿ることで循環を検出する。循環に突入したら
-/// そこで打ち切り、`cycle_back_to` にループの戻り先キーを記録する
-/// (`anomalies` コマンドの循環検出とは独立した、チェーン単体での安全対策)。
+// 指定した社員から `Boss` 辺を根 (トップ層) まで辿る。
+//
+// `boss_iter` が返すEdgeRefの役割名getterから両端のNodeRefを取り、
+// `EmployeeId -> (EmployeeId, since)` の索引を先に作って辿る。
+//
+// 訪問済み集合を持ちながら辿ることで循環を検出する。循環に突入したら
+// そこで打ち切り、`cycle_back_to` にループの戻り先キーを記録する
+// (`anomalies` コマンドの循環検出とは独立した、チェーン単体での安全対策)。
 pub fn management_chain(org: &OrgChart::Graph, start: &EmployeeId) -> Option<ChainResult> {
     let start_employee = org.employee_by_id(start)?;
 

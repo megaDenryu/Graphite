@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use super::span_of_control::{span_of_control, SpanOfControlStats};
 use crate::schema::{DepartmentId, OrgChart, ProjectId};
 
-/// 部署別の在籍人数。
+// 部署別の在籍人数。
 #[derive(Debug, Clone, PartialEq)]
 pub struct DeptCount {
     pub department: DepartmentId,
@@ -14,13 +14,13 @@ pub struct DeptCount {
     pub count: usize,
 }
 
-/// grade 別の人数分布。
+// grade 別の人数分布。
 #[derive(Debug, Clone, PartialEq)]
 pub struct GradeCount {
     pub grade: u8,
     pub count: usize,
 }
-/// プロジェクト別のアサイン人数。
+// プロジェクト別のアサイン人数。
 #[derive(Debug, Clone, PartialEq)]
 pub struct ProjectAssignmentCount {
     pub project: ProjectId,

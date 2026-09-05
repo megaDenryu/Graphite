@@ -24,7 +24,7 @@
 //! すべて `dataset.rs` の合成生成器 (`OrgChart::Graph::create` の builder 呼び出し)
 //! から組み立てるため `graph!` リテラルは使わない。
 
-/// ノード型。`graph_schema!` はこの型を生成せず参照するだけ。
+// ノード型。`graph_schema!` はこの型を生成せず参照するだけ。
 #[derive(Debug, Clone, PartialEq)]
 pub struct Employee {
     pub name: String,
@@ -32,27 +32,27 @@ pub struct Employee {
     pub grade: u8,
 }
 
-/// ノード型。`reorg.rs` が部署を再構築する際に値を `.clone()` するため
-/// `Clone` を derive している。
+// ノード型。`reorg.rs` が部署を再構築する際に値を `.clone()` するため
+// `Clone` を derive している。
 #[derive(Debug, Clone, PartialEq)]
 pub struct Department {
     pub name: String,
 }
 
-/// ノード型。
+// ノード型。
 #[derive(Debug, Clone, PartialEq)]
 pub struct Project {
     pub name: String,
     pub priority: u8,
 }
 
-/// `Boss` エッジの積み荷。`graph_schema!` はこの型を生成せず参照するだけ。
+// `Boss` エッジの積み荷。`graph_schema!` はこの型を生成せず参照するだけ。
 #[derive(Debug, Clone, PartialEq)]
 pub struct BossEdge {
     pub since: i32,
 }
 
-/// `Assigned` エッジの積み荷。
+// `Assigned` エッジの積み荷。
 #[derive(Debug, Clone, PartialEq)]
 pub struct AssignedEdge {
     pub role: String,

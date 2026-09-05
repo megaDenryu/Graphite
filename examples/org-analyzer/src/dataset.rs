@@ -31,26 +31,23 @@ use crate::schema::{
     EmployeeId, OrgChart, Project, ProjectId, Sponsors,
 };
 
-/// 社員数。
-pub const EMPLOYEE_COUNT: usize = 120;
-/// 部署数 (`DEPARTMENT_NAMES` の要素数と一致させる)。
-pub const DEPARTMENT_COUNT: usize = 8;
-/// プロジェクト数 (`PROJECT_NAMES` の要素数と一致させる)。
-pub const PROJECT_COUNT: usize = 15;
+pub const EMPLOYEE_COUNT: usize = 120; // 社員数。
+pub const DEPARTMENT_COUNT: usize = 8; // 部署数 (`DEPARTMENT_NAMES` の要素数と一致させる)。
+pub const PROJECT_COUNT: usize = 15; // プロジェクト数 (`PROJECT_NAMES` の要素数と一致させる)。
 
-/// 管理職とみなす最低 grade (係長相当以上)。`analysis/span_of_control.rs` からも参照する。
+// 管理職とみなす最低 grade (係長相当以上)。`analysis/span_of_control.rs` からも参照する。
 pub const MANAGER_GRADE_THRESHOLD: u8 = 3;
 
-/// シードから組織データを合成する。
-///
-/// `inject_anomalies` が `true` の場合、以下を強制的に埋め込む
-/// (`AnomalyPlan` に記録して返す。`anomalies` コマンドの検出結果とテストで
-/// 突き合わせる):
-///
-/// 1. 社員 E001/E002 を相互上司 (お互いがお互いの boss) にする
-/// 2. 社員 E003→E004→E005→E003 の上司循環 (3人) を作る
-/// 3. プロジェクト P01 をどの部署からもスポンサーされない状態にする
-/// 4. プロジェクト P02 に誰もアサインされない状態にする
+// シードから組織データを合成する。
+//
+// `inject_anomalies` が `true` の場合、以下を強制的に埋め込む
+// (`AnomalyPlan` に記録して返す。`anomalies` コマンドの検出結果とテストで
+// 突き合わせる):
+//
+// 1. 社員 E001/E002 を相互上司 (お互いがお互いの boss) にする
+// 2. 社員 E003→E004→E005→E003 の上司循環 (3人) を作る
+// 3. プロジェクト P01 をどの部署からもスポンサーされない状態にする
+// 4. プロジェクト P02 に誰もアサインされない状態にする
 pub fn generate(seed: u64, inject_anomalies: bool) -> GeneratedOrg {
     let mut rng = Lcg::new(seed);
 

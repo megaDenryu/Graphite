@@ -6,7 +6,7 @@ use graphite::{CycleError, Graph};
 
 use crate::schema::{DepartmentId, EmployeeId, OrgChart};
 
-/// 部署を跨いだ上司関係 (上司と部下が異なる部署に所属している)。
+// 部署を跨いだ上司関係 (上司と部下が異なる部署に所属している)。
 #[derive(Debug, Clone, PartialEq)]
 pub struct CrossDepartmentBoss {
     pub employee: EmployeeId,
@@ -16,10 +16,10 @@ pub struct CrossDepartmentBoss {
     pub boss_name: String,
     pub boss_dept: DepartmentId,
 }
-/// 相互上司ペアの検出。README に載っている手法そのもの:
-/// 全ペアを集めておき、`(a, b)` かつ `(b, a)` が両方存在するものを拾う。
-///
-/// 判定には `EmployeeId` の対そのものが要るため、EdgeRefの両端からIDを集める。
+// 相互上司ペアの検出。README に載っている手法そのもの:
+// 全ペアを集めておき、`(a, b)` かつ `(b, a)` が両方存在するものを拾う。
+//
+// 判定には `EmployeeId` の対そのものが要るため、EdgeRefの両端からIDを集める。
 pub(super) fn detect_mutual_boss_pairs(org: &OrgChart::Graph) -> Vec<(EmployeeId, EmployeeId)> {
     let all: Vec<(&EmployeeId, &EmployeeId)> = org
         .boss_iter()
@@ -36,16 +36,16 @@ pub(super) fn detect_mutual_boss_pairs(org: &OrgChart::Graph) -> Vec<(EmployeeId
     result
 }
 
-/// 上司関係の循環検出。
-///
-/// `Boss` エッジ (`(subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee)`, each subordinate: 0..1) を
-/// 汎用 `graphite::Graph<(), (), EmployeeId>` に射影する (`Graph::from_edges`
-/// が `{kind}_iter` からの定型的な射影をまとめてくれる)。`topological_sort`
-/// が返す `CycleError::cycle` はフェーズ5から循環メンバー全体を返すように
-/// なったため、以前のような「boss辺を手で辿って復元する」処理は不要になった。
-/// 1つの循環を見つけたら `filter_nodes_with_key` でそのメンバーを取り除いた
-/// 部分グラフに対して再度検出し、複数の循環があっても全て拾えるようにして
-/// いる。
+// 上司関係の循環検出。
+//
+// `Boss` エッジ (`(subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee)`, each subordinate: 0..1) を
+// 汎用 `graphite::Graph<(), (), EmployeeId>` に射影する (`Graph::from_edges`
+// が `{kind}_iter` からの定型的な射影をまとめてくれる)。`topological_sort`
+// が返す `CycleError::cycle` はフェーズ5から循環メンバー全体を返すように
+// なったため、以前のような「boss辺を手で辿って復元する」処理は不要になった。
+// 1つの循環を見つけたら `filter_nodes_with_key` でそのメンバーを取り除いた
+// 部分グラフに対して再度検出し、複数の循環があっても全て拾えるようにして
+// いる。
 pub(super) fn detect_boss_cycles(org: &OrgChart::Graph) -> Vec<Vec<EmployeeId>> {
     let mut graph: Graph<(), (), EmployeeId> = Graph::from_edges(
         org.employee_ids().cloned(),
@@ -77,7 +77,7 @@ pub(super) fn detect_boss_cycles(org: &OrgChart::Graph) -> Vec<Vec<EmployeeId>> 
     cycles
 }
 
-/// 部署跨ぎの上司関係 (上司と部下が異なる部署)。
+// 部署跨ぎの上司関係 (上司と部下が異なる部署)。
 pub(super) fn detect_cross_department_bosses(org: &OrgChart::Graph) -> Vec<CrossDepartmentBoss> {
     let dept_of: HashMap<&EmployeeId, &DepartmentId> = org
         .belongs_to_iter()

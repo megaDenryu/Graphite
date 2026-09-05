@@ -5,11 +5,11 @@
 
 use crate::schema::{DialogueGraph, EndingId, SceneId};
 
-/// `start` から `ending` への最短ルートを
-/// `(通過シーンキー, 次のシーンへ進むために選ぶべき選択肢ラベル)` の列で
-/// 返す。最後の要素 (finale するシーン) のラベルは `None` になる。
-/// 同じエンディングに複数のシーンから finale されている場合は最短のものを
-/// 採用する。到達不能なら `None`。
+// `start` から `ending` への最短ルートを
+// `(通過シーンキー, 次のシーンへ進むために選ぶべき選択肢ラベル)` の列で
+// 返す。最後の要素 (finale するシーン) のラベルは `None` になる。
+// 同じエンディングに複数のシーンから finale されている場合は最短のものを
+// 採用する。到達不能なら `None`。
 pub fn route_to_ending(
     schema: &DialogueGraph::Graph,
     start: &SceneId,

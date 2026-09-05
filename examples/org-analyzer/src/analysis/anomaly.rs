@@ -11,10 +11,8 @@ pub use super::boss_anomaly::CrossDepartmentBoss;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AnomalyReport {
-    /// 相互上司ペア (正規化済み: 同じペアが2回出ないよう `(小さい方, 大きい方)` に統一)。
-    pub mutual_boss_pairs: Vec<(EmployeeId, EmployeeId)>,
-    /// 上司関係の循環。各要素は循環に含まれる社員キーの並び。
-    pub boss_cycles: Vec<Vec<EmployeeId>>,
+    pub mutual_boss_pairs: Vec<(EmployeeId, EmployeeId)>, // 相互上司ペア (正規化済み: 同じペアが2回出ないよう `(小さい方, 大きい方)` に統一)。
+    pub boss_cycles: Vec<Vec<EmployeeId>>, // 上司関係の循環。各要素は循環に含まれる社員キーの並び。
     pub cross_department_bosses: Vec<CrossDepartmentBoss>,
     pub unstaffed_projects: Vec<ProjectId>,
     pub sponsorless_projects: Vec<ProjectId>,

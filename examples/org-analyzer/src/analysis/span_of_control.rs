@@ -3,19 +3,19 @@
 use crate::dataset::MANAGER_GRADE_THRESHOLD;
 use crate::schema::{EmployeeId, OrgChart};
 
-/// span of control (直属部下数) の統計。
+// span of control (直属部下数) の統計。
+//
+// `average` は、管理職 (grade >= `MANAGER_GRADE_THRESHOLD`) 全員を母数にした
+// 直属部下数の平均である (部下0人の管理職も含めて平均する)。
 #[derive(Debug, Clone, PartialEq)]
 pub struct SpanOfControlStats {
-    /// 管理職 (grade >= `MANAGER_GRADE_THRESHOLD`) 全員を母数にした
-    /// 直属部下数の平均 (部下0人の管理職も含めて平均する)。
     pub average: f64,
     pub max: usize,
     pub max_manager: Option<(EmployeeId, String)>,
-    /// 部下が1人もいない管理職一覧 (`(id, name, title)`)。
-    pub zero_report_managers: Vec<(EmployeeId, String, String)>,
+    pub zero_report_managers: Vec<(EmployeeId, String, String)>, // 部下が1人もいない管理職一覧 (`(id, name, title)`)。
 }
-/// 管理職を終点とする `Boss` 辺の本数を、`superior.boss_as_superior()` で
-/// 直接引いて集計する (直属部下の一覧を全辺から事前に作る必要はない)。
+// 管理職を終点とする `Boss` 辺の本数を、`superior.boss_as_superior()` で
+// 直接引いて集計する (直属部下の一覧を全辺から事前に作る必要はない)。
 pub fn span_of_control(org: &OrgChart::Graph) -> SpanOfControlStats {
     let managers: Vec<EmployeeId> = org
         .employee_ids()

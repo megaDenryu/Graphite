@@ -14,24 +14,22 @@ use std::collections::HashSet;
 
 use crate::schema::{DialogueGraph, EndingId, SceneId};
 
-/// 検証結果一式。
+// 検証結果一式。
+//
+// `unreachable_endings` は、到達可能などのシーンからも finale されない = 到達不能な
+// エンディングである (キー昇順)。`trapped_scenes` は、どのエンディングにも到達できず、
+// かつ循環 (閉じたループ) を形成しているシーン群である (キー昇順)。単なるデッドエンドとは
+// 異なり、「無限にさまよい続けられるが決して終わらない」構造上の罠を指す。
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ValidationReport {
-    /// 開始シーンから到達不能なシーン (キー昇順)。
-    pub unreachable_scenes: Vec<SceneId>,
-    /// 選択肢もfinaleも無いデッドエンドシーン (キー昇順)。
-    pub dead_end_scenes: Vec<SceneId>,
-    /// 到達可能などのシーンからも finale されない = 到達不能なエンディング
-    /// (キー昇順)。
+    pub unreachable_scenes: Vec<SceneId>, // 開始シーンから到達不能なシーン (キー昇順)。
+    pub dead_end_scenes: Vec<SceneId>,    // 選択肢もfinaleも無いデッドエンドシーン (キー昇順)。
     pub unreachable_endings: Vec<EndingId>,
-    /// どのエンディングにも到達できず、かつ循環 (閉じたループ) を形成して
-    /// いるシーン群 (キー昇順)。単なるデッドエンドとは異なり、「無限に
-    /// さまよい続けられるが決して終わらない」構造上の罠を指す。
     pub trapped_scenes: Vec<SceneId>,
 }
 
 impl ValidationReport {
-    /// 4種のいずれの問題も無ければ true。
+    // 4種のいずれの問題も無ければ true。
     pub fn is_clean(&self) -> bool {
         self.unreachable_scenes.is_empty()
             && self.dead_end_scenes.is_empty()
@@ -40,7 +38,7 @@ impl ValidationReport {
     }
 }
 
-/// `schema` を `start` シーンを起点に検証する。
+// `schema` を `start` シーンを起点に検証する。
 pub fn validate(schema: &DialogueGraph::Graph, start: &SceneId) -> ValidationReport {
     let scene_graph = schema.scene_graph();
 
@@ -121,9 +119,9 @@ pub fn validate(schema: &DialogueGraph::Graph, start: &SceneId) -> ValidationRep
     }
 }
 
-/// `id` が `graph` 上で (長さ1以上の) 循環に参加しているか。
-/// 「`id` の隣接先のどれかから `id` 自身へ戻れるか」で判定する
-/// (自己ループも `out_neighbors` に `id` 自身が含まれるため自然に拾える)。
+// `id` が `graph` 上で (長さ1以上の) 循環に参加しているか。
+// 「`id` の隣接先のどれかから `id` 自身へ戻れるか」で判定する
+// (自己ループも `out_neighbors` に `id` 自身が含まれるため自然に拾える)。
 fn scene_is_in_cycle(graph: &graphite::Graph<SceneId, String, SceneId>, id: &SceneId) -> bool {
     graph
         .out_neighbors(id)

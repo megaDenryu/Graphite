@@ -5,8 +5,7 @@ const DEFAULT_SEED: u64 = 42;
 pub struct Options {
     pub seed: u64,
     pub inject_anomalies: bool,
-    /// フラグ以外の残り引数 (サブコマンドの位置引数)。
-    pub positional: Vec<String>,
+    pub positional: Vec<String>, // フラグ以外の残り引数 (サブコマンドの位置引数)。
 }
 
 pub fn parse_options(args: &[String]) -> Result<Options, String> {

@@ -2,7 +2,7 @@
 
 use super::lcg::Lcg;
 
-/// grade 分布 (1〜5)。現場の人数が多いピラミッド型組織を模す。
+// grade 分布 (1〜5)。現場の人数が多いピラミッド型組織を模す。
 pub(super) fn weighted_grade(rng: &mut Lcg) -> u8 {
     let roll = rng.next_range(100);
     match roll {
@@ -14,7 +14,7 @@ pub(super) fn weighted_grade(rng: &mut Lcg) -> u8 {
     }
 }
 
-/// 1人あたりの兼務プロジェクト数 (0〜3)。
+// 1人あたりの兼務プロジェクト数 (0〜3)。
 pub(super) fn weighted_assignment_count(rng: &mut Lcg) -> usize {
     let roll = rng.next_range(100);
     match roll {

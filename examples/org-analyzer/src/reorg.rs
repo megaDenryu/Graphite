@@ -32,8 +32,8 @@ use crate::schema::{
     Assigned, AssignedEdge, AssignedId, BelongsTo, BelongsToId, Boss, BossEdge, BossId, Department,
     DepartmentId, Employee, EmployeeId, OrgChart, Project, ProjectId, Sponsors, SponsorsId,
 };
-/// 指定した部署を廃止するシミュレーションを実行する。
-/// 部署キーが存在しなければ `None`。
+// 指定した部署を廃止するシミュレーションを実行する。
+// 部署キーが存在しなければ `None`。
 pub fn simulate_reorg(org: &OrgChart::Graph, target: &DepartmentId) -> Option<ReorgReport> {
     let removed_department_name = org.department_by_id(target)?.name.clone();
 

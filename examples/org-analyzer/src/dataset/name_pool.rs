@@ -42,7 +42,7 @@ pub(super) const GIVEN_NAMES: &[&str] = &[
     "夏美", "雄大", "里奈", "俊介", "和也", "泰輔",
 ];
 
-/// 8 要素固定 (`DEPARTMENT_COUNT` と一致)。
+// 8 要素固定 (`DEPARTMENT_COUNT` と一致)。
 pub(super) const DEPARTMENT_NAMES: [&str; DEPARTMENT_COUNT] = [
     "営業部",
     "開発部",
@@ -54,7 +54,7 @@ pub(super) const DEPARTMENT_NAMES: [&str; DEPARTMENT_COUNT] = [
     "カスタマーサポート部",
 ];
 
-/// 15 要素固定 (`PROJECT_COUNT` と一致)。
+// 15 要素固定 (`PROJECT_COUNT` と一致)。
 pub(super) const PROJECT_NAMES: [&str; PROJECT_COUNT] = [
     "次世代基幹システム刷新",
     "モバイルアプリリニューアル",

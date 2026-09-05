@@ -4,36 +4,34 @@ use std::collections::{HashMap, HashSet};
 
 use crate::schema::{DialogueGraph, SceneId};
 
-/// `stats` サブコマンドの集計結果。
+// `stats` サブコマンドの集計結果。
+//
+// `shortest_routes` は `(到達可能な各エンディングのタイトル, そこへの最短ルート長)`
+// である。グラフには循環があるため「最長ルート」はループ回数を増やせば無限に
+// 伸ばせてしまい定義できない。代わりに「各エンディングへの最短経路長」の
+// 最小値・最大値を「一番近いエンディング/一番遠いエンディング」として報告する。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Stats {
     pub scene_count: usize,
     pub ending_count: usize,
-    /// choice 辺の総数 (= 分岐選択肢の総数)。
-    pub choice_count: usize,
-    /// 合流点の数 (2本以上の異なる choice 辺から到達されるシーンの数)。
-    pub convergence_count: usize,
-    /// `(到達可能な各エンディングのタイトル, そこへの最短ルート長)`。
-    /// グラフには循環があるため「最長ルート」はループ回数を増やせば無限に
-    /// 伸ばせてしまい定義できない。代わりに「各エンディングへの最短経路
-    /// 長」の最小値・最大値を「一番近いエンディング/一番遠いエンディング」
-    /// として報告する。
+    pub choice_count: usize,      // choice 辺の総数 (= 分岐選択肢の総数)。
+    pub convergence_count: usize, // 合流点の数 (2本以上の異なる choice 辺から到達されるシーンの数)。
     pub shortest_routes: Vec<(String, usize)>,
 }
 
 impl Stats {
-    /// 最短ルート長が最も短いエンディングまでの長さ (シーン数)。
+    // 最短ルート長が最も短いエンディングまでの長さ (シーン数)。
     pub fn shortest_route_len(&self) -> Option<usize> {
         self.shortest_routes.iter().map(|(_, n)| *n).min()
     }
 
-    /// 最短ルート長が最も長いエンディングまでの長さ (シーン数)。
+    // 最短ルート長が最も長いエンディングまでの長さ (シーン数)。
     pub fn longest_shortest_route_len(&self) -> Option<usize> {
         self.shortest_routes.iter().map(|(_, n)| *n).max()
     }
 }
 
-/// `start` を起点にシナリオの統計を計算する。
+// `start` を起点にシナリオの統計を計算する。
 pub fn compute_stats(schema: &DialogueGraph::Graph, start: &SceneId) -> Stats {
     let scene_graph = schema.scene_graph();
 

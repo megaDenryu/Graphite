@@ -18,21 +18,21 @@
 // edge Finale = (scene: Scene) -> (ending: Ending) where each scene: 0..1 — エンディングへの
 //               到達。各シーンにつき高々1つの結末。
 
-/// ノード型。`graph_schema!` はこの型を生成せず参照するだけ。
+// ノード型。`graph_schema!` はこの型を生成せず参照するだけ。
 #[derive(Debug, Clone, PartialEq)]
 pub struct Scene {
     pub speaker: String,
     pub text: String,
 }
 
-/// ノード型。
+// ノード型。
 #[derive(Debug, Clone, PartialEq)]
 pub struct Ending {
     pub title: String,
     pub epilogue: String,
 }
 
-/// `Choice` 辺の積み荷 (選択肢のラベル文字列)。
+// `Choice` 辺の積み荷 (選択肢のラベル文字列)。
 #[derive(Debug, Clone, PartialEq)]
 pub struct ChoiceEdge {
     pub label: String,

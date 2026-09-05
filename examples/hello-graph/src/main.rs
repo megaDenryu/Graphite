@@ -34,25 +34,25 @@
 // `TeamId` を生成します。既存ID型を使う場合は `node Person(id: 型);` と
 // 明示します (`docs/node_id_v4_2.md`)。
 
-/// ノード型その1: 社員。
+// ノード型その1: 社員。
 #[derive(Debug, Clone, PartialEq)]
 pub struct Person {
     pub name: String,
 }
 
-/// ノード型その2: チーム。
+// ノード型その2: チーム。
 #[derive(Debug, Clone, PartialEq)]
 pub struct Team {
     pub name: String,
 }
 
-/// `Boss` エッジが辺1本ごとに運ぶペイロード (積み荷)。
+// `Boss` エッジが辺1本ごとに運ぶペイロード (積み荷)。
 #[derive(Debug, Clone, PartialEq)]
 pub struct BossEdge {
     pub since: i32,
 }
 
-/// `ReviewedBy` エッジが辺1本ごとに運ぶペイロード (積み荷)。
+// `ReviewedBy` エッジが辺1本ごとに運ぶペイロード (積み荷)。
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReviewEdge {
     pub year: i32,

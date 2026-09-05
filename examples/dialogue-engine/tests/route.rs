@@ -4,10 +4,10 @@ use dialogue_engine::schema::EndingId;
 use dialogue_engine::story::{build_story, start_scene_id};
 use dialogue_engine::{engine, route};
 
-/// `route` が返す経路は「実際にその選択肢ラベル通りに選び続けたら本当に
-/// そのエンディングへ到達するか」で検算できる。全4エンディングについて、
-/// route の出力ラベル列をそのまま `engine::play` の入力に変換し、
-/// 実プレイの結果と突き合わせる。
+// `route` が返す経路は「実際にその選択肢ラベル通りに選び続けたら本当に
+// そのエンディングへ到達するか」で検算できる。全4エンディングについて、
+// route の出力ラベル列をそのまま `engine::play` の入力に変換し、
+// 実プレイの結果と突き合わせる。
 #[test]
 fn route_の示す経路を実際に辿ると同じエンディングに到達する() {
     let story = build_story().expect("本編シナリオの構築は成功するはず");

@@ -284,7 +284,7 @@ pub fn build_story() -> Result<DialogueGraph::Graph, DialogueGraph::Violation> {
     .map(|graph| graph.into_graph())
 }
 
-/// シナリオの開始シーン。
+// シナリオの開始シーン。
 pub fn start_scene_id() -> SceneId {
     SceneId("start".to_string())
 }

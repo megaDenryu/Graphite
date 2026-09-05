@@ -28,7 +28,7 @@ pub fn print_chain(result: &ChainResult) {
     }
 }
 
-/// `main.rs` から使う小ヘルパー: 社員キーが存在するかどうかの案内。
+// `main.rs` から使う小ヘルパー: 社員キーが存在するかどうかの案内。
 pub fn print_unknown_employee(key: &EmployeeId) {
     eprintln!("エラー: 社員キー '{}' は存在しません", key.0);
 }

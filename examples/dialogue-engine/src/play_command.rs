@@ -37,7 +37,7 @@ pub fn cmd_play(story: &DialogueGraph::Graph, start: &SceneId, rest: &[String]) 
     }
 }
 
-/// stdin から選択肢番号 (1始まり) を読む。範囲外・非数値な入力は再入力を促す。
+// stdin から選択肢番号 (1始まり) を読む。範囲外・非数値な入力は再入力を促す。
 fn read_choice_from_stdin(labels: &[String]) -> usize {
     use std::io::Write;
     loop {

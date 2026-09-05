@@ -2,9 +2,9 @@
 
 use crate::schema::{DialogueGraph, EndingId, SceneId};
 
-/// シナリオ全体を mermaid の `flowchart` 記法で出力する。
-/// Scene は矩形 (`id["..."]`)、Ending はスタジアム形状 (`id{{"..."}}`) で
-/// 区別する。選択肢ラベルは辺ラベルとして、finale 辺は破線矢印で表現する。
+// シナリオ全体を mermaid の `flowchart` 記法で出力する。
+// Scene は矩形 (`id["..."]`)、Ending はスタジアム形状 (`id{{"..."}}`) で
+// 区別する。選択肢ラベルは辺ラベルとして、finale 辺は破線矢印で表現する。
 pub fn to_mermaid(schema: &DialogueGraph::Graph) -> String {
     let mut out = String::new();
     out.push_str("flowchart TD\n");
@@ -72,9 +72,9 @@ pub fn to_mermaid(schema: &DialogueGraph::Graph) -> String {
     out
 }
 
-/// mermaid のノードIDとして使う文字列を作る。シナリオのキーは英数字+
-/// アンダースコアのみを使う運用なのでほぼそのまま通すが、念のため
-/// mermaid が誤解釈しうる記号を `_` に置き換える。
+// mermaid のノードIDとして使う文字列を作る。シナリオのキーは英数字+
+// アンダースコアのみを使う運用なのでほぼそのまま通すが、念のため
+// mermaid が誤解釈しうる記号を `_` に置き換える。
 fn mermaid_id(raw: &str) -> String {
     raw.chars()
         .map(|c| {
@@ -87,14 +87,14 @@ fn mermaid_id(raw: &str) -> String {
         .collect()
 }
 
-/// mermaid のラベル文字列中で `"` があると壊れるため `'` に、改行は空白に
-/// 潰す。
+// mermaid のラベル文字列中で `"` があると壊れるため `'` に、改行は空白に
+// 潰す。
 fn escape(text: &str) -> String {
     text.replace('"', "'").replace(['\n', '\r'], " ")
 }
 
-/// 文字数ベースで truncate する (UTF-8 のバイト境界を考慮するため
-/// `chars()` を使う)。
+// 文字数ベースで truncate する (UTF-8 のバイト境界を考慮するため
+// `chars()` を使う)。
 fn truncate(text: &str, max_chars: usize) -> String {
     if text.chars().count() <= max_chars {
         return text.to_string();
