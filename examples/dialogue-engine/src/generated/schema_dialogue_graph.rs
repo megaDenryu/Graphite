@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    1676735987963901790u64, 9705446312033110733u64, 5266845505104514108u64,
-    1170608020221244200u64,
+    6832160084134973150u64, 9563886519145323629u64, 9540419647134504668u64,
+    17877339924026764008u64,
 ];
 /// `Scene` ノードの公開ID。
 ///
@@ -194,14 +194,14 @@ impl std::fmt::Display for Violation {
             Violation::ChoiceUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     source, "Scene", "Choice", edge, "始点"
                 )
             }
             Violation::ChoiceUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     target, "Scene", "Choice", edge, "終点"
                 )
             }
@@ -211,14 +211,14 @@ impl std::fmt::Display for Violation {
             Violation::FinaleUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     source, "Scene", "Finale", edge, "始点"
                 )
             }
             Violation::FinaleUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     target, "Ending", "Finale", edge, "終点"
                 )
             }

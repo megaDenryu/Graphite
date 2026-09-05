@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    4246782983460706179u64, 9885490096498873750u64, 427750768080122385u64,
-    9333803780958183797u64,
+    15939096809991844115u64, 17857744565030846402u64, 5187252885421274249u64,
+    4388840773717165933u64,
 ];
 /// `Sensor` ノードの公開ID。
 ///
@@ -128,14 +128,14 @@ impl std::fmt::Display for Violation {
             Violation::MeasuredUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     source, "Sensor", "Measured", edge, "始点"
                 )
             }
             Violation::MeasuredUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     target, "Reading", "Measured", edge, "終点"
                 )
             }

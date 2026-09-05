@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    11095281286266884989u64, 18095715996711011956u64, 8077778163339889275u64,
-    4519956522106804775u64,
+    8798194857904799859u64, 8393128735357591658u64, 2695422836181101977u64,
+    14254976402198049797u64,
 ];
 /// `Consumes` 辺の公開ID。
 ///
@@ -175,14 +175,14 @@ impl std::fmt::Display for Violation {
             Violation::ProducesUnknownSource { .. } => {
                 write!(
                     f,
-                    "未知のキーが {} として解決できません (辺 `{}` の{})",
+                    "未知のキーが {} として見つかりません (辺 `{}` の{}。端点のキーと辺のキーは利用者が宣言したID型のため表示しない)",
                     "Task", "Produces", "始点"
                 )
             }
             Violation::ProducesUnknownTarget { .. } => {
                 write!(
                     f,
-                    "未知のキーが {} として解決できません (辺 `{}` の{})",
+                    "未知のキーが {} として見つかりません (辺 `{}` の{}。端点のキーと辺のキーは利用者が宣言したID型のため表示しない)",
                     "Artifact", "Produces", "終点"
                 )
             }
@@ -199,14 +199,14 @@ impl std::fmt::Display for Violation {
             Violation::ConsumesUnknownSource { edge, .. } => {
                 write!(
                     f,
-                    "未知のキーが {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキーが {} として見つかりません (辺 `{}` {:?} の{}。端点のキーは利用者が宣言したID型のため表示しない)",
                     "Task", "Consumes", edge, "始点"
                 )
             }
             Violation::ConsumesUnknownTarget { edge, .. } => {
                 write!(
                     f,
-                    "未知のキーが {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキーが {} として見つかりません (辺 `{}` {:?} の{}。端点のキーは利用者が宣言したID型のため表示しない)",
                     "Artifact", "Consumes", edge, "終点"
                 )
             }

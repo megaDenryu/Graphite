@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    11908456558033488533u64, 782883004304879992u64, 10432733121046341927u64,
-    2035203508851332459u64,
+    18250559463980893385u64, 11509564234109253082u64, 18220726025299043055u64,
+    11482779577192527235u64,
 ];
 /// `AutomaticNode` ノードの公開ID。
 ///
@@ -301,14 +301,14 @@ impl std::fmt::Display for Violation {
             Violation::ExternalLinkUnknownSource { .. } => {
                 write!(
                     f,
-                    "未知のキーが {} として解決できません (辺 `{}` の{})",
+                    "未知のキーが {} として見つかりません (辺 `{}` の{}。端点のキーと辺のキーは利用者が宣言したID型のため表示しない)",
                     "ExternalNode", "ExternalLink", "始点"
                 )
             }
             Violation::ExternalLinkUnknownTarget { .. } => {
                 write!(
                     f,
-                    "未知のキーが {} として解決できません (辺 `{}` の{})",
+                    "未知のキーが {} として見つかりません (辺 `{}` の{}。端点のキーと辺のキーは利用者が宣言したID型のため表示しない)",
                     "ExternalNode", "ExternalLink", "終点"
                 )
             }
@@ -325,14 +325,14 @@ impl std::fmt::Display for Violation {
             Violation::ExternalIncomingUnknownSource { .. } => {
                 write!(
                     f,
-                    "未知のキーが {} として解決できません (辺 `{}` の{})",
+                    "未知のキーが {} として見つかりません (辺 `{}` の{}。端点のキーと辺のキーは利用者が宣言したID型のため表示しない)",
                     "ExternalNode", "ExternalIncoming", "始点"
                 )
             }
             Violation::ExternalIncomingUnknownTarget { .. } => {
                 write!(
                     f,
-                    "未知のキーが {} として解決できません (辺 `{}` の{})",
+                    "未知のキーが {} として見つかりません (辺 `{}` の{}。端点のキーと辺のキーは利用者が宣言したID型のため表示しない)",
                     "ExternalNode", "ExternalIncoming", "終点"
                 )
             }
@@ -349,7 +349,7 @@ impl std::fmt::Display for Violation {
             Violation::ExternalFriendUnknownEndpoint { .. } => {
                 write!(
                     f,
-                    "未知のキーが {} として解決できません (辺 `{}` の{})",
+                    "未知のキーが {} として見つかりません (辺 `{}` の{}。端点のキーと辺のキーは利用者が宣言したID型のため表示しない)",
                     "ExternalNode", "ExternalFriend", "端点"
                 )
             }
@@ -361,14 +361,14 @@ impl std::fmt::Display for Violation {
             Violation::AutomaticLinkUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     source, "AutomaticNode", "AutomaticLink", edge, "始点"
                 )
             }
             Violation::AutomaticLinkUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     target, "AutomaticNode", "AutomaticLink", edge, "終点"
                 )
             }

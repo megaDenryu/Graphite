@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    4399455889933251458u64, 10571540023247044987u64, 628811844515341532u64,
-    16836572400610642736u64,
+    3772461139475860626u64, 18124488242770300103u64, 8414127093800046084u64,
+    14208174019845936776u64,
 ];
 /// `Cell` ノードの公開ID。
 ///
@@ -260,14 +260,14 @@ impl std::fmt::Display for Violation {
             Violation::FeedsUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     source, "Cell", "Feeds", edge, "始点"
                 )
             }
             Violation::FeedsUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     target, "Cell", "Feeds", edge, "終点"
                 )
             }
@@ -284,14 +284,14 @@ impl std::fmt::Display for Violation {
             Violation::LhsUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     source, "Cell", "Lhs", edge, "始点"
                 )
             }
             Violation::LhsUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     target, "Cell", "Lhs", edge, "終点"
                 )
             }
@@ -308,14 +308,14 @@ impl std::fmt::Display for Violation {
             Violation::RhsUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     source, "Cell", "Rhs", edge, "始点"
                 )
             }
             Violation::RhsUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     target, "Cell", "Rhs", edge, "終点"
                 )
             }

@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    14552336919276408578u64, 6597190403789163669u64, 5350375743050216088u64,
-    13701594191159239892u64,
+    2236443785454523246u64, 14695594506649629681u64, 1607231395936647964u64,
+    3852714602859353608u64,
 ];
 /// `Employee` ノードの公開ID。
 ///
@@ -352,14 +352,14 @@ impl std::fmt::Display for Violation {
             Violation::BelongsToUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     source, "Employee", "BelongsTo", edge, "始点"
                 )
             }
             Violation::BelongsToUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     target, "Department", "BelongsTo", edge, "終点"
                 )
             }
@@ -376,14 +376,14 @@ impl std::fmt::Display for Violation {
             Violation::BossUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     source, "Employee", "Boss", edge, "始点"
                 )
             }
             Violation::BossUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     target, "Employee", "Boss", edge, "終点"
                 )
             }
@@ -400,14 +400,14 @@ impl std::fmt::Display for Violation {
             Violation::ReportsUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     source, "Employee", "Reports", edge, "始点"
                 )
             }
             Violation::ReportsUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     target, "Employee", "Reports", edge, "終点"
                 )
             }
@@ -424,14 +424,14 @@ impl std::fmt::Display for Violation {
             Violation::LeadsUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     source, "Employee", "Leads", edge, "始点"
                 )
             }
             Violation::LeadsUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     target, "Department", "Leads", edge, "終点"
                 )
             }

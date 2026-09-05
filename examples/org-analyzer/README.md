@@ -216,15 +216,25 @@ cargo run -- reorg D01
 `OrgChartViolation::SponsorsUnknownSource` を検出してエラーになる:
 
 ```
-$ cargo run -- reorg D03
+$ cargo run -q -- reorg D03
 === 組織改編シミュレーション ===
 廃止対象部署: 人事部 (D03)
 再配置対象: 9人
-...
+
+--- 再配置先 (社員キー順、ラウンドロビン) ---
+  池田里奈 (E004) -> 営業部 (D01)
+  山本美咲 (E006) -> 開発部 (D02)
+  松本結衣 (E019) -> 経理部 (D04)
+  石川花子 (E027) -> マーケティング部 (D05)
+  加藤亮 (E039) -> 総務部 (D06)
+  佐々木拓也 (E042) -> 法務部 (D07)
+  小林隆 (E048) -> カスタマーサポート部 (D08)
+  佐々木翔太 (E086) -> 営業部 (D01)
+  岡田亮 (E105) -> 開発部 (D02)
 
 [NG] freeze検証がViolationを検出し、再構築は失敗しました:
-  未知のキーが参照されています (辺 `Sponsors` SponsorsId("spon_D03") の始点, Department): DepartmentId("D03")
-  詳細: 未知のキーが参照されています (辺 `Sponsors` SponsorsId("spon_D03") の始点, Department): DepartmentId("D03")
+  未知のキー DepartmentId("D03") が Department として見つかりません (辺 `Sponsors` SponsorsId("spon_D03") の始点)
+  詳細: 未知のキー DepartmentId("D03") が Department として見つかりません (辺 `Sponsors` SponsorsId("spon_D03") の始点)
 
   解説: 廃止部署が指すsponsors辺(部署->プロジェクト)をカスケード削除
 し忘れたまま再構築しようとしたため、存在しない部署キーを参照する辺が

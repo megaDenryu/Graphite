@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    13335804887534100091u64, 2582818168190505186u64, 19229775341173545u64,
-    12334097063349223005u64,
+    12132313578864812107u64, 13719719992762152182u64, 7970136408359497809u64,
+    6037311841120242053u64,
 ];
 /// `Person` ノードの公開ID。
 ///
@@ -128,14 +128,14 @@ impl std::fmt::Display for Violation {
             Violation::OwnershipUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     source, "Person", "Ownership", edge, "始点"
                 )
             }
             Violation::OwnershipUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     target, "Item", "Ownership", edge, "終点"
                 )
             }

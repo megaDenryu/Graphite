@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    5489065573556137184u64, 18266034404232764339u64, 10320979072007242090u64,
-    15896606367572535998u64,
+    279498376343989012u64, 14420603153860903487u64, 9436782982891772118u64,
+    6728272147696429882u64,
 ];
 /// `Person` ノードの公開ID。
 ///
@@ -223,14 +223,14 @@ impl std::fmt::Display for Violation {
             Violation::PurchaseUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     source, "Person", "Purchase", edge, "始点"
                 )
             }
             Violation::PurchaseUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     target, "Product", "Purchase", edge, "終点"
                 )
             }
@@ -263,14 +263,14 @@ impl std::fmt::Display for Violation {
             Violation::SubscriptionUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     source, "Person", "Subscription", edge, "始点"
                 )
             }
             Violation::SubscriptionUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     target, "Product", "Subscription", edge, "終点"
                 )
             }

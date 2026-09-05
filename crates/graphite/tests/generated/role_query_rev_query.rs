@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    5799293127979176910u64, 3645328044181288167u64, 2925808953195427980u64,
-    4963742139134394176u64,
+    1598999129226754966u64, 15638240039234701343u64, 3245166910304388596u64,
+    16139663199868516424u64,
 ];
 /// `NodeA` ノードの公開ID。
 ///
@@ -340,14 +340,14 @@ impl std::fmt::Display for Violation {
             Violation::UnconstrainedUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     source, "NodeA", "Unconstrained", edge, "始点"
                 )
             }
             Violation::UnconstrainedUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     target, "NodeB", "Unconstrained", edge, "終点"
                 )
             }
@@ -360,14 +360,14 @@ impl std::fmt::Display for Violation {
             Violation::UnconstrainedNoPayloadUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     source, "NodeA", "UnconstrainedNoPayload", edge, "始点"
                 )
             }
             Violation::UnconstrainedNoPayloadUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     target, "NodeB", "UnconstrainedNoPayload", edge, "終点"
                 )
             }
@@ -377,14 +377,14 @@ impl std::fmt::Display for Violation {
             Violation::AtMostOneUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     source, "NodeA", "AtMostOne", edge, "始点"
                 )
             }
             Violation::AtMostOneUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     target, "NodeB", "AtMostOne", edge, "終点"
                 )
             }
@@ -401,14 +401,14 @@ impl std::fmt::Display for Violation {
             Violation::ExactlyOneUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     source, "NodeA", "ExactlyOne", edge, "始点"
                 )
             }
             Violation::ExactlyOneUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     target, "NodeB", "ExactlyOne", edge, "終点"
                 )
             }

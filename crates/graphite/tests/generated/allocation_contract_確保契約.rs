@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    8794631047630199055u64, 2874204387563682404u64, 17276431795591035229u64,
-    11191502541462670337u64,
+    14204770008510583823u64, 13448031038601837192u64, 10206949655172808089u64,
+    9783059289686663245u64,
 ];
 /// `人物` ノードの公開ID。
 ///
@@ -413,14 +413,14 @@ impl std::fmt::Display for Violation {
             Violation::購入UnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     source, "人物", "購入", edge, "始点"
                 )
             }
             Violation::購入UnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     target, "商品", "購入", edge, "終点"
                 )
             }
@@ -437,14 +437,14 @@ impl std::fmt::Display for Violation {
             Violation::閲覧UnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     source, "人物", "閲覧", edge, "始点"
                 )
             }
             Violation::閲覧UnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     target, "商品", "閲覧", edge, "終点"
                 )
             }
@@ -454,14 +454,14 @@ impl std::fmt::Display for Violation {
             Violation::推薦UnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     source, "人物", "推薦", edge, "始点"
                 )
             }
             Violation::推薦UnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     target, "商品", "推薦", edge, "終点"
                 )
             }
@@ -478,14 +478,14 @@ impl std::fmt::Display for Violation {
             Violation::常用UnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     source, "人物", "常用", edge, "始点"
                 )
             }
             Violation::常用UnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     target, "商品", "常用", edge, "終点"
                 )
             }
@@ -502,7 +502,7 @@ impl std::fmt::Display for Violation {
             Violation::友人UnknownEndpoint { edge, endpoint } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
                     endpoint, "人物", "友人", edge, "端点"
                 )
             }

@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    590150031931665190u64, 7491033585626196711u64, 17011639969581626012u64,
-    9864320458998399896u64,
+    14972580641299066450u64, 16718124654354304015u64, 5018850722664989560u64,
+    14025711623716672388u64,
 ];
 /// `BelongsTo` 辺の公開ID。
 ///
@@ -115,14 +115,14 @@ impl std::fmt::Display for Violation {
             Violation::BelongsToUnknownSource { edge, .. } => {
                 write!(
                     f,
-                    "未知のキーが {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキーが {} として見つかりません (辺 `{}` {:?} の{}。端点のキーは利用者が宣言したID型のため表示しない)",
                     "Person", "BelongsTo", edge, "始点"
                 )
             }
             Violation::BelongsToUnknownTarget { edge, .. } => {
                 write!(
                     f,
-                    "未知のキーが {} として解決できません (辺 `{}` {:?} の{})",
+                    "未知のキーが {} として見つかりません (辺 `{}` {:?} の{}。端点のキーは利用者が宣言したID型のため表示しない)",
                     "Department", "BelongsTo", edge, "終点"
                 )
             }
