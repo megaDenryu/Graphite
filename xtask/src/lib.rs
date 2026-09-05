@@ -13,12 +13,15 @@ mod excerpt_file_body;
 mod excerpt_range_body;
 mod excerpt_inspection;
 mod external_verification;
+mod inspected_area;
+mod line_count;
 mod missing_references;
 mod quoted_excerpt;
 mod quoted_excerpt_check;
 mod reference_scan;
 mod repository_package;
 mod repository_root;
+mod rust_source;
 mod source_reference;
 mod source_reference_check;
 
@@ -29,6 +32,7 @@ pub use repository_package::RepositoryPackage;
 pub use repository_root::RepositoryRoot;
 
 use crate::doc_comment::DocCommentInspection;
+use crate::line_count::LineCountInspection;
 use crate::document_index::DocumentIndex;
 use crate::external_verification::ExternalVerificationPackage;
 use crate::reference_scan::ReferenceScan;
@@ -100,4 +104,14 @@ pub fn check_documents(root: &RepositoryRoot) -> Result<(), Box<dyn Error>> {
 // でも同じ検査が走る。検査の範囲と限界は `main.rs` の使い方の説明に書いてある。
 pub fn check_doc_comments(root: &RepositoryRoot) -> Result<(), Box<dyn Error>> {
     DocCommentInspection::new(root).run()
+}
+
+// `cargo xtask check-line-counts` 相当: 1ファイル100行の原則と例外台帳を検査する。
+//
+// 台帳は `docs/development/line_count_ledger.md` である。検査の範囲と限界は
+// `usage.rs` の使い方の説明に書いてある。この検査は `cargo test` へは接続しない
+// (150行を超える再設計待ちのファイルが残っている間、通常のテスト実行を落とし
+// 続けることになるため。接続は issue #28 のやること4 の完了後)。
+pub fn check_line_counts(root: &RepositoryRoot) -> Result<(), Box<dyn Error>> {
+    LineCountInspection::new(root).run()
 }

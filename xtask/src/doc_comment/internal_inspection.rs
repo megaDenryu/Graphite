@@ -6,7 +6,7 @@ use syn::visit::{self, Visit};
 use syn::{Attribute, Item};
 
 use super::attribute_facts::{is_outer_doc_comment, is_procedural_macro_entry};
-use super::rust_source::{ParsedRustSource, RustSource};
+use crate::rust_source::{ParsedRustSource, RustSource};
 
 // 内部領域1件の検査結果。撤去作業の一覧としてそのまま読めるよう、ファイルごとの
 // 件数を残す。

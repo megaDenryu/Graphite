@@ -4,24 +4,21 @@
 //! 進捗そのもの) と、生成コードの公開面に doc コメントが網羅されていることである。
 //! どちらも syn の構文解析で判定し、解析できなかったファイルは違反として数える。
 
-mod area;
 mod attribute_facts;
 mod generated_inspection;
 mod internal_inspection;
 mod item_facts;
 mod public_item_visitor;
-mod rust_source;
 
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::fmt::Write;
 
+use crate::inspected_area::InspectedArea;
 use crate::repository_root::RepositoryRoot;
+use crate::rust_source::RustSource;
 use generated_inspection::GeneratedAreaReport;
 use internal_inspection::InternalAreaReport;
-
-pub(crate) use area::InspectedArea;
-pub(crate) use rust_source::RustSource;
 
 // 撤去の対象になる内部領域。`graphite` と生成コードだけが公開面である。
 const INTERNAL_AREAS: [&str; 5] = [

@@ -7,7 +7,7 @@ use std::fmt::Write;
 use syn::visit::Visit;
 
 use super::public_item_visitor::PublicItemVisitor;
-use super::rust_source::{ParsedRustSource, RustSource};
+use crate::rust_source::{ParsedRustSource, RustSource};
 
 // 生成領域1件の検査結果。
 pub(super) struct GeneratedAreaReport {

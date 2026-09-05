@@ -28,14 +28,19 @@ impl RustSource {
         &self.spelling
     }
 
+    // 本文を読む。読めなかった理由は文言として返し、黙って読み飛ばさない。
+    pub(crate) fn read_text(&self) -> Result<String, String> {
+        fs::read_to_string(&self.path).map_err(|error| format!("読み込みに失敗しました: {error}"))
+    }
+
     // 読み込みと構文解析をまとめて行い、どちらの失敗も `Unreadable` にする。
     pub(crate) fn parse(self) -> ParsedRustSource {
-        let text = match fs::read_to_string(&self.path) {
+        let text = match self.read_text() {
             Ok(text) => text,
-            Err(error) => {
+            Err(reason) => {
                 return ParsedRustSource::Unreadable {
                     spelling: self.spelling,
-                    reason: format!("読み込みに失敗しました: {error}"),
+                    reason,
                 }
             }
         };

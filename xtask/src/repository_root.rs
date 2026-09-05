@@ -6,9 +6,10 @@ use std::path::{Path, PathBuf};
 
 use graphite_cli::{relative_display, with_path_context, PackageRoot};
 
-use crate::doc_comment::{InspectedArea, RustSource};
 use crate::document_reference::DocumentPath;
+use crate::inspected_area::InspectedArea;
 use crate::repository_package::RepositoryPackage;
+use crate::rust_source::RustSource;
 use crate::source_reference::SourceReference;
 
 // 生成と文書検査の基準となるリポジトリルート。
@@ -108,6 +109,16 @@ impl RepositoryRoot {
         fs::read_to_string(self.path.join(reference.path())).ok()
     }
 
+    // 例外台帳 (docs/development/line_count_ledger.md) の本文を読む。
+    pub(crate) fn line_count_ledger_text(&self) -> Result<String, Box<dyn Error>> {
+        let path = self
+            .path
+            .join("docs")
+            .join("development")
+            .join("line_count_ledger.md");
+        with_path_context(fs::read_to_string(&path), &self.relative_display(&path))
+    }
+
     // 索引ファイル (docs/README.md) の本文を読む。
     pub fn document_index_text(&self) -> Result<String, Box<dyn Error>> {
         let path = self.path.join("docs").join("README.md");
@@ -157,7 +168,8 @@ impl RepositoryRoot {
 
     // 指定した領域の配下にある Rust ソースを、綴り順で列挙する。
     //
-    // doc コメントの検査 (`check-doc-comments`) が使う。綴りの組み立てをこの型へ
+    // doc コメントの検査 (`check-doc-comments`) と行数の検査 (`check-line-counts`)
+    // が使う。綴りの組み立てをこの型へ
     // 閉じるのは、領域の指定と表示の綴りが呼び出し側ごとにずれないようにするため
     // である。
     pub(crate) fn rust_source_files(

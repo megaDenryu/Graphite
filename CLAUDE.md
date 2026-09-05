@@ -74,6 +74,9 @@ cargo xtask generate --check
 # 文書参照とリポジトリ内Rustソース参照の綴りの実在・行数範囲、docs/README.md 索引の網羅を検査
 cargo xtask check-docs
 
+# 1ファイル100行の原則と、例外台帳 (docs/development/line_count_ledger.md) の登録の過不足を検査
+cargo xtask check-line-counts
+
 # doc コメントが公開面に網羅され、内部領域に1件も無いことを検査
 # (同じ検査を xtask/tests/doc_comments_check.rs が cargo test からも実行する)
 cargo xtask check-doc-comments
@@ -104,7 +107,8 @@ cargo graphite generate [--check]
   型のstrictnessを具体化した6原則) を必ず参照する
 - Graphite自身の開発ツールの入口は`cargo xtask`へ集約する。現在のコマンドは
   `cargo xtask generate [--check]`・`cargo xtask check-docs`・
-  `cargo xtask check-doc-comments`・`cargo xtask check-external`である。外部crateの
+  `cargo xtask check-doc-comments`・`cargo xtask check-external`・
+  `cargo xtask check-line-counts`である。外部crateの
   利用者向けの入口は`cargo graphite generate [--check]` (バイナリ名`cargo-graphite`)
   である
 - 文書の配置は3つに分ける。現行の仕様とガイド (実装に追随して更新し続ける文書) は
