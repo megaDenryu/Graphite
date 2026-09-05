@@ -2,10 +2,10 @@ use std::fmt;
 
 use crate::document_reference::DocumentReference;
 
-/// 実在しない綴りを指している参照の一覧。整形は `Display` へ閉じる。
-///
-/// `InvalidSourceReferences` と対の形である: 検査結果を保持し、
-/// 呼び出し側は組み立てと委譲だけを行う。
+// 実在しない綴りを指している参照の一覧。整形は `Display` へ閉じる。
+//
+// `InvalidSourceReferences` と対の形である: 検査結果を保持し、
+// 呼び出し側は組み立てと委譲だけを行う。
 pub struct MissingReferences<'a> {
     references: Vec<&'a DocumentReference>,
 }

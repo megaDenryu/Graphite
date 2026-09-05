@@ -5,10 +5,10 @@ use crate::document_reference::{DocumentPath, ReferenceTarget};
 use crate::reference_scan::tokens_in;
 use crate::repository_root::RepositoryRoot;
 
-/// 索引 (docs/README.md) が表の1列目で列挙している文書の一覧。
-///
-/// 1列目だけを読むのは、他の列 (現行の置換先など) が同じ文書を何度でも指す
-/// ためである。全列を読むと「1文書につき1行」の判定ができない。
+// 索引 (docs/README.md) が表の1列目で列挙している文書の一覧。
+//
+// 1列目だけを読むのは、他の列 (現行の置換先など) が同じ文書を何度でも指す
+// ためである。全列を読むと「1文書につき1行」の判定ができない。
 pub struct DocumentIndex {
     listed: Vec<DocumentPath>,
 }
@@ -32,7 +32,7 @@ impl DocumentIndex {
         Ok(Self { listed })
     }
 
-    /// 実在するファイルの一覧と突き合わせ、過不足と重複を集める。
+    // 実在するファイルの一覧と突き合わせ、過不足と重複を集める。
     pub fn compare_with(&self, existing: &[DocumentPath]) -> IndexMismatch {
         let mut absent = Vec::new();
         let mut duplicated = Vec::new();
@@ -59,7 +59,7 @@ impl DocumentIndex {
     }
 }
 
-/// 索引と実ファイルの食い違い。
+// 索引と実ファイルの食い違い。
 pub struct IndexMismatch {
     absent: Vec<DocumentPath>,
     duplicated: Vec<DocumentPath>,
@@ -95,7 +95,7 @@ fn write_group(
     Ok(())
 }
 
-/// 表の行から1列目のセルを取り出す。表でない行は `None` を返す。
+// 表の行から1列目のセルを取り出す。表でない行は `None` を返す。
 fn first_table_cell(line: &str) -> Option<&str> {
     let trimmed = line.trim();
     let rest = trimmed.strip_prefix('|')?;

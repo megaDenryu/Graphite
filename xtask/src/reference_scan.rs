@@ -12,9 +12,9 @@ use crate::source_reference_check::{
     InvalidSourceReferences, SourceCodeReference, UnparsableSourceReference, Violation,
 };
 
-/// 走査対象の全ファイルから抜き出した文書参照・ソース参照・引用の一覧。
-///
-/// 実在の判定にリポジトリルートが要るため、走査時に受け取ったルートを保持する。
+// 走査対象の全ファイルから抜き出した文書参照・ソース参照・引用の一覧。
+//
+// 実在の判定にリポジトリルートが要るため、走査時に受け取ったルートを保持する。
 pub struct ReferenceScan<'root> {
     root: &'root RepositoryRoot,
     references: Vec<DocumentReference>,
@@ -26,7 +26,7 @@ pub struct ReferenceScan<'root> {
 }
 
 impl<'root> ReferenceScan<'root> {
-    /// 走査対象ファイルを1件ずつ読み、書かれている文書参照とソース参照を抜き出す。
+    // 走査対象ファイルを1件ずつ読み、書かれている文書参照とソース参照を抜き出す。
     pub fn over(root: &'root RepositoryRoot) -> Result<Self, Box<dyn Error>> {
         let mut references = Vec::new();
         let mut source_references = Vec::new();
@@ -94,8 +94,8 @@ impl<'root> ReferenceScan<'root> {
         self.source_references.len()
     }
 
-    /// 走査した Markdown にある Rust コードフェンスのうち、引用として取り込まな
-    /// かったものの件数。検査が届かなかった範囲を報告に出すために数える。
+    // 走査した Markdown にある Rust コードフェンスのうち、引用として取り込まな
+    // かったものの件数。検査が届かなかった範囲を報告に出すために数える。
     pub fn unquoted_rust_fence_count(&self) -> usize {
         self.rust_fence_count - self.quoted_excerpts.len()
     }
@@ -104,9 +104,9 @@ impl<'root> ReferenceScan<'root> {
         self.external_reference_count
     }
 
-    /// 実在しない綴りを指している参照を全件返す。
-    ///
-    /// 1件目で打ち切らないのは、綴りの是正を1周で終えられるようにするためである。
+    // 実在しない綴りを指している参照を全件返す。
+    //
+    // 1件目で打ち切らないのは、綴りの是正を1周で終えられるようにするためである。
     pub fn missing_targets(&self) -> MissingReferences<'_> {
         let references = self
             .references
@@ -116,12 +116,12 @@ impl<'root> ReferenceScan<'root> {
         MissingReferences::new(references)
     }
 
-    /// 引用全件へ2つの判定 (行範囲の妥当性と引用の鮮度) を掛けた結果を返す。
+    // 引用全件へ2つの判定 (行範囲の妥当性と引用の鮮度) を掛けた結果を返す。
     pub fn inspect_excerpts(&self) -> ExcerptInspection<'_> {
         ExcerptInspection::over(&self.quoted_excerpts, self.root)
     }
 
-    /// 実在しないか行数を超えるか解析できないソース参照を全件返す。
+    // 実在しないか行数を超えるか解析できないソース参照を全件返す。
     pub fn invalid_source_references(&self) -> InvalidSourceReferences<'_> {
         let mut violations: Vec<Violation<'_>> = self
             .source_references
@@ -133,12 +133,12 @@ impl<'root> ReferenceScan<'root> {
     }
 }
 
-/// 文書の行を先頭から順に読み、その行がコードフェンスの中にあるかを追う。
-///
-/// フェンスの中に書かれた行番号付きソース参照へ引用の照合を適用すると、
-/// フェンスを閉じるバッククォート3つをこの検査が引用の開始と読み違え、その
-/// 後ろの散文をフェンス本文として照合してしまう。閉じないフェンスがある場合も
-/// 同じ形で誤る。行をまたいで開閉を覚える必要があるため、状態を持つ型にする。
+// 文書の行を先頭から順に読み、その行がコードフェンスの中にあるかを追う。
+//
+// フェンスの中に書かれた行番号付きソース参照へ引用の照合を適用すると、
+// フェンスを閉じるバッククォート3つをこの検査が引用の開始と読み違え、その
+// 後ろの散文をフェンス本文として照合してしまう。閉じないフェンスがある場合も
+// 同じ形で誤る。行をまたいで開閉を覚える必要があるため、状態を持つ型にする。
 struct FenceTracker {
     inside: bool,
 }
@@ -148,16 +148,16 @@ impl FenceTracker {
         Self { inside: false }
     }
 
-    /// 直前に読んだ1行が Rust コードフェンスの開始行だったか。
-    ///
-    /// 開始と終了はどちらも同じ記号で書かれるため、`outside_fence` が覚えた開閉の
-    /// 状態と合わせて初めて開始行だと分かる。呼ぶのは `outside_fence` の直後である。
+    // 直前に読んだ1行が Rust コードフェンスの開始行だったか。
+    //
+    // 開始と終了はどちらも同じ記号で書かれるため、`outside_fence` が覚えた開閉の
+    // 状態と合わせて初めて開始行だと分かる。呼ぶのは `outside_fence` の直後である。
     fn opened_rust_fence(&self, line: &str) -> bool {
         self.inside && is_rust_fence_start(line)
     }
 
-    /// 次の1行を読み、その行が引用の照合を適用してよい位置 (フェンスの外) に
-    /// あるかを返す。フェンスの開始行と終了行はどちらも外とみなさない。
+    // 次の1行を読み、その行が引用の照合を適用してよい位置 (フェンスの外) に
+    // あるかを返す。フェンスの開始行と終了行はどちらも外とみなさない。
     fn outside_fence(&mut self, line: &str) -> bool {
         let delimiter = line.trim_start().starts_with("```");
         if delimiter {
@@ -167,11 +167,11 @@ impl FenceTracker {
     }
 }
 
-/// 1行から、バッククォートで囲まれた区間と `](...)` の中身を抜き出す。
-///
-/// 注意: 抜き出すのは区間の全体であり、`docs/` を部分文字列として切り出さない。
-/// 切り出すと、別リポジトリを正しく指した綴りと、先頭が欠けたまま自リポジトリを
-/// 指してしまう綴りを区別できない。
+// 1行から、バッククォートで囲まれた区間と `](...)` の中身を抜き出す。
+//
+// 注意: 抜き出すのは区間の全体であり、`docs/` を部分文字列として切り出さない。
+// 切り出すと、別リポジトリを正しく指した綴りと、先頭が欠けたまま自リポジトリを
+// 指してしまう綴りを区別できない。
 pub(crate) fn tokens_in(line: &str) -> Vec<&str> {
     let mut tokens: Vec<&str> = line.split('`').skip(1).step_by(2).collect();
     let mut rest = line;
@@ -190,7 +190,7 @@ pub(crate) fn tokens_in(line: &str) -> Vec<&str> {
 mod tests {
     use super::{tokens_in, FenceTracker};
 
-    /// 各行を順に読ませ、引用の照合を適用してよい行だけを真にした一覧を得る。
+    // 各行を順に読ませ、引用の照合を適用してよい行だけを真にした一覧を得る。
     fn 照合を適用してよい行(lines: &[&str]) -> Vec<bool> {
         let mut tracker = FenceTracker::new();
         lines.iter().map(|line| tracker.outside_fence(line)).collect()
