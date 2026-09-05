@@ -13,6 +13,11 @@
 //! (`subordinate`/`superior`) に書き換え、終点側 (`superior`) の each 制約
 //! (入次数制約) を検証する。Edge値の公開field `.subordinate`/`.superior` が
 //! 役割名を定義する唯一の場所になる。
+//!
+//! このファイルは1ファイル100行の原則の例外である (区分: 再設計待ち)。この
+//! ファイルは150行を超える。このファイルは `graph_schema!` の読み書き一式を
+//! 検証する。テストの分け方の判定は issue #28 のやること4 が行う。超過を許
+//! す根拠の台帳は `docs/development/line_count_ledger.md` にある。
 
 /// ノード型。`graph_schema!` はこの型を生成せず参照するだけ。
 #[derive(Debug, Clone, PartialEq)]

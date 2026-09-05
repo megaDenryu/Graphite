@@ -13,7 +13,7 @@
 //! テストは検証する側ごとに `each_declaration_order/` の2ファイルへ分けてある。
 //! `tests/` は統合テストの根のモジュールディレクトリであり、裸の `mod` はこの
 //! ディレクトリ直下を探して cargo が別のテスト対象として組み立てるため、
-//! モジュールの綴りを `#[path]` で明示する。
+//! このファイルはモジュールの綴りを `#[path]` で明示する。
 
 #[cfg(test)]
 #[path = "each_declaration_order/traversal.rs"]

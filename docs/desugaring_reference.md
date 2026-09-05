@@ -197,7 +197,7 @@ moduleは利用者が書いた `pub mod Commerce { include!(...); }` そのも�
 
 ```rust
 // このファイルは Graphite が生成したため手編集しないこと。
-// 生成元: tests/edge_roles.rs:33
+// 生成元: tests/edge_roles.rs:37
 // 再生成: パッケージのディレクトリで `cargo graphite generate` を実行する
 //         (Graphite リポジトリ自身の開発では `cargo xtask generate`)。
 
@@ -278,7 +278,7 @@ node Person;
 **2. 利用者定義**
 
 ノード値型は利用者が普通のRustで書く
-(`crates/graphite/tests/edge_roles.rs:7-8` から引用)。
+(`crates/graphite/tests/edge_roles.rs:11-12` から引用)。
 
 ```rust
 #[derive(Clone, PartialEq)]
@@ -375,7 +375,7 @@ node ExternalNode(id: ExternalNodeId);
 **2. 利用者定義**
 
 明示ID型とノード値型は利用者が普通のRustで書く
-(`crates/graphite/tests/schema_ids.rs:9-10, 15-17` から引用)。
+(`crates/graphite/tests/schema_ids.rs:11-12, 17-19` から引用)。
 
 ```rust
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -475,7 +475,7 @@ edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product);
 **2. 利用者定義**
 
 積み荷型は利用者が普通のRustで書く
-(`crates/graphite/tests/edge_roles.rs:16-19` から引用)。
+(`crates/graphite/tests/edge_roles.rs:20-23` から引用)。
 
 ```rust
 #[derive(Clone, PartialEq)]
@@ -1057,7 +1057,7 @@ edge ExternalLink(id: ExternalEdgeId) = (source: ExternalNode) -> (target: Exter
 **2. 利用者定義**
 
 明示ID型は利用者が普通のRustで書く
-(`crates/graphite/tests/schema_ids.rs:12-13` から引用)。
+(`crates/graphite/tests/schema_ids.rs:14-15` から引用)。
 
 ```rust
 #[derive(Clone, PartialEq, Eq, Hash)]

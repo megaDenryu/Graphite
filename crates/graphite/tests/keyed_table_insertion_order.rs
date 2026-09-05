@@ -13,10 +13,11 @@
 //! `#accessor.iter()` が挿入順を返すようになるため)。
 //!
 //! builder 直接経由・`graph!` リテラル経由の両方で確認する。
-//! にある。
+//!
+//! `tests/` は統合テストの根のモジュールディレクトリであり、裸の `mod` はこの
+//! ディレクトリ直下を探して cargo が別のテスト対象として組み立てるため、
+//! このファイルはモジュールの綴りを `#[path]` で明示する。
 
-// `tests/` は統合テストの根のモジュールディレクトリであるため、裸の `mod tests;` は
-// `tests/tests.rs` を探し、cargo がそれを別のテスト対象として組み立てる。
 #[cfg(test)]
 #[path = "keyed_table_insertion_order/tests.rs"]
 mod tests;

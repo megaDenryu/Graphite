@@ -66,8 +66,9 @@ impl LineCountReport {
         }
     }
 
-    // このメソッドは、読めなかったファイルも検査した綴りとして登録する。登録しないと `close` が同じ綴りを
-    // 「台帳にありますが検査対象に実在しません」へも積み、1件の事故を2件に見せる。
+    // このメソッドは、読めなかったファイルも検査した綴りとして登録する。登録しないと
+    // `close` が同じ綴りを「台帳にありますが検査対象に実在しません」へも積み、1件の
+    // 事故を2件に見せる。
     pub(crate) fn record_unreadable(&mut self, spelling: &str, reason: &str) {
         self.inspected_file_count += 1;
         self.inspected_spellings.insert(spelling.to_string());

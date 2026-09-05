@@ -52,9 +52,9 @@
 //! が失敗しても `content` (この `[ .. ]` のバッファ) に未消費トークンが残る
 //! ことはない (`.claude/skills/proc-macro-dev/SKILL.md` の drain_rest 節参照)。
 //!
-//! このファイルは1ファイル100行の原則の例外である (区分: 統合による超過)。こ
-//! のファイルは `flow!` の入力 DSL の構文解析一式を持つ。このファイルを分ける
-//! と、1つの文法が複数ファイルへ散る。超過を許す根拠の台帳は
+//! このファイルは1ファイル100行の原則の例外である (区分: 統合による超過)。
+//! このファイルは `flow!` の入力 DSL の構文解析一式を持つ。このファイルの分
+//! 割は、1つの文法を複数ファイルへ散らす。超過を許す根拠の台帳は
 //! `docs/development/line_count_ledger.md` にある。
 
 use proc_macro2::{Delimiter, TokenStream as TokenStream2, TokenTree};
