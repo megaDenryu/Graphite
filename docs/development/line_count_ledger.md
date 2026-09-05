@@ -15,16 +15,16 @@ Rust ソース全部である (生成物を除く。範囲の定義は「検査�
 コード行とは、次の3種類のどれでもない行のことである。
 
 1. 空行 (空白だけの行を含む)
-2. 行頭から始まる行コメント (`//`・`///`・`//!`) だけの行
+2. 空白を除いた先頭が行コメント (`//`・`///`・`//!`) で始まる行
 3. ブロックコメント (`/* */`) の中にあり、コメントの外にコードを持たない行
 
-行末に書いたコメントは、その行にコードがあるため、コード行として数える。
-`#[cfg(test)]` を付けたテストモジュールの中もコード行として数える。規約が
-テストを除外していないためである。テストの行数がファイルの原則を圧迫する場合の
-正しい対処は、テストを別のファイルまたは `tests/` へ移すことであり、台帳へ専用の
-区分を作ることではない。
+検査器は、行末にコメントを書いた行を、その行にコードがあるためコード行として数える。
+検査器は `#[cfg(test)]` を付けたテストモジュールの中もコード行として数える。規約が
+テストを除外していないためである。テストの行数がファイルの原則を圧迫するとき、
+書き手が取る正しい対処は、書き手がテストを別のファイルまたは `tests/` へ移すことで
+あり、台帳へ専用の区分を作ることではない。
 
-数える処理は行の走査で行い、`syn` の構文解析は使わない (`crates/graphite/tests/ui`
+検査器は数える処理を行の走査で行い、`syn` の構文解析を使わない (`crates/graphite/tests/ui`
 配下のように、コンパイルが通らないことを目的にしたファイルも数える対象であるため)。
 走査は1行を左から右へ読み、コメントの外に空白でない文字が1つでもあれば、その行を
 コード行として数える。走査は次の判定を行う。
@@ -45,17 +45,24 @@ Rust ソース全部である (生成物を除く。範囲の定義は「検査�
 
 ## 区分
 
-台帳の各行は区分を1つ持つ。区分は次の3種類である。
+台帳の各行は区分を1つ持つ。区分の定義は次の3つが使う語に依存するため、先にその語を
+定める。**流れの一片** とは、隣のファイルと一緒に読まないと意味が取れない、1つの流れを
+長さで切った一片のことである。担当することに名前が付かず、触る状態が限定されておらず、
+呼び出し側が中身を知らないと呼べない断片が流れの一片である。
+
+区分は次の3種類である。
 
 - **統合による超過** とは、分割すると1つの流れの一片になるファイルを統合した結果、
   100行を超えた状態のことである。規約はこの超過に150行の上限を置く。
 - **宣言的データリテラル** とは、完成物の形をそのまま写す宣言的な式・リテラルが
   1つのデータを成しているファイルのことである。規約はこの区分に150行の上限を
   適用しない。行数で切ると宣言の一覧性そのものが壊れるためである。
-- **再設計待ち** とは、150行を超えており、統合の判断が誤っているか型の責務が
-  過多かの判定と再設計をこれから行うファイルのことである。issue #28 のやること4
-  がこの区分の全件を対象にする。検査はこの区分を当面の猶予として違反にせず、
-  件数だけを報告する。
+- **再設計待ち** とは、統合の判断が誤っているか型の責務が過多かの判定と再設計を
+  これから行うファイルのことである。この区分へ入る条件は2つあり、どちらか片方を
+  満たせばよい。1つ目は、そのファイルが150行を超えていることである。2つ目は、
+  そのファイルの統合の根拠が成り立たないこと (分割しても流れの一片にならないこと)
+  である。issue #28 のやること4 がこの区分の全件を対象にする。検査はこの区分を
+  当面の猶予として違反にせず、件数だけを報告する。
 
 ## 台帳
 
@@ -66,48 +73,48 @@ Rust ソース全部である (生成物を除く。範囲の定義は「検査�
 | ファイル | 区分 | 根拠 |
 | --- | --- | --- |
 | `crates/graphite-cli/src/generation_plan.rs` | 統合による超過 | このファイルは生成計画1つを所有する。このファイルは、その計画表への4つの操作 (追加・古いファイルの書き出し・差分検査・孤児の検出) を統合している。この4つは同じ計画表の同じ不変条件を触るため、分けると流れの一片になる |
-| `crates/graphite-cli/src/generation_tree.rs` | 統合による超過 | 走査対象のディレクトリ木1つを所有し、Rust ファイルと生成ファイルの収集がその木の操作である。本体は114行である |
-| `crates/graphite-codegen/src/lib.rs` | 再設計待ち | 150行を超える。本体は99行であり、超過分は同居する単体テストである。テストの移設を含めて issue #28 のやること4 で判定する |
-| `crates/graphite-codegen/src/schema/codegen/freeze/directed_edge.rs` | 統合による超過 | 有向辺1種別分の凍結処理 (辺表の構築・重複キーの検出・両端点の実在検査・端点対の重複検査) が1つの `for` ループを共有する1本の手続きである |
-| `crates/graphite-codegen/src/schema/codegen/freeze/mod.rs` | 統合による超過 | 凍結の全工程の並び順そのものを持つ。並び順は生成ファイルの中身であり、切ると順序が読めなくなる |
-| `crates/graphite-codegen/src/schema/codegen/freeze/undirected_edge.rs` | 統合による超過 | `directed_edge.rs` と同じ理由である。無向辺1種別分の凍結処理が1つの `for` ループを共有する |
-| `crates/graphite-codegen/src/schema/codegen/insertable_trait/marker_traits.rs` | 統合による超過 | ノード側と辺側で対になる2つの生成関数が同じ形を共有しており、分けると対応が読めなくなる |
-| `crates/graphite-codegen/src/schema/codegen/mod.rs` | 統合による超過 | 生成物1種別分の全体像を1箇所で見せる地図を兼ねる。地図を分けると読む場所が散る |
-| `crates/graphite-codegen/src/schema/semantic/edge_definition.rs` | 再設計待ち | 150行を超える。辺の向き・有向端点・積み荷を1つの辺定義へ統合しているが、上限を超えたため責務の量を issue #28 のやること4 で判定する |
-| `crates/graphite-codegen/src/schema/syntax/edge_declaration.rs` | 統合による超過 | 有向・無向と役割名の整合の判定が、柄の向きと両端点の役割名の有無の組み合わせを1つの表として持つ |
-| `crates/graphite-codegen/src/schema/validate/generated_name_collision.rs` | 統合による超過 | 全ての生成名を1つの表へ登録して重複をその場で診断する、1本の手続きである |
-| `crates/graphite-macros/src/flow_dsl.rs` | 統合による超過 | `flow!` の入力 DSL の構文解析一式であり、分けると1つの文法が複数ファイルへ散る |
-| `crates/graphite-macros/src/instance_codegen.rs` | 再設計待ち | 150行を超える。`graph!` のコード生成本体であり、責務の量を issue #28 のやること4 で判定する |
-| `crates/graphite-macros/src/instance_dsl.rs` | 再設計待ち | 150行を超える。`graph!` の入力 DSL の構文解析一式であり、責務の量を issue #28 のやること4 で判定する |
-| `crates/graphite-macros/src/instance_semantic.rs` | 統合による超過 | `graph!` の意味検査と並べ替えが1本の流れであり、途中で切ると検証途中の項の列を外へ晒す |
-| `crates/graphite-macros/src/lib.rs` | 統合による超過 | proc-macro クレートの公開面である。6つのマクロ入口は同じ場所に並んでいることが公開面の一覧性そのものである |
-| `crates/graphite/src/graph/mod.rs` | 再設計待ち | 150行を超える。公開契約の窓口としてメソッドを1画面へ集める設計だが、上限を超えたため issue #28 のやること4 で判定する |
-| `crates/graphite/src/graph/topology/mod.rs` | 統合による超過 | `impl 有向トポロジー` を1ファイルへ集める規約 (`docs/development/runtime_structure.md` の分解の禁止事項1) の結果である |
-| `crates/graphite/tests/allocation_contract.rs` | 再設計待ち | 150行を超える。確保契約の検証一式であり、テストの分け方を issue #28 のやること4 で判定する |
-| `crates/graphite/tests/edge_roles.rs` | 統合による超過 | 検証対象1つ (辺の役割名) に対するテスト用スキーマとテスト関数の列である |
-| `crates/graphite/tests/flow.rs` | 再設計待ち | 150行を超える。`flow!` の意味論の検証一式であり、テストの分け方を issue #28 のやること4 で判定する |
-| `crates/graphite/tests/graph_construction.rs` | 統合による超過 | 検証対象1つ (汎用Graphの構築経路と構築時の失敗) に対するテスト関数の列である |
-| `crates/graphite/tests/graph_cycle.rs` | 統合による超過 | 検証対象1つ (循環検出と閉路の内容) に対するテスト関数の列である |
-| `crates/graphite/tests/graph_refs.rs` | 統合による超過 | 検証対象1つ (ノード参照と辺参照) に対するテスト用スキーマとテスト関数の列である |
-| `crates/graphite/tests/graph_splice.rs` | 統合による超過 | 検証対象1つ (`graph!` のスプライス項) に対するテスト用スキーマとテスト関数の列である |
-| `crates/graphite/tests/named_graph.rs` | 統合による超過 | 検証対象1つ (名前付き構築) に対するテスト用スキーマとテスト関数の列である |
-| `crates/graphite/tests/node_id_shared_across_schemas.rs` | 統合による超過 | 検証対象1つ (明示ID型の複数スキーマ共有) に対する2つのスキーマとテスト関数の列である |
-| `crates/graphite/tests/orgchart_handwritten.rs` | 再設計待ち | 150行を超える。マクロが生成すべきコードの手書きテンプレートであり、扱いを issue #28 のやること4 で判定する |
-| `crates/graphite/tests/orgchart_macro.rs` | 再設計待ち | 150行を超える。`graph_schema!` の読み書き一式の検証であり、テストの分け方を issue #28 のやること4 で判定する |
-| `crates/graphite/tests/role_query.rs` | 再設計待ち | 150行を超える。役割探索の検証一式であり、テストの分け方を issue #28 のやること4 で判定する |
-| `crates/graphite/tests/schema_ids.rs` | 統合による超過 | 検証対象1つ (既定IDと明示ID型) に対するテスト用スキーマとテスト関数の列である |
-| `crates/graphite/tests/traversal_api.rs` | 統合による超過 | 検証対象1つ (走査API) に対するテスト用スキーマとテスト関数の列である |
-| `crates/graphite/tests/undirected_edges.rs` | 再設計待ち | 150行を超える。無向辺の検証一式であり、テストの分け方を issue #28 のやること4 で判定する |
-| `crates/graphite/tests/unknown_endpoint_positions/unique_pair.rs` | 統合による超過 | 検証対象1つ (端点対の重複の診断文) に対する、有向4通りと無向2通りの網羅である |
-| `examples/dialogue-engine/src/story.rs` | 宣言的データリテラル | 1本の `graph!` 呼び出しが30シーン・4エンディング・56本の選択肢を宣言する1つのデータである |
-| `examples/graphitets-by-hand/src/bin/static_graph.rs` | 再設計待ち | 150行を超える。GraphiteTS の静的グラフ版を通常の Rust へ写す練習用ファイルであり、扱いを issue #28 のやること4 で判定する |
-| `examples/graphitets-by-hand/src/main.rs` | 再設計待ち | 150行を超える。GraphiteTS の動的グラフ版を通常の Rust へ写す練習用ファイルであり、扱いを issue #28 のやること4 で判定する |
-| `examples/org-analyzer/src/dataset.rs` | 統合による超過 | 1つのシードから1つの組織データを合成しきる1本の流れであり、途中で切ると生成途中の中間状態を外へ晒す |
-| `examples/org-analyzer/src/reorg.rs` | 統合による超過 | 組織改編の1回分 (全要素の展開・対象部署の除外・再構築・報告の組み立て) が1本の流れである |
-| `xtask/src/reference_scan.rs` | 再設計待ち | 150行を超える。文書の走査と参照の収集を1つの型が持っており、責務の量を issue #28 のやること4 で判定する |
-| `xtask/src/repository_root.rs` | 再設計待ち | 150行を超える。リポジトリルートからの綴りの組み立てを1つの型へ閉じているが、責務の量を issue #28 のやること4 で判定する |
-| `xtask/src/source_reference.rs` | 再設計待ち | 150行を超える。ソース参照の綴りと行範囲の解析を1つの型が持っており、責務の量を issue #28 のやること4 で判定する |
-| `xtask/src/usage.rs` | 宣言的データリテラル | `cargo xtask` の各コマンドの使い方と、検査の範囲・限界の説明文という1つのデータである。説明文の途中で切ると1つの説明が複数ファイルへ散る |
+| `crates/graphite-cli/src/generation_tree.rs` | 再設計待ち | このファイルは走査対象のディレクトリ木1つを所有し、Rust ファイルと生成ファイルの収集をその木のメソッドとして持つ。このファイルは1つの型のメソッドの列であって統合した部分構造を持たないため、統合による超過の根拠が成り立たない。責務の量の判定と再設計は issue #28 のやること4 が行う |
+| `crates/graphite-codegen/src/lib.rs` | 再設計待ち | このファイルは150行を超える。このファイルの本体は99行であり、超過分は同居する単体テストである。テストの移設を含めた判定は issue #28 のやること4 が行う |
+| `crates/graphite-codegen/src/schema/codegen/freeze/directed_edge.rs` | 統合による超過 | このファイルは有向辺1種別分の凍結処理を持つ。この処理の工程 (辺表の構築と重複キーの検出・両端点の実在検査・端点対の重複検査・2つの役割索引への積み込み・多重度検査) は1つの `for` ループを共有する1本の手続きであり、分けると流れの一片になる |
+| `crates/graphite-codegen/src/schema/codegen/freeze/mod.rs` | 統合による超過 | このファイルは凍結の全工程の並び順そのものを持つ。この並び順は生成ファイルの中身であり、このファイルを切ると読み手は順序を追えなくなる |
+| `crates/graphite-codegen/src/schema/codegen/freeze/undirected_edge.rs` | 統合による超過 | このファイルは `directed_edge.rs` と同じ理由で超過する。このファイルは無向辺1種別分の凍結処理を持ち、その工程は1つの `for` ループを共有する |
+| `crates/graphite-codegen/src/schema/codegen/insertable_trait/marker_traits.rs` | 統合による超過 | このファイルはノード側と辺側で対になる2つの生成関数を持つ。この2つは同じ形を共有しており、分けると読み手は対応を追えなくなる |
+| `crates/graphite-codegen/src/schema/codegen/mod.rs` | 統合による超過 | このファイルは生成物1種別分の全体像を1箇所で見せる地図を兼ねる。この地図を分けると、読み手は読む場所を探し回ることになる |
+| `crates/graphite-codegen/src/schema/semantic/edge_definition.rs` | 再設計待ち | このファイルは150行を超える。このファイルは辺の向き・有向端点・積み荷を1つの辺定義へ統合している。責務の量の判定は issue #28 のやること4 が行う |
+| `crates/graphite-codegen/src/schema/syntax/edge_declaration.rs` | 統合による超過 | このファイルは有向・無向と役割名の整合の判定を持つ。この判定は柄の向きと両端点の役割名の有無の組み合わせを1つの表として持つため、分けると読み手は表を追えなくなる |
+| `crates/graphite-codegen/src/schema/validate/generated_name_collision.rs` | 統合による超過 | このファイルは全ての生成名を1つの表へ登録して重複をその場で診断する。この登録と診断は1本の手続きであり、分けると流れの一片になる |
+| `crates/graphite-macros/src/flow_dsl.rs` | 統合による超過 | このファイルは `flow!` の入力 DSL の構文解析一式を持つ。このファイルを分けると、1つの文法が複数ファイルへ散る |
+| `crates/graphite-macros/src/instance_codegen.rs` | 再設計待ち | このファイルは150行を超える。このファイルは `graph!` のコード生成本体である。責務の量の判定は issue #28 のやること4 が行う |
+| `crates/graphite-macros/src/instance_dsl.rs` | 再設計待ち | このファイルは150行を超える。このファイルは `graph!` の入力 DSL の構文解析一式を持つ。責務の量の判定は issue #28 のやること4 が行う |
+| `crates/graphite-macros/src/instance_semantic.rs` | 統合による超過 | このファイルは `graph!` の意味検査と並べ替えを1本の流れとして持つ。このファイルを途中で切ると、検証途中の項の列が外へ出る |
+| `crates/graphite-macros/src/lib.rs` | 統合による超過 | このファイルは proc-macro クレートの公開面である。6つのマクロ入口が同じ場所に並んでいること自体が公開面の一覧性であり、このファイルを分けると一覧性が壊れる |
+| `crates/graphite/src/graph/mod.rs` | 再設計待ち | このファイルは150行を超える。このファイルは公開契約の窓口としてメソッドを1画面へ集める。上限を超えたため、判定は issue #28 のやること4 が行う |
+| `crates/graphite/src/graph/topology/mod.rs` | 統合による超過 | このファイルは `impl 有向トポロジー` を1ファイルへ集める。この集約は `docs/development/runtime_structure.md` の分解の禁止事項1 が要求するものであり、このファイルを分けるとその禁止に反する |
+| `crates/graphite/tests/allocation_contract.rs` | 再設計待ち | このファイルは150行を超える。このファイルは確保契約の検証一式を持つ。テストの分け方の判定は issue #28 のやること4 が行う |
+| `crates/graphite/tests/edge_roles.rs` | 統合による超過 | このファイルは検証対象1つ (辺の役割名) に対するテスト用スキーマとテスト関数の列を持つ。このファイルはテスト用の `graph_schema!` 宣言を同居させているため、分けると同じ宣言が各ファイルへ複製される |
+| `crates/graphite/tests/flow.rs` | 再設計待ち | このファイルは150行を超える。このファイルは `flow!` の意味論の検証一式を持つ。テストの分け方の判定は issue #28 のやること4 が行う |
+| `crates/graphite/tests/graph_construction.rs` | 再設計待ち | このファイルは検証対象1つ (汎用Graphの構築経路と構築時の失敗) に対するテスト関数の列である。このファイルはスキーマを `mod common` へ外へ出しており、分けても宣言は複製されず、テスト関数は互いに独立している。統合による超過の根拠が成り立たないため、テストの分け方の判定は issue #28 のやること4 が行う |
+| `crates/graphite/tests/graph_cycle.rs` | 再設計待ち | このファイルは検証対象1つ (循環検出と閉路の内容) に対するテスト関数の列である。このファイルはスキーマを `mod common` へ外へ出しており、分けても宣言は複製されず、テスト関数は互いに独立している。統合による超過の根拠が成り立たないため、テストの分け方の判定は issue #28 のやること4 が行う |
+| `crates/graphite/tests/graph_refs.rs` | 統合による超過 | このファイルは検証対象1つ (ノード参照と辺参照) に対するテスト用スキーマとテスト関数の列を持つ。このファイルはテスト用の `graph_schema!` 宣言を同居させているため、分けると同じ宣言が各ファイルへ複製される |
+| `crates/graphite/tests/graph_splice.rs` | 統合による超過 | このファイルは検証対象1つ (`graph!` のスプライス項) に対するテスト用スキーマとテスト関数の列を持つ。このファイルはテスト用の `graph_schema!` 宣言を同居させているため、分けると同じ宣言が各ファイルへ複製される |
+| `crates/graphite/tests/named_graph.rs` | 統合による超過 | このファイルは検証対象1つ (名前付き構築) に対するテスト用スキーマとテスト関数の列を持つ。このファイルはテスト用の `graph_schema!` 宣言を同居させているため、分けると同じ宣言が各ファイルへ複製される |
+| `crates/graphite/tests/node_id_shared_across_schemas.rs` | 統合による超過 | このファイルは検証対象1つ (明示ID型の複数スキーマ共有) に対する2つのスキーマとテスト関数の列を持つ。このファイルは2つの `graph_schema!` 宣言が同じID型を共有することを検証するため、分けるとその共有そのものが検証できなくなる |
+| `crates/graphite/tests/orgchart_handwritten.rs` | 再設計待ち | このファイルは150行を超える。このファイルはマクロが生成すべきコードの手書きテンプレートである。扱いの判定は issue #28 のやること4 が行う |
+| `crates/graphite/tests/orgchart_macro.rs` | 再設計待ち | このファイルは150行を超える。このファイルは `graph_schema!` の読み書き一式を検証する。テストの分け方の判定は issue #28 のやること4 が行う |
+| `crates/graphite/tests/role_query.rs` | 再設計待ち | このファイルは150行を超える。このファイルは役割探索の検証一式を持つ。テストの分け方の判定は issue #28 のやること4 が行う |
+| `crates/graphite/tests/schema_ids.rs` | 統合による超過 | このファイルは検証対象1つ (既定IDと明示ID型) に対するテスト用スキーマとテスト関数の列を持つ。このファイルはテスト用の `graph_schema!` 宣言を同居させているため、分けると同じ宣言が各ファイルへ複製される |
+| `crates/graphite/tests/traversal_api.rs` | 統合による超過 | このファイルは検証対象1つ (走査API) に対するテスト用スキーマとテスト関数の列を持つ。このファイルはテスト用の `graph_schema!` 宣言を同居させているため、分けると同じ宣言が各ファイルへ複製される |
+| `crates/graphite/tests/undirected_edges.rs` | 再設計待ち | このファイルは150行を超える。このファイルは無向辺の検証一式を持つ。テストの分け方の判定は issue #28 のやること4 が行う |
+| `crates/graphite/tests/unknown_endpoint_positions/unique_pair.rs` | 統合による超過 | このファイルは検証対象1つ (端点対の重複の診断文) に対する、有向4通りと無向2通りの網羅を持つ。この6通りは1つの診断文の場合分けを尽くしたものであり、分けると網羅であることが読めなくなる |
+| `examples/dialogue-engine/src/story.rs` | 宣言的データリテラル | このファイルは1本の `graph!` 呼び出しを持つ。この呼び出しは30シーン・4エンディング・56本の選択肢を宣言する1つのデータである |
+| `examples/graphitets-by-hand/src/bin/static_graph.rs` | 再設計待ち | このファイルは150行を超える。このファイルは GraphiteTS の静的グラフ版を通常の Rust へ写す練習用ファイルである。扱いの判定は issue #28 のやること4 が行う |
+| `examples/graphitets-by-hand/src/main.rs` | 再設計待ち | このファイルは150行を超える。このファイルは GraphiteTS の動的グラフ版を通常の Rust へ写す練習用ファイルである。扱いの判定は issue #28 のやること4 が行う |
+| `examples/org-analyzer/src/dataset.rs` | 統合による超過 | このファイルは1つのシードから1つの組織データを合成しきる1本の流れを持つ。このファイルを途中で切ると、生成途中の中間状態が外へ出る |
+| `examples/org-analyzer/src/reorg.rs` | 統合による超過 | このファイルは組織改編の1回分を持つ。この4工程 (全要素の展開・対象部署の除外・再構築・報告の組み立て) は1本の流れであり、分けると流れの一片になる |
+| `xtask/src/reference_scan.rs` | 再設計待ち | このファイルは150行を超える。このファイルは文書の走査と参照の収集を1つの型へ持たせている。責務の量の判定は issue #28 のやること4 が行う |
+| `xtask/src/repository_root.rs` | 再設計待ち | このファイルは150行を超える。このファイルはリポジトリルートからの綴りの組み立てを1つの型へ閉じている。責務の量の判定は issue #28 のやること4 が行う |
+| `xtask/src/source_reference.rs` | 再設計待ち | このファイルは150行を超える。このファイルはソース参照の綴りと行範囲の解析を1つの型へ持たせている。責務の量の判定は issue #28 のやること4 が行う |
+| `xtask/src/usage.rs` | 宣言的データリテラル | このファイルは `cargo xtask` の各コマンドの使い方と、検査の範囲・限界の説明文という1つのデータを持つ。この説明文を途中で切ると、1つの説明が複数ファイルへ散る |
 
 ## 検査の範囲
 

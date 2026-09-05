@@ -108,14 +108,20 @@ Get-ChildItem crates\graphite\src -Recurse -Filter *.rs |
 ## 100行原則の例外
 
 1ファイル100行原則の例外は、全クレートと `xtask`・`examples`・`verification` を
-覆う台帳 `docs/development/line_count_ledger.md` が持つ。`crates/graphite` の分も
-そこへ移した。台帳はコード行の数え方と各ファイルの区分・根拠を定め、
-`cargo xtask check-line-counts` が台帳と実際の行数の両方を検査する。
+覆う台帳 `docs/development/line_count_ledger.md` が持つ。台帳はコード行の数え方と
+各ファイルの区分・根拠を定め、`cargo xtask check-line-counts` が台帳と実際の行数の
+両方を検査する。この文書はこの台帳を正本として扱う。
+
+この文書がかつて例外として挙げていた `compute/mod.rs`・`keyed_table.rs`・
+`graph/assembly.rs` の3つは、台帳に無い。台帳が定めるコード行の数え方 (空行と
+コメントだけの行を数えない) では、この3つは100行を超えないためである。
 
 `crates/graphite` の分解については、上の「分解の禁止事項」がこの台帳より強い制約を
-置いている。`graph/mod.rs` と `graph/topology/mod.rs` が100行を超えるのは、
-`impl Graph<N, E, K>` と `impl 有向トポロジー` を1ファイルへ集めるこの禁止事項の
-結果である。
+置いている。`graph/topology/mod.rs` が100行を超えるのは、`impl 有向トポロジー` を
+1ファイルへ集めるこの禁止事項の結果であり、台帳はこのファイルを「統合による超過」
+として登録している。`graph/mod.rs` については、台帳は「再設計待ち」として登録して
+いる。禁止事項1が `impl Graph<N, E, K>` を1ファイルへ集めることを要求してもなお
+150行を超えるためであり、この扱いの判定は issue #28 のやること4 が行う。
 
 ## 生成コードが依存する再公開
 
