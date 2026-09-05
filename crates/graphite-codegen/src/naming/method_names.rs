@@ -4,20 +4,20 @@ use proc_macro2::Ident;
 
 use super::case_conversion::to_snake_case;
 
-/// ノード型名・辺種別名の snake_case 形 (`accessor`) から、`Graph` および
-/// `NodeRef` に生やす種別APIのメソッド名を導出する。
-///
-/// 種別APIとは、ある種別に属する個体の全体を対象にする読み取り・可変操作
-/// (`by_id` / `value_mut` / `payload_mut` / `ids` / `iter` / `len` /
-/// `between` / `try_between`) のことである。接尾辞は固定の英語であり、
-/// 自然言語の複数形・省略形は生成しない (`bosses()` のような暗黙の複数形を
-/// 作らない、という issue #9 の決定)。日本語スキーマでも同じ機械的連結で
-/// `人物_by_id` / `購入_try_between` になる。
+// ノード型名・辺種別名の snake_case 形 (`accessor`) から、`Graph` および
+// `NodeRef` に生やす種別APIのメソッド名を導出する。
+//
+// 種別APIとは、ある種別に属する個体の全体を対象にする読み取り・可変操作
+// (`by_id` / `value_mut` / `payload_mut` / `ids` / `iter` / `len` /
+// `between` / `try_between`) のことである。接尾辞は固定の英語であり、
+// 自然言語の複数形・省略形は生成しない (`bosses()` のような暗黙の複数形を
+// 作らない、という issue #9 の決定)。日本語スキーマでも同じ機械的連結で
+// `人物_by_id` / `購入_try_between` になる。
 pub fn kind_api_method_ident(accessor: &Ident, suffix: &str) -> Ident {
     Ident::new(&format!("{accessor}_{suffix}"), accessor.span())
 }
 
-/// 辺種別名と役割名から `edge_as_role` 形式のNodeRefメソッド名を導出する。
+// 辺種別名と役割名から `edge_as_role` 形式のNodeRefメソッド名を導出する。
 pub fn traversal_method_ident(kind: &Ident, role: &Ident) -> Ident {
     Ident::new(
         &format!("{}_as_{}", to_snake_case(&kind.to_string()), role),
@@ -25,7 +25,7 @@ pub fn traversal_method_ident(kind: &Ident, role: &Ident) -> Ident {
     )
 }
 
-/// 辺種別名から無向辺の NodeRef が持つ接続クエリメソッド名を導出する。
+// 辺種別名から無向辺の NodeRef が持つ接続クエリメソッド名を導出する。
 pub fn incident_method_ident(kind: &Ident) -> Ident {
     Ident::new(
         &format!("{}_incident", to_snake_case(&kind.to_string())),

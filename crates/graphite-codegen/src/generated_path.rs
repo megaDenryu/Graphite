@@ -7,10 +7,10 @@
 use std::ffi::OsStr;
 use std::path::{Component, Path};
 
-/// 生成先の相対パスが `generated/<名前>.rs` の形式を満たすかを検査する。
-///
-/// 満たさなければ、そのまま利用者へ見せてよい理由の文を返す。絶対パスや
-/// `..` を許すと、宣言元ディレクトリの外へ書き込めてしまう。
+// 生成先の相対パスが `generated/<名前>.rs` の形式を満たすかを検査する。
+//
+// 満たさなければ、そのまま利用者へ見せてよい理由の文を返す。絶対パスや
+// `..` を許すと、宣言元ディレクトリの外へ書き込めてしまう。
 pub fn validate_generated_relative_path(value: &str) -> Result<(), String> {
     let relative = Path::new(value);
     let mut components = relative.components();

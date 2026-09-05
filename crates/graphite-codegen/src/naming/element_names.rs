@@ -3,27 +3,27 @@
 use proc_macro2::Ident;
 use quote::format_ident;
 
-/// ノード型名・エッジ種別名から既定生成IDの型名を導出する。
+// ノード型名・エッジ種別名から既定生成IDの型名を導出する。
 pub fn generated_id_ident(source: &Ident) -> Ident {
     format_ident!("{}Id", source, span = source.span())
 }
 
-/// ノード型名・辺種別名から完成済みグラフ上の参照型名を導出する。
+// ノード型名・辺種別名から完成済みグラフ上の参照型名を導出する。
 pub fn reference_ident(source: &Ident) -> Ident {
     format_ident!("{}Ref", source, span = source.span())
 }
 
-/// ノード型名・辺種別名から非公開の内部位置型名を導出する。
+// ノード型名・辺種別名から非公開の内部位置型名を導出する。
 pub fn internal_position_ident(source: &Ident) -> Ident {
     format_ident!("__{}InternalPosition", source, span = source.span())
 }
 
-/// ノード型名・辺種別名から `graph!` の名前付き要素が保持する位置型名を導出する。
+// ノード型名・辺種別名から `graph!` の名前付き要素が保持する位置型名を導出する。
 pub fn named_position_ident(source: &Ident) -> Ident {
     format_ident!("__{}NamedPosition", source, span = source.span())
 }
 
-/// 辺種別名から凍結後の非公開レコード型名を導出する。
+// 辺種別名から凍結後の非公開レコード型名を導出する。
 pub fn edge_record_ident(source: &Ident) -> Ident {
     format_ident!("__{}Record", source, span = source.span())
 }

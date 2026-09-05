@@ -33,9 +33,9 @@ mod schema;
 use proc_macro2::TokenStream;
 use quote::quote;
 
-/// `static_schema!` の展開本体。schemaを構文解析・検証し、schemaだけから
-/// 決まる生成物と `macro_rules! {schema名}` (内部マクロへの転送) を並べて
-/// 返す。
+// `static_schema!` の展開本体。schemaを構文解析・検証し、schemaだけから
+// 決まる生成物と `macro_rules! {schema名}` (内部マクロへの転送) を並べて
+// 返す。
 pub fn parse_and_expand_static_schema(input: TokenStream) -> TokenStream {
     let 生トークン = input.clone();
     let 解析済み = match syn::parse2::<schema::input::静的グラフ型入力>(input) {
@@ -61,10 +61,10 @@ pub fn parse_and_expand_static_schema(input: TokenStream) -> TokenStream {
     }
 }
 
-/// `__static_graph_impl!` の展開本体。`static_schema!` がmacro_rules!転送で
-/// 焼き込んだschemaの生トークンと、利用側が `<schema名>! { .. }` で書いた
-/// instanceの生トークンを1回の展開で同時に受け取り、両者の相互検証と
-/// 具象コード生成を行う。
+// `__static_graph_impl!` の展開本体。`static_schema!` がmacro_rules!転送で
+// 焼き込んだschemaの生トークンと、利用側が `<schema名>! { .. }` で書いた
+// instanceの生トークンを1回の展開で同時に受け取り、両者の相互検証と
+// 具象コード生成を行う。
 pub fn expand_static_graph_internal(input: TokenStream) -> TokenStream {
     let 入力 = match syn::parse2::<internal::静的グラフ内部入力>(input) {
         Ok(入力) => 入力,

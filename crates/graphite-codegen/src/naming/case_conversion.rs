@@ -1,9 +1,9 @@
 //! 識別子のケース変換規則だけを持つ。
 
-/// `PascalCase` / `camelCase` の識別子を `snake_case` に変換する。
-///
-/// 例: `Employee` -> `employee`, `OrgChart` -> `org_chart`。
-/// ノード型名からビルダーメソッド名・アクセサ名を導出するのに使う。
+// `PascalCase` / `camelCase` の識別子を `snake_case` に変換する。
+//
+// 例: `Employee` -> `employee`, `OrgChart` -> `org_chart`。
+// ノード型名からビルダーメソッド名・アクセサ名を導出するのに使う。
 pub fn to_snake_case(ident: &str) -> String {
     let mut result = String::new();
     let mut prev_is_lower_or_digit = false;
@@ -22,8 +22,8 @@ pub fn to_snake_case(ident: &str) -> String {
     result
 }
 
-/// 役割名 (`line_item`) を variant 名に埋め込める `PascalCase` (`LineItem`) へ
-/// 変換する。区切りは `_` のみで、日本語の役割名はそのまま通る。
+// 役割名 (`line_item`) を variant 名に埋め込める `PascalCase` (`LineItem`) へ
+// 変換する。区切りは `_` のみで、日本語の役割名はそのまま通る。
 pub fn to_pascal_case(ident: &str) -> String {
     ident
         .split('_')

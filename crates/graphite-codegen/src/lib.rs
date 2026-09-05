@@ -35,10 +35,10 @@ pub use declaration_site::DeclarationSite;
 pub use generated_path::validate_generated_relative_path;
 pub use static_graph::{expand_static_graph_internal, parse_and_expand_static_schema};
 
-/// 追跡対象の schema 宣言を検証し、意味モデルまで確定させたもの。
-///
-/// 構文モデルではなく意味モデルを保持するのは、指紋の計算とソース生成が同じ
-/// 解析結果を読むようにするためである (解析を2回走らせない)。
+// 追跡対象の schema 宣言を検証し、意味モデルまで確定させたもの。
+//
+// 構文モデルではなく意味モデルを保持するのは、指紋の計算とソース生成が同じ
+// 解析結果を読むようにするためである (解析を2回走らせない)。
 pub struct TrackedSchema {
     generated_path: LitStr,
     スキーマ定義: schema::semantic::スキーマ定義,
@@ -46,26 +46,26 @@ pub struct TrackedSchema {
 }
 
 impl TrackedSchema {
-    /// DSL が宣言する schema module 名を返す。
+    // DSL が宣言する schema module 名を返す。
     pub fn schema_name(&self) -> &Ident {
         self.スキーマ定義.スキーマ名()
     }
 
-    /// 宣言元ファイルから見た生成先の相対パスを返す。
+    // 宣言元ファイルから見た生成先の相対パスを返す。
     pub fn generated_path(&self) -> &LitStr {
         &self.generated_path
     }
 
-    /// schema の意味と生成先を表す決定的な指紋を返す。
+    // schema の意味と生成先を表す決定的な指紋を返す。
     pub fn fingerprint(&self) -> [u64; 4] {
         self.fingerprint
     }
 
-    /// schema module の通常の Rust ソース本文を生成する。
-    ///
-    /// 生成する公開型・公開メソッドの doc には、宣言元ファイルの綴りと宣言の形を
-    /// 埋める (`schema::codegen::declaration_doc`)。生成ファイルへ着地した利用者が
-    /// hover と rustdoc で宣言元へ戻れるようにするためである。
+    // schema module の通常の Rust ソース本文を生成する。
+    //
+    // 生成する公開型・公開メソッドの doc には、宣言元ファイルの綴りと宣言の形を
+    // 埋める (`schema::codegen::declaration_doc`)。生成ファイルへ着地した利用者が
+    // hover と rustdoc で宣言元へ戻れるようにするためである。
     pub fn render_module_source(&self, site: &DeclarationSite) -> syn::Result<String> {
         let 宣言元の綴り = 宣言元ファイルの綴り::パッケージ相対で分かっている(
             site.宣言ファイルの綴り().to_string(),
@@ -75,7 +75,7 @@ impl TrackedSchema {
     }
 }
 
-/// 追跡形式の `graph_schema!` 入力を解析・検証する。
+// 追跡形式の `graph_schema!` 入力を解析・検証する。
 pub fn parse_tracked_schema(input: TokenStream) -> Result<TrackedSchema, Vec<syn::Error>> {
     let tracked = syn::parse2::<TrackedInput>(input).map_err(|error| vec![error])?;
     if let Err(reason) = validate_generated_relative_path(&tracked.generated_path.value()) {
@@ -108,7 +108,7 @@ pub fn parse_tracked_schema(input: TokenStream) -> Result<TrackedSchema, Vec<syn
     })
 }
 
-/// 回復診断テスト専用のインライン schema 展開を返す。
+// 回復診断テスト専用のインライン schema 展開を返す。
 pub fn expand_inline_for_test(input: TokenStream) -> TokenStream {
     let parsed = match schema::syntax::SchemaInput::parse_recovering.parse2(input) {
         Ok(parsed) => parsed,

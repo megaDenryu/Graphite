@@ -5,13 +5,13 @@ use quote::format_ident;
 
 use super::case_conversion::to_snake_case;
 
-/// ノード型名・辺種別名から、内部ストレージのアクセサ名 (単数形 snake_case) を
-/// 導出する。builder の追加メソッド名と辺表のフィールド名を兼ねる。
+// ノード型名・辺種別名から、内部ストレージのアクセサ名 (単数形 snake_case) を
+// 導出する。builder の追加メソッド名と辺表のフィールド名を兼ねる。
 pub fn accessor_ident(source: &Ident) -> Ident {
     Ident::new(&to_snake_case(&source.to_string()), source.span())
 }
 
-/// ノード型名から非公開ストレージ名を機械的に導出する。
+// ノード型名から非公開ストレージ名を機械的に導出する。
 pub fn node_storage_ident(source: &Ident) -> Ident {
     format_ident!(
         "__graphite_node_{}",
@@ -20,28 +20,28 @@ pub fn node_storage_ident(source: &Ident) -> Ident {
     )
 }
 
-/// freeze 中に使うエッジ表の一時変数名を生成する。
+// freeze 中に使うエッジ表の一時変数名を生成する。
 pub fn edge_storage_ident(accessor: &Ident) -> Ident {
     format_ident!("__graphite_{}", accessor, span = accessor.span())
 }
 
-/// 有向辺の始点役割索引のフィールド名を導出する。
+// 有向辺の始点役割索引のフィールド名を導出する。
 pub fn source_role_index_field_ident(accessor: &Ident) -> Ident {
     format_ident!("{}_from_index", accessor)
 }
 
-/// 有向辺の終点役割索引のフィールド名を導出する (`docs/reverse_query.md`)。
+// 有向辺の終点役割索引のフィールド名を導出する (`docs/reverse_query.md`)。
 pub fn target_role_index_field_ident(accessor: &Ident) -> Ident {
     format_ident!("{}_to_index", accessor)
 }
 
-/// 無向辺の接続索引のフィールド名を導出する。無向辺は方向の意味を持たないため
-/// 位置を名前に書かない。
+// 無向辺の接続索引のフィールド名を導出する。無向辺は方向の意味を持たないため
+// 位置を名前に書かない。
 pub fn incident_index_field_ident(accessor: &Ident) -> Ident {
     format_ident!("{}_index", accessor)
 }
 
-/// 辺種別名から非公開の端点対索引フィールド名を導出する。
+// 辺種別名から非公開の端点対索引フィールド名を導出する。
 pub fn pair_index_field_ident(kind: &Ident) -> Ident {
     format_ident!(
         "__graphite_{}_by_pair",
