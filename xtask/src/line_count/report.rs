@@ -1,6 +1,6 @@
 //! 検査結果の集計。
 //!
-//! 集計する数は7種類の違反と、検査が届いた範囲 (検査したファイル数・台帳の件数・
+//! 集計する数は8種類の違反と、検査が届いた範囲 (検査したファイル数・台帳の件数・
 //! 再設計待ちの件数) である。範囲を出すのは、通ったことを「全部を見た」と
 //! 読み違えないようにするためである。表示は `rendering.rs` が持つ。
 
@@ -26,6 +26,7 @@ pub(crate) struct LineCountReport {
     upper_limit_excesses: Vec<String>,
     shrunk_entries: Vec<String>,
     declaration_mismatches: Vec<String>,
+    unregistered_declarations: Vec<String>,
     missing_entries: Vec<String>,
     invalid_ledger_rows: Vec<String>,
 }
@@ -53,16 +54,27 @@ impl LineCountReport {
         }
     }
 
-    // 台帳にある1件について、冒頭コメントが台帳の根拠と同じ宣言を書いているかを見る。
+    // 冒頭コメントと台帳を突き合わせる。台帳にある1件については、冒頭コメントが台帳の
+    // 根拠と同じ宣言を書いているかを見る。台帳に無いファイルについては、冒頭コメントが
+    // 例外を名乗っていないかを見る。名乗ったまま黙って戻ると、台帳へ登録しないまま
+    // 例外を自称したファイルが検査を通り抜ける。
     fn record_declaration(
         &mut self,
         spelling: &str,
         declaration: &ExceptionDeclaration,
         entry: Option<&LedgerEntry>,
     ) {
-        let Some(entry) = entry else { return };
+        let Some(entry) = entry else {
+            if declaration.claims_exception() {
+                self.unregistered_declarations.push(spelling.to_string());
+            }
+            return;
+        };
         if !declaration.agrees_with(entry) {
-            self.declaration_mismatches.push(spelling.to_string());
+            self.declaration_mismatches.push(format!(
+                "{spelling}\n    期待する文: {}",
+                entry.declaration_sentences()
+            ));
         }
     }
 
@@ -91,6 +103,7 @@ impl LineCountReport {
             && self.upper_limit_excesses.is_empty()
             && self.shrunk_entries.is_empty()
             && self.declaration_mismatches.is_empty()
+            && self.unregistered_declarations.is_empty()
             && self.missing_entries.is_empty()
             && self.invalid_ledger_rows.is_empty()
     }

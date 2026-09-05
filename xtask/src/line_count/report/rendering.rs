@@ -12,10 +12,17 @@ use super::LineCountReport;
 const LEDGER_ROW_FORM: &str = "期待する形: 綴りを逆引用符で囲む。\
     区分を3語 (統合による超過・宣言的データリテラル・再設計待ち) のいずれかにする。根拠を空にしない";
 
-// 違反1種類分の表示。見出しと、期待する形を書く1行 (示さないなら空) と一覧を持つ。
+// 冒頭コメントが台帳の根拠と食い違ったときに、書き手へ示す期待する形。
+const DECLARATION_FORM: &str = "冒頭コメントは最初の空行で途切れます。定型の文は最初の空行より前へ書いてください";
+
+// 台帳に無いファイルが例外を名乗ったときに、書き手へ示す期待する形。
+const UNREGISTERED_DECLARATION_FORM: &str = "期待する形: 台帳へこのファイルの行を足すか、\
+    冒頭コメントから例外を名乗る文を消してください";
+
+// 違反1種類分の表示。見出しと、期待する形を書く1行 (示さないなら不在) と一覧を持つ。
 struct ViolationSection<'a> {
     title: &'a str,
-    expected_form: &'a str,
+    expected_form: Option<&'a str>,
     entries: &'a [String],
 }
 
@@ -40,7 +47,7 @@ impl LineCountReport {
         }
     }
 
-    fn violation_sections(&self) -> [ViolationSection<'_>; 7] {
+    fn violation_sections(&self) -> [ViolationSection<'_>; 8] {
         [
             ViolationSection::of(
                 "台帳に無いのに100行を超えています",
@@ -55,14 +62,20 @@ impl LineCountReport {
                 "台帳にありますが検査対象に実在しません",
                 &self.missing_entries,
             ),
-            ViolationSection::of(
-                "台帳の根拠と冒頭コメントが一致しません",
-                &self.declaration_mismatches,
-            ),
+            ViolationSection {
+                title: "台帳の根拠と冒頭コメントが一致しません",
+                expected_form: Some(DECLARATION_FORM),
+                entries: &self.declaration_mismatches,
+            },
+            ViolationSection {
+                title: "台帳に無いのに例外を名乗っています",
+                expected_form: Some(UNREGISTERED_DECLARATION_FORM),
+                entries: &self.unregistered_declarations,
+            },
             ViolationSection::of("読み込みに失敗しました", &self.unreadable_files),
             ViolationSection {
                 title: "台帳の行として読めません",
-                expected_form: LEDGER_ROW_FORM,
+                expected_form: Some(LEDGER_ROW_FORM),
                 entries: &self.invalid_ledger_rows,
             },
         ]
@@ -73,7 +86,7 @@ impl<'a> ViolationSection<'a> {
     fn of(title: &'a str, entries: &'a [String]) -> Self {
         Self {
             title,
-            expected_form: "",
+            expected_form: None,
             entries,
         }
     }
@@ -84,8 +97,8 @@ impl<'a> ViolationSection<'a> {
             return;
         }
         let _ = writeln!(text, "{} ({}件):", self.title, self.entries.len());
-        if !self.expected_form.is_empty() {
-            let _ = writeln!(text, "  {}", self.expected_form);
+        if let Some(form) = self.expected_form {
+            let _ = writeln!(text, "  {form}");
         }
         for entry in self.entries {
             let _ = writeln!(text, "  {entry}");

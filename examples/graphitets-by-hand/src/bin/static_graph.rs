@@ -22,8 +22,8 @@
 //   cargo run --bin static_graph
 //   cargo test --bin static_graph
 //
-// このファイルは1ファイル100行の原則の例外である (区分: 再設計待ち)。このファ
-// イルは150行を超える。このファイルは GraphiteTS の静的グラフ版を通常の
+// このファイルは1ファイル100行の原則の例外である (区分: 再設計待ち)。この
+// ファイルは150行を超える。このファイルは GraphiteTS の静的グラフ版を通常の
 // Rust へ写す練習用ファイルである。扱いの判定は issue #28 のやること4 が行
 // う。超過を許す根拠の台帳は `docs/development/line_count_ledger.md` にある。
 

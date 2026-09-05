@@ -61,7 +61,7 @@ impl LedgerEntry {
     // 規約が冒頭コメントへ要求する定型の文。台帳の区分と根拠から組み立てる。
     pub(crate) fn declaration_sentences(&self) -> String {
         format!(
-            "このファイルは1ファイル100行の原則の例外である (区分: {})。{}。             超過を許す根拠の台帳は `docs/development/line_count_ledger.md` にある。",
+            "このファイルは1ファイル100行の原則の例外である (区分: {})。{}。超過を許す根拠の台帳は `docs/development/line_count_ledger.md` にある。",
             self.category.cell_text(),
             self.rationale
         )

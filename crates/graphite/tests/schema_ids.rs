@@ -1,12 +1,12 @@
 //! schema module内の既定IDと既存ID型の明示指定を検証する。
 //!
 //! このファイルは1ファイル100行の原則の例外である (区分: 再設計待ち)。この
-//! ファイルは検証対象1つ (既定IDと明示ID型) に対するテスト用スキーマとテス
-//! ト関数の列を持つ。`each_declaration_order.rs` が `#[path]` で宣言を親に
+//! ファイルは検証対象1つ (既定IDと明示ID型) に対するテスト用スキーマと
+//! テスト関数の列を持つ。`each_declaration_order.rs` が `#[path]` で宣言を親に
 //! 残したままテストを部分モジュールへ出す技法を実証したため、このファイルの
-//! 分割が同じ宣言を各ファイルへ複製するという統合の根拠は成り立たない。検証
-//! 観点ごとに部分モジュールへ分ける判定を issue #28 のやること4 で行う。超
-//! 過を許す根拠の台帳は `docs/development/line_count_ledger.md` にある。
+//! 分割が同じ宣言を各ファイルへ複製するという統合の根拠は成り立たない。
+//! 検証観点ごとに部分モジュールへ分ける判定を issue #28 のやること4 で行う。
+//! 超過を許す根拠の台帳は `docs/development/line_count_ledger.md` にある。
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct ExternalNodeId(pub u64);

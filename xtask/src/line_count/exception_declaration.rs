@@ -2,15 +2,17 @@
 //!
 //! 規約は、超過を許したファイルの冒頭コメントへ根拠を書くことを要求する。台帳を正本と
 //! し、台帳の区分と根拠から組み立てた定型の文が冒頭コメントに含まれるかをこの型が答える。
-//! 照合の前に空白と記号を落とすのは、冒頭コメントが定型の文を行の幅で折り返すためである。
+//! この型は行ごとにコメントの印だけを剥がしてから連結し、照合の前に空白と逆引用符を
+//! 落とす。冒頭コメントが定型の文を行の幅で折り返すためである。この型は逆引用符以外の
+//! 記号を落とさない。落とすと、`flow!` を `flow` と書いた冒頭コメントまで一致とみなす。
 
 #[cfg(test)]
 mod tests;
 
 use super::ledger::LedgerEntry;
 
-// 照合の前に落とす記号。逆引用符と、行コメントの印を作る文字である。
-const DROPPED_MARKS: [char; 4] = ['`', '/', '!', '*'];
+// 台帳に無いファイルが例外を名乗っているかを見るための、定型の文の固定部分。
+const EXCEPTION_CLAIM: &str = "このファイルは1ファイル100行の原則の例外である";
 
 // ファイル1つの冒頭コメント。照合できる形へ均した文字列を持つ。
 pub(crate) struct ExceptionDeclaration {
@@ -25,10 +27,8 @@ impl ExceptionDeclaration {
             if header.is_empty() && line.is_empty() {
                 continue;
             }
-            if !line.starts_with("//") {
-                break;
-            }
-            header.push_str(line);
+            let Some(body) = comment_body(line) else { break };
+            header.push_str(body);
         }
         Self {
             normalized_header: normalize(&header),
@@ -40,11 +40,26 @@ impl ExceptionDeclaration {
         self.normalized_header
             .contains(&normalize(&entry.declaration_sentences()))
     }
+
+    // 冒頭コメントが、定型の文の固定部分を書いて例外を名乗っているか。
+    pub(crate) fn claims_exception(&self) -> bool {
+        self.normalized_header.contains(&normalize(EXCEPTION_CLAIM))
+    }
 }
 
-// 空白と記号を落とす。行の折り返しと逆引用符の有無を照合の対象から外す。
+// 行からコメントの印を剥がして本文を返す。コメント行でなければ何も返さない。
+fn comment_body(line: &str) -> Option<&str> {
+    let rest = line.trim_start();
+    if !rest.starts_with("//") {
+        return None;
+    }
+    let rest = rest.trim_start_matches('/');
+    Some(rest.strip_prefix('!').unwrap_or(rest).trim_start())
+}
+
+// 空白と逆引用符を落とす。行の折り返しと逆引用符の有無を照合の対象から外す。
 fn normalize(text: &str) -> String {
     text.chars()
-        .filter(|c| !c.is_whitespace() && !DROPPED_MARKS.contains(c))
+        .filter(|c| !c.is_whitespace() && *c != '`')
         .collect()
 }

@@ -106,8 +106,8 @@
 //! ない。
 //!
 //! このファイルは1ファイル100行の原則の例外である (区分: 再設計待ち)。この
-//! ファイルは150行を超える。このファイルは `graph!` の入力 DSL の構文解析一
-//! 式を持つ。責務の量の判定は issue #28 のやること4 が行う。超過を許す根拠
+//! ファイルは150行を超える。このファイルは `graph!` の入力 DSL の構文解析一式
+//! を持つ。責務の量の判定は issue #28 のやること4 が行う。超過を許す根拠
 //! の台帳は `docs/development/line_count_ledger.md` にある。
 
 use proc_macro2::{Delimiter, TokenStream as TokenStream2, TokenTree};

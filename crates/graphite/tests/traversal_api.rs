@@ -5,8 +5,8 @@
 //! を持つ。`each_declaration_order.rs` が `#[path]` で宣言を親に残したまま
 //! テストを部分モジュールへ出す技法を実証したため、このファイルの分割が同じ
 //! 宣言を各ファイルへ複製するという統合の根拠は成り立たない。検証観点ごとに
-//! 部分モジュールへ分ける判定を issue #28 のやること4 で行う。超過を許す根
-//! 拠の台帳は `docs/development/line_count_ledger.md` にある。
+//! 部分モジュールへ分ける判定を issue #28 のやること4 で行う。超過を許す
+//! 根拠の台帳は `docs/development/line_count_ledger.md` にある。
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Person {

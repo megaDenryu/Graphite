@@ -44,3 +44,30 @@ fn コードより後ろに書いた定型を冒頭コメントとみなさな�
     let header = format!("use std::fmt;\n{定型}");
     assert!(!一致するか(&header, "根拠の文"));
 }
+
+#[test]
+fn 感嘆符を落とした冒頭コメントを一致とみなさない() {
+    let header = "//! このファイルは1ファイル100行の原則の例外である (区分: 統合による超過)。\n\
+                  //! このファイルは `flow` の構文解析一式を持つ。超過を許す根拠の台帳は\n\
+                  //! `docs/development/line_count_ledger.md` にある。\n";
+    assert!(!一致するか(header, "このファイルは `flow!` の構文解析一式を持つ"));
+}
+
+#[test]
+fn 台帳のパスの区切りを落とした冒頭コメントを一致とみなさない() {
+    let header = "//! このファイルは1ファイル100行の原則の例外である (区分: 統合による超過)。\n\
+                  //! 根拠の文。超過を許す根拠の台帳は\n\
+                  //! `docsdevelopmentline_count_ledger.md` にある。\n";
+    assert!(!一致するか(header, "根拠の文"));
+}
+
+#[test]
+fn 定型の固定部分を書いた冒頭コメントは例外を名乗っているとみなす() {
+    assert!(ExceptionDeclaration::of_source_text(定型).claims_exception());
+}
+
+#[test]
+fn 例外に触れない冒頭コメントは例外を名乗っているとみなさない() {
+    let header = "//! このファイルは1ファイル100行の原則を守る。\n";
+    assert!(!ExceptionDeclaration::of_source_text(header).claims_exception());
+}

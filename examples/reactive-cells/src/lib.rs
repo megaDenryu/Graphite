@@ -1,8 +1,8 @@
 //! reactive-cells — Graphite (`graph_schema!`/`graph!`) で
 //! 「リアクティブプログラミングのスパゲッティ」を倒す実証example。
 //!
-//! 詳しい経緯・設計判断は `README.md` を参照。`main.rs` (CLIエントリ
-//! ポイント) と `tests/` (統合テスト) の両方から同じロジックを参照できる
+//! 詳しい経緯・設計判断は `README.md` を参照。`main.rs` (CLIエントリポイント) と
+//! `tests/` (統合テスト) の両方から同じロジックを参照できる
 //! よう、lib + bin の2ターゲット構成にしている
 //! (`examples/org-analyzer` と同じ構成)。
 //!

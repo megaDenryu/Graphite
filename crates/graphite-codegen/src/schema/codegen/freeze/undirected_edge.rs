@@ -1,9 +1,9 @@
 //! 無向辺1種別分の凍結検査と対称な索引の構築を生成する。
 //!
 //! このファイルは1ファイル100行の原則の例外である (区分: 統合による超過)。
-//! このファイルは `directed_edge.rs` と同じ理由で超過する。このファイルは無
-//! 向辺1種別分の凍結処理を持ち、その工程は1つの `for` ループを共有する。超
-//! 過を許す根拠の台帳は `docs/development/line_count_ledger.md` にある。
+//! このファイルは `directed_edge.rs` と同じ理由で超過する。このファイルは
+//! 無向辺1種別分の凍結処理を持ち、その工程は1つの `for` ループを共有する。
+//! 超過を許す根拠の台帳は `docs/development/line_count_ledger.md` にある。
 
 use proc_macro2::TokenStream;
 use quote::quote;
