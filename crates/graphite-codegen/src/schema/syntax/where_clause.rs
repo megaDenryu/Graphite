@@ -11,14 +11,12 @@ pub struct EachConstraint {
     pub spec: EachSpec,
 }
 
-/// `where` 節の制約1つ分。
+// `where` 節の制約1つ分。`Each` は `each <役割名>: <spec>` を保持し、始点の役割名なら
+// 出次数、終点の役割名なら入次数を指す。どちらの意味になるかの判定は意味層
+// (`schema::semantic::each制約が指す端点の側を判定する`) で行うため、この層は
+// トークンをそのまま保持する。`UniquePair` は `unique pair` を保持する。
 pub enum Constraint {
-    /// `each <役割名>: <spec>`。始点の役割名なら出次数、終点の役割名なら入次数を指す。
-    /// どの意味になるかの判定は意味層
-    /// (`schema::semantic::each制約が指す端点の側を判定する`) で行うため、
-    /// ここではトークンをそのまま保持する。
     Each { ref_ident: Ident, spec: EachSpec },
-    /// `unique pair`。
     UniquePair,
 }
 
@@ -38,15 +36,15 @@ pub(super) fn parse_constraint(input: ParseStream) -> syn::Result<Constraint> {
     }
 }
 
-/// `where` 節全体 (カンマ区切りの制約の列、`where` キーワード自体は省略可)。
+// `where` 節全体 (カンマ区切りの制約の列、`where` キーワード自体は省略可)。
 #[derive(Default)]
 pub struct WhereClause {
     pub each: Vec<EachConstraint>,
     pub unique_pair: bool,
 }
 
-/// `where` 節 (存在すれば) をパースする。`where` キーワードが無ければ
-/// 制約なしの `WhereClause::default()` を返す。
+// `where` 節 (存在すれば) をパースする。`where` キーワードが無ければ
+// 制約なしの `WhereClause::default()` を返す。
 pub(super) fn parse_optional_where_clause(input: ParseStream) -> syn::Result<WhereClause> {
     if !input.peek(Token![where]) {
         return Ok(WhereClause::default());

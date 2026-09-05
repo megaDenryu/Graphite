@@ -6,13 +6,13 @@ use syn::{bracketed, Token};
 use super::edge_payload::{parse_edge_bracket_body, EdgePayload};
 use super::token_drain::drain_rest;
 
-/// 柄 (4形: `->` / `-[役割名: Attrs]->` / `--` / `-[役割名: Attrs]-`) をパースし、
-/// `(積み荷型, 有向か)` を返す。
-///
-/// 有向の柄 `-` + `>` から矢尻を落とすと無向の柄になる、という
-/// `docs/edge_endpoints_v4_1.md` §2 の導出規則どおりに実装する: 最初の `-`
-/// を読んだ後、`[Attrs]` (積み荷、あれば) を読み、最後に `->` (有向) か `-`
-/// (無向) かで向きを判定する。
+// 柄 (4形: `->` / `-[役割名: Attrs]->` / `--` / `-[役割名: Attrs]-`) をパースし、
+// `(積み荷型, 有向か)` を返す。
+//
+// 有向の柄 `-` + `>` から矢尻を落とすと無向の柄になる、という
+// `docs/edge_endpoints_v4_1.md` §2 の導出規則どおりに実装する: 最初の `-`
+// を読んだ後、`[Attrs]` (積み荷、あれば) を読み、最後に `->` (有向) か `-`
+// (無向) かで向きを判定する。
 pub(super) fn parse_edge_arrow(input: ParseStream) -> syn::Result<(Option<EdgePayload>, bool)> {
     // 素の `->` (単一の複合トークン) を先読みして判定する。`-[`/`--` は
     // いずれも `-` と別トークンの2トークンなので `->` と誤って先読み

@@ -6,7 +6,7 @@ use syn::{parenthesized, Path, Token};
 use super::keywords as kw;
 use super::token_drain::drain_rest;
 
-/// Node/Edge 共通の明示 ID 型指定 `(id: 型パス)` を読む。
+// Node/Edge 共通の明示 ID 型指定 `(id: 型パス)` を読む。
 pub(super) fn parse_optional_id_type(input: ParseStream) -> syn::Result<Option<Path>> {
     if !input.peek(syn::token::Paren) {
         return Ok(None);

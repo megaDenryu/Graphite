@@ -4,7 +4,7 @@ use proc_macro2::Span;
 use syn::parse::ParseStream;
 use syn::{LitInt, Token};
 
-/// `each <役割名>: N | N..M | N..*` の右辺。
+// `each <役割名>: N | N..M | N..*` の右辺。
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct EachSpec {
     min: usize,

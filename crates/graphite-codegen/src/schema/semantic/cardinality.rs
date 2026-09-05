@@ -4,30 +4,27 @@ use proc_macro2::Ident;
 
 use crate::schema::syntax::{EachConstraint, EachSpec, EdgeDecl, EdgeShape};
 
-/// `where each <参照名>` が意味する側 (出次数/入次数)。
-///
-/// - `Source`: 始点の役割名に対する出次数制約
-/// - `Target`: 終点の役割名に対する入次数制約
+// `where each <参照名>` が意味する側 (出次数/入次数)。
+//
+// - `Source`: 始点の役割名に対する出次数制約
+// - `Target`: 終点の役割名に対する入次数制約
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum EachSide {
     Source,
     Target,
 }
 
-/// 役割の `each` 制約を、生成コードの分岐に使う多重度3値へ分類したもの。
-/// 役割クエリの戻り型・索引の実装・doc コメントはすべてこの3値だけで分岐する。
+// 役割の `each` 制約を、生成コードの分岐に使う多重度3値へ分類したもの。
+// 役割クエリの戻り型・索引の実装・doc コメントはすべてこの3値だけで分岐する。
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum RoleCardinality {
-    /// `each X: 1` — ちょうど1本。
-    Exact,
-    /// `each X: 0..1` — 高々1本。
-    Optional,
-    /// それ以外の範囲、または制約なし。
-    Multiple,
+    Exact,    // `each X: 1` — ちょうど1本
+    Optional, // `each X: 0..1` — 高々1本
+    Multiple, // それ以外の範囲、または制約なし
 }
 
 impl RoleCardinality {
-    /// 役割の `each` 制約 (無ければ `None`) を多重度3値へ分類する。
+    // 役割の `each` 制約 (無ければ `None`) を多重度3値へ分類する。
     pub fn classify(spec: Option<EachSpec>) -> Self {
         match spec {
             Some(spec) if spec.is_exactly_one() => Self::Exact,
@@ -37,8 +34,8 @@ impl RoleCardinality {
     }
 }
 
-/// 1つの役割に課された多重度制約。どちら側の端点を指すかと、生成分岐に使う
-/// 多重度3値を確定済みで持つ。
+// 1つの役割に課された多重度制約。どちら側の端点を指すかと、生成分岐に使う
+// 多重度3値を確定済みで持つ。
 #[derive(Clone)]
 pub struct 役割の多重度制約 {
     役割名: Ident,
@@ -65,7 +62,7 @@ impl 役割の多重度制約 {
         self.側
     }
 
-    /// 診断文言と凍結時の判定式が使う、DSL に書かれたままの範囲。
+    // 診断文言と凍結時の判定式が使う、DSL に書かれたままの範囲。
     pub fn 指定された範囲(&self) -> EachSpec {
         self.指定された範囲
     }
@@ -74,8 +71,8 @@ impl 役割の多重度制約 {
         self.多重度
     }
 
-    /// `where` 節へ書く `each <役割名>: <多重度>` の綴り。宣言の形を組み立てる
-    /// ときに使う。
+    // `where` 節へ書く `each <役割名>: <多重度>` の綴り。宣言の形を組み立てる
+    // ときに使う。
     pub(super) fn where節での綴り(&self) -> String {
         let 多重度 = match self.指定された範囲.max() {
             Some(上限) if self.指定された範囲.min() == 上限 => 上限.to_string(),
@@ -86,11 +83,11 @@ impl 役割の多重度制約 {
     }
 }
 
-/// `where each <参照名>: ..` の `<参照名>` がどちら側の端点を指すかを判定する。
-/// 判定できない場合は診断つきの `syn::Error` を返す。
-///
-/// - 有向辺: `<参照名>` は始点/終点いずれかの役割名と一致する必要がある。
-/// - 無向辺: 端点の役割名が無いため `each` 自体を拒否する。
+// `where each <参照名>: ..` の `<参照名>` がどちら側の端点を指すかを判定する。
+// 判定できない場合は診断つきの `syn::Error` を返す。
+//
+// - 有向辺: `<参照名>` は始点/終点いずれかの役割名と一致する必要がある。
+// - 無向辺: 端点の役割名が無いため `each` 自体を拒否する。
 pub fn each制約が指す端点の側を判定する(
     edge: &EdgeDecl,
     each_ident: &Ident,

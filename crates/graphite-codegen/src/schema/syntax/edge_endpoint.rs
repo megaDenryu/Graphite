@@ -10,14 +10,14 @@ pub struct DirectedEndpoint {
     pub ty: Ident,
 }
 
-/// 端点1つ分 (`Ident` または `(役割名: 型名)`)。
+// 端点1つ分 (`Ident` または `(役割名: 型名)`)。
 pub(super) struct Endpoint {
     pub(super) role: Option<Ident>,
     pub(super) ty: Ident,
 }
 
-/// 端点をパースする。`(` で始まれば役割名つき `(役割名: 型名)`、そうでなければ
-/// 型名のみの `Ident`。
+// 端点をパースする。`(` で始まれば役割名つき `(役割名: 型名)`、そうでなければ
+// 型名のみの `Ident`。
 pub(super) fn parse_endpoint(input: ParseStream) -> syn::Result<Endpoint> {
     if input.peek(syn::token::Paren) {
         let content;
@@ -42,7 +42,7 @@ pub(super) fn parse_endpoint(input: ParseStream) -> syn::Result<Endpoint> {
     }
 }
 
-/// `(役割名: 型名)` の `( .. )` の中身。
+// `(役割名: 型名)` の `( .. )` の中身。
 pub(super) fn parse_endpoint_paren_body(content: ParseStream) -> syn::Result<Endpoint> {
     let role: Ident = content.parse()?;
     content.parse::<Token![:]>()?;

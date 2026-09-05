@@ -4,8 +4,8 @@ use quote::ToTokens;
 
 use crate::schema::syntax::{EdgeDecl, EdgeShape};
 
-/// 無向辺の両端が同じノード型であることを検査する
-/// (`docs/edge_endpoints_v4_1.md` §2「両端は同じノード型でなければならない」)。
+// 無向辺の両端が同じノード型であることを検査する
+// (`docs/edge_endpoints_v4_1.md` §2「両端は同じノード型でなければならない」)。
 pub fn validate_undirected_same_type(edges: &[EdgeDecl]) -> syn::Result<()> {
     for edge in edges {
         let EdgeShape::Undirected { first, second, .. } = &edge.shape else {

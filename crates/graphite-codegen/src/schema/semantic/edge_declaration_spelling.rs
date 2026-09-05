@@ -17,11 +17,11 @@ use super::edge_definition::{辺の向き, 辺定義};
 use super::type_path_spelling::型パスの綴りを組み立てる;
 
 impl 辺定義 {
-    /// この辺宣言の形
-    /// (`edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1`)。
-    ///
-    /// 端点は添字ハンドルで持つため、ノード定義の列を所有する
-    /// [`super::スキーマ定義`] だけが型名を解決して呼べる。
+    // この辺宣言の形
+    // (`edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1`)。
+    //
+    // 端点は添字ハンドルで持つため、ノード定義の列を所有する
+    // `super::スキーマ定義` だけが型名を解決して呼べる。
     pub(super) fn 宣言の形(&self, 始点の型名: &Ident, 終点の型名: &Ident) -> String {
         let 種別 = match self.公開id型().明示された型パスの綴り() {
             Some(綴り) => format!("{}(id: {綴り})", self.辺種別名()),
@@ -39,7 +39,7 @@ impl 辺定義 {
         format!("edge {種別} = {両端}{}", self.where節の綴り())
     }
 
-    /// 宣言の形へ書く柄 (`->` / `-[役割名: 型]->` / `--` / `-[役割名: 型]-`)。
+    // 宣言の形へ書く柄 (`->` / `-[役割名: 型]->` / `--` / `-[役割名: 型]-`)。
     fn 柄の綴り(&self) -> String {
         // 積み荷を書くと柄の最初の `-` が角括弧の手前へ移るため、角括弧より
         // 後ろは有向で `->`、無向で `-` になる (`docs/edge_endpoints_v4_1.md` §2)。
@@ -55,7 +55,7 @@ impl 辺定義 {
         }
     }
 
-    /// 宣言の形の末尾へ付ける `where` 節。制約が1つも無ければ空文字になる。
+    // 宣言の形の末尾へ付ける `where` 節。制約が1つも無ければ空文字になる。
     fn where節の綴り(&self) -> String {
         let mut 制約の列: Vec<String> = self
             .記述順の役割の多重度制約()

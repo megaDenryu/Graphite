@@ -4,7 +4,7 @@ use syn::Ident;
 
 use crate::schema::syntax::{EdgeDecl, EdgeShape};
 
-/// 役割名と既存の辺APIが同じ名前空間で衝突しないことを検査する。
+// 役割名と既存の辺APIが同じ名前空間で衝突しないことを検査する。
 pub fn validate_edge_roles(edges: &[EdgeDecl]) -> syn::Result<()> {
     const RESERVED: &[&str] = &[
         "from",
