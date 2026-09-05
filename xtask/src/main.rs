@@ -1,5 +1,5 @@
 //! `cargo xtask generate [--check]`・`cargo xtask check-external`・
-//! `cargo xtask check-docs` のコマンドライン入口。
+//! `cargo xtask check-docs`・`cargo xtask check-doc-comments` のコマンドライン入口。
 //!
 //! 実処理は `lib.rs` (`xtask` ライブラリ) に集約する。ここは引数解析と
 //! プロセス終了コードだけを担う。
@@ -18,12 +18,14 @@ fn main() {
 
 /// `generate` は生成ファイルを更新し、`generate --check` は差分をエラーにし、
 /// `check-external` は外部 crate からの生成経路を実走で検査し、`check-docs` は
-/// 文書参照と索引を検査する。
+/// 文書参照と索引を検査し、`check-doc-comments` は doc コメントの網羅と撤去を
+/// 検査する。
 enum Command {
     Generate,
     Check,
     CheckExternalCrate,
     CheckDocuments,
+    CheckDocComments,
 }
 
 /// 使い方と、`check-docs` が検査しないことの説明。
@@ -35,6 +37,7 @@ const USAGE: &str = "\
   cargo xtask generate --check    生成ファイルの差分と孤児 (どの schema 宣言からも参照されなくなった生成ファイル) をエラーにする
   cargo xtask check-external      ワークスペースの外の検証用パッケージで、生成の差分検査とビルドとテストを実行する
   cargo xtask check-docs          文書参照とリポジトリ内Rustソース参照の綴りの実在・行数範囲、docs/README.md 索引の網羅を検査する
+  cargo xtask check-doc-comments  doc コメントが公開面に網羅され、内部領域に1件も無いことを検査する
 
 check-docs が検査するもの (crates・examples・xtask・verification 配下の Rust
 ソースを指す参照。docs/history 配下 (書き換えず追記のみで運用する、過去の設計
@@ -74,7 +77,43 @@ check-docs が検査しないもの:
   行番号を持たないソース参照の引用本文 (照合すべき行範囲が無い)
   外部URL
   `../` で始まる別リポジトリの文書 (件数だけ報告する)
-  ワイルドカード・プレースホルダを含むソースらしき綴り (ファイル群の総称として扱う)";
+  ワイルドカード・プレースホルダを含むソースらしき綴り (ファイル群の総称として扱う)
+
+check-doc-comments が検査するもの: 2つある。1つは内部領域
+(crates/graphite-codegen・crates/graphite-cli・crates/graphite-macros・xtask・
+examples) に項目の doc コメント (`///` と `#[doc = \"...\"]`) が1件も無いこと。
+もう1つは生成コードの公開面 (crates・examples・verification の下でディレクトリ名が
+generated の場所) の、非 #[doc(hidden)] な公開項目に doc コメントが付いていること。
+どちらも syn で構文解析して判定し、読めなかったファイルと構文解析に失敗した
+ファイルは違反として数える。報告には領域ごとに、検査したファイル数・公開項目数・
+見つかった doc コメントの件数を出す。
+
+check-doc-comments が対象外にするもの (対象外である条件を書き下せるものだけ):
+  公開面の3領域 (crates/graphite の非 #[doc(hidden)] な公開項目、生成コードの
+  公開面、graphite-macros の #[proc_macro]・#[proc_macro_derive]・
+  #[proc_macro_attribute] が付いた関数)。前2つは doc の網羅を要求する側であり、
+  3つ目は内部領域の中にありながら利用者の rustdoc に出るため撤去の対象にしない
+  ファイル冒頭の `//!` (モジュールの説明。1ファイルに1つであり網羅・非網羅の
+  問題を持たないため、内部領域でも残す)
+  マクロ呼び出し (`quote!` 等) のトークン列の中に書かれた doc コメント。これは
+  生成されるコードに付く doc であって、その領域自身の項目に付いたものではない。
+  syn はマクロ本体を不透明なトークン列として持つため、構文解析の結果として自然に
+  外れる (graphite-codegen の 861行の `///` のうち 155行、graphite-macros の
+  267行のうち一部がこれに当たる)
+  #[doc(hidden)] が付いた項目とその中身
+
+check-doc-comments が検査しないもの:
+  crates/graphite の公開面の網羅 (rustc の #![warn(missing_docs)] が検査する)
+  doc コメントの中身が項目の説明として正しいか
+  クレート境界を越えた再公開 (pub use) による公開到達性。公開到達性は
+  「囲むモジュールが全て pub であること」だけで判定する
+  タプル構造体の名前を持たないフィールド (rustc の missing_docs も要求しない)
+  private な型に対する inherent impl の pub なメソッド (rustc は要求しないが、
+  この検査は公開項目として数える。生成コードには現れない形である)
+
+この検査は `cargo test` から呼んでいない。内部領域には撤去前の doc コメントが
+まだ大量に残っており、接続すると `cargo test` が恒常的に失敗するためである。
+撤去が終わった時点で接続する (issue #22 の着手順5)。";
 
 impl Command {
     fn from_arguments(arguments: &[String]) -> Result<Self, Box<dyn Error>> {
@@ -83,6 +122,7 @@ impl Command {
             [command, option] if command == "generate" && option == "--check" => Ok(Self::Check),
             [command] if command == "check-external" => Ok(Self::CheckExternalCrate),
             [command] if command == "check-docs" => Ok(Self::CheckDocuments),
+            [command] if command == "check-doc-comments" => Ok(Self::CheckDocComments),
             _ => Err(USAGE.into()),
         }
     }
@@ -98,5 +138,6 @@ fn run() -> Result<(), Box<dyn Error>> {
         Command::Check => xtask::verify(&root),
         Command::CheckExternalCrate => xtask::check_external_crate(&root),
         Command::CheckDocuments => xtask::check_documents(&root),
+        Command::CheckDocComments => xtask::check_doc_comments(&root),
     }
 }

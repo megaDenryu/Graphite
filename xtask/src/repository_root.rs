@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 
 use graphite_cli::{relative_display, with_path_context, PackageRoot};
 
+use crate::doc_comment::{InspectedArea, RustSource};
 use crate::document_reference::DocumentPath;
 use crate::repository_package::RepositoryPackage;
 use crate::source_reference::SourceReference;
@@ -145,6 +146,25 @@ impl RepositoryRoot {
         candidates.sort();
         candidates.dedup();
         Ok(candidates)
+    }
+
+    /// 指定した領域の配下にある Rust ソースを、綴り順で列挙する。
+    ///
+    /// doc コメントの検査 (`check-doc-comments`) が使う。綴りの組み立てをこの型へ
+    /// 閉じるのは、領域の指定と表示の綴りが呼び出し側ごとにずれないようにするため
+    /// である。
+    pub(crate) fn rust_source_files(
+        &self,
+        area: &InspectedArea,
+    ) -> Result<Vec<RustSource>, Box<dyn Error>> {
+        let mut paths = Vec::new();
+        self.collect_all_files(&self.path.join(area.spelling()), &mut paths)?;
+        paths.retain(|path| path.extension().and_then(OsStr::to_str) == Some("rs"));
+        paths.sort();
+        Ok(paths
+            .into_iter()
+            .map(|path| RustSource::new(self.relative_display(&path), path))
+            .collect())
     }
 
     /// リポジトリルートからの相対パスを、環境によらない綴りで表示する。
