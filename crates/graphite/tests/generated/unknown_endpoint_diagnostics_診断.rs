@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    5706404954108384193u64, 4089592356509859708u64, 1574076713525747735u64,
-    483556793979812171u64,
+    17752325934838978623u64, 18239146010406936072u64, 15858303005667012445u64,
+    5910039165347818745u64,
 ];
 /// `生成キーの地点` ノードの公開ID。
 ///
@@ -55,6 +55,16 @@ pub struct 始点が宣言キーの専有経路Id(pub String);
 /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が宣言キーの専有経路 = (始点: 宣言キーの地点) -> (終点: 宣言キーの地点) where unique pair`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct 両端が宣言キーの専有経路Id(pub String);
+/// `両端が生成キーの専有交友` 辺の公開ID。
+///
+/// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が生成キーの専有交友 = 生成キーの地点 -- 生成キーの地点 where unique pair`
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct 両端が生成キーの専有交友Id(pub String);
+/// `両端が宣言キーの専有親交` 辺の公開ID。
+///
+/// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が宣言キーの専有親交 = 宣言キーの地点 -- 宣言キーの地点 where unique pair`
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct 両端が宣言キーの専有親交Id(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct __生成キーの地点InternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -83,6 +93,10 @@ struct __終点が宣言キーの専有経路InternalPosition(graphite::TablePos
 struct __始点が宣言キーの専有経路InternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct __両端が宣言キーの専有経路InternalPosition(graphite::TablePosition);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct __両端が生成キーの専有交友InternalPosition(graphite::TablePosition);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct __両端が宣言キーの専有親交InternalPosition(graphite::TablePosition);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __生成キーの地点NamedPosition(
@@ -165,6 +179,18 @@ pub struct __始点が宣言キーの専有経路NamedPosition(
 #[derive(Clone, Copy)]
 pub struct __両端が宣言キーの専有経路NamedPosition(
     __両端が宣言キーの専有経路InternalPosition,
+    u64,
+);
+#[doc(hidden)]
+#[derive(Clone, Copy)]
+pub struct __両端が生成キーの専有交友NamedPosition(
+    __両端が生成キーの専有交友InternalPosition,
+    u64,
+);
+#[doc(hidden)]
+#[derive(Clone, Copy)]
+pub struct __両端が宣言キーの専有親交NamedPosition(
+    __両端が宣言キーの専有親交InternalPosition,
     u64,
 );
 /// 構築時に組み立てる `生成キーの経路` 辺の値。
@@ -638,6 +664,90 @@ impl std::fmt::Debug for 両端が宣言キーの専有経路 {
         f.write_str(stringify!(両端が宣言キーの専有経路))
     }
 }
+/// 構築時に組み立てる `両端が生成キーの専有交友` 辺の値。
+///
+/// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が生成キーの専有交友 = 生成キーの地点 -- 生成キーの地点 where unique pair`
+#[derive(Clone, PartialEq)]
+pub struct 両端が生成キーの専有交友 {
+    endpoints: graphite::UnorderedPair<生成キーの地点Id>,
+}
+impl 両端が生成キーの専有交友 {
+    /// 両端の公開IDから構築用の辺値を作る。両端の順序は保たない。
+    ///
+    /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が生成キーの専有交友 = 生成キーの地点 -- 生成キーの地点 where unique pair`
+    pub fn new(a: 生成キーの地点Id, b: 生成キーの地点Id) -> Self {
+        Self {
+            endpoints: graphite::UnorderedPair::new(a, b),
+        }
+    }
+    /// この辺値の両端の公開IDを順序なし対として借用する。
+    ///
+    /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が生成キーの専有交友 = 生成キーの地点 -- 生成キーの地点 where unique pair`
+    pub fn endpoints(&self) -> (&生成キーの地点Id, &生成キーの地点Id) {
+        self.endpoints.endpoints()
+    }
+}
+impl graphite::UndirectedEdgeLiteral<生成キーの地点Id, ()>
+for 両端が生成キーの専有交友 {
+    fn from_graph_literal(
+        a: 生成キーの地点Id,
+        b: 生成キーの地点Id,
+        (): (),
+    ) -> Self {
+        Self::new(a, b)
+    }
+}
+impl std::fmt::Debug for 両端が生成キーの専有交友 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple(stringify!(両端が生成キーの専有交友))
+            .field(&self.endpoints().0)
+            .field(&self.endpoints().1)
+            .finish()
+    }
+}
+/// 構築時に組み立てる `両端が宣言キーの専有親交` 辺の値。
+///
+/// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が宣言キーの専有親交 = 宣言キーの地点 -- 宣言キーの地点 where unique pair`
+#[derive(Clone, PartialEq)]
+pub struct 両端が宣言キーの専有親交 {
+    endpoints: graphite::UnorderedPair<利用者が宣言した地点キー>,
+}
+impl 両端が宣言キーの専有親交 {
+    /// 両端の公開IDから構築用の辺値を作る。両端の順序は保たない。
+    ///
+    /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が宣言キーの専有親交 = 宣言キーの地点 -- 宣言キーの地点 where unique pair`
+    pub fn new(
+        a: 利用者が宣言した地点キー,
+        b: 利用者が宣言した地点キー,
+    ) -> Self {
+        Self {
+            endpoints: graphite::UnorderedPair::new(a, b),
+        }
+    }
+    /// この辺値の両端の公開IDを順序なし対として借用する。
+    ///
+    /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が宣言キーの専有親交 = 宣言キーの地点 -- 宣言キーの地点 where unique pair`
+    pub fn endpoints(
+        &self,
+    ) -> (&利用者が宣言した地点キー, &利用者が宣言した地点キー) {
+        self.endpoints.endpoints()
+    }
+}
+impl graphite::UndirectedEdgeLiteral<利用者が宣言した地点キー, ()>
+for 両端が宣言キーの専有親交 {
+    fn from_graph_literal(
+        a: 利用者が宣言した地点キー,
+        b: 利用者が宣言した地点キー,
+        (): (),
+    ) -> Self {
+        Self::new(a, b)
+    }
+}
+impl std::fmt::Debug for 両端が宣言キーの専有親交 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(stringify!(両端が宣言キーの専有親交))
+    }
+}
 #[allow(dead_code)]
 struct __生成キーの経路Record {
     始点: __生成キーの地点InternalPosition,
@@ -693,6 +803,14 @@ struct __始点が宣言キーの専有経路Record {
 struct __両端が宣言キーの専有経路Record {
     始点: __宣言キーの地点InternalPosition,
     終点: __宣言キーの地点InternalPosition,
+}
+#[allow(dead_code)]
+struct __両端が生成キーの専有交友Record {
+    endpoints: graphite::UnorderedPair<__生成キーの地点InternalPosition>,
+}
+#[allow(dead_code)]
+struct __両端が宣言キーの専有親交Record {
+    endpoints: graphite::UnorderedPair<__宣言キーの地点InternalPosition>,
 }
 /// 凍結時の図式適合検査が見つけた違反。
 ///
@@ -912,6 +1030,46 @@ pub enum Violation {
         /// 2本目の辺が張られた対の終点ノードの公開ID。
         target: 利用者が宣言した地点キー,
     },
+    /// このエッジ種別のキーが重複している。
+    両端が生成キーの専有交友DuplicateKey(
+        両端が生成キーの専有交友Id,
+    ),
+    /// このエッジが未知の端点キーを参照している (無向のため位置の
+    /// 区別は無い)。
+    両端が生成キーの専有交友UnknownEndpoint {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: 両端が生成キーの専有交友Id,
+        /// この辺が端点として参照した、対応するノードが存在しないキー。
+        endpoint: 生成キーの地点Id,
+    },
+    /// このエッジ種別の `unique pair` 違反 (無向のため
+    /// 順序を無視した対で判定)。
+    両端が生成キーの専有交友UniquePairViolation {
+        /// 2本目の辺が張られた対の一方の端点の公開ID。
+        a: 生成キーの地点Id,
+        /// 2本目の辺が張られた対のもう一方の端点の公開ID。
+        b: 生成キーの地点Id,
+    },
+    /// このエッジ種別のキーが重複している。
+    両端が宣言キーの専有親交DuplicateKey(
+        両端が宣言キーの専有親交Id,
+    ),
+    /// このエッジが未知の端点キーを参照している (無向のため位置の
+    /// 区別は無い)。
+    両端が宣言キーの専有親交UnknownEndpoint {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: 両端が宣言キーの専有親交Id,
+        /// この辺が端点として参照した、対応するノードが存在しないキー。
+        endpoint: 利用者が宣言した地点キー,
+    },
+    /// このエッジ種別の `unique pair` 違反 (無向のため
+    /// 順序を無視した対で判定)。
+    両端が宣言キーの専有親交UniquePairViolation {
+        /// 2本目の辺が張られた対の一方の端点の公開ID。
+        a: 利用者が宣言した地点キー,
+        /// 2本目の辺が張られた対のもう一方の端点の公開ID。
+        b: 利用者が宣言した地点キー,
+    },
 }
 impl std::fmt::Display for Violation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -953,14 +1111,14 @@ impl std::fmt::Display for Violation {
             Violation::宣言キーの経路UnknownSource { source, .. } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として見つかりません (辺 `{}` の{}。辺のキーは利用者が宣言したID型のため表示しない)",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` の{}。辺のキーは表示できない)",
                     source, "生成キーの地点", "宣言キーの経路", "始点"
                 )
             }
             Violation::宣言キーの経路UnknownTarget { target, .. } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として見つかりません (辺 `{}` の{}。辺のキーは利用者が宣言したID型のため表示しない)",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` の{}。辺のキーは表示できない)",
                     target, "生成キーの地点", "宣言キーの経路", "終点"
                 )
             }
@@ -973,14 +1131,14 @@ impl std::fmt::Display for Violation {
             Violation::生成キーの連絡UnknownSource { edge, .. } => {
                 write!(
                     f,
-                    "未知のキーが {} として見つかりません (辺 `{}` {:?} の{}。端点のキーは利用者が宣言したID型のため表示しない)",
+                    "未知のキーが {} として見つかりません (辺 `{}` {:?} の{}。端点のキーは表示できない)",
                     "宣言キーの地点", "生成キーの連絡", edge, "始点"
                 )
             }
             Violation::生成キーの連絡UnknownTarget { edge, .. } => {
                 write!(
                     f,
-                    "未知のキーが {} として見つかりません (辺 `{}` {:?} の{}。端点のキーは利用者が宣言したID型のため表示しない)",
+                    "未知のキーが {} として見つかりません (辺 `{}` {:?} の{}。端点のキーは表示できない)",
                     "宣言キーの地点", "生成キーの連絡", edge, "終点"
                 )
             }
@@ -990,14 +1148,14 @@ impl std::fmt::Display for Violation {
             Violation::宣言キーの連絡UnknownSource { .. } => {
                 write!(
                     f,
-                    "未知のキーが {} として見つかりません (辺 `{}` の{}。端点のキーと辺のキーは利用者が宣言したID型のため表示しない)",
+                    "未知のキーが {} として見つかりません (辺 `{}` の{}。端点のキーと辺のキーは表示できない)",
                     "宣言キーの地点", "宣言キーの連絡", "始点"
                 )
             }
             Violation::宣言キーの連絡UnknownTarget { .. } => {
                 write!(
                     f,
-                    "未知のキーが {} として見つかりません (辺 `{}` の{}。端点のキーと辺のキーは利用者が宣言したID型のため表示しない)",
+                    "未知のキーが {} として見つかりません (辺 `{}` の{}。端点のキーと辺のキーは表示できない)",
                     "宣言キーの地点", "宣言キーの連絡", "終点"
                 )
             }
@@ -1021,7 +1179,7 @@ impl std::fmt::Display for Violation {
             Violation::宣言キーの交友UnknownEndpoint { endpoint, .. } => {
                 write!(
                     f,
-                    "未知のキー {:?} が {} として見つかりません (辺 `{}` の{}。辺のキーは利用者が宣言したID型のため表示しない)",
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` の{}。辺のキーは表示できない)",
                     endpoint, "生成キーの地点", "宣言キーの交友", "端点"
                 )
             }
@@ -1034,7 +1192,7 @@ impl std::fmt::Display for Violation {
             Violation::生成キーの親交UnknownEndpoint { edge, .. } => {
                 write!(
                     f,
-                    "未知のキーが {} として見つかりません (辺 `{}` {:?} の{}。端点のキーは利用者が宣言したID型のため表示しない)",
+                    "未知のキーが {} として見つかりません (辺 `{}` {:?} の{}。端点のキーは表示できない)",
                     "宣言キーの地点", "生成キーの親交", edge, "端点"
                 )
             }
@@ -1044,7 +1202,7 @@ impl std::fmt::Display for Violation {
             Violation::宣言キーの親交UnknownEndpoint { .. } => {
                 write!(
                     f,
-                    "未知のキーが {} として見つかりません (辺 `{}` の{}。端点のキーと辺のキーは利用者が宣言したID型のため表示しない)",
+                    "未知のキーが {} として見つかりません (辺 `{}` の{}。端点のキーと辺のキーは表示できない)",
                     "宣言キーの地点", "宣言キーの親交", "端点"
                 )
             }
@@ -1106,7 +1264,7 @@ impl std::fmt::Display for Violation {
             Violation::終点が宣言キーの専有経路UnknownTarget { edge, .. } => {
                 write!(
                     f,
-                    "未知のキーが {} として見つかりません (辺 `{}` {:?} の{}。端点のキーは利用者が宣言したID型のため表示しない)",
+                    "未知のキーが {} として見つかりません (辺 `{}` {:?} の{}。端点のキーは表示できない)",
                     "宣言キーの地点", "終点が宣言キーの専有経路",
                     edge, "終点"
                 )
@@ -1117,7 +1275,7 @@ impl std::fmt::Display for Violation {
             } => {
                 write!(
                     f,
-                    "unique pair違反: 辺 `{}` は始点 {:?} を含む対に既に辺が存在します (終点のキーは利用者が宣言したID型のため表示しない)",
+                    "unique pair違反: 辺 `{}` は始点 {:?} を含む対に既に辺が存在します (終点のキーは表示できない)",
                     "終点が宣言キーの専有経路", source
                 )
             }
@@ -1130,7 +1288,7 @@ impl std::fmt::Display for Violation {
             Violation::始点が宣言キーの専有経路UnknownSource { edge, .. } => {
                 write!(
                     f,
-                    "未知のキーが {} として見つかりません (辺 `{}` {:?} の{}。端点のキーは利用者が宣言したID型のため表示しない)",
+                    "未知のキーが {} として見つかりません (辺 `{}` {:?} の{}。端点のキーは表示できない)",
                     "宣言キーの地点", "始点が宣言キーの専有経路",
                     edge, "始点"
                 )
@@ -1152,7 +1310,7 @@ impl std::fmt::Display for Violation {
             } => {
                 write!(
                     f,
-                    "unique pair違反: 辺 `{}` は終点 {:?} を含む対に既に辺が存在します (始点のキーは利用者が宣言したID型のため表示しない)",
+                    "unique pair違反: 辺 `{}` は終点 {:?} を含む対に既に辺が存在します (始点のキーは表示できない)",
                     "始点が宣言キーの専有経路", target
                 )
             }
@@ -1165,7 +1323,7 @@ impl std::fmt::Display for Violation {
             Violation::両端が宣言キーの専有経路UnknownSource { edge, .. } => {
                 write!(
                     f,
-                    "未知のキーが {} として見つかりません (辺 `{}` {:?} の{}。端点のキーは利用者が宣言したID型のため表示しない)",
+                    "未知のキーが {} として見つかりません (辺 `{}` {:?} の{}。端点のキーは表示できない)",
                     "宣言キーの地点", "両端が宣言キーの専有経路",
                     edge, "始点"
                 )
@@ -1173,7 +1331,7 @@ impl std::fmt::Display for Violation {
             Violation::両端が宣言キーの専有経路UnknownTarget { edge, .. } => {
                 write!(
                     f,
-                    "未知のキーが {} として見つかりません (辺 `{}` {:?} の{}。端点のキーは利用者が宣言したID型のため表示しない)",
+                    "未知のキーが {} として見つかりません (辺 `{}` {:?} の{}。端点のキーは表示できない)",
                     "宣言キーの地点", "両端が宣言キーの専有経路",
                     edge, "終点"
                 )
@@ -1181,8 +1339,59 @@ impl std::fmt::Display for Violation {
             Violation::両端が宣言キーの専有経路UniquePairViolation { .. } => {
                 write!(
                     f,
-                    "unique pair違反: 辺 `{}` の同じ始点・終点の対に既に辺が存在します",
+                    "unique pair違反: 辺 `{}` の同じ始点・終点の対に既に辺が存在します (始点と終点のキーは表示できない)",
                     "両端が宣言キーの専有経路"
+                )
+            }
+            Violation::両端が生成キーの専有交友DuplicateKey(id) => {
+                write!(
+                    f, "{}のキーが重複しています: {:?}",
+                    "両端が生成キーの専有交友", id
+                )
+            }
+            Violation::両端が生成キーの専有交友UnknownEndpoint {
+                edge,
+                endpoint,
+            } => {
+                write!(
+                    f,
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
+                    endpoint, "生成キーの地点",
+                    "両端が生成キーの専有交友", edge, "端点"
+                )
+            }
+            Violation::両端が生成キーの専有交友UniquePairViolation {
+                a,
+                b,
+            } => {
+                write!(
+                    f,
+                    "unique pair違反: 辺 `{}` は {{{:?}, {:?}}} の対に既に辺が存在します",
+                    "両端が生成キーの専有交友", a, b
+                )
+            }
+            Violation::両端が宣言キーの専有親交DuplicateKey(id) => {
+                write!(
+                    f, "{}のキーが重複しています: {:?}",
+                    "両端が宣言キーの専有親交", id
+                )
+            }
+            Violation::両端が宣言キーの専有親交UnknownEndpoint {
+                edge,
+                ..
+            } => {
+                write!(
+                    f,
+                    "未知のキーが {} として見つかりません (辺 `{}` {:?} の{}。端点のキーは表示できない)",
+                    "宣言キーの地点", "両端が宣言キーの専有親交",
+                    edge, "端点"
+                )
+            }
+            Violation::両端が宣言キーの専有親交UniquePairViolation { .. } => {
+                write!(
+                    f,
+                    "unique pair違反: 辺 `{}` の同じ端点対に既に辺が存在します (端点のキーは表示できない)",
+                    "両端が宣言キーの専有親交"
                 )
             }
         }
@@ -1426,6 +1635,32 @@ pub struct Graph {
             __宣言キーの地点InternalPosition,
         ),
         __両端が宣言キーの専有経路InternalPosition,
+    >,
+    両端が生成キーの専有交友: graphite::KeyedTable<
+        両端が生成キーの専有交友Id,
+        __両端が生成キーの専有交友Record,
+    >,
+    /// 位置0キー -> このキーから (有向: 出る / 無向: 接続する) エッジ
+    /// キーの一覧 (凍結時に構築)。
+    両端が生成キーの専有交友_index: graphite::MultipleRoleIndex<
+        __両端が生成キーの専有交友InternalPosition,
+    >,
+    __graphite_両端が生成キーの専有交友_by_pair: std::collections::HashMap<
+        graphite::UnorderedPair<__生成キーの地点InternalPosition>,
+        __両端が生成キーの専有交友InternalPosition,
+    >,
+    両端が宣言キーの専有親交: graphite::KeyedTable<
+        両端が宣言キーの専有親交Id,
+        __両端が宣言キーの専有親交Record,
+    >,
+    /// 位置0キー -> このキーから (有向: 出る / 無向: 接続する) エッジ
+    /// キーの一覧 (凍結時に構築)。
+    両端が宣言キーの専有親交_index: graphite::MultipleRoleIndex<
+        __両端が宣言キーの専有親交InternalPosition,
+    >,
+    __graphite_両端が宣言キーの専有親交_by_pair: std::collections::HashMap<
+        graphite::UnorderedPair<__宣言キーの地点InternalPosition>,
+        __両端が宣言キーの専有親交InternalPosition,
     >,
     /// この `Graph` を生んだ構築の構築印。凍結元の `Builder` から
     /// そのまま引き継ぐ。名前付き位置がこの `Graph` の生成元と一致
@@ -2034,6 +2269,92 @@ impl Graph {
     /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が宣言キーの専有経路 = (始点: 宣言キーの地点) -> (終点: 宣言キーの地点) where unique pair`
     pub fn 両端が宣言キーの専有経路_len(&self) -> usize {
         self.両端が宣言キーの専有経路.len()
+    }
+    /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が生成キーの専有交友 = 生成キーの地点 -- 生成キーの地点 where unique pair`
+    pub fn 両端が生成キーの専有交友_by_id<'graph>(
+        &'graph self,
+        id: &両端が生成キーの専有交友Id,
+    ) -> Option<両端が生成キーの専有交友Ref<'graph>> {
+        Some(両端が生成キーの専有交友Ref {
+            graph: self,
+            internal_position: __両端が生成キーの専有交友InternalPosition(
+                self.両端が生成キーの専有交友.position(id)?,
+            ),
+        })
+    }
+    /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が生成キーの専有交友 = 生成キーの地点 -- 生成キーの地点 where unique pair`
+    pub fn 両端が生成キーの専有交友_ids<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = &'graph 両端が生成キーの専有交友Id> {
+        self.両端が生成キーの専有交友.ids()
+    }
+    /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が生成キーの専有交友 = 生成キーの地点 -- 生成キーの地点 where unique pair`
+    pub fn 両端が生成キーの専有交友_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = 両端が生成キーの専有交友Ref<'graph>> + 'graph {
+        self.両端が生成キーの専有交友
+            .positions()
+            .map(move |position| 両端が生成キーの専有交友Ref {
+                graph: self,
+                internal_position: __両端が生成キーの専有交友InternalPosition(
+                    position,
+                ),
+            })
+    }
+    /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が生成キーの専有交友 = 生成キーの地点 -- 生成キーの地点 where unique pair`
+    pub fn 両端が生成キーの専有交友_len(&self) -> usize {
+        self.両端が生成キーの専有交友.len()
+    }
+    /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が宣言キーの専有親交 = 宣言キーの地点 -- 宣言キーの地点 where unique pair`
+    pub fn 両端が宣言キーの専有親交_by_id<'graph>(
+        &'graph self,
+        id: &両端が宣言キーの専有親交Id,
+    ) -> Option<両端が宣言キーの専有親交Ref<'graph>> {
+        Some(両端が宣言キーの専有親交Ref {
+            graph: self,
+            internal_position: __両端が宣言キーの専有親交InternalPosition(
+                self.両端が宣言キーの専有親交.position(id)?,
+            ),
+        })
+    }
+    /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が宣言キーの専有親交 = 宣言キーの地点 -- 宣言キーの地点 where unique pair`
+    pub fn 両端が宣言キーの専有親交_ids<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = &'graph 両端が宣言キーの専有親交Id> {
+        self.両端が宣言キーの専有親交.ids()
+    }
+    /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が宣言キーの専有親交 = 宣言キーの地点 -- 宣言キーの地点 where unique pair`
+    pub fn 両端が宣言キーの専有親交_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = 両端が宣言キーの専有親交Ref<'graph>> + 'graph {
+        self.両端が宣言キーの専有親交
+            .positions()
+            .map(move |position| 両端が宣言キーの専有親交Ref {
+                graph: self,
+                internal_position: __両端が宣言キーの専有親交InternalPosition(
+                    position,
+                ),
+            })
+    }
+    /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が宣言キーの専有親交 = 宣言キーの地点 -- 宣言キーの地点 where unique pair`
+    pub fn 両端が宣言キーの専有親交_len(&self) -> usize {
+        self.両端が宣言キーの専有親交.len()
     }
     /// builder をクロージャに貸し出し、戻ったら凍結して図式適合
     /// (端点種別・where 制約) を一括検査する。最初の1件の違反で
@@ -2959,6 +3280,118 @@ impl<'graph> std::fmt::Debug for 両端が宣言キーの専有経路Ref<'graph>
             .finish_non_exhaustive()
     }
 }
+/// 完成済みグラフ上の無向辺個体。
+///
+/// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が生成キーの専有交友 = 生成キーの地点 -- 生成キーの地点 where unique pair`
+#[derive(Clone, Copy)]
+pub struct 両端が生成キーの専有交友Ref<'graph> {
+    graph: &'graph Graph,
+    internal_position: __両端が生成キーの専有交友InternalPosition,
+}
+impl<'graph> 両端が生成キーの専有交友Ref<'graph> {
+    fn record(self) -> &'graph __両端が生成キーの専有交友Record {
+        self.graph
+            .両端が生成キーの専有交友
+            .get_at(self.internal_position.0)
+            .expect(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            )
+            .1
+    }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が生成キーの専有交友 = 生成キーの地点 -- 生成キーの地点 where unique pair`
+    pub fn id(self) -> &'graph 両端が生成キーの専有交友Id {
+        self.graph
+            .両端が生成キーの専有交友
+            .get_at(self.internal_position.0)
+            .expect(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            )
+            .0
+    }
+    /// この辺個体の両端を順序なし対として返す。
+    ///
+    /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が生成キーの専有交友 = 生成キーの地点 -- 生成キーの地点 where unique pair`
+    pub fn endpoints(
+        self,
+    ) -> (生成キーの地点Ref<'graph>, 生成キーの地点Ref<'graph>) {
+        let (first, second) = self.record().endpoints.endpoints();
+        (
+            生成キーの地点Ref {
+                graph: self.graph,
+                internal_position: __生成キーの地点InternalPosition(first.0),
+            },
+            生成キーの地点Ref {
+                graph: self.graph,
+                internal_position: __生成キーの地点InternalPosition(second.0),
+            },
+        )
+    }
+}
+impl<'graph> std::fmt::Debug for 両端が生成キーの専有交友Ref<'graph> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct(stringify!(両端が生成キーの専有交友Ref))
+            .field("id", &self.id())
+            .finish_non_exhaustive()
+    }
+}
+/// 完成済みグラフ上の無向辺個体。
+///
+/// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が宣言キーの専有親交 = 宣言キーの地点 -- 宣言キーの地点 where unique pair`
+#[derive(Clone, Copy)]
+pub struct 両端が宣言キーの専有親交Ref<'graph> {
+    graph: &'graph Graph,
+    internal_position: __両端が宣言キーの専有親交InternalPosition,
+}
+impl<'graph> 両端が宣言キーの専有親交Ref<'graph> {
+    fn record(self) -> &'graph __両端が宣言キーの専有親交Record {
+        self.graph
+            .両端が宣言キーの専有親交
+            .get_at(self.internal_position.0)
+            .expect(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            )
+            .1
+    }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が宣言キーの専有親交 = 宣言キーの地点 -- 宣言キーの地点 where unique pair`
+    pub fn id(self) -> &'graph 両端が宣言キーの専有親交Id {
+        self.graph
+            .両端が宣言キーの専有親交
+            .get_at(self.internal_position.0)
+            .expect(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            )
+            .0
+    }
+    /// この辺個体の両端を順序なし対として返す。
+    ///
+    /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が宣言キーの専有親交 = 宣言キーの地点 -- 宣言キーの地点 where unique pair`
+    pub fn endpoints(
+        self,
+    ) -> (宣言キーの地点Ref<'graph>, 宣言キーの地点Ref<'graph>) {
+        let (first, second) = self.record().endpoints.endpoints();
+        (
+            宣言キーの地点Ref {
+                graph: self.graph,
+                internal_position: __宣言キーの地点InternalPosition(first.0),
+            },
+            宣言キーの地点Ref {
+                graph: self.graph,
+                internal_position: __宣言キーの地点InternalPosition(second.0),
+            },
+        )
+    }
+}
+impl<'graph> std::fmt::Debug for 両端が宣言キーの専有親交Ref<'graph> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct(stringify!(両端が宣言キーの専有親交Ref))
+            .field("id", &self.id())
+            .finish_non_exhaustive()
+    }
+}
 /// 凍結前のグラフを組み立てる `Builder`。凍結 (`freeze()`) までは where
 /// 制約検査を一切行わない。
 ///
@@ -2997,6 +3430,12 @@ pub struct Builder {
     >,
     両端が宣言キーの専有経路: Vec<
         (両端が宣言キーの専有経路Id, 両端が宣言キーの専有経路),
+    >,
+    両端が生成キーの専有交友: Vec<
+        (両端が生成キーの専有交友Id, 両端が生成キーの専有交友),
+    >,
+    両端が宣言キーの専有親交: Vec<
+        (両端が宣言キーの専有親交Id, 両端が宣言キーの専有親交),
     >,
     /// この構築を識別する構築印。`Builder::new()` が発行し、この
     /// `Builder` から挿入する全ての名前付き位置と、凍結成功後の
@@ -3621,6 +4060,74 @@ impl<'graph> 生成キーの地点Ref<'graph> {
                 internal_position,
             })
     }
+    /// 接続辺を O(1) で参照し、追加確保なしで挿入順に走査する。
+    ///
+    /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が生成キーの専有交友 = 生成キーの地点 -- 生成キーの地点 where unique pair`
+    pub fn 両端が生成キーの専有交友_incident(
+        self,
+    ) -> impl Iterator<Item = 両端が生成キーの専有交友Ref<'graph>> + 'graph {
+        let positions = self
+            .graph
+            .両端が生成キーの専有交友_index
+            .get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| 両端が生成キーの専有交友Ref {
+                graph: self.graph,
+                internal_position,
+            })
+    }
+    /// 順序なし端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が生成キーの専有交友 = 生成キーの地点 -- 生成キーの地点 where unique pair`
+    pub fn 両端が生成キーの専有交友_try_between(
+        self,
+        other: 生成キーの地点Ref<'graph>,
+    ) -> Result<
+        Option<両端が生成キーの専有交友Ref<'graph>>,
+        graphite::GraphMismatch,
+    > {
+        if self.graph.__graphite_construction_stamp
+            != other.graph.__graphite_construction_stamp
+        {
+            return Err(graphite::GraphMismatch);
+        }
+        let found = self
+            .graph
+            .__graphite_両端が生成キーの専有交友_by_pair
+            .get(
+                &graphite::UnorderedPair::new(
+                    self.internal_position,
+                    other.internal_position,
+                ),
+            )
+            .copied();
+        Ok(
+            found
+                .map(|internal_position| 両端が生成キーの専有交友Ref {
+                    graph: self.graph,
+                    internal_position,
+                }),
+        )
+    }
+    /// # Panics
+    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    /// パニックを避けたい場合は対の [`Self::両端が生成キーの専有交友_try_between`] を使う。
+    ///
+    /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が生成キーの専有交友 = 生成キーの地点 -- 生成キーの地点 where unique pair`
+    pub fn 両端が生成キーの専有交友_between(
+        self,
+        other: 生成キーの地点Ref<'graph>,
+    ) -> Option<両端が生成キーの専有交友Ref<'graph>> {
+        self.両端が生成キーの専有交友_try_between(other)
+            .unwrap_or_else(|error| {
+                panic!(
+                    "{}::{}: {error}", stringify!(生成キーの地点Ref),
+                    stringify!(両端が生成キーの専有交友_between)
+                )
+            })
+    }
 }
 impl<'graph> std::ops::Deref for 生成キーの地点Ref<'graph> {
     type Target = super::生成キーの地点;
@@ -4193,6 +4700,74 @@ impl<'graph> 宣言キーの地点Ref<'graph> {
                 panic!(
                     "{}::{}: {error}", stringify!(宣言キーの地点Ref),
                     stringify!(両端が宣言キーの専有経路_between)
+                )
+            })
+    }
+    /// 接続辺を O(1) で参照し、追加確保なしで挿入順に走査する。
+    ///
+    /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が宣言キーの専有親交 = 宣言キーの地点 -- 宣言キーの地点 where unique pair`
+    pub fn 両端が宣言キーの専有親交_incident(
+        self,
+    ) -> impl Iterator<Item = 両端が宣言キーの専有親交Ref<'graph>> + 'graph {
+        let positions = self
+            .graph
+            .両端が宣言キーの専有親交_index
+            .get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| 両端が宣言キーの専有親交Ref {
+                graph: self.graph,
+                internal_position,
+            })
+    }
+    /// 順序なし端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が宣言キーの専有親交 = 宣言キーの地点 -- 宣言キーの地点 where unique pair`
+    pub fn 両端が宣言キーの専有親交_try_between(
+        self,
+        other: 宣言キーの地点Ref<'graph>,
+    ) -> Result<
+        Option<両端が宣言キーの専有親交Ref<'graph>>,
+        graphite::GraphMismatch,
+    > {
+        if self.graph.__graphite_construction_stamp
+            != other.graph.__graphite_construction_stamp
+        {
+            return Err(graphite::GraphMismatch);
+        }
+        let found = self
+            .graph
+            .__graphite_両端が宣言キーの専有親交_by_pair
+            .get(
+                &graphite::UnorderedPair::new(
+                    self.internal_position,
+                    other.internal_position,
+                ),
+            )
+            .copied();
+        Ok(
+            found
+                .map(|internal_position| 両端が宣言キーの専有親交Ref {
+                    graph: self.graph,
+                    internal_position,
+                }),
+        )
+    }
+    /// # Panics
+    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    /// パニックを避けたい場合は対の [`Self::両端が宣言キーの専有親交_try_between`] を使う。
+    ///
+    /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が宣言キーの専有親交 = 宣言キーの地点 -- 宣言キーの地点 where unique pair`
+    pub fn 両端が宣言キーの専有親交_between(
+        self,
+        other: 宣言キーの地点Ref<'graph>,
+    ) -> Option<両端が宣言キーの専有親交Ref<'graph>> {
+        self.両端が宣言キーの専有親交_try_between(other)
+            .unwrap_or_else(|error| {
+                panic!(
+                    "{}::{}: {error}", stringify!(宣言キーの地点Ref),
+                    stringify!(両端が宣言キーの専有親交_between)
                 )
             })
     }
@@ -4870,6 +5445,136 @@ impl 診断DefaultId for 両端が宣言キーの専有経路 {
     }
 }
 impl 診断Edge for 両端が宣言キーの専有経路 {}
+impl 診断Insertable for 両端が生成キーの専有交友 {
+    type Id = 両端が生成キーの専有交友Id;
+    type NamedPosition = __両端が生成キーの専有交友NamedPosition;
+    fn insert_named_with_id(
+        self,
+        b: &mut Builder,
+        id: Self::Id,
+        _permit: &graphite::NamedInsertPermit,
+    ) -> (Self::Id, Self::NamedPosition) {
+        let named_position = __両端が生成キーの専有交友NamedPosition(
+            __両端が生成キーの専有交友InternalPosition(
+                graphite::TablePosition::from_index(
+                    b.両端が生成キーの専有交友.len(),
+                ),
+            ),
+            b.__graphite_construction_stamp,
+        );
+        let returned_id = id.clone();
+        b.両端が生成キーの専有交友(id, self);
+        (returned_id, named_position)
+    }
+    fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id {
+        let returned_id = id.clone();
+        b.両端が生成キーの専有交友(id, self);
+        returned_id
+    }
+}
+impl graphite::NamedGraphElement<Graph>
+for __両端が生成キーの専有交友NamedPosition {
+    type Reference<'graph> = 両端が生成キーの専有交友Ref<'graph>;
+    fn bind<'graph>(&self, graph: &'graph Graph) -> Self::Reference<'graph> {
+        if graph.__graphite_construction_stamp != self.1 {
+            panic!(
+                "名前付き位置が生成元と異なる Graph へ bind されました。名前付き位置は生成元の graph! が返したグラフでのみ有効です"
+            );
+        }
+        両端が生成キーの専有交友Ref {
+            graph,
+            internal_position: self.0,
+        }
+    }
+}
+impl 診断DefaultId for 両端が生成キーの専有交友 {
+    fn insert_named_with_binding(
+        self,
+        b: &mut Builder,
+        binding: String,
+        permit: &graphite::NamedInsertPermit,
+    ) -> (Self::Id, Self::NamedPosition) {
+        診断Insertable::insert_named_with_id(
+            self,
+            b,
+            両端が生成キーの専有交友Id(binding),
+            permit,
+        )
+    }
+    fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id {
+        診断Insertable::insert_with_id(
+            self,
+            b,
+            両端が生成キーの専有交友Id(binding),
+        )
+    }
+}
+impl 診断Edge for 両端が生成キーの専有交友 {}
+impl 診断Insertable for 両端が宣言キーの専有親交 {
+    type Id = 両端が宣言キーの専有親交Id;
+    type NamedPosition = __両端が宣言キーの専有親交NamedPosition;
+    fn insert_named_with_id(
+        self,
+        b: &mut Builder,
+        id: Self::Id,
+        _permit: &graphite::NamedInsertPermit,
+    ) -> (Self::Id, Self::NamedPosition) {
+        let named_position = __両端が宣言キーの専有親交NamedPosition(
+            __両端が宣言キーの専有親交InternalPosition(
+                graphite::TablePosition::from_index(
+                    b.両端が宣言キーの専有親交.len(),
+                ),
+            ),
+            b.__graphite_construction_stamp,
+        );
+        let returned_id = id.clone();
+        b.両端が宣言キーの専有親交(id, self);
+        (returned_id, named_position)
+    }
+    fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id {
+        let returned_id = id.clone();
+        b.両端が宣言キーの専有親交(id, self);
+        returned_id
+    }
+}
+impl graphite::NamedGraphElement<Graph>
+for __両端が宣言キーの専有親交NamedPosition {
+    type Reference<'graph> = 両端が宣言キーの専有親交Ref<'graph>;
+    fn bind<'graph>(&self, graph: &'graph Graph) -> Self::Reference<'graph> {
+        if graph.__graphite_construction_stamp != self.1 {
+            panic!(
+                "名前付き位置が生成元と異なる Graph へ bind されました。名前付き位置は生成元の graph! が返したグラフでのみ有効です"
+            );
+        }
+        両端が宣言キーの専有親交Ref {
+            graph,
+            internal_position: self.0,
+        }
+    }
+}
+impl 診断DefaultId for 両端が宣言キーの専有親交 {
+    fn insert_named_with_binding(
+        self,
+        b: &mut Builder,
+        binding: String,
+        permit: &graphite::NamedInsertPermit,
+    ) -> (Self::Id, Self::NamedPosition) {
+        診断Insertable::insert_named_with_id(
+            self,
+            b,
+            両端が宣言キーの専有親交Id(binding),
+            permit,
+        )
+    }
+    fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id {
+        診断Insertable::insert_with_id(
+            self,
+            b,
+            両端が宣言キーの専有親交Id(binding),
+        )
+    }
+}
+impl 診断Edge for 両端が宣言キーの専有親交 {}
 impl Builder {
     fn new() -> Self {
         Self {
@@ -4887,6 +5592,8 @@ impl Builder {
             終点が宣言キーの専有経路: Vec::new(),
             始点が宣言キーの専有経路: Vec::new(),
             両端が宣言キーの専有経路: Vec::new(),
+            両端が生成キーの専有交友: Vec::new(),
+            両端が宣言キーの専有親交: Vec::new(),
             __graphite_construction_stamp: graphite::次の構築印を発行する(),
         }
     }
@@ -5042,6 +5749,28 @@ impl Builder {
         value: 両端が宣言キーの専有経路,
     ) -> &mut Self {
         self.両端が宣言キーの専有経路.push((id, value));
+        self
+    }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が生成キーの専有交友 = 生成キーの地点 -- 生成キーの地点 where unique pair`
+    pub fn 両端が生成キーの専有交友(
+        &mut self,
+        id: 両端が生成キーの専有交友Id,
+        value: 両端が生成キーの専有交友,
+    ) -> &mut Self {
+        self.両端が生成キーの専有交友.push((id, value));
+        self
+    }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が宣言キーの専有親交 = 宣言キーの地点 -- 宣言キーの地点 where unique pair`
+    pub fn 両端が宣言キーの専有親交(
+        &mut self,
+        id: 両端が宣言キーの専有親交Id,
+        value: 両端が宣言キーの専有親交,
+    ) -> &mut Self {
+        self.両端が宣言キーの専有親交.push((id, value));
         self
     }
     /// 型名付きメソッド (`b.#accessor(id, value)` 群、上記
@@ -6093,6 +6822,192 @@ impl Builder {
                 debug_assert!(inserted, "重複辺IDは挿入前に除外済み");
             }
         }
+        let mut __graphite_両端が生成キーの専有交友: graphite::KeyedTable<
+            _,
+            _,
+        > = graphite::KeyedTable::new();
+        let mut __seen_edge_ids = std::collections::HashSet::new();
+        let mut 両端が生成キーの専有交友_index: std::collections::HashMap<
+            _,
+            Vec<_>,
+        > = std::collections::HashMap::new();
+        let mut __graphite_両端が生成キーの専有交友_by_pair: std::collections::HashMap<
+            graphite::UnorderedPair<__生成キーの地点InternalPosition>,
+            __両端が生成キーの専有交友InternalPosition,
+        > = std::collections::HashMap::new();
+        for (id, value) in self.両端が生成キーの専有交友 {
+            if !__seen_edge_ids.insert(id.clone()) {
+                __violations
+                    .push(
+                        Violation::両端が生成キーの専有交友DuplicateKey(id),
+                    );
+                continue;
+            }
+            let 両端が生成キーの専有交友 { endpoints } = value;
+            let (p0, p1) = endpoints.endpoints();
+            let p0 = p0.clone();
+            let p1 = p1.clone();
+            let first_position = __graphite_node_生成キーの地点
+                .position(&p0)
+                .map(__生成キーの地点InternalPosition);
+            let second_position = __graphite_node_生成キーの地点
+                .position(&p1)
+                .map(__生成キーの地点InternalPosition);
+            if first_position.is_none() {
+                __violations
+                    .push(Violation::両端が生成キーの専有交友UnknownEndpoint {
+                        edge: id.clone(),
+                        endpoint: p0.clone(),
+                    });
+            }
+            if p1 != p0 && second_position.is_none() {
+                __violations
+                    .push(Violation::両端が生成キーの専有交友UnknownEndpoint {
+                        edge: id.clone(),
+                        endpoint: p1.clone(),
+                    });
+            }
+            if let (Some(first_position), Some(second_position)) = (
+                first_position,
+                second_position,
+            ) {
+                if __graphite_両端が生成キーの専有交友_by_pair
+                    .contains_key(
+                        &graphite::UnorderedPair::new(first_position, second_position),
+                    )
+                {
+                    __violations
+                        .push(Violation::両端が生成キーの専有交友UniquePairViolation {
+                            a: p0.clone(),
+                            b: p1.clone(),
+                        });
+                }
+                let internal_edge_position = __両端が生成キーの専有交友InternalPosition(
+                    graphite::TablePosition::from_index(
+                        __graphite_両端が生成キーの専有交友.len(),
+                    ),
+                );
+                __graphite_両端が生成キーの専有交友_by_pair
+                    .insert(
+                        graphite::UnorderedPair::new(first_position, second_position),
+                        internal_edge_position,
+                    );
+                両端が生成キーの専有交友_index
+                    .entry(first_position)
+                    .or_default()
+                    .push(internal_edge_position);
+                if second_position != first_position {
+                    両端が生成キーの専有交友_index
+                        .entry(second_position)
+                        .or_default()
+                        .push(internal_edge_position);
+                }
+                let inserted = __graphite_両端が生成キーの専有交友
+                    .insert(
+                        id,
+                        __両端が生成キーの専有交友Record {
+                            endpoints: graphite::UnorderedPair::new(
+                                first_position,
+                                second_position,
+                            ),
+                        },
+                    );
+                debug_assert!(inserted, "重複辺IDは挿入前に除外済み");
+            }
+        }
+        let mut __graphite_両端が宣言キーの専有親交: graphite::KeyedTable<
+            _,
+            _,
+        > = graphite::KeyedTable::new();
+        let mut __seen_edge_ids = std::collections::HashSet::new();
+        let mut 両端が宣言キーの専有親交_index: std::collections::HashMap<
+            _,
+            Vec<_>,
+        > = std::collections::HashMap::new();
+        let mut __graphite_両端が宣言キーの専有親交_by_pair: std::collections::HashMap<
+            graphite::UnorderedPair<__宣言キーの地点InternalPosition>,
+            __両端が宣言キーの専有親交InternalPosition,
+        > = std::collections::HashMap::new();
+        for (id, value) in self.両端が宣言キーの専有親交 {
+            if !__seen_edge_ids.insert(id.clone()) {
+                __violations
+                    .push(
+                        Violation::両端が宣言キーの専有親交DuplicateKey(id),
+                    );
+                continue;
+            }
+            let 両端が宣言キーの専有親交 { endpoints } = value;
+            let (p0, p1) = endpoints.endpoints();
+            let p0 = p0.clone();
+            let p1 = p1.clone();
+            let first_position = __graphite_node_宣言キーの地点
+                .position(&p0)
+                .map(__宣言キーの地点InternalPosition);
+            let second_position = __graphite_node_宣言キーの地点
+                .position(&p1)
+                .map(__宣言キーの地点InternalPosition);
+            if first_position.is_none() {
+                __violations
+                    .push(Violation::両端が宣言キーの専有親交UnknownEndpoint {
+                        edge: id.clone(),
+                        endpoint: p0.clone(),
+                    });
+            }
+            if p1 != p0 && second_position.is_none() {
+                __violations
+                    .push(Violation::両端が宣言キーの専有親交UnknownEndpoint {
+                        edge: id.clone(),
+                        endpoint: p1.clone(),
+                    });
+            }
+            if let (Some(first_position), Some(second_position)) = (
+                first_position,
+                second_position,
+            ) {
+                if __graphite_両端が宣言キーの専有親交_by_pair
+                    .contains_key(
+                        &graphite::UnorderedPair::new(first_position, second_position),
+                    )
+                {
+                    __violations
+                        .push(Violation::両端が宣言キーの専有親交UniquePairViolation {
+                            a: p0.clone(),
+                            b: p1.clone(),
+                        });
+                }
+                let internal_edge_position = __両端が宣言キーの専有親交InternalPosition(
+                    graphite::TablePosition::from_index(
+                        __graphite_両端が宣言キーの専有親交.len(),
+                    ),
+                );
+                __graphite_両端が宣言キーの専有親交_by_pair
+                    .insert(
+                        graphite::UnorderedPair::new(first_position, second_position),
+                        internal_edge_position,
+                    );
+                両端が宣言キーの専有親交_index
+                    .entry(first_position)
+                    .or_default()
+                    .push(internal_edge_position);
+                if second_position != first_position {
+                    両端が宣言キーの専有親交_index
+                        .entry(second_position)
+                        .or_default()
+                        .push(internal_edge_position);
+                }
+                let inserted = __graphite_両端が宣言キーの専有親交
+                    .insert(
+                        id,
+                        __両端が宣言キーの専有親交Record {
+                            endpoints: graphite::UnorderedPair::new(
+                                first_position,
+                                second_position,
+                            ),
+                        },
+                    );
+                debug_assert!(inserted, "重複辺IDは挿入前に除外済み");
+            }
+        }
         if !__violations.is_empty() {
             return Err(__violations);
         }
@@ -6296,6 +7211,26 @@ impl Builder {
                 })
                 .collect(),
         );
+        let 両端が生成キーの専有交友_index = graphite::MultipleRoleIndex::from_buckets(
+            __graphite_node_生成キーの地点
+                .positions()
+                .map(|position| {
+                    両端が生成キーの専有交友_index
+                        .remove(&__生成キーの地点InternalPosition(position))
+                        .unwrap_or_default()
+                })
+                .collect(),
+        );
+        let 両端が宣言キーの専有親交_index = graphite::MultipleRoleIndex::from_buckets(
+            __graphite_node_宣言キーの地点
+                .positions()
+                .map(|position| {
+                    両端が宣言キーの専有親交_index
+                        .remove(&__宣言キーの地点InternalPosition(position))
+                        .unwrap_or_default()
+                })
+                .collect(),
+        );
         Ok(Graph {
             __graphite_node_生成キーの地点,
             __graphite_node_宣言キーの地点,
@@ -6311,6 +7246,8 @@ impl Builder {
             終点が宣言キーの専有経路: __graphite_終点が宣言キーの専有経路,
             始点が宣言キーの専有経路: __graphite_始点が宣言キーの専有経路,
             両端が宣言キーの専有経路: __graphite_両端が宣言キーの専有経路,
+            両端が生成キーの専有交友: __graphite_両端が生成キーの専有交友,
+            両端が宣言キーの専有親交: __graphite_両端が宣言キーの専有親交,
             生成キーの経路_from_index,
             生成キーの経路_to_index,
             __graphite_生成キーの経路_by_pair,
@@ -6343,6 +7280,10 @@ impl Builder {
             両端が宣言キーの専有経路_from_index,
             両端が宣言キーの専有経路_to_index,
             __graphite_両端が宣言キーの専有経路_by_pair,
+            両端が生成キーの専有交友_index,
+            __graphite_両端が生成キーの専有交友_by_pair,
+            両端が宣言キーの専有親交_index,
+            __graphite_両端が宣言キーの専有親交_by_pair,
             __graphite_construction_stamp,
         })
     }

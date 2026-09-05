@@ -29,8 +29,8 @@ pub(crate) fn gen_unique_pair_violation_case(
         };
         // 生成コードは始点と終点の表示可否を別々に判定する。生成コードが利用者の宣言した
         // ID型へ `Debug` を要求しない契約のため、片方だけが生成ID型である構成が起こる。
-        // 綴りを省いた側は、省いた理由を文へ添える。読み手が「表示できないのか、無いのか」
-        // を区別できないためである。
+        // 生成コードは、綴りを省いた側に「表示できない」と添える。読み手が「表示できないのか、
+        // そもそも無いのか」を区別できないためである。
         let display_arm = match (
             edge.from_node.id_ty.is_debug_printable(),
             edge.to_node.id_ty.is_debug_printable(),
@@ -45,21 +45,21 @@ pub(crate) fn gen_unique_pair_violation_case(
             (true, false) => quote! {
                 #violation_ident::#v { source, .. } => write!(
                     f,
-                    "unique pair違反: 辺 `{}` は始点 {:?} を含む対に既に辺が存在します (終点のキーは利用者が宣言したID型のため表示しない)",
+                    "unique pair違反: 辺 `{}` は始点 {:?} を含む対に既に辺が存在します (終点のキーは表示できない)",
                     #kind_str, source
                 )
             },
             (false, true) => quote! {
                 #violation_ident::#v { target, .. } => write!(
                     f,
-                    "unique pair違反: 辺 `{}` は終点 {:?} を含む対に既に辺が存在します (始点のキーは利用者が宣言したID型のため表示しない)",
+                    "unique pair違反: 辺 `{}` は終点 {:?} を含む対に既に辺が存在します (始点のキーは表示できない)",
                     #kind_str, target
                 )
             },
             (false, false) => quote! {
                 #violation_ident::#v { .. } => write!(
                     f,
-                    "unique pair違反: 辺 `{}` の同じ始点・終点の対に既に辺が存在します",
+                    "unique pair違反: 辺 `{}` の同じ始点・終点の対に既に辺が存在します (始点と終点のキーは表示できない)",
                     #kind_str
                 )
             },
@@ -89,7 +89,7 @@ pub(crate) fn gen_unique_pair_violation_case(
             quote! {
                 #violation_ident::#v { .. } => write!(
                     f,
-                    "unique pair違反: 辺 `{}` の同じ端点対に既に辺が存在します",
+                    "unique pair違反: 辺 `{}` の同じ端点対に既に辺が存在します (端点のキーは表示できない)",
                     #kind_str
                 )
             }

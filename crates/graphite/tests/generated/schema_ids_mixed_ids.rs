@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    18250559463980893385u64, 11509564234109253082u64, 18220726025299043055u64,
-    11482779577192527235u64,
+    7694078772102826656u64, 8423137420982079437u64, 10169644756096011958u64,
+    16469982619271585898u64,
 ];
 /// `AutomaticNode` ノードの公開ID。
 ///
@@ -301,14 +301,14 @@ impl std::fmt::Display for Violation {
             Violation::ExternalLinkUnknownSource { .. } => {
                 write!(
                     f,
-                    "未知のキーが {} として見つかりません (辺 `{}` の{}。端点のキーと辺のキーは利用者が宣言したID型のため表示しない)",
+                    "未知のキーが {} として見つかりません (辺 `{}` の{}。端点のキーと辺のキーは表示できない)",
                     "ExternalNode", "ExternalLink", "始点"
                 )
             }
             Violation::ExternalLinkUnknownTarget { .. } => {
                 write!(
                     f,
-                    "未知のキーが {} として見つかりません (辺 `{}` の{}。端点のキーと辺のキーは利用者が宣言したID型のため表示しない)",
+                    "未知のキーが {} として見つかりません (辺 `{}` の{}。端点のキーと辺のキーは表示できない)",
                     "ExternalNode", "ExternalLink", "終点"
                 )
             }
@@ -325,14 +325,14 @@ impl std::fmt::Display for Violation {
             Violation::ExternalIncomingUnknownSource { .. } => {
                 write!(
                     f,
-                    "未知のキーが {} として見つかりません (辺 `{}` の{}。端点のキーと辺のキーは利用者が宣言したID型のため表示しない)",
+                    "未知のキーが {} として見つかりません (辺 `{}` の{}。端点のキーと辺のキーは表示できない)",
                     "ExternalNode", "ExternalIncoming", "始点"
                 )
             }
             Violation::ExternalIncomingUnknownTarget { .. } => {
                 write!(
                     f,
-                    "未知のキーが {} として見つかりません (辺 `{}` の{}。端点のキーと辺のキーは利用者が宣言したID型のため表示しない)",
+                    "未知のキーが {} として見つかりません (辺 `{}` の{}。端点のキーと辺のキーは表示できない)",
                     "ExternalNode", "ExternalIncoming", "終点"
                 )
             }
@@ -349,7 +349,7 @@ impl std::fmt::Display for Violation {
             Violation::ExternalFriendUnknownEndpoint { .. } => {
                 write!(
                     f,
-                    "未知のキーが {} として見つかりません (辺 `{}` の{}。端点のキーと辺のキーは利用者が宣言したID型のため表示しない)",
+                    "未知のキーが {} として見つかりません (辺 `{}` の{}。端点のキーと辺のキーは表示できない)",
                     "ExternalNode", "ExternalFriend", "端点"
                 )
             }

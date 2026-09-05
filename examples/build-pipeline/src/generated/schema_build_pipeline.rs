@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    8798194857904799859u64, 8393128735357591658u64, 2695422836181101977u64,
-    14254976402198049797u64,
+    4370829650818814475u64, 10541073762500985062u64, 16199619340680064081u64,
+    6620946745222687741u64,
 ];
 /// `Consumes` 辺の公開ID。
 ///
@@ -175,21 +175,21 @@ impl std::fmt::Display for Violation {
             Violation::ProducesUnknownSource { .. } => {
                 write!(
                     f,
-                    "未知のキーが {} として見つかりません (辺 `{}` の{}。端点のキーと辺のキーは利用者が宣言したID型のため表示しない)",
+                    "未知のキーが {} として見つかりません (辺 `{}` の{}。端点のキーと辺のキーは表示できない)",
                     "Task", "Produces", "始点"
                 )
             }
             Violation::ProducesUnknownTarget { .. } => {
                 write!(
                     f,
-                    "未知のキーが {} として見つかりません (辺 `{}` の{}。端点のキーと辺のキーは利用者が宣言したID型のため表示しない)",
+                    "未知のキーが {} として見つかりません (辺 `{}` の{}。端点のキーと辺のキーは表示できない)",
                     "Artifact", "Produces", "終点"
                 )
             }
             Violation::ProducesUniquePairViolation { .. } => {
                 write!(
                     f,
-                    "unique pair違反: 辺 `{}` の同じ始点・終点の対に既に辺が存在します",
+                    "unique pair違反: 辺 `{}` の同じ始点・終点の対に既に辺が存在します (始点と終点のキーは表示できない)",
                     "Produces"
                 )
             }
@@ -199,21 +199,21 @@ impl std::fmt::Display for Violation {
             Violation::ConsumesUnknownSource { edge, .. } => {
                 write!(
                     f,
-                    "未知のキーが {} として見つかりません (辺 `{}` {:?} の{}。端点のキーは利用者が宣言したID型のため表示しない)",
+                    "未知のキーが {} として見つかりません (辺 `{}` {:?} の{}。端点のキーは表示できない)",
                     "Task", "Consumes", edge, "始点"
                 )
             }
             Violation::ConsumesUnknownTarget { edge, .. } => {
                 write!(
                     f,
-                    "未知のキーが {} として見つかりません (辺 `{}` {:?} の{}。端点のキーは利用者が宣言したID型のため表示しない)",
+                    "未知のキーが {} として見つかりません (辺 `{}` {:?} の{}。端点のキーは表示できない)",
                     "Artifact", "Consumes", edge, "終点"
                 )
             }
             Violation::ConsumesUniquePairViolation { .. } => {
                 write!(
                     f,
-                    "unique pair違反: 辺 `{}` の同じ始点・終点の対に既に辺が存在します",
+                    "unique pair違反: 辺 `{}` の同じ始点・終点の対に既に辺が存在します (始点と終点のキーは表示できない)",
                     "Consumes"
                 )
             }

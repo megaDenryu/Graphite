@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    17041550981301261043u64, 876851919180418650u64, 6708305243876770881u64,
-    1761135427720581861u64,
+    12154932689850539135u64, 9938607312513669142u64, 316220764579340549u64,
+    14988198759364011465u64,
 ];
 /// `BelongsTo` 辺の公開ID。
 ///
@@ -194,14 +194,14 @@ impl std::fmt::Display for Violation {
             Violation::BelongsToUnknownSource { edge, .. } => {
                 write!(
                     f,
-                    "未知のキーが {} として見つかりません (辺 `{}` {:?} の{}。端点のキーは利用者が宣言したID型のため表示しない)",
+                    "未知のキーが {} として見つかりません (辺 `{}` {:?} の{}。端点のキーは表示できない)",
                     "Employee", "BelongsTo", edge, "始点"
                 )
             }
             Violation::BelongsToUnknownTarget { edge, .. } => {
                 write!(
                     f,
-                    "未知のキーが {} として見つかりません (辺 `{}` {:?} の{}。端点のキーは利用者が宣言したID型のため表示しない)",
+                    "未知のキーが {} として見つかりません (辺 `{}` {:?} の{}。端点のキーは表示できない)",
                     "Department", "BelongsTo", edge, "終点"
                 )
             }
@@ -218,14 +218,14 @@ impl std::fmt::Display for Violation {
             Violation::BossUnknownSource { edge, .. } => {
                 write!(
                     f,
-                    "未知のキーが {} として見つかりません (辺 `{}` {:?} の{}。端点のキーは利用者が宣言したID型のため表示しない)",
+                    "未知のキーが {} として見つかりません (辺 `{}` {:?} の{}。端点のキーは表示できない)",
                     "Employee", "Boss", edge, "始点"
                 )
             }
             Violation::BossUnknownTarget { edge, .. } => {
                 write!(
                     f,
-                    "未知のキーが {} として見つかりません (辺 `{}` {:?} の{}。端点のキーは利用者が宣言したID型のため表示しない)",
+                    "未知のキーが {} として見つかりません (辺 `{}` {:?} の{}。端点のキーは表示できない)",
                     "Employee", "Boss", edge, "終点"
                 )
             }
