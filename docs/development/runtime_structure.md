@@ -107,19 +107,15 @@ Get-ChildItem crates\graphite\src -Recurse -Filter *.rs |
 
 ## 100行原則の例外
 
-1ファイル100行原則の例外は次の3つで、理由は各ファイルの冒頭にも書いてある。
+1ファイル100行原則の例外は、全クレートと `xtask`・`examples`・`verification` を
+覆う台帳 `docs/development/line_count_ledger.md` が持つ。`crates/graphite` の分も
+そこへ移した。台帳はコード行の数え方と各ファイルの区分・根拠を定め、
+`cargo xtask check-line-counts` が台帳と実際の行数の両方を検査する。
 
-- `graph/mod.rs` — 公開契約20メソッドを1画面で読む場所。キーの有無の判定と
-  位置列⇄キー列の写し取り以外のロジックを書かない。アルゴリズムの本体は
-  `topology/` の型が所有する。行数の実体は公開APIのrustdocである。
-- `compute/mod.rs` — 公開API3つと、doctest付きのモジュールdoc。設計判断の説明は該当
-  ファイル (動的ディスパッチ→`node_kind.rs`、再利用と内製→`dependency_structure.rs`、
-  glitch-free→`recomputation.rs`) へ分配済み。
-- `keyed_table.rs` — 1つの概念が1つの不変条件 (挿入順と内部位置の安定性) を所有する
-  ので分けない。
-
-`graph/topology/mod.rs` と `graph/assembly.rs` も100行を超えるが、どちらも1つの型の
-メソッド群であり、分けると上の禁止事項1に当たる。
+`crates/graphite` の分解については、上の「分解の禁止事項」がこの台帳より強い制約を
+置いている。`graph/mod.rs` と `graph/topology/mod.rs` が100行を超えるのは、
+`impl Graph<N, E, K>` と `impl 有向トポロジー` を1ファイルへ集めるこの禁止事項の
+結果である。
 
 ## 生成コードが依存する再公開
 

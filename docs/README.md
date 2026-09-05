@@ -41,6 +41,7 @@
 | `docs/development/design_principles.md` | Development document | Rust的な精神と型の strictness を具体化した6原則 |
 | `docs/development/crate_architecture.md` | Development document | 5つのクレートの責務と、proc-macro クレートを分ける理由 |
 | `docs/development/runtime_structure.md` | Development document | `crates/graphite/src` の実行時コードの配置と依存の向き |
+| `docs/development/line_count_ledger.md` | Development document | 1ファイル100行原則のコード行の数え方と、超過を許したファイルの台帳 |
 | `docs/development/ide_support_spec.md` | Development document | rust-analyzer 対応の仕様と、スパン継承の規範 |
 | `docs/development/generated_vs_handwritten.md` | Development document | 生成コードが手書きテンプレートと分かれた7点の設計判断 |
 | `docs/development/testing.md` | Development document | テストファイルの役割と実行手順、`.vscode` の運用ルール |
