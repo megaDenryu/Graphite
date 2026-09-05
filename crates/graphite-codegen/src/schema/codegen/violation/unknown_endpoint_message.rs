@@ -64,7 +64,7 @@ impl 未知端点の位置 {
     // 生成ID型である構成が起こり、論理積で判定すると表示できる側の綴りまで落ちる。
     // 綴りを省いた側は、省いた理由を文へ添える。読み手が「表示できないのか、無いのか」
     // を区別できないためである。
-    pub(crate) fn 表示の腕(
+    pub(crate) fn 表示の分岐(
         self, 違反列挙型の名前: &Ident, 辺: &EdgeInfo<'_>
     ) -> TokenStream {
         let variant = self.variantの名前(辺);

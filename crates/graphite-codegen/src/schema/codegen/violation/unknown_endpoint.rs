@@ -27,7 +27,7 @@ pub(crate) fn gen_unknown_source_case(
             source: #from_id,
         }
     };
-    let display_arm = 未知端点の位置::有向辺の始点.表示の腕(violation_ident, edge);
+    let display_arm = 未知端点の位置::有向辺の始点.表示の分岐(violation_ident, edge);
     (variant, display_arm)
 }
 
@@ -48,7 +48,7 @@ pub(crate) fn gen_unknown_target_case(
             target: #to_id,
         }
     };
-    let display_arm = 未知端点の位置::有向辺の終点.表示の腕(violation_ident, edge);
+    let display_arm = 未知端点の位置::有向辺の終点.表示の分岐(violation_ident, edge);
     (variant, display_arm)
 }
 
@@ -72,6 +72,6 @@ pub(crate) fn gen_unknown_endpoint_case(
             endpoint: #node_id,
         }
     };
-    let display_arm = 未知端点の位置::無向辺の端点.表示の腕(violation_ident, edge);
+    let display_arm = 未知端点の位置::無向辺の端点.表示の分岐(violation_ident, edge);
     (variant, display_arm)
 }

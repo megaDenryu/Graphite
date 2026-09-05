@@ -49,7 +49,7 @@ graphite::graph_schema! {
 
 mod unknown_endpoint_positions;
 
-fn 生成キーの地点のキー(綴り: &str) -> 診断::生成キーの地点Id {
+fn 生成キーの地点のキーを作る(綴り: &str) -> 診断::生成キーの地点Id {
     診断::生成キーの地点Id(綴り.into())
 }
 
