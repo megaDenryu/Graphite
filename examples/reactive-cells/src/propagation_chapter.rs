@@ -11,7 +11,7 @@ fn id(spelling: &str) -> CellId {
     CellId(spelling.to_string())
 }
 
-/// 5つの入力セルを順に設定し、値が伝播していく様子を見せる。
+// 5つの入力セルを順に設定し、値が伝播していく様子を見せる。
 pub fn demonstrate_propagation(engine: &mut Engine) {
     report::print_section("値変更 -> 伝播の物語");
     report::print_set_input(
@@ -63,8 +63,8 @@ pub fn demonstrate_propagation(engine: &mut Engine) {
     );
 }
 
-/// 税率だけを変更し、`reachable_from` による絞り込みで影響範囲だけが
-/// 再計算されることを見せる。
+// 税率だけを変更し、`reachable_from` による絞り込みで影響範囲だけが
+// 再計算されることを見せる。
 pub fn demonstrate_reachable_only_recalculation(engine: &mut Engine) {
     report::print_section("影響範囲だけを再計算する (reachable_fromによる絞り込み)");
     let steps = engine.set_input(&id("tax_rate"), 0.2);

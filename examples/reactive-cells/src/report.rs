@@ -13,8 +13,8 @@ pub fn print_section(title: &str) {
     println!("\n=== {title} ===");
 }
 
-/// [`Engine::set_input`] の結果を「どのセルがどの順で再計算されたか」の
-/// 物語として表示する。
+// `Engine::set_input` の結果を「どのセルがどの順で再計算されたか」の
+// 物語として表示する。
 pub fn print_set_input(label: &str, id: &CellId, value: f64, steps: &[RecomputeStep]) {
     println!("{label}: {} <- {value}", id.0);
     if steps.is_empty() {

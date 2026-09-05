@@ -7,19 +7,19 @@
 
 use crate::schema::{Formula, Sheet};
 
-/// - `Mul`/`Sum` — このセルを終点とする `Feeds` エッジが1本以上必要
-///   (可換なので本数の上限は無い)。
-/// - `Sub` — このセルを終点とする `Lhs`/`Rhs` エッジがそれぞれ
-///   ちょうど1本必要 (被減数/減数はどちらも一意でなければならない)。
-/// - `Input` — エッジ本数を問わない (値は `set_input` で直接与える)。
-///
-/// 本数だけが要件で相手セルの値は不要なので、`{kind}_iter` を毎回
-/// 全走査して `.filter(.. edge.dependent == cell_id ..)` する代わりに
-/// `cell.{kind}_as_<role>().count()`
-/// を使う。freeze 時に構築済みの終点索引を引くだけの O(1) 償却になる。
-///
-/// # Panics
-/// `Formula` が要求するエッジ本数と実際の本数が一致しない場合。
+// - `Mul`/`Sum` — このセルを終点とする `Feeds` エッジが1本以上必要
+//   (可換なので本数の上限は無い)。
+// - `Sub` — このセルを終点とする `Lhs`/`Rhs` エッジがそれぞれ
+//   ちょうど1本必要 (被減数/減数はどちらも一意でなければならない)。
+// - `Input` — エッジ本数を問わない (値は `set_input` で直接与える)。
+//
+// 本数だけが要件で相手セルの値は不要なので、`{kind}_iter` を毎回
+// 全走査して `.filter(.. edge.dependent == cell_id ..)` する代わりに
+// `cell.{kind}_as_<role>().count()`
+// を使う。freeze 時に構築済みの終点索引を引くだけの O(1) 償却になる。
+//
+// パニックする条件は次のとおりである。
+// `Formula` が要求するエッジ本数と実際の本数が一致しない場合。
 pub(super) fn validate_formula_wiring(graph: &Sheet::Graph) {
     for cell in graph.cell_iter() {
         let cell_id = cell.id();

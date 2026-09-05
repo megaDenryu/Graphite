@@ -34,34 +34,37 @@
 //! ID型を省略したため、`Sheet` module 内には `CellId`・`FeedsId`・`LhsId`・
 //! `RhsId` が生成される (`docs/node_id_v4_2.md`)。
 
-/// 1つのセルが「どう値を求めるか」— **どの演算を適用するか**だけを表す。
-///
-/// 依存先セル (演算対象) は保持しない。演算対象は `Sheet` の `Feeds`/
-/// `Lhs`/`Rhs` エッジがそのセルの識別性 + 接続性として既に持っている情報
-/// であり、`Formula` 側に同じ情報を複製すると二重管理になる
-/// (`docs/modeling_guide.md` §1「同一性+接続性を持つものだけをグラフの
-/// 要素にする」の裏返し: セル間の依存はグラフの要素、演算の種類は
-/// `Cell` のフィールド)。
+// 1つのセルが「どう値を求めるか」— どの演算を適用するかだけを表す。
+//
+// 依存先セル (演算対象) は保持しない。演算対象は `Sheet` の `Feeds`/
+// `Lhs`/`Rhs` エッジがそのセルの識別性 + 接続性として既に持っている情報
+// であり、`Formula` 側に同じ情報を複製すると二重管理になる
+// (`docs/modeling_guide.md` §1「同一性+接続性を持つものだけをグラフの
+// 要素にする」の裏返し: セル間の依存はグラフの要素、演算の種類は
+// `Cell` のフィールド)。
+//
+// 枝ごとの意味は次のとおりである。
+//
+// - `Input`: 入力セルである。演算を持たず、値は
+//   `crate::engine::Engine::set_input` で外部から直接設定される
+// - `Mul`: このセルへ `Feeds` エッジで入ってくる全セルの積である (可換なので
+//   何本あってもよい。このexampleの `default_sheet` では常に2本)
+// - `Sub`: このセルへ `Lhs`/`Rhs` エッジで入ってくる2セルの差である
+//   (`Lhs` の値 − `Rhs` の値)。非可換なので `Lhs`/`Rhs` それぞれちょうど1本
+//   (`crate::engine::Engine::new` が構築時に検査する)
+// - `Sum`: このセルへ `Feeds` エッジで入ってくる全セルの和である (可換)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Formula {
-    /// 入力セル。演算を持たず、値は [`crate::engine::Engine::set_input`]
-    /// で外部から直接設定される。
     Input,
-    /// このセルへ `Feeds` エッジで入ってくる全セルの積 (可換なので何本
-    /// あってもよい。このexampleの `default_sheet` では常に2本)。
     Mul,
-    /// このセルへ `Lhs`/`Rhs` エッジで入ってくる2セルの差
-    /// (`Lhs` の値 − `Rhs` の値)。非可換なので `Lhs`/`Rhs` それぞれ
-    /// ちょうど1本 (`crate::engine::Engine::new` が構築時に検査する)。
     Sub,
-    /// このセルへ `Feeds` エッジで入ってくる全セルの和 (可換)。
     Sum,
 }
 
-/// スプレッドシートのセル。値そのものは持たない — 値は
-/// [`crate::engine::Engine`] が別途 `HashMap<CellId, f64>` として持つ
-/// (`../Bullet/docs/graph_design_sketches.md` 決定2: グラフは構築後不変。可変な
-/// 「今の値」を不変な依存構造から分離する)。
+// スプレッドシートのセル。値そのものは持たない — 値は
+// `crate::engine::Engine` が別途 `HashMap<CellId, f64>` として持つ
+// (`../Bullet/docs/graph_design_sketches.md` 決定2: グラフは構築後不変。可変な
+// 「今の値」を不変な依存構造から分離する)。
 #[derive(Debug, Clone, PartialEq)]
 pub struct Cell {
     pub formula: Formula,

@@ -6,25 +6,26 @@ use std::rc::Rc;
 
 use super::naive_cell::NaiveCell;
 
-/// (a)(c) ダイヤモンド依存 `a→b, a→c, b→d, c→d` を observer パターンで
-/// 組んだデモ。`b = a * 2`・`c = a + 100`・`d = b + c` という
-/// `crate::fixtures::default_sheet` の `subtotal`/`discount_amount`/
-/// `tax`/`adjustment` と同じ形の依存構造。
+// (a)(c) ダイヤモンド依存 `a→b, a→c, b→d, c→d` を observer パターンで
+// 組んだデモ。`b = a * 2`・`c = a + 100`・`d = b + c` という
+// `crate::fixtures::default_sheet` の `subtotal`/`discount_amount`/
+// `tax`/`adjustment` と同じ形の依存構造。
+//
+// `d_log` は `d` が再計算されるたびの `(その時点のb, その時点のc, 新しいd)` である。
+// グリッチが起きていれば1件目の `b`/`c` が矛盾した組み合わせになる
+// (README「グリッチの実演」節参照)。
 pub struct DiamondDemo {
     pub a: Rc<NaiveCell>,
     pub b: Rc<NaiveCell>,
     pub c: Rc<NaiveCell>,
     pub d: Rc<NaiveCell>,
-    /// `d` が再計算されるたびの `(その時点のb, その時点のc, 新しいd)`。
-    /// グリッチが起きていれば1件目の `b`/`c` が矛盾した組み合わせになる
-    /// (README「グリッチの実演」節参照)。
     pub d_log: Rc<RefCell<Vec<(f64, f64, f64)>>>,
 }
 
-/// `swap_registration_order` が `false` なら `a` への購読を「`b`の更新」→
-/// 「`c`の更新」の順で登録する (`true` なら逆順)。どちらでも最終値は同じ
-/// だが、`d_log` の1件目 (=グリッチの内容) が入れ替わる — これが
-/// (c) 更新順序が購読登録順に依存する、の実演。
+// `swap_registration_order` が `false` なら `a` への購読を「`b`の更新」→
+// 「`c`の更新」の順で登録する (`true` なら逆順)。どちらでも最終値は同じ
+// だが、`d_log` の1件目 (=グリッチの内容) が入れ替わる — これが
+// (c) 更新順序が購読登録順に依存する、の実演。
 pub fn build_diamond_demo(swap_registration_order: bool) -> DiamondDemo {
     let a = NaiveCell::new(0.0);
     let b = NaiveCell::new(0.0);
@@ -80,8 +81,8 @@ pub fn build_diamond_demo(swap_registration_order: bool) -> DiamondDemo {
 }
 
 impl DiamondDemo {
-    /// `a` に新しい値を設定し、購読チェーンによる同期的な伝播を1回
-    /// 走らせる。
+    // `a` に新しい値を設定し、購読チェーンによる同期的な伝播を1回
+    // 走らせる。
     pub fn trigger(&self, a_value: f64) {
         self.a.set(a_value);
     }

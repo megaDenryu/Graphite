@@ -7,7 +7,7 @@ mod recompute_scope;
 
 use crate::schema::CellId;
 
-/// セルキーの綴りから `CellId` を作る、テスト内での短縮形。
+// セルキーの綴りから `CellId` を作る、テスト内での短縮形。
 fn id(spelling: &str) -> CellId {
     CellId(spelling.to_string())
 }
