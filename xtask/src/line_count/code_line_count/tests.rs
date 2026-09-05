@@ -39,3 +39,21 @@ fn 行コメントの中のブロックコメントの開始を開始とみな�
     let text = "let x = 1; // /* 説明\nlet y = 2;\n";
     assert_eq!(CodeLineCount::of_text(text).value(), 2);
 }
+
+#[test]
+fn 文字列リテラルの中のブロックコメントの開始を開始とみなさない() {
+    let text = "let pattern = \"tests/ui/*.rs\";\nlet x = 1;\nlet y = 2;\n";
+    assert_eq!(CodeLineCount::of_text(text).value(), 3);
+}
+
+#[test]
+fn 文字列リテラルの中の行コメントの開始を開始とみなさない() {
+    let text = "let url = \"https://example.com\"; let x = 1;\n";
+    assert_eq!(CodeLineCount::of_text(text).value(), 1);
+}
+
+#[test]
+fn 打ち消した引用符を閉じ引用符とみなさない() {
+    let text = "let s = \"\\\"/*\"; /* 説明\n本文\n*/ let x = 1;\n";
+    assert_eq!(CodeLineCount::of_text(text).value(), 2);
+}

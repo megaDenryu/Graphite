@@ -11,10 +11,11 @@ fn 整った行を綴りと区分として読む() {
     let ledger = 台帳("| `a/b.rs` | 統合による超過 | 根拠 |\n");
     assert_eq!(ledger.entry_count(), 1);
     assert!(ledger.invalid_rows().is_empty());
-    assert_eq!(
-        ledger.category_of("a/b.rs"),
-        Some(ExceptionCategory::Consolidated)
-    );
+    let entry = ledger.entry_of("a/b.rs").expect("読めた行が引けること");
+    assert_eq!(entry.category(), ExceptionCategory::Consolidated);
+    assert!(entry
+        .declaration_sentences()
+        .contains("(区分: 統合による超過)。根拠。"));
 }
 
 #[test]

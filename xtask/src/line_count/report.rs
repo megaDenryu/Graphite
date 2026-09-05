@@ -1,6 +1,6 @@
 //! 検査結果の集計。
 //!
-//! 集計する数は6種類の違反と、検査が届いた範囲 (検査したファイル数・台帳の件数・
+//! 集計する数は7種類の違反と、検査が届いた範囲 (検査したファイル数・台帳の件数・
 //! 再設計待ちの件数) である。範囲を出すのは、通ったことを「全部を見た」と
 //! 読み違えないようにするためである。表示は `rendering.rs` が持つ。
 
@@ -11,8 +11,9 @@ mod tests;
 use std::collections::BTreeSet;
 
 use super::code_line_count::CodeLineCount;
+use super::exception_declaration::ExceptionDeclaration;
 use super::judgement::FileJudgement;
-use super::ledger::LineCountLedger;
+use super::ledger::{LedgerEntry, LineCountLedger};
 
 // 検査1回分の結果。違反の一覧と、検査が届いた範囲の件数を持つ。
 #[derive(Default)]
@@ -24,6 +25,7 @@ pub(crate) struct LineCountReport {
     unregistered_excesses: Vec<String>,
     upper_limit_excesses: Vec<String>,
     shrunk_entries: Vec<String>,
+    declaration_mismatches: Vec<String>,
     missing_entries: Vec<String>,
     invalid_ledger_rows: Vec<String>,
 }
@@ -34,12 +36,15 @@ impl LineCountReport {
         &mut self,
         spelling: &str,
         count: &CodeLineCount,
+        declaration: &ExceptionDeclaration,
         ledger: &LineCountLedger,
     ) {
         self.inspected_file_count += 1;
         self.inspected_spellings.insert(spelling.to_string());
+        let entry = ledger.entry_of(spelling);
+        self.record_declaration(spelling, declaration, entry);
         let measured = format!("{spelling} ({}行)", count.value());
-        match FileJudgement::of(count, ledger.category_of(spelling)) {
+        match FileJudgement::of(count, entry.map(LedgerEntry::category)) {
             FileJudgement::Acceptable => {}
             FileJudgement::Unregistered => self.unregistered_excesses.push(measured),
             FileJudgement::Shrunk => self.shrunk_entries.push(measured),
@@ -48,7 +53,20 @@ impl LineCountReport {
         }
     }
 
-    // 読めなかったファイルも検査した綴りとして登録する。登録しないと `close` が同じ綴りを
+    // 台帳にある1件について、冒頭コメントが台帳の根拠と同じ宣言を書いているかを見る。
+    fn record_declaration(
+        &mut self,
+        spelling: &str,
+        declaration: &ExceptionDeclaration,
+        entry: Option<&LedgerEntry>,
+    ) {
+        let Some(entry) = entry else { return };
+        if !declaration.agrees_with(entry) {
+            self.declaration_mismatches.push(spelling.to_string());
+        }
+    }
+
+    // このメソッドは、読めなかったファイルも検査した綴りとして登録する。登録しないと `close` が同じ綴りを
     // 「台帳にありますが検査対象に実在しません」へも積み、1件の事故を2件に見せる。
     pub(crate) fn record_unreadable(&mut self, spelling: &str, reason: &str) {
         self.inspected_file_count += 1;
@@ -71,6 +89,7 @@ impl LineCountReport {
             && self.unregistered_excesses.is_empty()
             && self.upper_limit_excesses.is_empty()
             && self.shrunk_entries.is_empty()
+            && self.declaration_mismatches.is_empty()
             && self.missing_entries.is_empty()
             && self.invalid_ledger_rows.is_empty()
     }

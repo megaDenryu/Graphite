@@ -5,6 +5,7 @@
 //! する。読めなかったファイルは対象から外さず違反として数える。
 
 mod code_line_count;
+mod exception_declaration;
 mod judgement;
 mod ledger;
 mod report;
@@ -15,6 +16,7 @@ use crate::inspected_area::InspectedArea;
 use crate::repository_root::RepositoryRoot;
 use crate::rust_source::RustSource;
 use code_line_count::CodeLineCount;
+use exception_declaration::ExceptionDeclaration;
 use ledger::LineCountLedger;
 use report::LineCountReport;
 
@@ -39,9 +41,12 @@ impl<'a> LineCountInspection<'a> {
         let mut report = LineCountReport::default();
         for source in self.sources()? {
             match source.read_text() {
-                Ok(text) => {
-                    report.record(source.spelling(), &CodeLineCount::of_text(&text), &ledger)
-                }
+                Ok(text) => report.record(
+                    source.spelling(),
+                    &CodeLineCount::of_text(&text),
+                    &ExceptionDeclaration::of_source_text(&text),
+                    &ledger,
+                ),
                 Err(reason) => report.record_unreadable(source.spelling(), &reason),
             }
         }
