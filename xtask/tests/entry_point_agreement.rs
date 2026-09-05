@@ -16,7 +16,7 @@ fn repository_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..")
 }
 
-/// `crates/*` と `examples/*` のうち `Cargo.toml` を持つディレクトリを綴り順で集める。
+// `crates/*` と `examples/*` のうち `Cargo.toml` を持つディレクトリを綴り順で集める。
 fn package_directories() -> Vec<PathBuf> {
     let root = repository_root();
     let mut directories = Vec::new();

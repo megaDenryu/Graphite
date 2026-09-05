@@ -33,7 +33,7 @@ use crate::document_index::DocumentIndex;
 use crate::external_verification::ExternalVerificationPackage;
 use crate::reference_scan::ReferenceScan;
 
-/// `cargo xtask generate` 相当: 期待する生成ファイルをパッケージごとに更新する。
+// `cargo xtask generate` 相当: 期待する生成ファイルをパッケージごとに更新する。
 pub fn generate(root: &RepositoryRoot) -> Result<(), Box<dyn Error>> {
     for package in root.generation_packages()? {
         println!("対象パッケージ: {}", package.spelling());
@@ -42,7 +42,7 @@ pub fn generate(root: &RepositoryRoot) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-/// `cargo xtask generate --check` 相当: 差分と孤児生成ファイルをエラーにする。
+// `cargo xtask generate --check` 相当: 差分と孤児生成ファイルをエラーにする。
 pub fn verify(root: &RepositoryRoot) -> Result<(), Box<dyn Error>> {
     for package in root.generation_packages()? {
         println!("対象パッケージ: {}", package.spelling());
@@ -51,18 +51,18 @@ pub fn verify(root: &RepositoryRoot) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-/// `cargo xtask check-external` 相当: 外部 crate からの生成経路を実走で検査する。
-///
-/// 生成の差分検査は `cargo graphite generate --check` と同じ経路を通り、続けて
-/// 検証用パッケージのビルドとテストを実行する。
+// `cargo xtask check-external` 相当: 外部 crate からの生成経路を実走で検査する。
+//
+// 生成の差分検査は `cargo graphite generate --check` と同じ経路を通り、続けて
+// 検証用パッケージのビルドとテストを実行する。
 pub fn check_external_crate(root: &RepositoryRoot) -> Result<(), Box<dyn Error>> {
     ExternalVerificationPackage::new(root.external_verification_package()?).check()
 }
 
-/// `cargo xtask check-docs` 相当: 文書参照の綴りが実在するかを検査する。
-///
-/// 参照が数百件の規模になったため、目視での確認は成立しない。検査の範囲と
-/// 限界は `main.rs` の使い方の説明に書いてある。
+// `cargo xtask check-docs` 相当: 文書参照の綴りが実在するかを検査する。
+//
+// 参照が数百件の規模になったため、目視での確認は成立しない。検査の範囲と
+// 限界は `main.rs` の使い方の説明に書いてある。
 pub fn check_documents(root: &RepositoryRoot) -> Result<(), Box<dyn Error>> {
     let scan = ReferenceScan::over(root)?;
     let existing = root.document_files()?;
@@ -94,11 +94,11 @@ pub fn check_documents(root: &RepositoryRoot) -> Result<(), Box<dyn Error>> {
     Err(format!("{missing}{mismatch}{invalid_sources}{excerpts}").into())
 }
 
-/// `cargo xtask check-doc-comments` 相当: doc コメントの網羅と撤去を検査する。
-///
-/// 現在は内部領域に約2100行の `///` が残っており、この検査は大量の違反を報告する。
-/// 撤去が終わるまで `cargo test` からは呼ばない (issue #22 の着手順5で接続する)。
-/// 検査の範囲と限界は `main.rs` の使い方の説明に書いてある。
+// `cargo xtask check-doc-comments` 相当: doc コメントの網羅と撤去を検査する。
+//
+// 現在は内部領域に約2100行の `///` が残っており、この検査は大量の違反を報告する。
+// 撤去が終わるまで `cargo test` からは呼ばない (issue #22 の着手順5で接続する)。
+// 検査の範囲と限界は `main.rs` の使い方の説明に書いてある。
 pub fn check_doc_comments(root: &RepositoryRoot) -> Result<(), Box<dyn Error>> {
     DocCommentInspection::new(root).run()
 }

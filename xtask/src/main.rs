@@ -16,10 +16,10 @@ fn main() {
     }
 }
 
-/// `generate` は生成ファイルを更新し、`generate --check` は差分をエラーにし、
-/// `check-external` は外部 crate からの生成経路を実走で検査し、`check-docs` は
-/// 文書参照と索引を検査し、`check-doc-comments` は doc コメントの網羅と撤去を
-/// 検査する。
+// `generate` は生成ファイルを更新し、`generate --check` は差分をエラーにし、
+// `check-external` は外部 crate からの生成経路を実走で検査し、`check-docs` は
+// 文書参照と索引を検査し、`check-doc-comments` は doc コメントの網羅と撤去を
+// 検査する。
 enum Command {
     Generate,
     Check,
@@ -28,9 +28,9 @@ enum Command {
     CheckDocComments,
 }
 
-/// 使い方と、`check-docs` が検査しないことの説明。
-///
-/// 検査の限界を書いておかないと、通ったことを「文書の内容が正しい」と読み違える。
+// 使い方と、`check-docs` が検査しないことの説明。
+//
+// 検査の限界を書いておかないと、通ったことを「文書の内容が正しい」と読み違える。
 const USAGE: &str = "\
 使い方: リポジトリルートで次のいずれかを実行してください
   cargo xtask generate            生成ファイルを更新する
