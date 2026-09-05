@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-/// FSM が受理するイベント一覧。
+// FSM が受理するイベント一覧。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Event {
     Submit,

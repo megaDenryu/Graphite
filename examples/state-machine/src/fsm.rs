@@ -18,17 +18,17 @@ pub use transition_table::{build, initial_state, terminal_states};
 use crate::schema::OrderFsm::OrderStateRef;
 use crate::schema::{CancelEdge, OrderFsm, OrderStateId, RefundEdge};
 
-/// 遷移エンジン本体。
-///
-/// イベントの `match` で `{kind}_iter` を引き、`before` のIDが `current` に
-/// 一致する辺を探して `after` のIDを返すだけ。`where each before: 0..1`
-/// (schema 側の制約) により、一致する辺は高々1本しか無い。
-///
-/// `{kind}_iter` は完成済みグラフに束縛されたEdgeRefを返し、役割名getterが
-/// NodeRefを返す。`step` は `before().id()` / `after().id()` からキーを得る。
-/// 遷移規則そのものはここには一切書かれていない
-/// (schema と `build` にしか無い) — enum+match 散在アンチパターンとの
-/// 決定的な違い。
+// 遷移エンジン本体。
+//
+// イベントの `match` で `{kind}_iter` を引き、`before` のIDが `current` に
+// 一致する辺を探して `after` のIDを返すだけ。`where each before: 0..1`
+// (schema 側の制約) により、一致する辺は高々1本しか無い。
+//
+// `{kind}_iter` は完成済みグラフに束縛されたEdgeRefを返し、役割名getterが
+// NodeRefを返す。`step` は `before().id()` / `after().id()` からキーを得る。
+// 遷移規則そのものはここには一切書かれていない
+// (schema と `build` にしか無い) — enum+match 散在アンチパターンとの
+// 決定的な違い。
 pub fn step(
     fsm: &OrderFsm::Graph,
     current: &OrderStateId,
@@ -66,8 +66,8 @@ pub fn step(
     })
 }
 
-/// `cancel` イベントのガード条件・監査情報 (`CancelEdge`) も見たい場合は
-/// `state.cancel_as_before()` を直接使う (`step` はキーだけ返すため属性は運ばない)。
+// `cancel` イベントのガード条件・監査情報 (`CancelEdge`) も見たい場合は
+// `state.cancel_as_before()` を直接使う (`step` はキーだけ返すため属性は運ばない)。
 pub fn cancel_details<'a>(
     fsm: &'a OrderFsm::Graph,
     current: &OrderStateId,
@@ -78,7 +78,7 @@ pub fn cancel_details<'a>(
         .map(|edge| (edge.after(), edge.payload()))
 }
 
-/// `refund` イベントの監査ログ用ラベル (`RefundEdge`) を見たい場合。
+// `refund` イベントの監査ログ用ラベル (`RefundEdge`) を見たい場合。
 pub fn refund_details<'a>(
     fsm: &'a OrderFsm::Graph,
     current: &OrderStateId,

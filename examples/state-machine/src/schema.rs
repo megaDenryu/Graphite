@@ -24,26 +24,26 @@
 //! 禁止しているため、`unique pair` の併記は冗長になる
 //! (`docs/schema_v4.md` §1 「実装を単純にするため特別扱いしない」方針)。
 
-/// 状態ノード。注文ライフサイクル中の1状態を表す
-/// (draft/pending_payment/paid/shipped/delivered/cancelled/refunded)。
-///
-/// フィールドは表示用ラベルのみ。状態同士の区別はノードキー
-/// (`OrderStateId`、`graph!` の `draft = ..` の `draft` 部分から値が
-/// 決まる) が担うので、フィールド自体は最小限で良い。
+// 状態ノード。注文ライフサイクル中の1状態を表す
+// (draft/pending_payment/paid/shipped/delivered/cancelled/refunded)。
+//
+// フィールドは表示用ラベルのみ。状態同士の区別はノードキー
+// (`OrderStateId`、`graph!` の `draft = ..` の `draft` 部分から値が
+// 決まる) が担うので、フィールド自体は最小限で良い。
 #[derive(Debug, Clone, PartialEq)]
 pub struct OrderState {
     pub label: String,
 }
 
-/// `cancel` イベントの属性。「なぜキャンセルされたか」「返金が必要か」
-/// というガード条件・監査ログ相当の情報を辺そのものに積む例。
+// `cancel` イベントの属性。「なぜキャンセルされたか」「返金が必要か」
+// というガード条件・監査ログ相当の情報を辺そのものに積む例。
 #[derive(Debug, Clone, PartialEq)]
 pub struct CancelEdge {
     pub reason: String,
     pub refund_required: bool,
 }
 
-/// `refund` イベントの属性。監査ログ用ラベル。
+// `refund` イベントの属性。監査ログ用ラベル。
 #[derive(Debug, Clone, PartialEq)]
 pub struct RefundEdge {
     pub audit_label: String,

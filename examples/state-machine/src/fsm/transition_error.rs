@@ -5,12 +5,12 @@ use std::fmt;
 use super::event::Event;
 use crate::schema::OrderStateId;
 
-/// `state` の状態で `event` に対応する遷移が定義されていないことを表す。
-///
-/// bool フラグ持ち・enum+match 散在の設計では「その状態でそのイベントは
-/// 無効」ということが実行時まで (最悪本番まで) 分からない。ここでは
-/// `OrderFsm` が持つ遷移表を引いた結果として型で返るので、呼び出し側は
-/// 必ず `Result` を処理しなければならない。
+// `state` の状態で `event` に対応する遷移が定義されていないことを表す。
+//
+// bool フラグ持ち・enum+match 散在の設計では「その状態でそのイベントは
+// 無効」ということが実行時まで (最悪本番まで) 分からない。ここでは
+// `OrderFsm` が持つ遷移表を引いた結果として型で返るので、呼び出し側は
+// 必ず `Result` を処理しなければならない。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TransitionError {
     pub state: OrderStateId,
