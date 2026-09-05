@@ -772,16 +772,16 @@ mod tests {
         };
         assert_eq!(belongs_to_of(&g1), belongs_to_of(&g2));
 
-        let boss_of = |g: &OrgChart::Graph| -> Vec<(BossId, Boss)> {
+        // 積み荷のある辺の辺値型は `PartialEq` を導出しない (積み荷の型へトレイトを
+        // 要求しないため。issue #27) ので、端点と積み荷を組にして比較する。
+        let boss_of = |g: &OrgChart::Graph| -> Vec<(BossId, EmployeeId, EmployeeId, BossEdge)> {
             g.boss_iter()
                 .map(|edge| {
                     (
                         edge.id().clone(),
-                        Boss::new(
-                            edge.subordinate().id().clone(),
-                            edge.superior().id().clone(),
-                            edge.payload().clone(),
-                        ),
+                        edge.subordinate().id().clone(),
+                        edge.superior().id().clone(),
+                        edge.payload().clone(),
                     )
                 })
                 .collect()

@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    4277078618578202810u64, 13644532247934540183u64, 13257936026120012632u64,
-    643120888740904748u64,
+    6105925462785120602u64, 7380258751773701043u64, 4704119535135197448u64,
+    14304594653246974764u64,
 ];
 /// `NodeA` ノードの公開ID。
 ///
@@ -76,7 +76,7 @@ pub struct __ExactlyOneNamedPosition(__ExactlyOneInternalPosition, u64);
 /// 構築時に組み立てる `Unconstrained` 辺の値。
 ///
 /// 宣言: `tests/role_query.rs` の `edge Unconstrained = (source: NodeA) -[weight: Weight]-> (target: NodeB)`
-#[derive(Clone, PartialEq)]
+#[derive(Clone)]
 pub struct Unconstrained {
     /// この辺の始点ノードの公開ID。
     pub source: NodeAId,
@@ -175,7 +175,7 @@ impl std::fmt::Debug for AtMostOne {
 /// 構築時に組み立てる `ExactlyOne` 辺の値。
 ///
 /// 宣言: `tests/role_query.rs` の `edge ExactlyOne = (src: NodeA) -[weight: Weight]-> (dst: NodeB) where each dst: 1`
-#[derive(Clone, PartialEq)]
+#[derive(Clone)]
 pub struct ExactlyOne {
     /// この辺の始点ノードの公開ID。
     pub src: NodeAId,

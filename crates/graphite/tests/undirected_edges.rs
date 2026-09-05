@@ -237,9 +237,15 @@ mod tests {
             (first.id(), second.id()),
             (&person("alice"), &person("bob"))
         );
+        // 積み荷のある無向辺の辺値は `PartialEq` を導出しない (積み荷の型へトレイトを
+        // 要求しないため。issue #27)。順序を区別しない等値性そのものは積み荷のない
+        // `Friends` と `UnorderedPair` の単体テストが確かめており、ここでは端点だけを
+        // 取り出して、逆順に構築しても同じ2つの端点を保持することを確かめる。
+        let 順方向 = Wire::new(person("alice"), person("bob"), Cable { ohm: 5 });
+        let 逆方向 = Wire::new(person("bob"), person("alice"), Cable { ohm: 5 });
         assert_eq!(
-            Wire::new(person("alice"), person("bob"), Cable { ohm: 5 }),
-            Wire::new(person("bob"), person("alice"), Cable { ohm: 5 })
+            順方向.endpoints(),
+            (逆方向.endpoints().1, 逆方向.endpoints().0)
         );
         assert_eq!(w.cable().ohm, 5);
     }

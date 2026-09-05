@@ -1,5 +1,5 @@
 // このファイルは Graphite が生成したため手編集しないこと。
-// 生成元: src/lib.rs:42
+// 生成元: src/lib.rs:45
 // 再生成: パッケージのディレクトリで `cargo graphite generate` を実行する
 //         (Graphite リポジトリ自身の開発では `cargo xtask generate`)。
 
@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    13942286671104915267u64, 8965300523475896168u64, 8491419155506059333u64,
-    16335442955436624129u64,
+    14161583243379269764u64, 2112982915550556329u64, 16761507376483625142u64,
+    7332939996892197450u64,
 ];
 /// `Book` ノードの公開ID。
 ///
@@ -43,7 +43,7 @@ pub struct __BorrowedNamedPosition(__BorrowedInternalPosition, u64);
 /// 構築時に組み立てる `Borrowed` 辺の値。
 ///
 /// 宣言: `src/lib.rs` の `edge Borrowed = (book: Book) -[loan: Loan]-> (reader: Reader) where each book: 0..1`
-#[derive(Clone, PartialEq)]
+#[derive(Clone)]
 pub struct Borrowed {
     /// この辺の始点ノードの公開ID。
     pub book: BookId,

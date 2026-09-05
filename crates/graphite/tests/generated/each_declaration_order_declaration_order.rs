@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    14246360806138963568u64, 3035476437326829189u64, 711339899403654402u64,
-    14994782173098643214u64,
+    11745532829384592571u64, 16883342386426598732u64, 13153850954141492341u64,
+    17241637028332784073u64,
 ];
 /// `Author` ノードの公開ID。
 ///
@@ -43,7 +43,7 @@ pub struct __WroteNamedPosition(__WroteInternalPosition, u64);
 /// 構築時に組み立てる `Wrote` 辺の値。
 ///
 /// 宣言: `tests/each_declaration_order.rs` の `edge Wrote = (writer: Author) -[byline: Byline]-> (article: Article) where each article: 1, each writer: 0..1`
-#[derive(Clone, PartialEq)]
+#[derive(Clone)]
 pub struct Wrote {
     /// この辺の始点ノードの公開ID。
     pub writer: AuthorId,

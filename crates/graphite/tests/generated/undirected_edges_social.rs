@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    3618885743628589251u64, 17969735439622537596u64, 16740285505645287273u64,
-    15623486742478545245u64,
+    6713610528501623676u64, 11526982922160177657u64, 2887158255242216170u64,
+    15414436281136861942u64,
 ];
 /// `Person` ノードの公開ID。
 ///
@@ -79,7 +79,7 @@ impl std::fmt::Debug for Friends {
 /// 構築時に組み立てる `Wire` 辺の値。
 ///
 /// 宣言: `tests/undirected_edges.rs` の `edge Wire = Person -[cable: Cable]- Person`
-#[derive(Clone, PartialEq)]
+#[derive(Clone)]
 pub struct Wire {
     endpoints: graphite::UnorderedPair<PersonId>,
     /// この辺が運ぶ積み荷。

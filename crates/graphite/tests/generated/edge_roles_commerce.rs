@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    12401285177235109617u64, 17884696087603523456u64, 13971650569276633899u64,
-    8188854027580756551u64,
+    15555612360965261788u64, 1413411313734462287u64, 8211050318752657966u64,
+    1342606050475398418u64,
 ];
 /// `Person` ノードの公開ID。
 ///
@@ -53,7 +53,7 @@ pub struct __SubscriptionNamedPosition(__SubscriptionInternalPosition, u64);
 /// 構築時に組み立てる `Purchase` 辺の値。
 ///
 /// 宣言: `tests/edge_roles.rs` の `edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) where each buyer: 1..2, each product: 0..1, unique pair`
-#[derive(Clone, PartialEq)]
+#[derive(Clone)]
 pub struct Purchase {
     /// この辺の始点ノードの公開ID。
     pub buyer: PersonId,

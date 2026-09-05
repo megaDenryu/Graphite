@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    6931784867650698000u64, 7390149546660058963u64, 4534678298653114414u64,
-    11595847304520584666u64,
+    3631990635714063563u64, 8658835970038722026u64, 14582429724547816233u64,
+    2720538124548300445u64,
 ];
 /// `Sensor` ノードの公開ID。
 ///
@@ -43,7 +43,7 @@ pub struct __MeasuredNamedPosition(__MeasuredInternalPosition, u64);
 /// 構築時に組み立てる `Measured` 辺の値。
 ///
 /// 宣言: `tests/f64_attrs.rs` の `edge Measured = (sensor: Sensor) -[measurement: MeasuredEdge]-> (reading: Reading)`
-#[derive(Clone, PartialEq)]
+#[derive(Clone)]
 pub struct Measured {
     /// この辺の始点ノードの公開ID。
     pub sensor: SensorId,

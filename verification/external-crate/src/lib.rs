@@ -9,20 +9,23 @@
 //! 検査は `cargo xtask check-external` が行う。生成し直すときは、このディレクトリで
 //! `cargo graphite generate` を実行する。
 
+// 以下の3つの型は、生成コードが要求するトレイト (`docs/schema_v4.md` §3.1.2) だけを
+// 導出する。ノード値型は何も導出せず、積み荷型は `Clone` だけを導出する。この検証用
+// パッケージのビルドが、生成コードが利用者の型へそれ以上のトレイトを要求しないことを
+// 機械で確かめる。導出を足すと保証が消えるため足さない (issue #27)。
+
 /// ノード型: 蔵書。
-#[derive(Debug, Clone, PartialEq)]
 pub struct Book {
     pub title: String,
 }
 
 /// ノード型: 利用者。
-#[derive(Debug, Clone, PartialEq)]
 pub struct Reader {
     pub name: String,
 }
 
 /// `Borrowed` 辺が1本ごとに運ぶ積み荷。
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone)]
 pub struct Loan {
     pub day: u32,
 }

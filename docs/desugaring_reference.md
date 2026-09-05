@@ -205,8 +205,8 @@ moduleは利用者が書いた `pub mod Commerce { include!(...); }` そのも�
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    12401285177235109617u64, 17884696087603523456u64, 13971650569276633899u64,
-    8188854027580756551u64,
+    15555612360965261788u64, 1413411313734462287u64, 8211050318752657966u64,
+    1342606050475398418u64,
 ];
 ```
 
@@ -488,11 +488,12 @@ Graphiteは積み荷型を生成せず、参照するだけである。
 
 **3. 公開生成物**
 
-辺種別ごとに、構築用の辺値型を1つ生成する
+辺種別ごとに、構築用の辺値型を1つ生成する。積み荷のある辺値型は `PartialEq` を導出
+しない (積み荷の型へトレイトを要求しないためである。参照: `docs/schema_v4.md` §3.1.2)
 (`crates/graphite/tests/generated/edge_roles_commerce.rs:52-95`)。
 
 ```rust
-#[derive(Clone, PartialEq)]
+#[derive(Clone)]
 pub struct Purchase {
     pub buyer: PersonId,
     pub product: ProductId,
@@ -889,11 +890,12 @@ impl graphite::UndirectedEdgeLiteral<PersonId, ()> for Friends {
 (`crates/graphite/src/unordered_pair.rs:20-40`)。したがって
 `Friends::new(alice, bob) == Friends::new(bob, alice)` である。
 
-積み荷ありの無向辺は積み荷を公開フィールドに持つ
+積み荷ありの無向辺は積み荷を公開フィールドに持ち、`PartialEq` を導出しない
+(積み荷の型へトレイトを要求しないためである。参照: `docs/schema_v4.md` §3.1.2)
 (`crates/graphite/tests/generated/undirected_edges_social.rs:78-109`)。
 
 ```rust
-#[derive(Clone, PartialEq)]
+#[derive(Clone)]
 pub struct Wire {
     endpoints: graphite::UnorderedPair<PersonId>,
     pub cable: Cable,
