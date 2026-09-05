@@ -205,8 +205,8 @@ moduleは利用者が書いた `pub mod Commerce { include!(...); }` そのも�
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    5874037175148090942u64, 15608385234508356237u64, 5177389743803744232u64,
-    7628423289972410580u64,
+    12401285177235109617u64, 17884696087603523456u64, 13971650569276633899u64,
+    8188854027580756551u64,
 ];
 ```
 
@@ -705,14 +705,14 @@ edge ExactlyOne = (src: NodeA) -[weight: Weight]-> (dst: NodeB) where each dst: 
 PurchaseBuyerEachViolation {
     /// 出次数が制約に反した始点ノードの公開ID。
     source: PersonId,
-    /// この始点から実際に出ている辺の本数。
+    /// この辺種別で、この始点から実際に出ている辺の本数。
     count: usize,
 },
 /// このエッジ種別の `each` 制約違反 (入次数)。
 PurchaseProductEachViolation {
     /// 入次数が制約に反した終点ノードの公開ID。
     target: ProductId,
-    /// この終点へ実際に入っている辺の本数。
+    /// この辺種別で、この終点へ実際に入っている辺の本数。
     count: usize,
 },
 ```
@@ -915,7 +915,7 @@ impl Wire {
 FriendsUnknownEndpoint {
     /// 未知のキーを参照した辺の公開ID。
     edge: FriendsId,
-    /// 参照先が見つからなかった端点ノードの公開ID。
+    /// この辺が端点として参照した、対応するノードが存在しないキー。
     endpoint: PersonId,
 },
 /// このエッジ種別の `unique pair` 違反 (無向のため
@@ -1745,7 +1745,7 @@ impl graphite::NamedGraphElement<Graph> for __PersonNamedPosition {
 **5. 構築時の処理**
 
 名前付き位置は、その種別の `Builder` 内部の `Vec` へ追加する直前の長さを記録する
-(`crates/graphite/tests/generated/edge_roles_commerce.rs:777-790`)。
+(`crates/graphite/tests/generated/edge_roles_commerce.rs:779-794`)。
 
 ```rust
     fn insert_named_with_id(
@@ -1755,7 +1755,9 @@ impl graphite::NamedGraphElement<Graph> for __PersonNamedPosition {
         _permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition) {
         let named_position = __PersonNamedPosition(
-            __PersonInternalPosition(b.__graphite_node_person.len()),
+            __PersonInternalPosition(
+                graphite::TablePosition::from_index(b.__graphite_node_person.len()),
+            ),
             b.__graphite_construction_stamp,
         );
         let returned_id = id.clone();
@@ -2270,27 +2272,56 @@ pub fn purchase_payload_mut(&mut self, id: &PurchaseId) -> Option<&mut Transacti
 
 `Violation` enum。ノードのキー重複、辺のキー重複、未知の端点、`each` 違反、
 `unique pair` 違反の5種類のvariantを持つ
-(`crates/graphite/tests/generated/edge_roles_commerce.rs:138-180`。`Subscription` 側の同型のvariantは省く)。
+(`crates/graphite/tests/generated/edge_roles_commerce.rs:142-186`。`Subscription` 側の同型のvariantは省く)。
 
 ```rust
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
+    /// このノード種別のキーが重複している。
     DuplicatePerson(PersonId),
+    /// このノード種別のキーが重複している。
     DuplicateProduct(ProductId),
     /// このエッジ種別のキーが重複している。
     PurchaseDuplicateKey(PurchaseId),
     /// このエッジが未知の始点キーを参照している。
-    PurchaseUnknownSource { edge: PurchaseId, source: PersonId },
+    PurchaseUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: PurchaseId,
+        /// この辺が始点として参照した、対応するノードが存在しないキー。
+        source: PersonId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    PurchaseUnknownTarget { edge: PurchaseId, target: ProductId },
+    PurchaseUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: PurchaseId,
+        /// この辺が終点として参照した、対応するノードが存在しないキー。
+        target: ProductId,
+    },
     /// このエッジ種別の `each` 制約違反 (出次数)。
-    PurchaseBuyerEachViolation { source: PersonId, count: usize },
+    PurchaseBuyerEachViolation {
+        /// 出次数が制約に反した始点ノードの公開ID。
+        source: PersonId,
+        /// この辺種別で、この始点から実際に出ている辺の本数。
+        count: usize,
+    },
     /// このエッジ種別の `each` 制約違反 (入次数)。
-    PurchaseProductEachViolation { target: ProductId, count: usize },
+    PurchaseProductEachViolation {
+        /// 入次数が制約に反した終点ノードの公開ID。
+        target: ProductId,
+        /// この辺種別で、この終点へ実際に入っている辺の本数。
+        count: usize,
+    },
     /// このエッジ種別の `unique pair` 違反 (同じ始点・終点の対に
     /// 2本目の辺が張られた)。
-    PurchaseUniquePairViolation { source: PersonId, target: ProductId },
+    PurchaseUniquePairViolation {
+        /// 2本目の辺が張られた対の始点ノードの公開ID。
+        source: PersonId,
+        /// 2本目の辺が張られた対の終点ノードの公開ID。
+        target: ProductId,
+    },
+    // ...
+}
 ```
 
 `Violation` は `Display` と `std::error::Error` を実装し、`Debug` は `Display` へ
