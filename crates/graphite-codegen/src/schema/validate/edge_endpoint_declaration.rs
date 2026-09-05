@@ -32,8 +32,8 @@ pub fn validate_edge_endpoints(nodes: &[NodeDecl], edges: &[EdgeDecl]) -> syn::R
     Ok(())
 }
 
-// G4a (二次エラーの抑制): パース回復により1件以上の壊れた宣言があった
-// ときに、`lib.rs` が `validate_edge_endpoints` の代わりに呼ぶ。
+// 二次エラーの抑制 (G4a) のため、パース回復により1件以上の壊れた宣言が
+// あったときに、`lib.rs` が `validate_edge_endpoints` の代わりに呼ぶ。
 // 端点が未宣言のノード型を指す辺をエラーにはせず、生成対象から
 // 除外する。壊れたノード宣言をたまたま参照しているだけの可能性が高く、
 // そのまま `validate_edge_endpoints` を呼ぶと「壊れた宣言由来の

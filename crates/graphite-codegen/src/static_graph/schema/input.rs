@@ -35,9 +35,9 @@ syn::custom_keyword!(schema);
 syn::custom_keyword!(node);
 syn::custom_keyword!(edge);
 
+// `static_schema!` は `schema名` をそのまま `macro_rules! {schema名}` の名前として
+// 使う (利用側は `<schema名>! { graph <名前>; .. }` と書く)。
 pub struct 静的グラフ型入力 {
-    // `static_schema!` がこの名前そのものを `macro_rules! {schema名}` の名前
-    // として使う (利用側は `<schema名>! { graph <名前>; .. }` と書く)。
     pub schema名: Ident,
     pub ノード宣言達: Vec<ノード宣言>,
     pub 辺宣言達: Vec<辺宣言>,

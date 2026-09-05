@@ -25,7 +25,7 @@ pub struct SchemaParse {
 impl SchemaInput {
     // 宣言単位の回復パーサ (G4a)。
     //
-    // 回復は次の戦略で行う。
+    // `parse_recovering` は次の戦略で回復する。
     //
     // - ヘッダ (`schema Name {`) 自体が壊れている場合は回復せず `Err` を
     //   返す (`schema` キーワード・スキーマ名・開きブレースが揃わないと
@@ -33,9 +33,9 @@ impl SchemaInput {
     // - ボディ内は `node`/`edge` 宣言単位でパースする。1宣言のパースに
     //   失敗したら、その `syn::Error` を `errors` に蓄積し、次の宣言境界
     //   まで読み飛ばして続行する。
-    // - 境界の定義: ボディの `ParseStream` からトークン木を1つずつ
-    //   読み飛ばし、次に `node`/`edge` キーワードが先頭に現れるか入力が
-    //   尽きるまで進める。`node`/`edge` いずれの宣言も `;` で終わるため
+    // - 宣言境界は、ボディの `ParseStream` からトークン木を1つずつ読み飛ばし、
+    //   次に `node`/`edge` キーワードが先頭に現れるか入力が尽きるまで進めた
+    //   地点と定める。`node`/`edge` いずれの宣言も `;` で終わるため
     //   `;` 区切りの境界定義も選べるが、キーワード探索は proc_macro2 の
     //   `( .. )`/`[ .. ]` がまるごと1つの `Group` トークン木として扱われる
     //   性質にただ乗りできる (where 節・エッジラベルの中身にどんなトークンが
@@ -87,8 +87,8 @@ impl SchemaInput {
 }
 
 // 次の `node`/`edge` キーワード (もしくは入力終端) まで、トークン木を
-// 1つずつ読み飛ばす。`SchemaInput::parse_recovering` のコメントが書いた
-// 境界の定義を参照。
+// 1つずつ読み飛ばす。`SchemaInput::parse_recovering` のコメントに書かれた
+// 宣言境界の定義を参照。
 pub(super) fn skip_to_decl_boundary(content: ParseStream) {
     while !content.is_empty() && !content.peek(kw::node) && !content.peek(kw::edge) {
         // `content.parse::<TokenTree>()` は必ず1つトークン木を消費する

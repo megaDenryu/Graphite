@@ -13,11 +13,11 @@ use crate::schema::semantic::ノード定義;
 // ノード種別1つ分の、生成コードで使う識別子一式。
 //
 // `宣言元への参照` だけは生成名ではないが、この種別の生成物すべてが同じ参照を doc へ
-// 書くため、識別子と同じ場所で持つ。
+// 書くため、識別子と同じ場所で持つ。`accessor_ident` は単数形 snake_case で導出する。
 pub(crate) struct NodeInfo<'a> {
     pub(crate) type_ident: Ident, // ノード値の型名 (`Person`)。利用者の宣言型を指す
     pub(crate) 宣言元への参照: 宣言元への参照, // 生成物の doc へ足す `node` 宣言元への参照
-    pub(crate) id_ty: PublicIdType<'a>, // 既定生成するID、または `(id: 型パス)` 指定の既存型
+    pub(crate) id_ty: PublicIdType<'a>, // スキーマ内限定で既定生成するID、または `(id: 型パス)` 指定の既存型
     pub(crate) field_ident: Ident, // 内部ストレージのフィールド名 (`__graphite_node_person`)
     pub(crate) accessor_ident: Ident, // builder のノード追加メソッド名 (`person`)
 }

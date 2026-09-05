@@ -17,8 +17,8 @@ use crate::schema::semantic::端点対のキーの形;
 // 積む索引のキー型に合わせる)。
 pub(crate) struct EdgeQueryPairSpec {
     other_reference: Ident, // 相手側端点の参照型 (有向辺は終点側、無向辺は位置0側と同型)
-    pair_key: TokenStream, // 端点対索引 (`{accessor}_by_pair`) を検索するキー式
-    pair_order_description: &'static str, // 生成物の doc に書く対の種類 (`順序付き`/`順序なし`)
+    pair_key: TokenStream,  // 端点対索引 (`{accessor}_by_pair`) を検索するキー式
+    pair_order_description: &'static str, // `try_between` の doc に書く対の種類 (`順序付き`/`順序なし`)
 }
 
 impl EdgeQueryPairSpec {

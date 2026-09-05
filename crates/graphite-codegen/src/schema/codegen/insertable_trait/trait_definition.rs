@@ -7,7 +7,7 @@ use syn::Ident;
 // ノード用/エッジ用の挿入トレイトの共通 supertrait
 // (`docs/graph_splice.md` §2「extend の統一」)。
 //
-// 統一 `extend` にこの trait が要る背景を述べる。
+// 統一 `extend` にこの trait が要る背景は次のとおりである。
 //
 // `graph!` のスプライス項 (`..式`) と builder の一括構築 API は、渡された
 // イテレータの要素の型 (ノード型かエッジ種別か) を見て正しい内部ストレージへ
@@ -19,7 +19,7 @@ use syn::Ident;
 // `Id` を本トレイトに集約し、文字列から既定IDを作る能力だけを別トレイトに
 // 分ける。
 //
-// 代替案として2本の blanket impl を検討した。
+// 代替案として2本の blanket impl が考えられる。
 //
 //     impl<T: {Schema}Node> {Schema}Insertable for T { .. }
 //     impl<T: {Schema}Edge> {Schema}Insertable for T { .. }

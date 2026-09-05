@@ -21,7 +21,7 @@ use crate::schema::semantic::ノードの探索計画;
 // v4 (`docs/schema_v4.md` §3.2) が要求する「ノード挿入用トレイト」
 // とその各ノード型への impl、およびノード種別ごとの `NodeRef` 型を生成する。
 //
-// このトレイトが必要になる背景を述べる。
+// このトレイトが必要になる背景は次のとおりである。
 //
 // `graph!` はノード項を `key = 式` と書かせ、値の型をマクロが一切パース
 // しない (式の型は rustc の型推論に委ねる、という設計上の決定)。その結果
@@ -41,14 +41,14 @@ use crate::schema::semantic::ノードの探索計画;
 // schema module 内にノード名の空 struct (読み取り用マーカー) も置かない
 // (issue #9: `Graph` を外から引数で渡す型名前空間を作らない)。
 //
-// `{Schema}Insertable` と `{Schema}DefaultId` は役割を次のように分ける。
+// `{Schema}Insertable` と `{Schema}DefaultId` には次のように役割が分かれている。
 //
 // 型付き挿入と関連型 `Id` は `{Schema}Insertable` に置く。文字列の束縛名から
 // IDを作る操作は自動生成IDだけが実装する `{Schema}DefaultId` に置く。
 // `{Schema}Node` はノード専用の型境界を保つマーカートレイトである。
 //
-// 命名は `docs/development/design_principles.md` 原則3 (std 命名規約準拠) に沿って
-// 判断した。
+// 命名は、`docs/development/design_principles.md` 原則3 (std 命名規約準拠) に
+// 沿って決めた名前である。
 //
 // 内部 trait 名は `{Schema}Node` とした。生成 module に移した後も
 // `node Node;` や `edge Edge = ..;` と生成基盤名が衝突する可能性を増やさず、

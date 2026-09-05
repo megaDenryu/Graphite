@@ -46,9 +46,7 @@ pub struct 静的グラフ入力 {
 pub struct ノード宣言 {
     pub 名前: Ident,
     pub 実体型: Ident,
-    // 値なし宣言 (`node 名前: 型;`) は None。値は `Nodes::new` の
-    // 実行時引数として渡される (node_entities.rs)。
-    pub 値: Option<Expr>,
+    pub 値: Option<Expr>, // 値なし宣言 (`node 名前: 型;`) は None。実行時引数として `Nodes::new` へ渡す (node_entities.rs)
 }
 
 pub enum 辺中身 {

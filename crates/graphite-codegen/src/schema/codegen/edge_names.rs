@@ -29,7 +29,7 @@ use crate::schema::semantic::{EachSide, RoleCardinality, 積み荷, 辺の向き
 //
 // `宣言元への参照` だけは生成名ではないが、この種別の生成物すべてが同じ参照を doc へ
 // 書くため、識別子と同じ場所で持つ。`accessor_ident` は `kind` が既に PascalCase
-// (型名) であるため、ノードと同じ `to_snake_case` 変換で導出できる。
+// (型名) であるため、ノードと同じ `to_snake_case` 変換で単数形 snake_case へ導出できる。
 // `index_field_ident` と `to_index_field_ident` はどちらも凍結時に構築する
 // (`docs/schema_v4.md` §3.2・`docs/reverse_query.md`)。前者は有向辺では始点を表す
 // `{accessor}_from_index`、無向辺では方向の意味を持たないため `{accessor}_index` と
@@ -39,7 +39,7 @@ pub(crate) struct EdgeInfo<'a> {
     pub(crate) 定義: &'a 辺定義,
     pub(crate) kind: &'a Ident,
     pub(crate) 宣言元への参照: 宣言元への参照, // 生成物の doc へ足す `edge` 宣言元への参照
-    pub(crate) id_ty: PublicIdType<'a>, // エッジ種別の newtype キー型名 (`BossId`)
+    pub(crate) id_ty: PublicIdType<'a>,        // エッジ種別の newtype キー型名 (`BossId`)
     pub(crate) accessor_ident: Ident, // 内部ストレージのフィールド名 = builder 追加メソッド名 (`boss`)
     pub(crate) index_field_ident: Ident, // 位置0キーからその辺のキー一覧を引く内部フィールド名
     pub(crate) to_index_field_ident: Ident, // 位置1キー (終点) から入る辺のキー一覧を引く内部フィールド名

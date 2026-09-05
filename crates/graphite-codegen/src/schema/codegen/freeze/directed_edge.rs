@@ -18,7 +18,8 @@ use crate::schema::semantic::EachSide;
 
 // 有向辺1種別分の凍結検査本体を生成する。
 //
-// 手順:
+// 凍結は次の手順で行う。
+//
 // 1. `Vec<(KindId, Kind)>` から `KeyedTable<KindId, Kind>` を構築 (重複キー
 //    は `{Kind}DuplicateKey` 違反として記録し、その要素は捨てる)。
 // 2. 生き残った各辺について端点 (位置0/1) がそれぞれのノード表に実在するか

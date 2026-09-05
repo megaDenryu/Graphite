@@ -33,7 +33,7 @@ pub enum EdgeShape {
 // (`docs/schema_v4.md` §1)。型名なので慣習上 PascalCase だが、パース段階では
 // ケースを検査せず単なる `Ident` として読む。
 pub struct EdgeDecl {
-    pub kind: Ident, // エッジ種別名
+    pub kind: Ident,         // エッジ種別名
     pub id_ty: Option<Path>, // 既存の公開 ID 型。`None` なら `{kind}Id` newtype を生成する
     pub shape: EdgeShape,
     pub constraints: WhereClause,
