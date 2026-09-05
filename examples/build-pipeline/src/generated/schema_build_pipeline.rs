@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    17068521739631416585u64, 18033665556369048732u64, 4419546753171838999u64,
-    10257357589365954883u64,
+    11095281286266884989u64, 18095715996711011956u64, 8077778163339889275u64,
+    4519956522106804775u64,
 ];
 /// `Consumes` 辺の公開ID。
 ///
@@ -175,15 +175,15 @@ impl std::fmt::Display for Violation {
             Violation::ProducesUnknownSource { .. } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` の始点, {})",
-                    "Produces", "Task"
+                    "未知のキーが {} として解決できません (辺 `{}` の{})",
+                    "Task", "Produces", "始点"
                 )
             }
             Violation::ProducesUnknownTarget { .. } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` の終点, {})",
-                    "Produces", "Artifact"
+                    "未知のキーが {} として解決できません (辺 `{}` の{})",
+                    "Artifact", "Produces", "終点"
                 )
             }
             Violation::ProducesUniquePairViolation { .. } => {
@@ -196,18 +196,18 @@ impl std::fmt::Display for Violation {
             Violation::ConsumesDuplicateKey(id) => {
                 write!(f, "{}のキーが重複しています: {:?}", "Consumes", id)
             }
-            Violation::ConsumesUnknownSource { .. } => {
+            Violation::ConsumesUnknownSource { edge, .. } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` の始点, {})",
-                    "Consumes", "Task"
+                    "未知のキーが {} として解決できません (辺 `{}` {:?} の{})",
+                    "Task", "Consumes", edge, "始点"
                 )
             }
-            Violation::ConsumesUnknownTarget { .. } => {
+            Violation::ConsumesUnknownTarget { edge, .. } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` の終点, {})",
-                    "Consumes", "Artifact"
+                    "未知のキーが {} として解決できません (辺 `{}` {:?} の{})",
+                    "Artifact", "Consumes", edge, "終点"
                 )
             }
             Violation::ConsumesUniquePairViolation { .. } => {

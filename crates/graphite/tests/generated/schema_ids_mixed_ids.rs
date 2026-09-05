@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    2977801887840618950u64, 3481880782700003219u64, 519885044196947924u64,
-    124482956800415768u64,
+    11908456558033488533u64, 782883004304879992u64, 10432733121046341927u64,
+    2035203508851332459u64,
 ];
 /// `AutomaticNode` ノードの公開ID。
 ///
@@ -301,15 +301,15 @@ impl std::fmt::Display for Violation {
             Violation::ExternalLinkUnknownSource { .. } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` の始点, {})",
-                    "ExternalLink", "ExternalNode"
+                    "未知のキーが {} として解決できません (辺 `{}` の{})",
+                    "ExternalNode", "ExternalLink", "始点"
                 )
             }
             Violation::ExternalLinkUnknownTarget { .. } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` の終点, {})",
-                    "ExternalLink", "ExternalNode"
+                    "未知のキーが {} として解決できません (辺 `{}` の{})",
+                    "ExternalNode", "ExternalLink", "終点"
                 )
             }
             Violation::ExternalLinkSourceEachViolation { count, .. } => {
@@ -325,15 +325,15 @@ impl std::fmt::Display for Violation {
             Violation::ExternalIncomingUnknownSource { .. } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` の始点, {})",
-                    "ExternalIncoming", "ExternalNode"
+                    "未知のキーが {} として解決できません (辺 `{}` の{})",
+                    "ExternalNode", "ExternalIncoming", "始点"
                 )
             }
             Violation::ExternalIncomingUnknownTarget { .. } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` の終点, {})",
-                    "ExternalIncoming", "ExternalNode"
+                    "未知のキーが {} として解決できません (辺 `{}` の{})",
+                    "ExternalNode", "ExternalIncoming", "終点"
                 )
             }
             Violation::ExternalIncomingTargetEachViolation { count, .. } => {
@@ -349,8 +349,8 @@ impl std::fmt::Display for Violation {
             Violation::ExternalFriendUnknownEndpoint { .. } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` の端点, {})",
-                    "ExternalFriend", "ExternalNode"
+                    "未知のキーが {} として解決できません (辺 `{}` の{})",
+                    "ExternalNode", "ExternalFriend", "端点"
                 )
             }
             Violation::AutomaticLinkDuplicateKey(id) => {
@@ -361,15 +361,15 @@ impl std::fmt::Display for Violation {
             Violation::AutomaticLinkUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の始点, {}): {:?}",
-                    "AutomaticLink", edge, "AutomaticNode", source
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    source, "AutomaticNode", "AutomaticLink", edge, "始点"
                 )
             }
             Violation::AutomaticLinkUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の終点, {}): {:?}",
-                    "AutomaticLink", edge, "AutomaticNode", target
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    target, "AutomaticNode", "AutomaticLink", edge, "終点"
                 )
             }
         }

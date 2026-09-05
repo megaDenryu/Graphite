@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    6139705494583786147u64, 16288238315158501338u64, 12792892878216391469u64,
-    11603743267620646169u64,
+    15092244863662387437u64, 6589318162792535956u64, 17529994145301696279u64,
+    8936462527504610515u64,
 ];
 /// `Approves` 辺の公開ID。
 ///
@@ -95,18 +95,18 @@ impl std::fmt::Display for Violation {
             Violation::ApprovesDuplicateKey(id) => {
                 write!(f, "{}のキーが重複しています: {:?}", "Approves", id)
             }
-            Violation::ApprovesUnknownSource { .. } => {
+            Violation::ApprovesUnknownSource { edge, .. } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` の始点, {})",
-                    "Approves", "Person"
+                    "未知のキーが {} として解決できません (辺 `{}` {:?} の{})",
+                    "Person", "Approves", edge, "始点"
                 )
             }
-            Violation::ApprovesUnknownTarget { .. } => {
+            Violation::ApprovesUnknownTarget { edge, .. } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` の終点, {})",
-                    "Approves", "Person"
+                    "未知のキーが {} として解決できません (辺 `{}` {:?} の{})",
+                    "Person", "Approves", edge, "終点"
                 )
             }
         }

@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    15555612360965261788u64, 1413411313734462287u64, 8211050318752657966u64,
-    1342606050475398418u64,
+    5489065573556137184u64, 18266034404232764339u64, 10320979072007242090u64,
+    15896606367572535998u64,
 ];
 /// `Person` ノードの公開ID。
 ///
@@ -223,15 +223,15 @@ impl std::fmt::Display for Violation {
             Violation::PurchaseUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の始点, {}): {:?}",
-                    "Purchase", edge, "Person", source
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    source, "Person", "Purchase", edge, "始点"
                 )
             }
             Violation::PurchaseUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の終点, {}): {:?}",
-                    "Purchase", edge, "Product", target
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    target, "Product", "Purchase", edge, "終点"
                 )
             }
             Violation::PurchaseBuyerEachViolation { source, count } => {
@@ -263,15 +263,15 @@ impl std::fmt::Display for Violation {
             Violation::SubscriptionUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の始点, {}): {:?}",
-                    "Subscription", edge, "Person", source
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    source, "Person", "Subscription", edge, "始点"
                 )
             }
             Violation::SubscriptionUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の終点, {}): {:?}",
-                    "Subscription", edge, "Product", target
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    target, "Product", "Subscription", edge, "終点"
                 )
             }
             Violation::SubscriptionMemberEachViolation { source, count } => {

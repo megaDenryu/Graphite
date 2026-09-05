@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    14445986729217011174u64, 9351231871506818459u64, 7227283738532981452u64,
-    14248187126226662416u64,
+    17482130487332843695u64, 13938216232753216898u64, 13558795803626492973u64,
+    3739791207962510673u64,
 ];
 /// `人物` ノードの公開ID。
 ///
@@ -204,15 +204,15 @@ impl std::fmt::Display for Violation {
             Violation::購入UnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の始点, {}): {:?}",
-                    "購入", edge, "人物", source
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    source, "人物", "購入", edge, "始点"
                 )
             }
             Violation::購入UnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の終点, {}): {:?}",
-                    "購入", edge, "商品", target
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    target, "商品", "購入", edge, "終点"
                 )
             }
             Violation::購入UniquePairViolation { source, target } => {
@@ -228,8 +228,8 @@ impl std::fmt::Display for Violation {
             Violation::友人UnknownEndpoint { edge, endpoint } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の端点, {}): {:?}",
-                    "友人", edge, "人物", endpoint
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    endpoint, "人物", "友人", edge, "端点"
                 )
             }
             Violation::友人UniquePairViolation { a, b } => {

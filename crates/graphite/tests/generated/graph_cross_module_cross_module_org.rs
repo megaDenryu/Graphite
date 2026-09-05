@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    2671783004215483929u64, 766525080397261176u64, 860101164077804423u64,
-    12608137078715005867u64,
+    9024167048693770031u64, 11463785245884991422u64, 13776718718879724813u64,
+    2399718947258658065u64,
 ];
 /// `BelongsTo` 辺の公開ID。
 ///
@@ -191,18 +191,18 @@ impl std::fmt::Display for Violation {
             Violation::BelongsToDuplicateKey(id) => {
                 write!(f, "{}のキーが重複しています: {:?}", "BelongsTo", id)
             }
-            Violation::BelongsToUnknownSource { .. } => {
+            Violation::BelongsToUnknownSource { edge, .. } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` の始点, {})",
-                    "BelongsTo", "Employee"
+                    "未知のキーが {} として解決できません (辺 `{}` {:?} の{})",
+                    "Employee", "BelongsTo", edge, "始点"
                 )
             }
-            Violation::BelongsToUnknownTarget { .. } => {
+            Violation::BelongsToUnknownTarget { edge, .. } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` の終点, {})",
-                    "BelongsTo", "Department"
+                    "未知のキーが {} として解決できません (辺 `{}` {:?} の{})",
+                    "Department", "BelongsTo", edge, "終点"
                 )
             }
             Violation::BelongsToEmployeeEachViolation { count, .. } => {
@@ -215,18 +215,18 @@ impl std::fmt::Display for Violation {
             Violation::BossDuplicateKey(id) => {
                 write!(f, "{}のキーが重複しています: {:?}", "Boss", id)
             }
-            Violation::BossUnknownSource { .. } => {
+            Violation::BossUnknownSource { edge, .. } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` の始点, {})",
-                    "Boss", "Employee"
+                    "未知のキーが {} として解決できません (辺 `{}` {:?} の{})",
+                    "Employee", "Boss", edge, "始点"
                 )
             }
-            Violation::BossUnknownTarget { .. } => {
+            Violation::BossUnknownTarget { edge, .. } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` の終点, {})",
-                    "Boss", "Employee"
+                    "未知のキーが {} として解決できません (辺 `{}` {:?} の{})",
+                    "Employee", "Boss", edge, "終点"
                 )
             }
             Violation::BossSubordinateEachViolation { count, .. } => {

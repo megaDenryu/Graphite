@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    10481572373303087960u64, 134245604311349225u64, 18340572550950889350u64,
-    6359212947974677714u64,
+    590150031931665190u64, 7491033585626196711u64, 17011639969581626012u64,
+    9864320458998399896u64,
 ];
 /// `BelongsTo` 辺の公開ID。
 ///
@@ -112,18 +112,18 @@ impl std::fmt::Display for Violation {
             Violation::BelongsToDuplicateKey(id) => {
                 write!(f, "{}のキーが重複しています: {:?}", "BelongsTo", id)
             }
-            Violation::BelongsToUnknownSource { .. } => {
+            Violation::BelongsToUnknownSource { edge, .. } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` の始点, {})",
-                    "BelongsTo", "Person"
+                    "未知のキーが {} として解決できません (辺 `{}` {:?} の{})",
+                    "Person", "BelongsTo", edge, "始点"
                 )
             }
-            Violation::BelongsToUnknownTarget { .. } => {
+            Violation::BelongsToUnknownTarget { edge, .. } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` の終点, {})",
-                    "BelongsTo", "Department"
+                    "未知のキーが {} として解決できません (辺 `{}` {:?} の{})",
+                    "Department", "BelongsTo", edge, "終点"
                 )
             }
             Violation::BelongsToPersonEachViolation { count, .. } => {

@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    6625092729671817511u64, 12984493308746521454u64, 15935352755907484997u64,
-    7812730656121755241u64,
+    3824956789396237878u64, 18020355176955461615u64, 13845518050334424484u64,
+    8448673179071204728u64,
 ];
 /// `Person` ノードの公開ID。
 ///
@@ -328,15 +328,15 @@ impl std::fmt::Display for Violation {
             Violation::PurchaseUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の始点, {}): {:?}",
-                    "Purchase", edge, "Person", source
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    source, "Person", "Purchase", edge, "始点"
                 )
             }
             Violation::PurchaseUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の終点, {}): {:?}",
-                    "Purchase", edge, "Product", target
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    target, "Product", "Purchase", edge, "終点"
                 )
             }
             Violation::MentorDuplicateKey(id) => {
@@ -345,15 +345,15 @@ impl std::fmt::Display for Violation {
             Violation::MentorUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の始点, {}): {:?}",
-                    "Mentor", edge, "Person", source
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    source, "Person", "Mentor", edge, "始点"
                 )
             }
             Violation::MentorUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の終点, {}): {:?}",
-                    "Mentor", edge, "Person", target
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    target, "Person", "Mentor", edge, "終点"
                 )
             }
             Violation::MentorSubordinateEachViolation { source, count } => {
@@ -369,15 +369,15 @@ impl std::fmt::Display for Violation {
             Violation::関係UnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の始点, {}): {:?}",
-                    "関係", edge, "Person", source
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    source, "Person", "関係", edge, "始点"
                 )
             }
             Violation::関係UnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の終点, {}): {:?}",
-                    "関係", edge, "Person", target
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    target, "Person", "関係", edge, "終点"
                 )
             }
             Violation::関係UniquePairViolation { source, target } => {
@@ -393,8 +393,8 @@ impl std::fmt::Display for Violation {
             Violation::FriendsUnknownEndpoint { edge, endpoint } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の端点, {}): {:?}",
-                    "Friends", edge, "Person", endpoint
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    endpoint, "Person", "Friends", edge, "端点"
                 )
             }
             Violation::FriendsUniquePairViolation { a, b } => {

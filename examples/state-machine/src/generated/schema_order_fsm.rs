@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    6305705011004229136u64, 214599680133105279u64, 11111355132224751474u64,
-    7146795011124316022u64,
+    4182401562699618628u64, 3873228127436051611u64, 10702611590292971806u64,
+    7872044687754665362u64,
 ];
 /// `OrderState` ノードの公開ID。
 ///
@@ -474,15 +474,15 @@ impl std::fmt::Display for Violation {
             Violation::SubmitUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の始点, {}): {:?}",
-                    "Submit", edge, "OrderState", source
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    source, "OrderState", "Submit", edge, "始点"
                 )
             }
             Violation::SubmitUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の終点, {}): {:?}",
-                    "Submit", edge, "OrderState", target
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    target, "OrderState", "Submit", edge, "終点"
                 )
             }
             Violation::SubmitBeforeEachViolation { source, count } => {
@@ -498,15 +498,15 @@ impl std::fmt::Display for Violation {
             Violation::PayUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の始点, {}): {:?}",
-                    "Pay", edge, "OrderState", source
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    source, "OrderState", "Pay", edge, "始点"
                 )
             }
             Violation::PayUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の終点, {}): {:?}",
-                    "Pay", edge, "OrderState", target
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    target, "OrderState", "Pay", edge, "終点"
                 )
             }
             Violation::PayBeforeEachViolation { source, count } => {
@@ -522,15 +522,15 @@ impl std::fmt::Display for Violation {
             Violation::ShipUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の始点, {}): {:?}",
-                    "Ship", edge, "OrderState", source
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    source, "OrderState", "Ship", edge, "始点"
                 )
             }
             Violation::ShipUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の終点, {}): {:?}",
-                    "Ship", edge, "OrderState", target
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    target, "OrderState", "Ship", edge, "終点"
                 )
             }
             Violation::ShipBeforeEachViolation { source, count } => {
@@ -546,15 +546,15 @@ impl std::fmt::Display for Violation {
             Violation::DeliverUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の始点, {}): {:?}",
-                    "Deliver", edge, "OrderState", source
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    source, "OrderState", "Deliver", edge, "始点"
                 )
             }
             Violation::DeliverUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の終点, {}): {:?}",
-                    "Deliver", edge, "OrderState", target
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    target, "OrderState", "Deliver", edge, "終点"
                 )
             }
             Violation::DeliverBeforeEachViolation { source, count } => {
@@ -570,15 +570,15 @@ impl std::fmt::Display for Violation {
             Violation::CancelUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の始点, {}): {:?}",
-                    "Cancel", edge, "OrderState", source
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    source, "OrderState", "Cancel", edge, "始点"
                 )
             }
             Violation::CancelUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の終点, {}): {:?}",
-                    "Cancel", edge, "OrderState", target
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    target, "OrderState", "Cancel", edge, "終点"
                 )
             }
             Violation::CancelBeforeEachViolation { source, count } => {
@@ -594,15 +594,15 @@ impl std::fmt::Display for Violation {
             Violation::RefundUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の始点, {}): {:?}",
-                    "Refund", edge, "OrderState", source
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    source, "OrderState", "Refund", edge, "始点"
                 )
             }
             Violation::RefundUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の終点, {}): {:?}",
-                    "Refund", edge, "OrderState", target
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    target, "OrderState", "Refund", edge, "終点"
                 )
             }
             Violation::RefundBeforeEachViolation { source, count } => {

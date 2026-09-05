@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    17990124449006183557u64, 2621620172964951308u64, 16339597311596795239u64,
-    11358142456419275267u64,
+    5731997792011667127u64, 16012251869052340554u64, 3423677215556990921u64,
+    125064250215881189u64,
 ];
 /// `Person` ノードの公開ID。
 ///
@@ -187,15 +187,15 @@ impl std::fmt::Display for Violation {
             Violation::PurchaseUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の始点, {}): {:?}",
-                    "Purchase", edge, "Person", source
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    source, "Person", "Purchase", edge, "始点"
                 )
             }
             Violation::PurchaseUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の終点, {}): {:?}",
-                    "Purchase", edge, "Item", target
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    target, "Item", "Purchase", edge, "終点"
                 )
             }
             Violation::KnowsDuplicateKey(id) => {
@@ -204,15 +204,15 @@ impl std::fmt::Display for Violation {
             Violation::KnowsUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の始点, {}): {:?}",
-                    "Knows", edge, "Person", source
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    source, "Person", "Knows", edge, "始点"
                 )
             }
             Violation::KnowsUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の終点, {}): {:?}",
-                    "Knows", edge, "Person", target
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    target, "Person", "Knows", edge, "終点"
                 )
             }
         }

@@ -27,24 +27,40 @@ pub(crate) fn gen_unique_pair_violation_case(
                 target: #to_id,
             }
         };
-        let display_arm = if edge.from_node.id_ty.is_debug_printable()
-            && edge.to_node.id_ty.is_debug_printable()
-        {
-            quote! {
+        // 始点と終点は表示できるかを別々に判定する。利用者が宣言したID型へ
+        // `Debug` を要求しない契約のため、片方だけが生成ID型である構成が起こる。
+        let display_arm = match (
+            edge.from_node.id_ty.is_debug_printable(),
+            edge.to_node.id_ty.is_debug_printable(),
+        ) {
+            (true, true) => quote! {
                 #violation_ident::#v { source, target } => write!(
                     f,
                     "unique pair違反: 辺 `{}` は {:?} -> {:?} の対に既に辺が存在します",
                     #kind_str, source, target
                 )
-            }
-        } else {
-            quote! {
+            },
+            (true, false) => quote! {
+                #violation_ident::#v { source, .. } => write!(
+                    f,
+                    "unique pair違反: 辺 `{}` は始点 {:?} を含む対に既に辺が存在します",
+                    #kind_str, source
+                )
+            },
+            (false, true) => quote! {
+                #violation_ident::#v { target, .. } => write!(
+                    f,
+                    "unique pair違反: 辺 `{}` は終点 {:?} を含む対に既に辺が存在します",
+                    #kind_str, target
+                )
+            },
+            (false, false) => quote! {
                 #violation_ident::#v { .. } => write!(
                     f,
                     "unique pair違反: 辺 `{}` の同じ始点・終点の対に既に辺が存在します",
                     #kind_str
                 )
-            }
+            },
         };
         (variant, display_arm)
     } else {

@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    2136354528765493649u64, 13515117838429036936u64, 1455345150050444127u64,
-    14468534511132374123u64,
+    5572859402718013513u64, 17663147619874026784u64, 18245912692590933879u64,
+    10549488465702688947u64,
 ];
 /// `Employee` ノードの公開ID。
 ///
@@ -370,15 +370,15 @@ impl std::fmt::Display for Violation {
             Violation::BelongsToUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の始点, {}): {:?}",
-                    "BelongsTo", edge, "Employee", source
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    source, "Employee", "BelongsTo", edge, "始点"
                 )
             }
             Violation::BelongsToUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の終点, {}): {:?}",
-                    "BelongsTo", edge, "Department", target
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    target, "Department", "BelongsTo", edge, "終点"
                 )
             }
             Violation::BelongsToEmployeeEachViolation { source, count } => {
@@ -394,15 +394,15 @@ impl std::fmt::Display for Violation {
             Violation::BossUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の始点, {}): {:?}",
-                    "Boss", edge, "Employee", source
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    source, "Employee", "Boss", edge, "始点"
                 )
             }
             Violation::BossUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の終点, {}): {:?}",
-                    "Boss", edge, "Employee", target
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    target, "Employee", "Boss", edge, "終点"
                 )
             }
             Violation::BossSubordinateEachViolation { source, count } => {
@@ -418,15 +418,15 @@ impl std::fmt::Display for Violation {
             Violation::AssignedUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の始点, {}): {:?}",
-                    "Assigned", edge, "Employee", source
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    source, "Employee", "Assigned", edge, "始点"
                 )
             }
             Violation::AssignedUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の終点, {}): {:?}",
-                    "Assigned", edge, "Project", target
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    target, "Project", "Assigned", edge, "終点"
                 )
             }
             Violation::SponsorsDuplicateKey(id) => {
@@ -435,15 +435,15 @@ impl std::fmt::Display for Violation {
             Violation::SponsorsUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の始点, {}): {:?}",
-                    "Sponsors", edge, "Department", source
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    source, "Department", "Sponsors", edge, "始点"
                 )
             }
             Violation::SponsorsUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の終点, {}): {:?}",
-                    "Sponsors", edge, "Project", target
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    target, "Project", "Sponsors", edge, "終点"
                 )
             }
             Violation::SponsorsDepartmentEachViolation { source, count } => {

@@ -5,6 +5,7 @@ pub(crate) mod edge_duplicate_key;
 pub(crate) mod node_duplicate;
 pub(crate) mod unique_pair_violation;
 pub(crate) mod unknown_endpoint;
+pub(crate) mod unknown_endpoint_message;
 
 use proc_macro2::TokenStream;
 use quote::quote;

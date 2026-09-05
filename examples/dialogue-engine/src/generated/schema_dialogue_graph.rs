@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    17852726210347714584u64, 10592565186838484359u64, 4889321892315961550u64,
-    354349353551302090u64,
+    1676735987963901790u64, 9705446312033110733u64, 5266845505104514108u64,
+    1170608020221244200u64,
 ];
 /// `Scene` ノードの公開ID。
 ///
@@ -194,15 +194,15 @@ impl std::fmt::Display for Violation {
             Violation::ChoiceUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の始点, {}): {:?}",
-                    "Choice", edge, "Scene", source
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    source, "Scene", "Choice", edge, "始点"
                 )
             }
             Violation::ChoiceUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の終点, {}): {:?}",
-                    "Choice", edge, "Scene", target
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    target, "Scene", "Choice", edge, "終点"
                 )
             }
             Violation::FinaleDuplicateKey(id) => {
@@ -211,15 +211,15 @@ impl std::fmt::Display for Violation {
             Violation::FinaleUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の始点, {}): {:?}",
-                    "Finale", edge, "Scene", source
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    source, "Scene", "Finale", edge, "始点"
                 )
             }
             Violation::FinaleUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の終点, {}): {:?}",
-                    "Finale", edge, "Ending", target
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    target, "Ending", "Finale", edge, "終点"
                 )
             }
             Violation::FinaleSceneEachViolation { source, count } => {

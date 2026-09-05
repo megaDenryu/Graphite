@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    9473696536388643368u64, 6786474933207009693u64, 2229739606299796538u64,
-    6395959138681207870u64,
+    2475668957918723878u64, 12417394017469059223u64, 17857939175579900272u64,
+    18056866774298000308u64,
 ];
 /// `Service` ノードの公開ID。
 ///
@@ -114,15 +114,15 @@ impl std::fmt::Display for Violation {
             Violation::DependsOnUnknownSource { edge, source } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の始点, {}): {:?}",
-                    "DependsOn", edge, "Service", source
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    source, "Service", "DependsOn", edge, "始点"
                 )
             }
             Violation::DependsOnUnknownTarget { edge, target } => {
                 write!(
                     f,
-                    "未知のキーが参照されています (辺 `{}` {:?} の終点, {}): {:?}",
-                    "DependsOn", edge, "Service", target
+                    "未知のキー {:?} が {} として解決できません (辺 `{}` {:?} の{})",
+                    target, "Service", "DependsOn", edge, "終点"
                 )
             }
             Violation::DependsOnUniquePairViolation { source, target } => {
