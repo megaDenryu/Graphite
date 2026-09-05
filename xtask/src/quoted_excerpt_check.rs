@@ -1,8 +1,9 @@
-//! 引用1件に2つの判定を掛け、違反を検査の報告として整形する。
+//! 引用1件に2つの判定を掛け、その1件の違反を整形する。
 //!
 //! 判定の中身は持たない。行範囲の妥当性は `excerpt_range_body` が、引用の鮮度は
 //! `excerpt_file_body` が持つ。ここが持つのは「2つの判定は同じ引用に対して同時に
 //! 掛かり、違反はその引用1件の下へまとめて並ぶ」という、2つをつなぐ関係である。
+//! 引用全件への適用と到達範囲の集計は `excerpt_inspection` が受け持つ。
 
 use std::fmt;
 
@@ -35,48 +36,20 @@ impl<'a> ExcerptMismatch<'a> {
     }
 }
 
-/// 参照先に実在しない引用行を持つ引用の一覧。整形は `Display` へ閉じる。
-///
-/// 2つの判定が何を見て何を見ないかは `main.rs` の使い方の説明に書いてある。
-pub struct MismatchedExcerpts<'a> {
-    mismatches: Vec<ExcerptMismatch<'a>>,
-}
-
-impl<'a> MismatchedExcerpts<'a> {
-    pub(crate) fn new(mismatches: Vec<ExcerptMismatch<'a>>) -> Self {
-        Self { mismatches }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.mismatches.is_empty()
-    }
-}
-
-impl fmt::Display for MismatchedExcerpts<'_> {
+impl fmt::Display for ExcerptMismatch<'_> {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.mismatches.is_empty() {
-            return Ok(());
-        }
-        writeln!(
+        write_missing_lines(
             formatter,
-            "参照先と一致しない引用が{}件あります:",
-            self.mismatches.len()
+            self.excerpt,
+            "次の引用行が指定の行範囲にありません",
+            &self.outside_range,
         )?;
-        for mismatch in &self.mismatches {
-            write_missing_lines(
-                formatter,
-                mismatch.excerpt,
-                "次の引用行が指定の行範囲にありません",
-                &mismatch.outside_range,
-            )?;
-            write_missing_lines(
-                formatter,
-                mismatch.excerpt,
-                "次の引用行が参照先ファイルのどこにもありません",
-                &mismatch.absent_from_file,
-            )?;
-        }
-        Ok(())
+        write_missing_lines(
+            formatter,
+            self.excerpt,
+            "次の引用行が参照先ファイルのどこにもありません",
+            &self.absent_from_file,
+        )
     }
 }
 
@@ -99,7 +72,7 @@ fn write_missing_lines(
 
 #[cfg(test)]
 mod tests {
-    use super::{ExcerptMismatch, MismatchedExcerpts};
+    use super::ExcerptMismatch;
     use crate::document_reference::ReferenceOrigin;
     use crate::quoted_excerpt::QuotedExcerpt;
     use crate::source_reference::SourceReference;
@@ -122,7 +95,7 @@ struct 五行目より後;
             .expect("引用として取り込むこと");
         let source_lines: Vec<String> = SOURCE.lines().map(str::to_string).collect();
         let mismatch = ExcerptMismatch::judge(&excerpt, &source_lines, SOURCE)?;
-        Some(MismatchedExcerpts::new(vec![mismatch]).to_string())
+        Some(mismatch.to_string())
     }
 
     #[test]

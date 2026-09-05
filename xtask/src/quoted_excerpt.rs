@@ -3,13 +3,16 @@
 //! このファイルは、引用の収集 (どのフェンスを引用とみなし、どの行を照合の対象に
 //! するか) と、照合に使う正規化を持つ。2つは「文書に書かれた引用1件」という同じ
 //! 概念の2つの面であり、どの行を対象にするかの判定が正規化の結果を使う。
-//! 集めた引用に対する判定は `quoted_excerpt_check` が持つ。
+//!
+//! 判定は持たない。以前は収集と照合を1つのファイルへまとめており、分けると引用の
+//! 意味を単独で説明できなくなることをその理由に挙げていた。判定が2つ (行範囲の
+//! 妥当性と引用の鮮度) になり、判定ごとに照合する本文が別の型になったため、その
+//! 理由は成り立たなくなった。今はここが引用を集め、`excerpt_range_body` と
+//! `excerpt_file_body` がそれぞれの本文を持ち、`quoted_excerpt_check` が2つを掛ける。
 
 use std::fmt;
 
 use crate::document_reference::ReferenceOrigin;
-use crate::quoted_excerpt_check::ExcerptMismatch;
-use crate::repository_root::RepositoryRoot;
 use crate::source_reference::SourceReference;
 
 /// 照合に使う引用行1行。文書に書かれたままの綴りと、正規化した綴りを持つ。
@@ -69,11 +72,12 @@ impl QuotedExcerpt {
     /// 参照が書かれた行の直後に、空行だけを挟んでコードフェンスが始まるなら、
     /// その本文を引用として取り込む。
     ///
-    /// 照合の対象から外すのは、対象外である条件を書き下せる4つだけである。
+    /// 照合の対象から外すのは、対象外である条件を書き下せる5つだけである。
     /// 行番号を持たない参照 (ファイル全体を指すため照合すべき範囲が無い)、
-    /// 直後にコードフェンスが無い参照、フェンス本文のうち空行と省略記号だけの
-    /// 行、および正規化すると空になる行 (`ExcerptLine::matches_any_body`)
-    /// である。
+    /// 直後にコードフェンスが無い参照、直後のフェンスの情報文字列が `rust` で
+    /// ないもの、フェンス本文のうち空行と省略記号だけの行、および正規化すると
+    /// 空になる行 (`ExcerptLine::matches_any_body`) である。照合しなかった
+    /// フェンスの件数は検査の報告に出る。
     pub fn following_fence(
         lines: &[&str],
         reference_line_index: usize,
@@ -83,7 +87,7 @@ impl QuotedExcerpt {
         if target.line_span().extents().is_empty() {
             return None;
         }
-        let fence = fence_start_after(lines, reference_line_index)?;
+        let fence = rust_fence_start_after(lines, reference_line_index)?;
         let excerpt_lines = excerpt_lines_in(&lines[fence + 1..]);
         (!excerpt_lines.is_empty()).then_some(Self { origin, target, lines: excerpt_lines })
     }
@@ -101,16 +105,6 @@ impl QuotedExcerpt {
         self.lines.len()
     }
 
-    /// 2つの判定を参照先の本文に対して実行する。
-    ///
-    /// 参照先が実在しないときは `None` を返す。ファイルの不在は
-    /// `SourceCodeReference::evaluate` が違反として報告するため、ここで
-    /// 二重に報告しない。
-    pub(crate) fn evaluate(&self, root: &RepositoryRoot) -> Option<ExcerptMismatch<'_>> {
-        let source_lines = root.source_file_lines(&self.target)?;
-        let source_text = root.source_file_text(&self.target)?;
-        ExcerptMismatch::judge(self, &source_lines, &source_text)
-    }
 }
 
 impl fmt::Display for QuotedExcerpt {
@@ -119,16 +113,25 @@ impl fmt::Display for QuotedExcerpt {
     }
 }
 
-/// 参照の行の次から、空行だけを読み飛ばしてコードフェンスの開始行を探す。
+/// 参照の行の次から、空行だけを読み飛ばして Rust のコードフェンスの開始行を探す。
 /// 空行以外の行が先に現れたら、その参照に引用は続いていない。
-fn fence_start_after(lines: &[&str], reference_line_index: usize) -> Option<usize> {
+fn rust_fence_start_after(lines: &[&str], reference_line_index: usize) -> Option<usize> {
     for (offset, line) in lines.iter().enumerate().skip(reference_line_index + 1) {
         if line.trim().is_empty() {
             continue;
         }
-        return line.trim_start().starts_with("```").then_some(offset);
+        return is_rust_fence_start(line).then_some(offset);
     }
     None
+}
+
+/// 情報文字列が `rust` のコードフェンスの開始行か。
+///
+/// 引用として照合するのは Rust のフェンスだけである。文書の引用は全てこの形で
+/// 書かれており、`powershell` や `text` のフェンスは出典を持つ引用ではない。
+pub(crate) fn is_rust_fence_start(line: &str) -> bool {
+    let trimmed = line.trim_start();
+    trimmed.starts_with("```") && trimmed.trim_start_matches('`').trim_end() == "rust"
 }
 
 /// フェンスの開始行の次から終了行までを、照合する引用行へ変える。
@@ -188,6 +191,12 @@ mod tests {
     #[test]
     fn 正規化すると空になる行だけのフェンスは引用として取り込まない() {
         let lines = ["参照", "```rust", "{", ",", "```"];
+        assert!(excerpt("xtask/src/lib.rs:1-5", &lines).is_none());
+    }
+
+    #[test]
+    fn 情報文字列がrustでないフェンスは引用として取り込まない() {
+        let lines = ["参照", "```text", "fn 先頭(", "```"];
         assert!(excerpt("xtask/src/lib.rs:1-5", &lines).is_none());
     }
 

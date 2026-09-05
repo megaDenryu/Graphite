@@ -11,6 +11,7 @@ mod document_index;
 mod document_reference;
 mod excerpt_file_body;
 mod excerpt_range_body;
+mod excerpt_inspection;
 mod external_verification;
 mod missing_references;
 mod quoted_excerpt;
@@ -68,27 +69,29 @@ pub fn check_documents(root: &RepositoryRoot) -> Result<(), Box<dyn Error>> {
     let mismatch = DocumentIndex::read_from(root)?.compare_with(&existing);
     let missing = scan.missing_targets();
     let invalid_sources = scan.invalid_source_references();
-    let mismatched_excerpts = scan.mismatched_excerpts();
+    let excerpts = scan.inspect_excerpts();
     println!(
-        "文書参照 {}件・ソース参照 {}件 \
-         (うち直後のコードフェンス本文を照合した引用 {}件・その引用行 {}行)\
-         と docs 配下の {}ファイルを検査しました\
+        "文書参照 {}件・ソース参照 {}件と docs 配下の {}ファイルを検査しました\
          (別リポジトリを指す参照 {}件は検査対象外)",
         scan.reference_count(),
         scan.source_reference_count(),
-        scan.quoted_excerpt_count(),
-        scan.quoted_excerpt_line_count(),
         existing.len(),
         scan.external_reference_count()
     );
-    if missing.is_empty()
-        && mismatch.is_empty()
-        && invalid_sources.is_empty()
-        && mismatched_excerpts.is_empty()
+    println!(
+        "直前のソース参照から引用として照合したコードフェンスは {}件・{}行です\
+         (照合しなかった Rust コードフェンス {}件、\
+         参照先が実在せず照合できなかった引用 {}件)",
+        excerpts.compared_excerpt_count(),
+        excerpts.compared_line_count(),
+        scan.unquoted_rust_fence_count(),
+        excerpts.unreadable_excerpt_count()
+    );
+    if missing.is_empty() && mismatch.is_empty() && invalid_sources.is_empty() && excerpts.is_empty()
     {
         return Ok(());
     }
-    Err(format!("{missing}{mismatch}{invalid_sources}{mismatched_excerpts}").into())
+    Err(format!("{missing}{mismatch}{invalid_sources}{excerpts}").into())
 }
 
 /// `cargo xtask check-doc-comments` 相当: doc コメントの網羅と撤去を検査する。

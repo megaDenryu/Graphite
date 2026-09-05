@@ -5,8 +5,8 @@ use graphite_cli::with_path_context;
 
 use crate::document_reference::{DocumentReference, ReferenceOrigin, ReferenceTarget};
 use crate::missing_references::MissingReferences;
-use crate::quoted_excerpt::QuotedExcerpt;
-use crate::quoted_excerpt_check::MismatchedExcerpts;
+use crate::excerpt_inspection::ExcerptInspection;
+use crate::quoted_excerpt::{is_rust_fence_start, QuotedExcerpt};
 use crate::repository_root::RepositoryRoot;
 use crate::source_reference_check::{
     InvalidSourceReferences, SourceCodeReference, UnparsableSourceReference, Violation,
@@ -22,6 +22,7 @@ pub struct ReferenceScan<'root> {
     quoted_excerpts: Vec<QuotedExcerpt>,
     unparsable_source_references: Vec<UnparsableSourceReference>,
     external_reference_count: usize,
+    rust_fence_count: usize, // 走査した Markdown にある Rust コードフェンスの総数
 }
 
 impl<'root> ReferenceScan<'root> {
@@ -32,6 +33,7 @@ impl<'root> ReferenceScan<'root> {
         let mut quoted_excerpts = Vec::new();
         let mut unparsable_source_references = Vec::new();
         let mut external_reference_count = 0;
+        let mut rust_fence_count = 0;
         for path in root.document_reference_sources()? {
             let origin_file = root.relative_display(&path);
             let text = with_path_context(fs::read_to_string(&path), &origin_file)?;
@@ -43,6 +45,9 @@ impl<'root> ReferenceScan<'root> {
             let mut fence_tracker = FenceTracker::new();
             for (offset, line) in lines.iter().enumerate() {
                 let quotable_line = quotable && fence_tracker.outside_fence(line);
+                if quotable && fence_tracker.opened_rust_fence(line) {
+                    rust_fence_count += 1;
+                }
                 for token in tokens_in(line) {
                     let origin = || ReferenceOrigin::new(origin_file.clone(), offset + 1);
                     match ReferenceTarget::classify(token) {
@@ -77,6 +82,7 @@ impl<'root> ReferenceScan<'root> {
             quoted_excerpts,
             unparsable_source_references,
             external_reference_count,
+            rust_fence_count,
         })
     }
 
@@ -88,14 +94,10 @@ impl<'root> ReferenceScan<'root> {
         self.source_references.len()
     }
 
-    pub fn quoted_excerpt_count(&self) -> usize {
-        self.quoted_excerpts.len()
-    }
-
-    /// 照合した引用行の総数。引用の鮮度が引用の全行を対象にするため、件数だけでは
-    /// 何行を照合したかが分からない。
-    pub fn quoted_excerpt_line_count(&self) -> usize {
-        self.quoted_excerpts.iter().map(QuotedExcerpt::line_count).sum()
+    /// 走査した Markdown にある Rust コードフェンスのうち、引用として取り込まな
+    /// かったものの件数。検査が届かなかった範囲を報告に出すために数える。
+    pub fn unquoted_rust_fence_count(&self) -> usize {
+        self.rust_fence_count - self.quoted_excerpts.len()
     }
 
     pub fn external_reference_count(&self) -> usize {
@@ -114,14 +116,9 @@ impl<'root> ReferenceScan<'root> {
         MissingReferences::new(references)
     }
 
-    /// 2つの判定 (行範囲の妥当性と引用の鮮度) のどちらかに違反した引用を全件返す。
-    pub fn mismatched_excerpts(&self) -> MismatchedExcerpts<'_> {
-        MismatchedExcerpts::new(
-            self.quoted_excerpts
-                .iter()
-                .filter_map(|excerpt| excerpt.evaluate(self.root))
-                .collect(),
-        )
+    /// 引用全件へ2つの判定 (行範囲の妥当性と引用の鮮度) を掛けた結果を返す。
+    pub fn inspect_excerpts(&self) -> ExcerptInspection<'_> {
+        ExcerptInspection::over(&self.quoted_excerpts, self.root)
     }
 
     /// 実在しないか行数を超えるか解析できないソース参照を全件返す。
@@ -149,6 +146,14 @@ struct FenceTracker {
 impl FenceTracker {
     fn new() -> Self {
         Self { inside: false }
+    }
+
+    /// 直前に読んだ1行が Rust コードフェンスの開始行だったか。
+    ///
+    /// 開始と終了はどちらも同じ記号で書かれるため、`outside_fence` が覚えた開閉の
+    /// 状態と合わせて初めて開始行だと分かる。呼ぶのは `outside_fence` の直後である。
+    fn opened_rust_fence(&self, line: &str) -> bool {
+        self.inside && is_rust_fence_start(line)
     }
 
     /// 次の1行を読み、その行が引用の照合を適用してよい位置 (フェンスの外) に
