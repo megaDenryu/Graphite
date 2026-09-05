@@ -14,9 +14,9 @@ use debug_implementation::gen_edge_value_debug_impl;
 use literal_implementation::gen_edge_value_literal_impl;
 use struct_definition::gen_edge_value_struct_definition;
 
-/// 辺種別ごとの公開名前付きフィールド値型を生成する。有向辺の端点と積み荷の
-/// フィールド名はスキーマの役割名をそのまま使う。無向辺は順序なし対を
-/// `endpoints` フィールドへ保持する。いずれもグラフを所有・借用しない普通のRust値。
+// 辺種別ごとの公開名前付きフィールド値型を生成する。有向辺の端点と積み荷の
+// フィールド名はスキーマの役割名をそのまま使う。無向辺は順序なし対を
+// `endpoints` フィールドへ保持する。いずれもグラフを所有・借用しない普通のRust値。
 pub(crate) fn gen_edge_value_structs(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
     edges
         .iter()

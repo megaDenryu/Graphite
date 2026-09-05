@@ -4,8 +4,8 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::Ident;
 
-/// ノード挿入の総称API (`insert`/`insert_named`/`insert_with_id`/
-/// `insert_named_with_id`) を生成する。
+// ノード挿入の総称API (`insert`/`insert_named`/`insert_with_id`/
+// `insert_named_with_id`) を生成する。
 pub(crate) fn gen_builder_node_insert_api(
     node_trait_ident: &Ident,
     default_id_trait_ident: &Ident,

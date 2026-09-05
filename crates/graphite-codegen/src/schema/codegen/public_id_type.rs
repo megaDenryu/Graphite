@@ -8,10 +8,10 @@ use crate::schema::codegen::edge_names::EdgeInfo;
 use crate::schema::codegen::node_names::NodeInfo;
 use crate::schema::semantic::公開ID型;
 
-/// 意味モデルの公開ID型を、生成コードの型位置へそのまま置けるトークンとして扱う。
-///
-/// `self::` → `super::` の読み替えは意味モデルの構築時に1回だけ済ませてある。
-/// ここは確定済みの名前を書き出すだけで、意味の判断はしない。
+// 意味モデルの公開ID型を、生成コードの型位置へそのまま置けるトークンとして扱う。
+//
+// `self::` → `super::` の読み替えは意味モデルの構築時に1回だけ済ませてある。
+// ここは確定済みの名前を書き出すだけで、意味の判断はしない。
 #[derive(Clone, Copy)]
 pub(crate) struct PublicIdType<'a>(&'a 公開ID型);
 
@@ -20,7 +20,7 @@ impl<'a> PublicIdType<'a> {
         Self(id_ty)
     }
 
-    /// スキーマが生成するID型ならその型名。明示ID型なら `None`。
+    // スキーマが生成するID型ならその型名。明示ID型なら `None`。
     pub(crate) fn generated_ident(self) -> Option<&'a Ident> {
         self.0.スキーマが生成する型名()
     }
@@ -41,7 +41,7 @@ impl ToTokens for PublicIdType<'_> {
     }
 }
 
-/// 明示ID型がないノード・エッジのスキーマ内限定の型付き文字列IDを生成する。
+// 明示ID型がないノード・エッジのスキーマ内限定の型付き文字列IDを生成する。
 pub(crate) fn gen_default_id_types(
     nodes: &[NodeInfo<'_>],
     edges: &[EdgeInfo<'_>],

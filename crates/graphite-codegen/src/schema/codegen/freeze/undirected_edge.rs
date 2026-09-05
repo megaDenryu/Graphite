@@ -12,16 +12,16 @@ use crate::naming::{edge_storage_ident, pair_index_field_ident};
 use crate::schema::codegen::edge_names::EdgeInfo;
 use crate::schema::codegen::pair_index::gen_pair_index_map_type;
 
-/// 無向辺1種別分の凍結検査本体を生成する
-/// (`docs/edge_endpoints_v4_1.md` §2)。
-///
-/// 位置0/1索引 (`{accessor}_index`) は「その位置0キーに (有向の from_index
-/// と同じ形で) 接続するエッジキーの一覧」だが、無向のため対称に構築する:
-/// 位置0・位置1のどちらにも (自己ループなら1回だけ) 積む。これにより
-/// - `{kind}_incident`/`{kind}_between` はどちらの位置に置かれてもこの索引から検索できる。
-/// - 格納順 (挿入順) は `KeyedTable` の `iter()` の走査順そのままなので、索引の
-///   `push` もその順で行われ、`docs/edge_endpoints_v4_1.md` §2 の
-///   「挿入順保持」がそのまま満たされる。
+// 無向辺1種別分の凍結検査本体を生成する
+// (`docs/edge_endpoints_v4_1.md` §2)。
+//
+// 位置0/1索引 (`{accessor}_index`) は「その位置0キーに (有向の from_index
+// と同じ形で) 接続するエッジキーの一覧」だが、無向のため対称に構築する:
+// 位置0・位置1のどちらにも (自己ループなら1回だけ) 積む。これにより
+// - `{kind}_incident`/`{kind}_between` はどちらの位置に置かれてもこの索引から検索できる。
+// - 格納順 (挿入順) は `KeyedTable` の `iter()` の走査順そのままなので、索引の
+//   `push` もその順で行われ、`docs/edge_endpoints_v4_1.md` §2 の
+//   「挿入順保持」がそのまま満たされる。
 pub(crate) fn gen_undirected_edge_freeze_block(
     violation_ident: &Ident,
     edge: &EdgeInfo<'_>,

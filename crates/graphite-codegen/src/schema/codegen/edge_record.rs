@@ -6,9 +6,9 @@ use quote::quote;
 use crate::schema::codegen::edge_names::EdgeInfo;
 use crate::schema::semantic::{積み荷, 辺の向き};
 
-/// 辺レコード構造体・辺参照値の積み荷フィールド `role: 型` を生成する
-/// (積み荷が無ければ空)。有向/無向で生成コードが同一なため
-/// `gen_edge_record_structs` から共有する純粋関数。
+// 辺レコード構造体・辺参照値の積み荷フィールド `role: 型` を生成する
+// (積み荷が無ければ空)。有向/無向で生成コードが同一なため
+// `gen_edge_record_structs` から共有する純粋関数。
 pub(crate) fn edge_record_payload_fields(payload: Option<&積み荷>) -> Vec<TokenStream> {
     payload
         .into_iter()
@@ -20,8 +20,8 @@ pub(crate) fn edge_record_payload_fields(payload: Option<&積み荷>) -> Vec<Tok
         .collect()
 }
 
-/// 辺値は構築時の公開IDを保持するが、完成後のレコードは端点を内部位置で
-/// 保持する。積み荷だけを辺値から移して保持し、探索時のID検索を不要にする。
+// 辺値は構築時の公開IDを保持するが、完成後のレコードは端点を内部位置で
+// 保持する。積み荷だけを辺値から移して保持し、探索時のID検索を不要にする。
 pub(crate) fn gen_edge_record_structs(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
     edges
         .iter()

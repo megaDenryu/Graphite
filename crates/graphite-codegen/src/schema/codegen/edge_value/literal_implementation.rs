@@ -6,7 +6,7 @@ use quote::quote;
 use crate::schema::codegen::edge_names::EdgeInfo;
 use crate::schema::semantic::辺の向き;
 
-/// `graph!` の辺リテラルから辺値型を組み立てる trait 実装を生成する。
+// `graph!` の辺リテラルから辺値型を組み立てる trait 実装を生成する。
 pub(crate) fn gen_edge_value_literal_impl(e: &EdgeInfo<'_>) -> TokenStream {
     let kind = e.kind;
     let p0_id = &e.from_node.id_ty;

@@ -6,7 +6,7 @@ use quote::quote;
 use crate::schema::codegen::edge_names::EdgeInfo;
 use crate::schema::semantic::辺の向き;
 
-/// 辺値型の関連コンストラクタと、積み荷・端点の読み取りを生成する。
+// 辺値型の関連コンストラクタと、積み荷・端点の読み取りを生成する。
 pub(crate) fn gen_edge_value_constructor(e: &EdgeInfo<'_>) -> TokenStream {
     let p0_id = &e.from_node.id_ty;
     let p1_id = &e.to_node.id_ty;

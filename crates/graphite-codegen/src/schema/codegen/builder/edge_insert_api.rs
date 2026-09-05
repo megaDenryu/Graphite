@@ -4,7 +4,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::Ident;
 
-/// 辺挿入の総称API (`add`/`add_named`/`add_with_id`/`add_named_with_id`) を生成する。
+// 辺挿入の総称API (`add`/`add_named`/`add_with_id`/`add_named_with_id`) を生成する。
 pub(crate) fn gen_builder_edge_insert_api(
     edge_trait_ident: &Ident,
     default_id_trait_ident: &Ident,

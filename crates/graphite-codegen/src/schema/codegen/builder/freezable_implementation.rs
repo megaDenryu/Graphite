@@ -4,7 +4,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::Ident;
 
-/// 凍結を具体型を知らずに呼べるようにする橋渡しの実装を生成する。
+// 凍結を具体型を知らずに呼べるようにする橋渡しの実装を生成する。
 pub(crate) fn gen_freezable_builder_impl(
     builder_ident: &Ident,
     schema_name: &Ident,

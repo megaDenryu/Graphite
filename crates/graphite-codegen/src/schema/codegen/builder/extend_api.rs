@@ -4,7 +4,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::Ident;
 
-/// 一括構築API (`extend`) を生成する。
+// 一括構築API (`extend`) を生成する。
 pub(crate) fn gen_builder_extend_api(default_id_trait_ident: &Ident) -> TokenStream {
     quote! {
         /// `insert`/`add` のイテレータ版 (`docs/bulk_construction.md`、

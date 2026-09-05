@@ -20,9 +20,9 @@ use freezable_implementation::gen_freezable_builder_impl;
 use kind_methods::gen_builder_kind_methods;
 use node_insert_api::gen_builder_node_insert_api;
 
-/// 構築器の impl 一式を生成する。固定生成名は予約表 (`schema::validate::
-/// generated_name_collision` と同じ表) から取り出し、生成側と検査側で
-/// 綴りを二重管理しない (`insertable_trait::marker_traits` と同じ方針)。
+// 構築器の impl 一式を生成する。固定生成名は予約表 (`schema::validate::
+// generated_name_collision` と同じ表) から取り出し、生成側と検査側で
+// 綴りを二重管理しない (`insertable_trait::marker_traits` と同じ方針)。
 pub(crate) fn gen_builder_impl(
     予約表: &固定生成名の予約表,
     nodes: &[NodeInfo<'_>],

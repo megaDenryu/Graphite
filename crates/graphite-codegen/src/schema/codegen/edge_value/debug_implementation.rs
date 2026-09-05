@@ -6,10 +6,10 @@ use quote::quote;
 use crate::schema::codegen::edge_names::EdgeInfo;
 use crate::schema::semantic::辺の向き;
 
-/// 辺値型の `Debug` 実装を生成する。
-///
-/// 利用者定義IDと積み荷へ `Debug` を要求しない契約を守るため、端点を表示できるのは
-/// 両端が自動生成IDで積み荷がない場合に限る。
+// 辺値型の `Debug` 実装を生成する。
+//
+// 利用者定義IDと積み荷へ `Debug` を要求しない契約を守るため、端点を表示できるのは
+// 両端が自動生成IDで積み荷がない場合に限る。
 pub(crate) fn gen_edge_value_debug_impl(e: &EdgeInfo<'_>) -> TokenStream {
     let kind = e.kind;
     if !(e.payload().is_none()

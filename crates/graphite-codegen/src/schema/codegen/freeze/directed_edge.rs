@@ -16,22 +16,22 @@ use crate::schema::codegen::freeze::each_check::gen_each_type_check;
 use crate::schema::codegen::pair_index::gen_pair_index_map_type;
 use crate::schema::semantic::EachSide;
 
-/// 有向辺1種別分の凍結検査本体を生成する。
-///
-/// 手順:
-/// 1. `Vec<(KindId, Kind)>` から `KeyedTable<KindId, Kind>` を構築 (重複キー
-///    は `{Kind}DuplicateKey` 違反として記録し、その要素は捨てる)。
-/// 2. 生き残った各辺について端点 (位置0/1) がそれぞれのノード表に実在するか
-///    検査する (`{Kind}UnknownSource`/`{Kind}UnknownTarget`)。両端点とも
-///    正当な辺だけを位置0索引 (`{accessor}_from_index`) と位置1索引
-///    (`{accessor}_to_index`) の両方に積む。後者は `docs/reverse_query.md`
-///    により構造体フィールドとして永続化する。この索引は終点役割クエリと
-///    入次数 each 検証の両方に使う。
-///    `unique pair` 制約があれば、同じ (位置0, 位置1) の対が2回目に現れた
-///    時点で `{Kind}UniquePairViolation` を記録する。
-/// 3. `each` 制約があれば、`each_side` に応じて出次数 (位置0索引) または
-///    入次数 (位置1索引、手順2で作った永続化済みのものをそのまま使う) を
-///    検査する。
+// 有向辺1種別分の凍結検査本体を生成する。
+//
+// 手順:
+// 1. `Vec<(KindId, Kind)>` から `KeyedTable<KindId, Kind>` を構築 (重複キー
+//    は `{Kind}DuplicateKey` 違反として記録し、その要素は捨てる)。
+// 2. 生き残った各辺について端点 (位置0/1) がそれぞれのノード表に実在するか
+//    検査する (`{Kind}UnknownSource`/`{Kind}UnknownTarget`)。両端点とも
+//    正当な辺だけを位置0索引 (`{accessor}_from_index`) と位置1索引
+//    (`{accessor}_to_index`) の両方に積む。後者は `docs/reverse_query.md`
+//    により構造体フィールドとして永続化する。この索引は終点役割クエリと
+//    入次数 each 検証の両方に使う。
+//    `unique pair` 制約があれば、同じ (位置0, 位置1) の対が2回目に現れた
+//    時点で `{Kind}UniquePairViolation` を記録する。
+// 3. `each` 制約があれば、`each_side` に応じて出次数 (位置0索引) または
+//    入次数 (位置1索引、手順2で作った永続化済みのものをそのまま使う) を
+//    検査する。
 pub(crate) fn gen_directed_edge_freeze_block(
     violation_ident: &Ident,
     edge: &EdgeInfo<'_>,

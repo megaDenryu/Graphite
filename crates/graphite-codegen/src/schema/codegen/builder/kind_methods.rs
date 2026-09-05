@@ -6,8 +6,8 @@ use quote::quote;
 use crate::schema::codegen::edge_names::EdgeInfo;
 use crate::schema::codegen::node_names::NodeInfo;
 
-/// 種別ごとの追加メソッド (`b.person(id, value)` 群) を生成する。
-/// 値の型を手書きで書ける場合に使う、型推論に頼らない直接の入口である。
+// 種別ごとの追加メソッド (`b.person(id, value)` 群) を生成する。
+// 値の型を手書きで書ける場合に使う、型推論に頼らない直接の入口である。
 pub(crate) fn gen_builder_kind_methods(
     nodes: &[NodeInfo<'_>],
     edges: &[EdgeInfo<'_>],

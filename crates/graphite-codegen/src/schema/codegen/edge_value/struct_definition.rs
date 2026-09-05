@@ -6,7 +6,7 @@ use quote::quote;
 use crate::schema::codegen::edge_names::EdgeInfo;
 use crate::schema::semantic::辺の向き;
 
-/// 辺値型の struct 定義を生成する。
+// 辺値型の struct 定義を生成する。
 pub(crate) fn gen_edge_value_struct_definition(e: &EdgeInfo<'_>) -> TokenStream {
     let kind = e.kind;
     let p0_id = &e.from_node.id_ty;

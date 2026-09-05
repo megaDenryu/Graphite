@@ -6,10 +6,10 @@ use quote::quote;
 use crate::schema::codegen::edge_names::EdgeInfo;
 use crate::schema::semantic::{端点対のキーの形, 端点対の重複可否};
 
-/// 端点対索引の `HashMap` 型を組み立てる。
-///
-/// 凍結処理が作る一時変数と `Graph` のフィールドは同じ型でなければならないため、
-/// キーの形 (順序付き/順序なし) と値の形 (1本/複数本) の判断はここへ集約する。
+// 端点対索引の `HashMap` 型を組み立てる。
+//
+// 凍結処理が作る一時変数と `Graph` のフィールドは同じ型でなければならないため、
+// キーの形 (順序付き/順序なし) と値の形 (1本/複数本) の判断はここへ集約する。
 pub(crate) fn gen_pair_index_map_type(edge: &EdgeInfo<'_>) -> TokenStream {
     let edge_position = edge.internal_position_ident();
     let from_position = edge.from_node.internal_position_ident();
