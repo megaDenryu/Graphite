@@ -237,15 +237,15 @@ mod tests {
             (first.id(), second.id()),
             (&person("alice"), &person("bob"))
         );
-        // 積み荷のある無向辺の辺値は `PartialEq` を導出しない (積み荷の型へトレイトを
-        // 要求しないため。issue #27)。順序を区別しない等値性そのものは積み荷のない
-        // `Friends` と `UnorderedPair` の単体テストが確かめており、ここでは端点だけを
-        // 取り出して、逆順に構築しても同じ2つの端点を保持することを確かめる。
-        let 順方向 = Wire::new(person("alice"), person("bob"), Cable { ohm: 5 });
-        let 逆方向 = Wire::new(person("bob"), person("alice"), Cable { ohm: 5 });
+        // 積み荷のある無向辺の辺値は `PartialEq` を導出しない (その導出が積み荷の型へ
+        // トレイトを要求しないため。issue #27)。このテストは端点だけを
+        // `UnorderedPair` へ包み直し、グラフへ収めた辺 (alice, bob の順で構築した) の
+        // 端点の対が、逆順に構築した辺値の端点の対と等しいことを確かめる。
+        let bob_alice順 = Wire::new(person("bob"), person("alice"), Cable { ohm: 5 });
+        let (逆順の端点1, 逆順の端点2) = bob_alice順.endpoints();
         assert_eq!(
-            順方向.endpoints(),
-            (逆方向.endpoints().1, 逆方向.endpoints().0)
+            graphite::UnorderedPair::new(first.id(), second.id()),
+            graphite::UnorderedPair::new(逆順の端点1, 逆順の端点2)
         );
         assert_eq!(w.cable().ohm, 5);
     }
