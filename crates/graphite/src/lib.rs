@@ -22,6 +22,10 @@
 //! 4概念 (汎用Graph・計算グラフ・schema生成コード向けの実行時契約・キー付き要素表)
 //! の内訳と依存の向きは `docs/development/runtime_structure.md` を参照。
 
+// 利用者が読むインターフェースであるため、doc コメントの網羅を rustc に検査させる
+// (issue #22)。内部クレートには効かせない。
+#![warn(missing_docs)]
+
 mod compute;
 mod graph;
 mod keyed_table;

@@ -10,7 +10,14 @@ pub enum GraphError<K> {
     DuplicateKey(K),
     /// 辺が未知のキーを端点として参照している。
     /// `missing` は `from`/`to` のうちどちらが未定義だったかを示す。
-    UnknownEndpoint { from: K, to: K, missing: K },
+    UnknownEndpoint {
+        /// 辺の始点として書かれたキー。
+        from: K,
+        /// 辺の終点として書かれたキー。
+        to: K,
+        /// `from`/`to` のうち、ノード定義に無かった側のキー。
+        missing: K,
+    },
 }
 
 impl<K: fmt::Debug> fmt::Display for GraphError<K> {

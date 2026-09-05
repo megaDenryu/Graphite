@@ -14,7 +14,9 @@ use crate::{CycleError, GraphError};
 ///   `cycle` フィールドに循環を構成するキー列がそのまま入っている)。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ComputeGraphError {
+    /// キー重複・未宣言依存を [`crate::GraphError`] のまま運ぶ。
     Graph(GraphError<String>),
+    /// 循環依存を [`crate::CycleError`] のまま運ぶ。
     Cycle(CycleError<String>),
 }
 

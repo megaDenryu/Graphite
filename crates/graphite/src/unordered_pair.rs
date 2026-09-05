@@ -10,10 +10,14 @@ pub struct UnorderedPair<T> {
 }
 
 impl<T> UnorderedPair<T> {
+    /// 2つの値から、順序を持たない対を作る。
     pub fn new(first: T, second: T) -> Self {
         Self { first, second }
     }
 
+    /// 対を成す2つの値を、与えられた順に返す。
+    ///
+    /// 等価性とハッシュは順序を区別しないため、返る順序に意味は無い。
     pub fn endpoints(&self) -> (&T, &T) {
         (&self.first, &self.second)
     }

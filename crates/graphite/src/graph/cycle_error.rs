@@ -12,6 +12,7 @@ use std::fmt;
 /// 要素数 1 (`cycle[0]` 自身への辺)。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CycleError<K> {
+    /// 循環を構成するノードキーの列。
     pub cycle: Vec<K>,
 }
 
