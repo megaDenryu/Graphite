@@ -12,7 +12,7 @@ use crate::generation_plan::GenerationPlan;
 use crate::io_context::with_path_context;
 use crate::generation_tree::GenerationTree;
 
-/// schema宣言を含みうる、生成元のRustファイル。
+// schema宣言を含みうる、生成元のRustファイル。
 pub struct SchemaSourceFile {
     path: PathBuf,
 }
@@ -22,12 +22,12 @@ impl SchemaSourceFile {
         Self { path }
     }
 
-    /// このファイルの schema宣言を読み、生成すべき内容を計画へ積む。
-    ///
-    /// このファイル自体がRustとして解析できない場合 (走査対象はディレクトリ木
-    /// 全体であり、schemaと無関係な壊れたファイルも対象に入りうる) は、全体を
-    /// 止めずに警告を表示してこのファイルの処理だけを飛ばす。読み取り失敗と、
-    /// schema宣言を含むファイルの検証エラーは全体を止める。
+    // このファイルの schema宣言を読み、生成すべき内容を計画へ積む。
+    //
+    // このファイル自体がRustとして解析できない場合 (走査対象はディレクトリ木
+    // 全体であり、schemaと無関係な壊れたファイルも対象に入りうる) は、全体を
+    // 止めずに警告を表示してこのファイルの処理だけを飛ばす。読み取り失敗と、
+    // schema宣言を含むファイルの検証エラーは全体を止める。
     pub fn collect_into(
         &self,
         tree: &GenerationTree,
@@ -59,13 +59,13 @@ impl SchemaSourceFile {
         Ok(())
     }
 
-    /// 宣言元から見た相対指定を検査し、生成先の絶対パスへ変換する。
-    ///
-    /// 形式検査そのものは `graphite_codegen::validate_generated_relative_path`
-    /// (コンパイル時の `graph_schema!` 展開と共有する唯一の判定) に委ねる。
-    /// ここで改めて検査するのは、この関数がファイルシステムへの書き込み先を
-    /// 決める境界であり、呼び出し経路によらずこの境界自身でも安全側に倒す
-    /// ためである。
+    // 宣言元から見た相対指定を検査し、生成先の絶対パスへ変換する。
+    //
+    // 形式検査そのものは `graphite_codegen::validate_generated_relative_path`
+    // (コンパイル時の `graph_schema!` 展開と共有する唯一の判定) に委ねる。
+    // ここで改めて検査するのは、この関数がファイルシステムへの書き込み先を
+    // 決める境界であり、呼び出し経路によらずこの境界自身でも安全側に倒す
+    // ためである。
     fn generated_target(
         &self,
         tree: &GenerationTree,
@@ -94,7 +94,7 @@ impl SchemaSourceFile {
     }
 }
 
-/// 追跡形式の `graph_schema!` 呼び出しと、その宣言行。
+// 追跡形式の `graph_schema!` 呼び出しと、その宣言行。
 struct SchemaInvocation {
     tokens: TokenStream,
     line: usize,

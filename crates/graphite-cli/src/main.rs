@@ -16,16 +16,16 @@ fn main() {
     }
 }
 
-/// `generate` は生成ファイルを更新し、`generate --check` は差分をエラーにする。
+// `generate` は生成ファイルを更新し、`generate --check` は差分をエラーにする。
 enum Command {
     Generate,
     Check,
 }
 
-/// 使い方と、走査する範囲の説明。
-///
-/// 走査範囲を書いておかないと、宣言を置いた場所が対象外で1件も生成されない
-/// ときに、原因が実行場所なのか宣言なのか読み手が決められない。
+// 使い方と、走査する範囲の説明。
+//
+// 走査範囲を書いておかないと、宣言を置いた場所が対象外で1件も生成されない
+// ときに、原因が実行場所なのか宣言なのか読み手が決められない。
 const USAGE: &str = "\
 使い方: 生成したいパッケージのディレクトリで次のいずれかを実行してください
   cargo graphite generate          生成ファイルを更新する
@@ -55,11 +55,11 @@ fn run() -> Result<(), Box<dyn Error>> {
     }
 }
 
-/// 実行ファイル名を除いた引数を、cargo サブコマンド形式と直接実行の両方から集める。
-///
-/// `cargo graphite generate` で起動されると、cargo は `cargo-graphite graphite
-/// generate` という並びで実行する。先頭の `graphite` を落とさないと、直接
-/// `cargo-graphite generate` と打ったときと引数の位置がずれる。
+// 実行ファイル名を除いた引数を、cargo サブコマンド形式と直接実行の両方から集める。
+//
+// `cargo graphite generate` で起動されると、cargo は `cargo-graphite graphite
+// generate` という並びで実行する。先頭の `graphite` を落とさないと、直接
+// `cargo-graphite generate` と打ったときと引数の位置がずれる。
 fn command_arguments() -> Vec<String> {
     let mut arguments = env::args().skip(1);
     let Some(first) = arguments.next() else {

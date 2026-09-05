@@ -6,9 +6,9 @@ use crate::generated_target_path::GeneratedTargetPath;
 use crate::io_context::with_path_context;
 use crate::generation_tree::GenerationTree;
 
-/// 全schema宣言から集めた「生成先とその期待内容」の一覧。
-///
-/// 生成先が重複していれば、書き出す前に検出する。
+// 全schema宣言から集めた「生成先とその期待内容」の一覧。
+//
+// 生成先が重複していれば、書き出す前に検出する。
 #[derive(Default)]
 pub struct GenerationPlan {
     expected: BTreeMap<GeneratedTargetPath, String>,
@@ -35,15 +35,15 @@ impl GenerationPlan {
         Ok(())
     }
 
-    /// 計画に載っている生成先の数。schema宣言1件につき1つである。
+    // 計画に載っている生成先の数。schema宣言1件につき1つである。
     pub fn declaration_count(&self) -> usize {
         self.expected.len()
     }
 
-    /// 作業ツリーと異なる生成先を書き換え、書き換えた件数を返す。
-    ///
-    /// 書き換えた分はその場で1行ずつ表示する。件数を返すのは、呼び出し側が
-    /// 「宣言は何件あって、そのうち何件を書いたか」の要約を出すためである。
+    // 作業ツリーと異なる生成先を書き換え、書き換えた件数を返す。
+    //
+    // 書き換えた分はその場で1行ずつ表示する。件数を返すのは、呼び出し側が
+    // 「宣言は何件あって、そのうち何件を書いたか」の要約を出すためである。
     pub fn write_stale_files(&self, tree: &GenerationTree) -> Result<usize, Box<dyn Error>> {
         let mut written = 0;
         for (target, content) in self.stale_files() {
@@ -75,13 +75,13 @@ impl GenerationPlan {
         Ok(written)
     }
 
-    /// 作業ツリーが期待内容と一致するかを検査し、一致しなければエラーにする。
-    ///
-    /// 期待に対して古い/存在しないファイルに加えて、`generated/` 配下に
-    /// 実在するのに期待集合に無いファイル (schema宣言の削除・移動で
-    /// 取り残された孤児) も検出する。孤児は自動削除せず、一覧をエラーで
-    /// 報告するだけにとどめる (手編集されていないと機械的には断定できない
-    /// ため)。
+    // 作業ツリーが期待内容と一致するかを検査し、一致しなければエラーにする。
+    //
+    // 期待に対して古い/存在しないファイルに加えて、`generated/` 配下に
+    // 実在するのに期待集合に無いファイル (schema宣言の削除・移動で
+    // 取り残された孤児) も検出する。孤児は自動削除せず、一覧をエラーで
+    // 報告するだけにとどめる (手編集されていないと機械的には断定できない
+    // ため)。
     pub fn verify(&self, tree: &GenerationTree) -> Result<(), Box<dyn Error>> {
         let mut sections = Vec::new();
 
