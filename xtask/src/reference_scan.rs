@@ -191,7 +191,7 @@ mod tests {
     use super::{tokens_in, FenceTracker};
 
     // 各行を順に読ませ、引用の照合を適用してよい行だけを真にした一覧を得る。
-    fn 照合を適用してよい行(lines: &[&str]) -> Vec<bool> {
+    fn 行ごとに照合を適用してよいかを判定する(lines: &[&str]) -> Vec<bool> {
         let mut tracker = FenceTracker::new();
         lines.iter().map(|line| tracker.outside_fence(line)).collect()
     }
@@ -199,13 +199,13 @@ mod tests {
     #[test]
     fn コードフェンスの中に書かれた参照は照合の対象にならない() {
         let lines = ["散文", "```rust", "`xtask/src/lib.rs:1-5`", "```", "続く散文"];
-        assert_eq!(照合を適用してよい行(&lines), vec![true, false, false, false, true]);
+        assert_eq!(行ごとに照合を適用してよいかを判定する(&lines), vec![true, false, false, false, true]);
     }
 
     #[test]
     fn 閉じないフェンスの後ろの散文も照合の対象にならない() {
         let lines = ["```rust", "`xtask/src/lib.rs:1-5`", "後ろの散文"];
-        assert_eq!(照合を適用してよい行(&lines), vec![false, false, false]);
+        assert_eq!(行ごとに照合を適用してよいかを判定する(&lines), vec![false, false, false]);
     }
 
     #[test]
