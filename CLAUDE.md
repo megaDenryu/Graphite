@@ -75,7 +75,7 @@ cargo xtask generate --check
 cargo xtask check-docs
 
 # doc コメントが公開面に網羅され、内部領域に1件も無いことを検査
-# (issue #22 の撤去が終わるまで違反を報告する。cargo test からは呼んでいない)
+# (同じ検査を xtask/tests/doc_comments_check.rs が cargo test からも実行する)
 cargo xtask check-doc-comments
 
 # 外部crateからの生成経路 (verification/external-crate) を実走で検査

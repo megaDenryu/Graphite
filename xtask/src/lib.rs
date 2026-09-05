@@ -96,9 +96,8 @@ pub fn check_documents(root: &RepositoryRoot) -> Result<(), Box<dyn Error>> {
 
 // `cargo xtask check-doc-comments` 相当: doc コメントの網羅と撤去を検査する。
 //
-// 現在は内部領域に約2100行の `///` が残っており、この検査は大量の違反を報告する。
-// 撤去が終わるまで `cargo test` からは呼ばない (issue #22 の着手順5で接続する)。
-// 検査の範囲と限界は `main.rs` の使い方の説明に書いてある。
+// `xtask/tests/doc_comments_check.rs` がこの関数を呼ぶため、`cargo test --workspace`
+// でも同じ検査が走る。検査の範囲と限界は `main.rs` の使い方の説明に書いてある。
 pub fn check_doc_comments(root: &RepositoryRoot) -> Result<(), Box<dyn Error>> {
     DocCommentInspection::new(root).run()
 }
