@@ -11,7 +11,7 @@ use crate::excerpt_file_body::ExcerptFileBody;
 use crate::excerpt_range_body::ExcerptRangeBody;
 use crate::quoted_excerpt::QuotedExcerpt;
 
-/// 引用1件の照合結果のうち、参照先に見つからなかった引用行。
+// 引用1件の照合結果のうち、参照先に見つからなかった引用行。
 pub(crate) struct ExcerptMismatch<'a> {
     excerpt: &'a QuotedExcerpt,
     outside_range: Vec<&'a str>, // 先頭3行のうち、指定された行範囲に無かった行
@@ -19,7 +19,7 @@ pub(crate) struct ExcerptMismatch<'a> {
 }
 
 impl<'a> ExcerptMismatch<'a> {
-    /// 2つの判定を掛ける。どちらも違反が無ければ `None` を返す。
+    // 2つの判定を掛ける。どちらも違反が無ければ `None` を返す。
     pub(crate) fn judge(
         excerpt: &'a QuotedExcerpt,
         source_lines: &[String],
@@ -53,7 +53,7 @@ impl fmt::Display for ExcerptMismatch<'_> {
     }
 }
 
-/// 判定1つ分の違反行を、引用の出典と参照先を添えて並べる。
+// 判定1つ分の違反行を、引用の出典と参照先を添えて並べる。
 fn write_missing_lines(
     formatter: &mut fmt::Formatter<'_>,
     excerpt: &QuotedExcerpt,
@@ -77,7 +77,7 @@ mod tests {
     use crate::quoted_excerpt::QuotedExcerpt;
     use crate::source_reference::SourceReference;
 
-    /// 1行目から順に、範囲の指定と対応させて読むための試験用ソース。
+    // 1行目から順に、範囲の指定と対応させて読むための試験用ソース。
     const SOURCE: &str = "fn 先頭(
     引数: usize,
 ) -> bool {
@@ -86,8 +86,8 @@ mod tests {
 struct 五行目より後;
 ";
 
-    /// `lines[0]` を参照が書かれた行とみなして引用を取り込み、2つの判定を掛けた
-    /// 結果の表示を返す。違反が無ければ `None`。
+    // `lines[0]` を参照が書かれた行とみなして引用を取り込み、2つの判定を掛けた
+    // 結果の表示を返す。違反が無ければ `None`。
     fn 違反の表示(token: &str, lines: &[&str]) -> Option<String> {
         let origin = ReferenceOrigin::new("テスト用の出典".to_string(), 1);
         let target = SourceReference::parse(token).unwrap();

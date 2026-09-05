@@ -10,7 +10,7 @@ use crate::quoted_excerpt::QuotedExcerpt;
 use crate::quoted_excerpt_check::ExcerptMismatch;
 use crate::repository_root::RepositoryRoot;
 
-/// 引用全件の照合結果。違反と、照合が届いた範囲を持つ。
+// 引用全件の照合結果。違反と、照合が届いた範囲を持つ。
 pub struct ExcerptInspection<'a> {
     compared_excerpts: usize,
     compared_lines: usize,
@@ -19,11 +19,11 @@ pub struct ExcerptInspection<'a> {
 }
 
 impl<'a> ExcerptInspection<'a> {
-    /// 引用を1件ずつ参照先の本文と突き合わせる。
-    ///
-    /// 参照先が実在しない引用は照合できないため、違反にはせず件数だけを数える。
-    /// ファイルの不在は `SourceCodeReference::evaluate` が別に違反として報告する
-    /// ので、ここで二重に報告しない。
+    // 引用を1件ずつ参照先の本文と突き合わせる。
+    //
+    // 参照先が実在しない引用は照合できないため、違反にはせず件数だけを数える。
+    // ファイルの不在は `SourceCodeReference::evaluate` が別に違反として報告する
+    // ので、ここで二重に報告しない。
     pub(crate) fn over(excerpts: &'a [QuotedExcerpt], root: &RepositoryRoot) -> Self {
         let mut inspection = Self {
             compared_excerpts: 0,
@@ -50,17 +50,17 @@ impl<'a> ExcerptInspection<'a> {
         self.mismatches.extend(ExcerptMismatch::judge(excerpt, &source_lines, &source_text));
     }
 
-    /// 参照先の本文と突き合わせた引用の件数。
+    // 参照先の本文と突き合わせた引用の件数。
     pub fn compared_excerpt_count(&self) -> usize {
         self.compared_excerpts
     }
 
-    /// 参照先の本文と突き合わせた引用行の総数。
+    // 参照先の本文と突き合わせた引用行の総数。
     pub fn compared_line_count(&self) -> usize {
         self.compared_lines
     }
 
-    /// 参照先が実在せず照合できなかった引用の件数。
+    // 参照先が実在せず照合できなかった引用の件数。
     pub fn unreadable_excerpt_count(&self) -> usize {
         self.unreadable_excerpts
     }
@@ -103,7 +103,7 @@ mod tests {
             .expect("xtaskの実行場所からリポジトリルートを解決できること")
     }
 
-    /// `lines[0]` を参照が書かれた行とみなして引用1件を取り込む。
+    // `lines[0]` を参照が書かれた行とみなして引用1件を取り込む。
     fn excerpt(token: &str, lines: &[&str]) -> Vec<QuotedExcerpt> {
         let origin = ReferenceOrigin::new("テスト用の出典".to_string(), 1);
         let target = SourceReference::parse(token).unwrap();
