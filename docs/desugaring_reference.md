@@ -224,22 +224,30 @@ moduleを囲む親のモジュール (宣言を書いたファイル) に展開�
 **5. 構築時の処理**
 
 `graph_schema!` が展開するのは、指紋を照合する `const` ブロック1つだけである。
-展開するトークンのテンプレートは `crates/graphite-macros/src/lib.rs:93-105` に
-ある。`Commerce` schemaへ適用した展開結果は次の形になる (テンプレートの `#変数` を
-実際の値で埋めたものであり、生成器の出力そのものではない)。
+展開するトークンのテンプレートは次のとおりである
+(`crates/graphite-macros/src/lib.rs:93-106`)。
 
 ```rust
-const _: () = {
-    let actual = Commerce::__GRAPHITE_SCHEMA_FINGERPRINT;
-    if !(actual[0] == 10697115368782407328u64
-        && actual[1] == 2608266299376936611u64
-        && actual[2] == 9754844789010380434u64
-        && actual[3] == 3042117034582590502u64)
-    {
-        panic!("Graphite schema の生成ファイルが古いため、パッケージのディレクトリで cargo graphite generate を実行してください (Graphite リポジトリ自身の開発では cargo xtask generate)");
-    }
-};
+let schema_name = schema.schema_name();
+let [first, second, third, fourth] = schema.fingerprint();
+quote! {
+    const _: () = {
+        let actual = #schema_name::__GRAPHITE_SCHEMA_FINGERPRINT;
+        if !(actual[0] == #first
+            && actual[1] == #second
+            && actual[2] == #third
+            && actual[3] == #fourth)
+        {
+            panic!("Graphite schema の生成ファイルが古いため、パッケージのディレクトリで cargo graphite generate を実行してください (Graphite リポジトリ自身の開発では cargo xtask generate)");
+        }
+    };
+}
 ```
+
+`#schema_name` には利用者が書いたschema module名 (`Commerce` 等) が、`#first` から
+`#fourth` には指紋の4要素が埋まる。指紋の値そのものは生成ファイルの
+`__GRAPHITE_SCHEMA_FINGERPRINT` にあり、生成器を変えるたびに変わるため、この文書は
+値を書き写さず位置だけを示す。
 
 指紋とは、生成先の相対パスと、整形済みの生成本文を連結した文字列に対して、
 FNV-1a (64bit) を4種の初期値でそれぞれ計算した `[u64; 4]` である
@@ -410,10 +418,10 @@ pub fn external_node_by_id<'graph>(
 
 **5. 構築時の処理**
 
-明示ID型を持つ種別は、束縛名の文字列からIDを作る経路を持たない。生成ファイルは
-`MixedIdsInsertable` を実装するが `MixedIdsDefaultId` は実装しない
-(`crates/graphite/tests/generated/schema_ids_mixed_ids.rs:1154-1156` と、同ファイルに
-`impl MixedIdsDefaultId for super::ExternalNode` が存在しないこと)。
+明示ID型を持つ種別は、束縛名の文字列からIDを作る経路を持たない。同ファイルに
+`impl MixedIdsDefaultId for super::ExternalNode` は無く、生成ファイルは
+`MixedIdsInsertable` だけを実装する
+(`crates/graphite/tests/generated/schema_ids_mixed_ids.rs:1156-1158`)。
 
 ```rust
 impl MixedIdsInsertable for super::ExternalNode {
