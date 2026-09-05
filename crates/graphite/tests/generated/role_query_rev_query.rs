@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    504404436614997475u64, 14058782070021797494u64, 4421388730538592681u64,
-    3360276122728984093u64,
+    4277078618578202810u64, 13644532247934540183u64, 13257936026120012632u64,
+    643120888740904748u64,
 ];
 /// `NodeA` ノードの公開ID。
 ///
@@ -250,14 +250,14 @@ pub enum Violation {
     UnconstrainedUnknownSource {
         /// 未知のキーを参照した辺の公開ID。
         edge: UnconstrainedId,
-        /// 参照先が見つからなかった始点ノードの公開ID。
+        /// この辺が始点として参照した、対応するノードが存在しないキー。
         source: NodeAId,
     },
     /// このエッジが未知の終点キーを参照している。
     UnconstrainedUnknownTarget {
         /// 未知のキーを参照した辺の公開ID。
         edge: UnconstrainedId,
-        /// 参照先が見つからなかった終点ノードの公開ID。
+        /// この辺が終点として参照した、対応するノードが存在しないキー。
         target: NodeBId,
     },
     /// このエッジ種別のキーが重複している。
@@ -266,14 +266,14 @@ pub enum Violation {
     UnconstrainedNoPayloadUnknownSource {
         /// 未知のキーを参照した辺の公開ID。
         edge: UnconstrainedNoPayloadId,
-        /// 参照先が見つからなかった始点ノードの公開ID。
+        /// この辺が始点として参照した、対応するノードが存在しないキー。
         source: NodeAId,
     },
     /// このエッジが未知の終点キーを参照している。
     UnconstrainedNoPayloadUnknownTarget {
         /// 未知のキーを参照した辺の公開ID。
         edge: UnconstrainedNoPayloadId,
-        /// 参照先が見つからなかった終点ノードの公開ID。
+        /// この辺が終点として参照した、対応するノードが存在しないキー。
         target: NodeBId,
     },
     /// このエッジ種別のキーが重複している。
@@ -282,21 +282,21 @@ pub enum Violation {
     AtMostOneUnknownSource {
         /// 未知のキーを参照した辺の公開ID。
         edge: AtMostOneId,
-        /// 参照先が見つからなかった始点ノードの公開ID。
+        /// この辺が始点として参照した、対応するノードが存在しないキー。
         source: NodeAId,
     },
     /// このエッジが未知の終点キーを参照している。
     AtMostOneUnknownTarget {
         /// 未知のキーを参照した辺の公開ID。
         edge: AtMostOneId,
-        /// 参照先が見つからなかった終点ノードの公開ID。
+        /// この辺が終点として参照した、対応するノードが存在しないキー。
         target: NodeBId,
     },
     /// このエッジ種別の `each` 制約違反 (入次数)。
     AtMostOneDstEachViolation {
         /// 入次数が制約に反した終点ノードの公開ID。
         target: NodeBId,
-        /// この終点へ実際に入っている辺の本数。
+        /// この辺種別で、この終点へ実際に入っている辺の本数。
         count: usize,
     },
     /// このエッジ種別のキーが重複している。
@@ -305,21 +305,21 @@ pub enum Violation {
     ExactlyOneUnknownSource {
         /// 未知のキーを参照した辺の公開ID。
         edge: ExactlyOneId,
-        /// 参照先が見つからなかった始点ノードの公開ID。
+        /// この辺が始点として参照した、対応するノードが存在しないキー。
         source: NodeAId,
     },
     /// このエッジが未知の終点キーを参照している。
     ExactlyOneUnknownTarget {
         /// 未知のキーを参照した辺の公開ID。
         edge: ExactlyOneId,
-        /// 参照先が見つからなかった終点ノードの公開ID。
+        /// この辺が終点として参照した、対応するノードが存在しないキー。
         target: NodeBId,
     },
     /// このエッジ種別の `each` 制約違反 (入次数)。
     ExactlyOneDstEachViolation {
         /// 入次数が制約に反した終点ノードの公開ID。
         target: NodeBId,
-        /// この終点へ実際に入っている辺の本数。
+        /// この辺種別で、この終点へ実際に入っている辺の本数。
         count: usize,
     },
 }
@@ -1143,7 +1143,8 @@ impl<'graph> std::fmt::Debug for ExactlyOneRef<'graph> {
             .finish_non_exhaustive()
     }
 }
-/// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+/// 凍結前のグラフを組み立てる `Builder`。凍結 (`freeze()`) までは where
+/// 制約検査を一切行わない。
 ///
 /// 宣言: `tests/role_query.rs` の `schema RevQuery`
 pub struct Builder {
@@ -1154,7 +1155,7 @@ pub struct Builder {
     at_most_one: Vec<(AtMostOneId, AtMostOne)>,
     exactly_one: Vec<(ExactlyOneId, ExactlyOne)>,
     /// この構築を識別する構築印。`Builder::new()` が発行し、この
-    /// builder から挿入する全ての名前付き位置と、凍結成功後の
+    /// `Builder` から挿入する全ての名前付き位置と、凍結成功後の
     /// `Graph` へ同じ値を刻む。
     __graphite_construction_stamp: u64,
 }
@@ -1183,7 +1184,7 @@ pub trait RevQueryInsertable: Sized {
         id: Self::Id,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
-    /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
+    /// 型付きの公開IDを指定して、この要素を `Builder` へ挿入する。
     fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
 }
 /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
@@ -1196,7 +1197,7 @@ pub trait RevQueryDefaultId: RevQueryInsertable {
         binding: String,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
-    /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
+    /// 束縛名の文字列から既定IDを作り、この要素を `Builder` へ挿入する。
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
 /// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと

@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    15854440779553042371u64, 17109576378970957032u64, 17138141460116065905u64,
-    12033925388381400365u64,
+    7782483175777121615u64, 13206469698535747886u64, 18059357555717915757u64,
+    2179534271293783641u64,
 ];
 /// `Employee` ノードの公開ID。
 ///
@@ -272,21 +272,21 @@ pub enum Violation {
     BelongsToUnknownSource {
         /// 未知のキーを参照した辺の公開ID。
         edge: BelongsToId,
-        /// 参照先が見つからなかった始点ノードの公開ID。
+        /// この辺が始点として参照した、対応するノードが存在しないキー。
         source: EmployeeId,
     },
     /// このエッジが未知の終点キーを参照している。
     BelongsToUnknownTarget {
         /// 未知のキーを参照した辺の公開ID。
         edge: BelongsToId,
-        /// 参照先が見つからなかった終点ノードの公開ID。
+        /// この辺が終点として参照した、対応するノードが存在しないキー。
         target: DepartmentId,
     },
     /// このエッジ種別の `each` 制約違反 (出次数)。
     BelongsToEmployeeEachViolation {
         /// 出次数が制約に反した始点ノードの公開ID。
         source: EmployeeId,
-        /// この始点から実際に出ている辺の本数。
+        /// この辺種別で、この始点から実際に出ている辺の本数。
         count: usize,
     },
     /// このエッジ種別のキーが重複している。
@@ -295,21 +295,21 @@ pub enum Violation {
     BossUnknownSource {
         /// 未知のキーを参照した辺の公開ID。
         edge: BossId,
-        /// 参照先が見つからなかった始点ノードの公開ID。
+        /// この辺が始点として参照した、対応するノードが存在しないキー。
         source: EmployeeId,
     },
     /// このエッジが未知の終点キーを参照している。
     BossUnknownTarget {
         /// 未知のキーを参照した辺の公開ID。
         edge: BossId,
-        /// 参照先が見つからなかった終点ノードの公開ID。
+        /// この辺が終点として参照した、対応するノードが存在しないキー。
         target: EmployeeId,
     },
     /// このエッジ種別の `each` 制約違反 (出次数)。
     BossSubordinateEachViolation {
         /// 出次数が制約に反した始点ノードの公開ID。
         source: EmployeeId,
-        /// この始点から実際に出ている辺の本数。
+        /// この辺種別で、この始点から実際に出ている辺の本数。
         count: usize,
     },
     /// このエッジ種別のキーが重複している。
@@ -318,14 +318,14 @@ pub enum Violation {
     AssignedUnknownSource {
         /// 未知のキーを参照した辺の公開ID。
         edge: AssignedId,
-        /// 参照先が見つからなかった始点ノードの公開ID。
+        /// この辺が始点として参照した、対応するノードが存在しないキー。
         source: EmployeeId,
     },
     /// このエッジが未知の終点キーを参照している。
     AssignedUnknownTarget {
         /// 未知のキーを参照した辺の公開ID。
         edge: AssignedId,
-        /// 参照先が見つからなかった終点ノードの公開ID。
+        /// この辺が終点として参照した、対応するノードが存在しないキー。
         target: ProjectId,
     },
     /// このエッジ種別のキーが重複している。
@@ -334,21 +334,21 @@ pub enum Violation {
     SponsorsUnknownSource {
         /// 未知のキーを参照した辺の公開ID。
         edge: SponsorsId,
-        /// 参照先が見つからなかった始点ノードの公開ID。
+        /// この辺が始点として参照した、対応するノードが存在しないキー。
         source: DepartmentId,
     },
     /// このエッジが未知の終点キーを参照している。
     SponsorsUnknownTarget {
         /// 未知のキーを参照した辺の公開ID。
         edge: SponsorsId,
-        /// 参照先が見つからなかった終点ノードの公開ID。
+        /// この辺が終点として参照した、対応するノードが存在しないキー。
         target: ProjectId,
     },
     /// このエッジ種別の `each` 制約違反 (出次数)。
     SponsorsDepartmentEachViolation {
         /// 出次数が制約に反した始点ノードの公開ID。
         source: DepartmentId,
-        /// この始点から実際に出ている辺の本数。
+        /// この辺種別で、この始点から実際に出ている辺の本数。
         count: usize,
     },
 }
@@ -1216,7 +1216,8 @@ impl<'graph> std::fmt::Debug for SponsorsRef<'graph> {
             .finish_non_exhaustive()
     }
 }
-/// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+/// 凍結前のグラフを組み立てる `Builder`。凍結 (`freeze()`) までは where
+/// 制約検査を一切行わない。
 ///
 /// 宣言: `src/schema.rs` の `schema OrgChart`
 pub struct Builder {
@@ -1228,7 +1229,7 @@ pub struct Builder {
     assigned: Vec<(AssignedId, Assigned)>,
     sponsors: Vec<(SponsorsId, Sponsors)>,
     /// この構築を識別する構築印。`Builder::new()` が発行し、この
-    /// builder から挿入する全ての名前付き位置と、凍結成功後の
+    /// `Builder` から挿入する全ての名前付き位置と、凍結成功後の
     /// `Graph` へ同じ値を刻む。
     __graphite_construction_stamp: u64,
 }
@@ -1257,7 +1258,7 @@ pub trait OrgChartInsertable: Sized {
         id: Self::Id,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
-    /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
+    /// 型付きの公開IDを指定して、この要素を `Builder` へ挿入する。
     fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
 }
 /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
@@ -1270,7 +1271,7 @@ pub trait OrgChartDefaultId: OrgChartInsertable {
         binding: String,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
-    /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
+    /// 束縛名の文字列から既定IDを作り、この要素を `Builder` へ挿入する。
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
 /// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと

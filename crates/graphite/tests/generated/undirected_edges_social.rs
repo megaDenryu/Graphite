@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    13268835114584111902u64, 15311615342483807817u64, 14267780152044001644u64,
-    2717969930247458688u64,
+    3618885743628589251u64, 17969735439622537596u64, 16740285505645287273u64,
+    15623486742478545245u64,
 ];
 /// `Person` ノードの公開ID。
 ///
@@ -142,7 +142,7 @@ pub enum Violation {
     FriendsUnknownEndpoint {
         /// 未知のキーを参照した辺の公開ID。
         edge: FriendsId,
-        /// 参照先が見つからなかった端点ノードの公開ID。
+        /// この辺が端点として参照した、対応するノードが存在しないキー。
         endpoint: PersonId,
     },
     /// このエッジ種別の `unique pair` 違反 (無向のため
@@ -160,7 +160,7 @@ pub enum Violation {
     WireUnknownEndpoint {
         /// 未知のキーを参照した辺の公開ID。
         edge: WireId,
-        /// 参照先が見つからなかった端点ノードの公開ID。
+        /// この辺が端点として参照した、対応するノードが存在しないキー。
         endpoint: PersonId,
     },
 }
@@ -513,7 +513,8 @@ impl<'graph> std::fmt::Debug for WireRef<'graph> {
             .finish_non_exhaustive()
     }
 }
-/// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+/// 凍結前のグラフを組み立てる `Builder`。凍結 (`freeze()`) までは where
+/// 制約検査を一切行わない。
 ///
 /// 宣言: `tests/undirected_edges.rs` の `schema Social`
 pub struct Builder {
@@ -521,7 +522,7 @@ pub struct Builder {
     friends: Vec<(FriendsId, Friends)>,
     wire: Vec<(WireId, Wire)>,
     /// この構築を識別する構築印。`Builder::new()` が発行し、この
-    /// builder から挿入する全ての名前付き位置と、凍結成功後の
+    /// `Builder` から挿入する全ての名前付き位置と、凍結成功後の
     /// `Graph` へ同じ値を刻む。
     __graphite_construction_stamp: u64,
 }
@@ -550,7 +551,7 @@ pub trait SocialInsertable: Sized {
         id: Self::Id,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
-    /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
+    /// 型付きの公開IDを指定して、この要素を `Builder` へ挿入する。
     fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
 }
 /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
@@ -563,7 +564,7 @@ pub trait SocialDefaultId: SocialInsertable {
         binding: String,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
-    /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
+    /// 束縛名の文字列から既定IDを作り、この要素を `Builder` へ挿入する。
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
 /// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと

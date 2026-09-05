@@ -25,7 +25,7 @@ pub(crate) fn gen_unknown_source_case(
         #unk_src {
             /// 未知のキーを参照した辺の公開ID。
             edge: #edge_id,
-            /// 参照先が見つからなかった始点ノードの公開ID。
+            /// この辺が始点として参照した、対応するノードが存在しないキー。
             source: #from_id,
         }
     };
@@ -65,7 +65,7 @@ pub(crate) fn gen_unknown_target_case(
         #unk_dst {
             /// 未知のキーを参照した辺の公開ID。
             edge: #edge_id,
-            /// 参照先が見つからなかった終点ノードの公開ID。
+            /// この辺が終点として参照した、対応するノードが存在しないキー。
             target: #to_id,
         }
     };
@@ -108,7 +108,7 @@ pub(crate) fn gen_unknown_endpoint_case(
         #unk {
             /// 未知のキーを参照した辺の公開ID。
             edge: #edge_id,
-            /// 参照先が見つからなかった端点ノードの公開ID。
+            /// この辺が端点として参照した、対応するノードが存在しないキー。
             endpoint: #node_id,
         }
     };

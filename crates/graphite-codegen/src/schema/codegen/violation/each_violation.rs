@@ -37,7 +37,7 @@ pub(crate) fn gen_each_violation_case(
                 #v {
                     /// 出次数が制約に反した始点ノードの公開ID。
                     source: #from_id,
-                    /// この始点から実際に出ている辺の本数。
+                    /// この辺種別で、この始点から実際に出ている辺の本数。
                     count: usize,
                 }
             };
@@ -68,7 +68,7 @@ pub(crate) fn gen_each_violation_case(
                 #v {
                     /// 入次数が制約に反した終点ノードの公開ID。
                     target: #to_id,
-                    /// この終点へ実際に入っている辺の本数。
+                    /// この辺種別で、この終点へ実際に入っている辺の本数。
                     count: usize,
                 }
             };

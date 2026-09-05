@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    13740227031853288506u64, 2558250581929126165u64, 1863382613485622224u64,
-    5340105879051887532u64,
+    10481572373303087960u64, 134245604311349225u64, 18340572550950889350u64,
+    6359212947974677714u64,
 ];
 /// `BelongsTo` 辺の公開ID。
 ///
@@ -82,21 +82,21 @@ pub enum Violation {
     BelongsToUnknownSource {
         /// 未知のキーを参照した辺の公開ID。
         edge: BelongsToId,
-        /// 参照先が見つからなかった始点ノードの公開ID。
+        /// この辺が始点として参照した、対応するノードが存在しないキー。
         source: PersonId,
     },
     /// このエッジが未知の終点キーを参照している。
     BelongsToUnknownTarget {
         /// 未知のキーを参照した辺の公開ID。
         edge: BelongsToId,
-        /// 参照先が見つからなかった終点ノードの公開ID。
+        /// この辺が終点として参照した、対応するノードが存在しないキー。
         target: DepartmentId,
     },
     /// このエッジ種別の `each` 制約違反 (出次数)。
     BelongsToPersonEachViolation {
         /// 出次数が制約に反した始点ノードの公開ID。
         source: PersonId,
-        /// この始点から実際に出ている辺の本数。
+        /// この辺種別で、この始点から実際に出ている辺の本数。
         count: usize,
     },
 }
@@ -418,7 +418,8 @@ impl<'graph> std::fmt::Debug for BelongsToRef<'graph> {
             .finish_non_exhaustive()
     }
 }
-/// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+/// 凍結前のグラフを組み立てる `Builder`。凍結 (`freeze()`) までは where
+/// 制約検査を一切行わない。
 ///
 /// 宣言: `tests/node_id_shared_across_schemas.rs` の `schema OrgChart`
 pub struct Builder {
@@ -426,7 +427,7 @@ pub struct Builder {
     __graphite_node_department: Vec<(DepartmentId, super::Department)>,
     belongs_to: Vec<(BelongsToId, BelongsTo)>,
     /// この構築を識別する構築印。`Builder::new()` が発行し、この
-    /// builder から挿入する全ての名前付き位置と、凍結成功後の
+    /// `Builder` から挿入する全ての名前付き位置と、凍結成功後の
     /// `Graph` へ同じ値を刻む。
     __graphite_construction_stamp: u64,
 }
@@ -455,7 +456,7 @@ pub trait OrgChartInsertable: Sized {
         id: Self::Id,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
-    /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
+    /// 型付きの公開IDを指定して、この要素を `Builder` へ挿入する。
     fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
 }
 /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
@@ -468,7 +469,7 @@ pub trait OrgChartDefaultId: OrgChartInsertable {
         binding: String,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
-    /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
+    /// 束縛名の文字列から既定IDを作り、この要素を `Builder` へ挿入する。
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
 /// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと

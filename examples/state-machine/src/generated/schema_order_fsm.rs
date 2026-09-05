@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    8169717173945259051u64, 8732966091379089196u64, 18398576336114673821u64,
-    18193020970472605073u64,
+    17132338439061634438u64, 13870986274713527017u64, 798619201248345776u64,
+    6549206303891343444u64,
 ];
 /// `OrderState` ノードの公開ID。
 ///
@@ -329,21 +329,21 @@ pub enum Violation {
     SubmitUnknownSource {
         /// 未知のキーを参照した辺の公開ID。
         edge: SubmitId,
-        /// 参照先が見つからなかった始点ノードの公開ID。
+        /// この辺が始点として参照した、対応するノードが存在しないキー。
         source: OrderStateId,
     },
     /// このエッジが未知の終点キーを参照している。
     SubmitUnknownTarget {
         /// 未知のキーを参照した辺の公開ID。
         edge: SubmitId,
-        /// 参照先が見つからなかった終点ノードの公開ID。
+        /// この辺が終点として参照した、対応するノードが存在しないキー。
         target: OrderStateId,
     },
     /// このエッジ種別の `each` 制約違反 (出次数)。
     SubmitBeforeEachViolation {
         /// 出次数が制約に反した始点ノードの公開ID。
         source: OrderStateId,
-        /// この始点から実際に出ている辺の本数。
+        /// この辺種別で、この始点から実際に出ている辺の本数。
         count: usize,
     },
     /// このエッジ種別のキーが重複している。
@@ -352,21 +352,21 @@ pub enum Violation {
     PayUnknownSource {
         /// 未知のキーを参照した辺の公開ID。
         edge: PayId,
-        /// 参照先が見つからなかった始点ノードの公開ID。
+        /// この辺が始点として参照した、対応するノードが存在しないキー。
         source: OrderStateId,
     },
     /// このエッジが未知の終点キーを参照している。
     PayUnknownTarget {
         /// 未知のキーを参照した辺の公開ID。
         edge: PayId,
-        /// 参照先が見つからなかった終点ノードの公開ID。
+        /// この辺が終点として参照した、対応するノードが存在しないキー。
         target: OrderStateId,
     },
     /// このエッジ種別の `each` 制約違反 (出次数)。
     PayBeforeEachViolation {
         /// 出次数が制約に反した始点ノードの公開ID。
         source: OrderStateId,
-        /// この始点から実際に出ている辺の本数。
+        /// この辺種別で、この始点から実際に出ている辺の本数。
         count: usize,
     },
     /// このエッジ種別のキーが重複している。
@@ -375,21 +375,21 @@ pub enum Violation {
     ShipUnknownSource {
         /// 未知のキーを参照した辺の公開ID。
         edge: ShipId,
-        /// 参照先が見つからなかった始点ノードの公開ID。
+        /// この辺が始点として参照した、対応するノードが存在しないキー。
         source: OrderStateId,
     },
     /// このエッジが未知の終点キーを参照している。
     ShipUnknownTarget {
         /// 未知のキーを参照した辺の公開ID。
         edge: ShipId,
-        /// 参照先が見つからなかった終点ノードの公開ID。
+        /// この辺が終点として参照した、対応するノードが存在しないキー。
         target: OrderStateId,
     },
     /// このエッジ種別の `each` 制約違反 (出次数)。
     ShipBeforeEachViolation {
         /// 出次数が制約に反した始点ノードの公開ID。
         source: OrderStateId,
-        /// この始点から実際に出ている辺の本数。
+        /// この辺種別で、この始点から実際に出ている辺の本数。
         count: usize,
     },
     /// このエッジ種別のキーが重複している。
@@ -398,21 +398,21 @@ pub enum Violation {
     DeliverUnknownSource {
         /// 未知のキーを参照した辺の公開ID。
         edge: DeliverId,
-        /// 参照先が見つからなかった始点ノードの公開ID。
+        /// この辺が始点として参照した、対応するノードが存在しないキー。
         source: OrderStateId,
     },
     /// このエッジが未知の終点キーを参照している。
     DeliverUnknownTarget {
         /// 未知のキーを参照した辺の公開ID。
         edge: DeliverId,
-        /// 参照先が見つからなかった終点ノードの公開ID。
+        /// この辺が終点として参照した、対応するノードが存在しないキー。
         target: OrderStateId,
     },
     /// このエッジ種別の `each` 制約違反 (出次数)。
     DeliverBeforeEachViolation {
         /// 出次数が制約に反した始点ノードの公開ID。
         source: OrderStateId,
-        /// この始点から実際に出ている辺の本数。
+        /// この辺種別で、この始点から実際に出ている辺の本数。
         count: usize,
     },
     /// このエッジ種別のキーが重複している。
@@ -421,21 +421,21 @@ pub enum Violation {
     CancelUnknownSource {
         /// 未知のキーを参照した辺の公開ID。
         edge: CancelId,
-        /// 参照先が見つからなかった始点ノードの公開ID。
+        /// この辺が始点として参照した、対応するノードが存在しないキー。
         source: OrderStateId,
     },
     /// このエッジが未知の終点キーを参照している。
     CancelUnknownTarget {
         /// 未知のキーを参照した辺の公開ID。
         edge: CancelId,
-        /// 参照先が見つからなかった終点ノードの公開ID。
+        /// この辺が終点として参照した、対応するノードが存在しないキー。
         target: OrderStateId,
     },
     /// このエッジ種別の `each` 制約違反 (出次数)。
     CancelBeforeEachViolation {
         /// 出次数が制約に反した始点ノードの公開ID。
         source: OrderStateId,
-        /// この始点から実際に出ている辺の本数。
+        /// この辺種別で、この始点から実際に出ている辺の本数。
         count: usize,
     },
     /// このエッジ種別のキーが重複している。
@@ -444,21 +444,21 @@ pub enum Violation {
     RefundUnknownSource {
         /// 未知のキーを参照した辺の公開ID。
         edge: RefundId,
-        /// 参照先が見つからなかった始点ノードの公開ID。
+        /// この辺が始点として参照した、対応するノードが存在しないキー。
         source: OrderStateId,
     },
     /// このエッジが未知の終点キーを参照している。
     RefundUnknownTarget {
         /// 未知のキーを参照した辺の公開ID。
         edge: RefundId,
-        /// 参照先が見つからなかった終点ノードの公開ID。
+        /// この辺が終点として参照した、対応するノードが存在しないキー。
         target: OrderStateId,
     },
     /// このエッジ種別の `each` 制約違反 (出次数)。
     RefundBeforeEachViolation {
         /// 出次数が制約に反した始点ノードの公開ID。
         source: OrderStateId,
-        /// この始点から実際に出ている辺の本数。
+        /// この辺種別で、この始点から実際に出ている辺の本数。
         count: usize,
     },
 }
@@ -1520,7 +1520,8 @@ impl<'graph> std::fmt::Debug for RefundRef<'graph> {
             .finish_non_exhaustive()
     }
 }
-/// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+/// 凍結前のグラフを組み立てる `Builder`。凍結 (`freeze()`) までは where
+/// 制約検査を一切行わない。
 ///
 /// 宣言: `src/schema.rs` の `schema OrderFsm`
 pub struct Builder {
@@ -1532,7 +1533,7 @@ pub struct Builder {
     cancel: Vec<(CancelId, Cancel)>,
     refund: Vec<(RefundId, Refund)>,
     /// この構築を識別する構築印。`Builder::new()` が発行し、この
-    /// builder から挿入する全ての名前付き位置と、凍結成功後の
+    /// `Builder` から挿入する全ての名前付き位置と、凍結成功後の
     /// `Graph` へ同じ値を刻む。
     __graphite_construction_stamp: u64,
 }
@@ -1561,7 +1562,7 @@ pub trait OrderFsmInsertable: Sized {
         id: Self::Id,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
-    /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
+    /// 型付きの公開IDを指定して、この要素を `Builder` へ挿入する。
     fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
 }
 /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
@@ -1574,7 +1575,7 @@ pub trait OrderFsmDefaultId: OrderFsmInsertable {
         binding: String,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
-    /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
+    /// 束縛名の文字列から既定IDを作り、この要素を `Builder` へ挿入する。
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
 /// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと

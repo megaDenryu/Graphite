@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    10966723706670842397u64, 7047082606351946792u64, 17016691410905954871u64,
-    4535088500998633235u64,
+    13942286671104915267u64, 8965300523475896168u64, 8491419155506059333u64,
+    16335442955436624129u64,
 ];
 /// `Book` ノードの公開ID。
 ///
@@ -102,21 +102,21 @@ pub enum Violation {
     BorrowedUnknownSource {
         /// 未知のキーを参照した辺の公開ID。
         edge: BorrowedId,
-        /// 参照先が見つからなかった始点ノードの公開ID。
+        /// この辺が始点として参照した、対応するノードが存在しないキー。
         source: BookId,
     },
     /// このエッジが未知の終点キーを参照している。
     BorrowedUnknownTarget {
         /// 未知のキーを参照した辺の公開ID。
         edge: BorrowedId,
-        /// 参照先が見つからなかった終点ノードの公開ID。
+        /// この辺が終点として参照した、対応するノードが存在しないキー。
         target: ReaderId,
     },
     /// このエッジ種別の `each` 制約違反 (出次数)。
     BorrowedBookEachViolation {
         /// 出次数が制約に反した始点ノードの公開ID。
         source: BookId,
-        /// この始点から実際に出ている辺の本数。
+        /// この辺種別で、この始点から実際に出ている辺の本数。
         count: usize,
     },
 }
@@ -448,7 +448,8 @@ impl<'graph> std::fmt::Debug for BorrowedRef<'graph> {
             .finish_non_exhaustive()
     }
 }
-/// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+/// 凍結前のグラフを組み立てる `Builder`。凍結 (`freeze()`) までは where
+/// 制約検査を一切行わない。
 ///
 /// 宣言: `src/lib.rs` の `schema Library`
 pub struct Builder {
@@ -456,7 +457,7 @@ pub struct Builder {
     __graphite_node_reader: Vec<(ReaderId, super::Reader)>,
     borrowed: Vec<(BorrowedId, Borrowed)>,
     /// この構築を識別する構築印。`Builder::new()` が発行し、この
-    /// builder から挿入する全ての名前付き位置と、凍結成功後の
+    /// `Builder` から挿入する全ての名前付き位置と、凍結成功後の
     /// `Graph` へ同じ値を刻む。
     __graphite_construction_stamp: u64,
 }
@@ -485,7 +486,7 @@ pub trait LibraryInsertable: Sized {
         id: Self::Id,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
-    /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
+    /// 型付きの公開IDを指定して、この要素を `Builder` へ挿入する。
     fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
 }
 /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
@@ -498,7 +499,7 @@ pub trait LibraryDefaultId: LibraryInsertable {
         binding: String,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
-    /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
+    /// 束縛名の文字列から既定IDを作り、この要素を `Builder` へ挿入する。
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
 /// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと

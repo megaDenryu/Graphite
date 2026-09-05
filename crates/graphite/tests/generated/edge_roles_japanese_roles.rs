@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    1705211294243469663u64, 330541347625595440u64, 15696489486545386117u64,
-    5873429998157603929u64,
+    9067580769701185409u64, 1836209616905100548u64, 16542735523317353575u64,
+    11420935067080374987u64,
 ];
 /// `Person` ノードの公開ID。
 ///
@@ -95,21 +95,21 @@ pub enum Violation {
     OwnershipUnknownSource {
         /// 未知のキーを参照した辺の公開ID。
         edge: OwnershipId,
-        /// 参照先が見つからなかった始点ノードの公開ID。
+        /// この辺が始点として参照した、対応するノードが存在しないキー。
         source: PersonId,
     },
     /// このエッジが未知の終点キーを参照している。
     OwnershipUnknownTarget {
         /// 未知のキーを参照した辺の公開ID。
         edge: OwnershipId,
-        /// 参照先が見つからなかった終点ノードの公開ID。
+        /// この辺が終点として参照した、対応するノードが存在しないキー。
         target: ItemId,
     },
     /// このエッジ種別の `each` 制約違反 (出次数)。
     Ownership所有者EachViolation {
         /// 出次数が制約に反した始点ノードの公開ID。
         source: PersonId,
-        /// この始点から実際に出ている辺の本数。
+        /// この辺種別で、この始点から実際に出ている辺の本数。
         count: usize,
     },
 }
@@ -423,7 +423,8 @@ impl<'graph> std::fmt::Debug for OwnershipRef<'graph> {
             .finish_non_exhaustive()
     }
 }
-/// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+/// 凍結前のグラフを組み立てる `Builder`。凍結 (`freeze()`) までは where
+/// 制約検査を一切行わない。
 ///
 /// 宣言: `tests/edge_roles.rs` の `schema JapaneseRoles`
 pub struct Builder {
@@ -431,7 +432,7 @@ pub struct Builder {
     __graphite_node_item: Vec<(ItemId, super::Item)>,
     ownership: Vec<(OwnershipId, Ownership)>,
     /// この構築を識別する構築印。`Builder::new()` が発行し、この
-    /// builder から挿入する全ての名前付き位置と、凍結成功後の
+    /// `Builder` から挿入する全ての名前付き位置と、凍結成功後の
     /// `Graph` へ同じ値を刻む。
     __graphite_construction_stamp: u64,
 }
@@ -460,7 +461,7 @@ pub trait JapaneseRolesInsertable: Sized {
         id: Self::Id,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
-    /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
+    /// 型付きの公開IDを指定して、この要素を `Builder` へ挿入する。
     fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
 }
 /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
@@ -473,7 +474,7 @@ pub trait JapaneseRolesDefaultId: JapaneseRolesInsertable {
         binding: String,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
-    /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
+    /// 束縛名の文字列から既定IDを作り、この要素を `Builder` へ挿入する。
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
 /// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと

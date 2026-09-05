@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    8271716890287265495u64, 16800123155580765062u64, 10257631957381888553u64,
-    153612965726286645u64,
+    14246360806138963568u64, 3035476437326829189u64, 711339899403654402u64,
+    14994782173098643214u64,
 ];
 /// `Author` ノードの公開ID。
 ///
@@ -102,28 +102,28 @@ pub enum Violation {
     WroteUnknownSource {
         /// 未知のキーを参照した辺の公開ID。
         edge: WroteId,
-        /// 参照先が見つからなかった始点ノードの公開ID。
+        /// この辺が始点として参照した、対応するノードが存在しないキー。
         source: AuthorId,
     },
     /// このエッジが未知の終点キーを参照している。
     WroteUnknownTarget {
         /// 未知のキーを参照した辺の公開ID。
         edge: WroteId,
-        /// 参照先が見つからなかった終点ノードの公開ID。
+        /// この辺が終点として参照した、対応するノードが存在しないキー。
         target: ArticleId,
     },
     /// このエッジ種別の `each` 制約違反 (入次数)。
     WroteArticleEachViolation {
         /// 入次数が制約に反した終点ノードの公開ID。
         target: ArticleId,
-        /// この終点へ実際に入っている辺の本数。
+        /// この辺種別で、この終点へ実際に入っている辺の本数。
         count: usize,
     },
     /// このエッジ種別の `each` 制約違反 (出次数)。
     WroteWriterEachViolation {
         /// 出次数が制約に反した始点ノードの公開ID。
         source: AuthorId,
-        /// この始点から実際に出ている辺の本数。
+        /// この辺種別で、この始点から実際に出ている辺の本数。
         count: usize,
     },
 }
@@ -460,7 +460,8 @@ impl<'graph> std::fmt::Debug for WroteRef<'graph> {
             .finish_non_exhaustive()
     }
 }
-/// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+/// 凍結前のグラフを組み立てる `Builder`。凍結 (`freeze()`) までは where
+/// 制約検査を一切行わない。
 ///
 /// 宣言: `tests/each_declaration_order.rs` の `schema DeclarationOrder`
 pub struct Builder {
@@ -468,7 +469,7 @@ pub struct Builder {
     __graphite_node_article: Vec<(ArticleId, super::Article)>,
     wrote: Vec<(WroteId, Wrote)>,
     /// この構築を識別する構築印。`Builder::new()` が発行し、この
-    /// builder から挿入する全ての名前付き位置と、凍結成功後の
+    /// `Builder` から挿入する全ての名前付き位置と、凍結成功後の
     /// `Graph` へ同じ値を刻む。
     __graphite_construction_stamp: u64,
 }
@@ -497,7 +498,7 @@ pub trait DeclarationOrderInsertable: Sized {
         id: Self::Id,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
-    /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
+    /// 型付きの公開IDを指定して、この要素を `Builder` へ挿入する。
     fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
 }
 /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
@@ -510,7 +511,7 @@ pub trait DeclarationOrderDefaultId: DeclarationOrderInsertable {
         binding: String,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
-    /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
+    /// 束縛名の文字列から既定IDを作り、この要素を `Builder` へ挿入する。
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
 /// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと

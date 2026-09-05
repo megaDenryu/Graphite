@@ -30,13 +30,14 @@ pub(crate) fn gen_builder_struct(
     });
 
     quote! {
-        /// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+        /// 凍結前のグラフを組み立てる `Builder`。凍結 (`freeze()`) までは where
+        /// 制約検査を一切行わない。
         #スキーマ宣言元への参照
         pub struct #builder_ident {
             #(#node_fields,)*
             #(#edge_fields,)*
             /// この構築を識別する構築印。`Builder::new()` が発行し、この
-            /// builder から挿入する全ての名前付き位置と、凍結成功後の
+            /// `Builder` から挿入する全ての名前付き位置と、凍結成功後の
             /// `Graph` へ同じ値を刻む。
             #stamp_field: u64,
         }

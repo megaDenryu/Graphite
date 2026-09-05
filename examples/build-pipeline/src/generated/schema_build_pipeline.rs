@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    7633823920348659430u64, 13252275782633686907u64, 16839048437543680772u64,
-    15274026267688973216u64,
+    17068521739631416585u64, 18033665556369048732u64, 4419546753171838999u64,
+    10257357589365954883u64,
 ];
 /// `Consumes` 辺の公開ID。
 ///
@@ -117,14 +117,14 @@ pub enum Violation {
     ProducesUnknownSource {
         /// 未知のキーを参照した辺の公開ID。
         edge: ProducesId,
-        /// 参照先が見つからなかった始点ノードの公開ID。
+        /// この辺が始点として参照した、対応するノードが存在しないキー。
         source: TaskId,
     },
     /// このエッジが未知の終点キーを参照している。
     ProducesUnknownTarget {
         /// 未知のキーを参照した辺の公開ID。
         edge: ProducesId,
-        /// 参照先が見つからなかった終点ノードの公開ID。
+        /// この辺が終点として参照した、対応するノードが存在しないキー。
         target: ArtifactId,
     },
     /// このエッジ種別の `unique pair` 違反 (同じ始点・終点の対に
@@ -141,14 +141,14 @@ pub enum Violation {
     ConsumesUnknownSource {
         /// 未知のキーを参照した辺の公開ID。
         edge: ConsumesId,
-        /// 参照先が見つからなかった始点ノードの公開ID。
+        /// この辺が始点として参照した、対応するノードが存在しないキー。
         source: TaskId,
     },
     /// このエッジが未知の終点キーを参照している。
     ConsumesUnknownTarget {
         /// 未知のキーを参照した辺の公開ID。
         edge: ConsumesId,
-        /// 参照先が見つからなかった終点ノードの公開ID。
+        /// この辺が終点として参照した、対応するノードが存在しないキー。
         target: ArtifactId,
     },
     /// このエッジ種別の `unique pair` 違反 (同じ始点・終点の対に
@@ -627,7 +627,8 @@ impl<'graph> std::fmt::Debug for ConsumesRef<'graph> {
             .finish_non_exhaustive()
     }
 }
-/// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+/// 凍結前のグラフを組み立てる `Builder`。凍結 (`freeze()`) までは where
+/// 制約検査を一切行わない。
 ///
 /// 宣言: `src/schema.rs` の `schema BuildPipeline`
 pub struct Builder {
@@ -636,7 +637,7 @@ pub struct Builder {
     produces: Vec<(ProducesId, Produces)>,
     consumes: Vec<(ConsumesId, Consumes)>,
     /// この構築を識別する構築印。`Builder::new()` が発行し、この
-    /// builder から挿入する全ての名前付き位置と、凍結成功後の
+    /// `Builder` から挿入する全ての名前付き位置と、凍結成功後の
     /// `Graph` へ同じ値を刻む。
     __graphite_construction_stamp: u64,
 }
@@ -665,7 +666,7 @@ pub trait BuildPipelineInsertable: Sized {
         id: Self::Id,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
-    /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
+    /// 型付きの公開IDを指定して、この要素を `Builder` へ挿入する。
     fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
 }
 /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
@@ -678,7 +679,7 @@ pub trait BuildPipelineDefaultId: BuildPipelineInsertable {
         binding: String,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
-    /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
+    /// 束縛名の文字列から既定IDを作り、この要素を `Builder` へ挿入する。
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
 /// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと

@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    14229330210880630583u64, 8286497483436523870u64, 1288600235152919049u64,
-    10011062754325150301u64,
+    8857142279373922681u64, 1645141446372284422u64, 14102138912986265815u64,
+    15929559366224713171u64,
 ];
 /// `人物` ノードの公開ID。
 ///
@@ -152,14 +152,14 @@ pub enum Violation {
     購入UnknownSource {
         /// 未知のキーを参照した辺の公開ID。
         edge: 購入Id,
-        /// 参照先が見つからなかった始点ノードの公開ID。
+        /// この辺が始点として参照した、対応するノードが存在しないキー。
         source: 人物Id,
     },
     /// このエッジが未知の終点キーを参照している。
     購入UnknownTarget {
         /// 未知のキーを参照した辺の公開ID。
         edge: 購入Id,
-        /// 参照先が見つからなかった終点ノードの公開ID。
+        /// この辺が終点として参照した、対応するノードが存在しないキー。
         target: 商品Id,
     },
     /// このエッジ種別の `unique pair` 違反 (同じ始点・終点の対に
@@ -177,7 +177,7 @@ pub enum Violation {
     友人UnknownEndpoint {
         /// 未知のキーを参照した辺の公開ID。
         edge: 友人Id,
-        /// 参照先が見つからなかった端点ノードの公開ID。
+        /// この辺が端点として参照した、対応するノードが存在しないキー。
         endpoint: 人物Id,
     },
     /// このエッジ種別の `unique pair` 違反 (無向のため
@@ -634,7 +634,8 @@ impl<'graph> std::fmt::Debug for 友人Ref<'graph> {
             .finish_non_exhaustive()
     }
 }
-/// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+/// 凍結前のグラフを組み立てる `Builder`。凍結 (`freeze()`) までは where
+/// 制約検査を一切行わない。
 ///
 /// 宣言: `tests/graph_refs.rs` の `schema 世界`
 pub struct Builder {
@@ -643,7 +644,7 @@ pub struct Builder {
     購入: Vec<(購入Id, 購入)>,
     友人: Vec<(友人Id, 友人)>,
     /// この構築を識別する構築印。`Builder::new()` が発行し、この
-    /// builder から挿入する全ての名前付き位置と、凍結成功後の
+    /// `Builder` から挿入する全ての名前付き位置と、凍結成功後の
     /// `Graph` へ同じ値を刻む。
     __graphite_construction_stamp: u64,
 }
@@ -672,7 +673,7 @@ pub trait 世界Insertable: Sized {
         id: Self::Id,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
-    /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
+    /// 型付きの公開IDを指定して、この要素を `Builder` へ挿入する。
     fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
 }
 /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
@@ -685,7 +686,7 @@ pub trait 世界DefaultId: 世界Insertable {
         binding: String,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
-    /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
+    /// 束縛名の文字列から既定IDを作り、この要素を `Builder` へ挿入する。
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
 /// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと

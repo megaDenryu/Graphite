@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    14705315250001369017u64, 18065834460180308192u64, 16132219683487765995u64,
-    6369597547959336287u64,
+    1150861589340783284u64, 7032507426026197121u64, 12862384408386296078u64,
+    13520845712649370946u64,
 ];
 /// `Cell` ノードの公開ID。
 ///
@@ -181,14 +181,14 @@ pub enum Violation {
     FeedsUnknownSource {
         /// 未知のキーを参照した辺の公開ID。
         edge: FeedsId,
-        /// 参照先が見つからなかった始点ノードの公開ID。
+        /// この辺が始点として参照した、対応するノードが存在しないキー。
         source: CellId,
     },
     /// このエッジが未知の終点キーを参照している。
     FeedsUnknownTarget {
         /// 未知のキーを参照した辺の公開ID。
         edge: FeedsId,
-        /// 参照先が見つからなかった終点ノードの公開ID。
+        /// この辺が終点として参照した、対応するノードが存在しないキー。
         target: CellId,
     },
     /// このエッジ種別の `unique pair` 違反 (同じ始点・終点の対に
@@ -205,14 +205,14 @@ pub enum Violation {
     LhsUnknownSource {
         /// 未知のキーを参照した辺の公開ID。
         edge: LhsId,
-        /// 参照先が見つからなかった始点ノードの公開ID。
+        /// この辺が始点として参照した、対応するノードが存在しないキー。
         source: CellId,
     },
     /// このエッジが未知の終点キーを参照している。
     LhsUnknownTarget {
         /// 未知のキーを参照した辺の公開ID。
         edge: LhsId,
-        /// 参照先が見つからなかった終点ノードの公開ID。
+        /// この辺が終点として参照した、対応するノードが存在しないキー。
         target: CellId,
     },
     /// このエッジ種別の `unique pair` 違反 (同じ始点・終点の対に
@@ -229,14 +229,14 @@ pub enum Violation {
     RhsUnknownSource {
         /// 未知のキーを参照した辺の公開ID。
         edge: RhsId,
-        /// 参照先が見つからなかった始点ノードの公開ID。
+        /// この辺が始点として参照した、対応するノードが存在しないキー。
         source: CellId,
     },
     /// このエッジが未知の終点キーを参照している。
     RhsUnknownTarget {
         /// 未知のキーを参照した辺の公開ID。
         edge: RhsId,
-        /// 参照先が見つからなかった終点ノードの公開ID。
+        /// この辺が終点として参照した、対応するノードが存在しないキー。
         target: CellId,
     },
     /// このエッジ種別の `unique pair` 違反 (同じ始点・終点の対に
@@ -801,7 +801,8 @@ impl<'graph> std::fmt::Debug for RhsRef<'graph> {
             .finish_non_exhaustive()
     }
 }
-/// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+/// 凍結前のグラフを組み立てる `Builder`。凍結 (`freeze()`) までは where
+/// 制約検査を一切行わない。
 ///
 /// 宣言: `src/schema.rs` の `schema Sheet`
 pub struct Builder {
@@ -810,7 +811,7 @@ pub struct Builder {
     lhs: Vec<(LhsId, Lhs)>,
     rhs: Vec<(RhsId, Rhs)>,
     /// この構築を識別する構築印。`Builder::new()` が発行し、この
-    /// builder から挿入する全ての名前付き位置と、凍結成功後の
+    /// `Builder` から挿入する全ての名前付き位置と、凍結成功後の
     /// `Graph` へ同じ値を刻む。
     __graphite_construction_stamp: u64,
 }
@@ -839,7 +840,7 @@ pub trait SheetInsertable: Sized {
         id: Self::Id,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
-    /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
+    /// 型付きの公開IDを指定して、この要素を `Builder` へ挿入する。
     fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
 }
 /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
@@ -852,7 +853,7 @@ pub trait SheetDefaultId: SheetInsertable {
         binding: String,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
-    /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
+    /// 束縛名の文字列から既定IDを作り、この要素を `Builder` へ挿入する。
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
 /// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと

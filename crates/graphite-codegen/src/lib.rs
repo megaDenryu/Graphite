@@ -163,7 +163,7 @@ mod tests {
         assert_eq!(rendered, second.render_module_source(&site).unwrap());
         assert_eq!(
             fnv1a(rendered.as_bytes(), 0xcbf29ce484222325),
-            2210029106962656559
+            15556421753351595999
         );
     }
 

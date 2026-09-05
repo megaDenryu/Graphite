@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    2236488659068819532u64, 9184396117560645215u64, 1455664218342903654u64,
-    13092634718477441522u64,
+    2977801887840618950u64, 3481880782700003219u64, 519885044196947924u64,
+    124482956800415768u64,
 ];
 /// `AutomaticNode` ノードの公開ID。
 ///
@@ -214,21 +214,21 @@ pub enum Violation {
     ExternalLinkUnknownSource {
         /// 未知のキーを参照した辺の公開ID。
         edge: ExternalEdgeId,
-        /// 参照先が見つからなかった始点ノードの公開ID。
+        /// この辺が始点として参照した、対応するノードが存在しないキー。
         source: ExternalNodeId,
     },
     /// このエッジが未知の終点キーを参照している。
     ExternalLinkUnknownTarget {
         /// 未知のキーを参照した辺の公開ID。
         edge: ExternalEdgeId,
-        /// 参照先が見つからなかった終点ノードの公開ID。
+        /// この辺が終点として参照した、対応するノードが存在しないキー。
         target: ExternalNodeId,
     },
     /// このエッジ種別の `each` 制約違反 (出次数)。
     ExternalLinkSourceEachViolation {
         /// 出次数が制約に反した始点ノードの公開ID。
         source: ExternalNodeId,
-        /// この始点から実際に出ている辺の本数。
+        /// この辺種別で、この始点から実際に出ている辺の本数。
         count: usize,
     },
     /// このエッジ種別のキーが重複している。
@@ -237,21 +237,21 @@ pub enum Violation {
     ExternalIncomingUnknownSource {
         /// 未知のキーを参照した辺の公開ID。
         edge: ExternalEdgeId,
-        /// 参照先が見つからなかった始点ノードの公開ID。
+        /// この辺が始点として参照した、対応するノードが存在しないキー。
         source: ExternalNodeId,
     },
     /// このエッジが未知の終点キーを参照している。
     ExternalIncomingUnknownTarget {
         /// 未知のキーを参照した辺の公開ID。
         edge: ExternalEdgeId,
-        /// 参照先が見つからなかった終点ノードの公開ID。
+        /// この辺が終点として参照した、対応するノードが存在しないキー。
         target: ExternalNodeId,
     },
     /// このエッジ種別の `each` 制約違反 (入次数)。
     ExternalIncomingTargetEachViolation {
         /// 入次数が制約に反した終点ノードの公開ID。
         target: ExternalNodeId,
-        /// この終点へ実際に入っている辺の本数。
+        /// この辺種別で、この終点へ実際に入っている辺の本数。
         count: usize,
     },
     /// このエッジ種別のキーが重複している。
@@ -261,7 +261,7 @@ pub enum Violation {
     ExternalFriendUnknownEndpoint {
         /// 未知のキーを参照した辺の公開ID。
         edge: ExternalEdgeId,
-        /// 参照先が見つからなかった端点ノードの公開ID。
+        /// この辺が端点として参照した、対応するノードが存在しないキー。
         endpoint: ExternalNodeId,
     },
     /// このエッジ種別のキーが重複している。
@@ -270,14 +270,14 @@ pub enum Violation {
     AutomaticLinkUnknownSource {
         /// 未知のキーを参照した辺の公開ID。
         edge: AutomaticLinkId,
-        /// 参照先が見つからなかった始点ノードの公開ID。
+        /// この辺が始点として参照した、対応するノードが存在しないキー。
         source: AutomaticNodeId,
     },
     /// このエッジが未知の終点キーを参照している。
     AutomaticLinkUnknownTarget {
         /// 未知のキーを参照した辺の公開ID。
         edge: AutomaticLinkId,
-        /// 参照先が見つからなかった終点ノードの公開ID。
+        /// この辺が終点として参照した、対応するノードが存在しないキー。
         target: AutomaticNodeId,
     },
 }
@@ -1091,7 +1091,8 @@ impl<'graph> std::fmt::Debug for AutomaticLinkRef<'graph> {
             .finish_non_exhaustive()
     }
 }
-/// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+/// 凍結前のグラフを組み立てる `Builder`。凍結 (`freeze()`) までは where
+/// 制約検査を一切行わない。
 ///
 /// 宣言: `tests/schema_ids.rs` の `schema MixedIds`
 pub struct Builder {
@@ -1103,7 +1104,7 @@ pub struct Builder {
     external_friend: Vec<(ExternalEdgeId, ExternalFriend)>,
     automatic_link: Vec<(AutomaticLinkId, AutomaticLink)>,
     /// この構築を識別する構築印。`Builder::new()` が発行し、この
-    /// builder から挿入する全ての名前付き位置と、凍結成功後の
+    /// `Builder` から挿入する全ての名前付き位置と、凍結成功後の
     /// `Graph` へ同じ値を刻む。
     __graphite_construction_stamp: u64,
 }
@@ -1132,7 +1133,7 @@ pub trait MixedIdsInsertable: Sized {
         id: Self::Id,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
-    /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
+    /// 型付きの公開IDを指定して、この要素を `Builder` へ挿入する。
     fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
 }
 /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
@@ -1145,7 +1146,7 @@ pub trait MixedIdsDefaultId: MixedIdsInsertable {
         binding: String,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
-    /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
+    /// 束縛名の文字列から既定IDを作り、この要素を `Builder` へ挿入する。
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
 /// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと

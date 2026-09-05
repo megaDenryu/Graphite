@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    4062077960716370859u64, 3179290401527179282u64, 10599532280313201965u64,
-    12485174737486446529u64,
+    9473696536388643368u64, 6786474933207009693u64, 2229739606299796538u64,
+    6395959138681207870u64,
 ];
 /// `Service` ノードの公開ID。
 ///
@@ -83,14 +83,14 @@ pub enum Violation {
     DependsOnUnknownSource {
         /// 未知のキーを参照した辺の公開ID。
         edge: DependsOnId,
-        /// 参照先が見つからなかった始点ノードの公開ID。
+        /// この辺が始点として参照した、対応するノードが存在しないキー。
         source: ServiceId,
     },
     /// このエッジが未知の終点キーを参照している。
     DependsOnUnknownTarget {
         /// 未知のキーを参照した辺の公開ID。
         edge: DependsOnId,
-        /// 参照先が見つからなかった終点ノードの公開ID。
+        /// この辺が終点として参照した、対応するノードが存在しないキー。
         target: ServiceId,
     },
     /// このエッジ種別の `unique pair` 違反 (同じ始点・終点の対に
@@ -365,14 +365,15 @@ impl<'graph> std::fmt::Debug for DependsOnRef<'graph> {
             .finish_non_exhaustive()
     }
 }
-/// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+/// 凍結前のグラフを組み立てる `Builder`。凍結 (`freeze()`) までは where
+/// 制約検査を一切行わない。
 ///
 /// 宣言: `src/schema.rs` の `schema Orchestration`
 pub struct Builder {
     __graphite_node_service: Vec<(ServiceId, super::Service)>,
     depends_on: Vec<(DependsOnId, DependsOn)>,
     /// この構築を識別する構築印。`Builder::new()` が発行し、この
-    /// builder から挿入する全ての名前付き位置と、凍結成功後の
+    /// `Builder` から挿入する全ての名前付き位置と、凍結成功後の
     /// `Graph` へ同じ値を刻む。
     __graphite_construction_stamp: u64,
 }
@@ -401,7 +402,7 @@ pub trait OrchestrationInsertable: Sized {
         id: Self::Id,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
-    /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
+    /// 型付きの公開IDを指定して、この要素を `Builder` へ挿入する。
     fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
 }
 /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
@@ -414,7 +415,7 @@ pub trait OrchestrationDefaultId: OrchestrationInsertable {
         binding: String,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
-    /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
+    /// 束縛名の文字列から既定IDを作り、この要素を `Builder` へ挿入する。
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
 /// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと

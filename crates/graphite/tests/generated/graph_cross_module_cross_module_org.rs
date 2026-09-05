@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    7686973392141955137u64, 10376301873818300038u64, 3605432399244605143u64,
-    8086788751910322739u64,
+    15090821884188070854u64, 3515980957190166121u64, 275728114108082956u64,
+    12221517971775765224u64,
 ];
 /// `BelongsTo` 辺の公開ID。
 ///
@@ -138,21 +138,21 @@ pub enum Violation {
     BelongsToUnknownSource {
         /// 未知のキーを参照した辺の公開ID。
         edge: BelongsToId,
-        /// 参照先が見つからなかった始点ノードの公開ID。
+        /// この辺が始点として参照した、対応するノードが存在しないキー。
         source: EmployeeId,
     },
     /// このエッジが未知の終点キーを参照している。
     BelongsToUnknownTarget {
         /// 未知のキーを参照した辺の公開ID。
         edge: BelongsToId,
-        /// 参照先が見つからなかった終点ノードの公開ID。
+        /// この辺が終点として参照した、対応するノードが存在しないキー。
         target: DepartmentId,
     },
     /// このエッジ種別の `each` 制約違反 (出次数)。
     BelongsToEmployeeEachViolation {
         /// 出次数が制約に反した始点ノードの公開ID。
         source: EmployeeId,
-        /// この始点から実際に出ている辺の本数。
+        /// この辺種別で、この始点から実際に出ている辺の本数。
         count: usize,
     },
     /// このエッジ種別のキーが重複している。
@@ -161,21 +161,21 @@ pub enum Violation {
     BossUnknownSource {
         /// 未知のキーを参照した辺の公開ID。
         edge: BossId,
-        /// 参照先が見つからなかった始点ノードの公開ID。
+        /// この辺が始点として参照した、対応するノードが存在しないキー。
         source: EmployeeId,
     },
     /// このエッジが未知の終点キーを参照している。
     BossUnknownTarget {
         /// 未知のキーを参照した辺の公開ID。
         edge: BossId,
-        /// 参照先が見つからなかった終点ノードの公開ID。
+        /// この辺が終点として参照した、対応するノードが存在しないキー。
         target: EmployeeId,
     },
     /// このエッジ種別の `each` 制約違反 (出次数)。
     BossSubordinateEachViolation {
         /// 出次数が制約に反した始点ノードの公開ID。
         source: EmployeeId,
-        /// この始点から実際に出ている辺の本数。
+        /// この辺種別で、この始点から実際に出ている辺の本数。
         count: usize,
     },
 }
@@ -669,7 +669,8 @@ impl<'graph> std::fmt::Debug for BossRef<'graph> {
             .finish_non_exhaustive()
     }
 }
-/// 構築用 builder。凍結 (`freeze()`) までは where 制約検査を一切行わない。
+/// 凍結前のグラフを組み立てる `Builder`。凍結 (`freeze()`) までは where
+/// 制約検査を一切行わない。
 ///
 /// 宣言: `tests/graph_cross_module.rs` の `schema CrossModuleOrg`
 pub struct Builder {
@@ -678,7 +679,7 @@ pub struct Builder {
     belongs_to: Vec<(BelongsToId, BelongsTo)>,
     boss: Vec<(BossId, Boss)>,
     /// この構築を識別する構築印。`Builder::new()` が発行し、この
-    /// builder から挿入する全ての名前付き位置と、凍結成功後の
+    /// `Builder` から挿入する全ての名前付き位置と、凍結成功後の
     /// `Graph` へ同じ値を刻む。
     __graphite_construction_stamp: u64,
 }
@@ -707,7 +708,7 @@ pub trait CrossModuleOrgInsertable: Sized {
         id: Self::Id,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
-    /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
+    /// 型付きの公開IDを指定して、この要素を `Builder` へ挿入する。
     fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
 }
 /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
@@ -720,7 +721,7 @@ pub trait CrossModuleOrgDefaultId: CrossModuleOrgInsertable {
         binding: String,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
-    /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
+    /// 束縛名の文字列から既定IDを作り、この要素を `Builder` へ挿入する。
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
 /// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと

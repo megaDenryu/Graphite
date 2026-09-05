@@ -1485,8 +1485,7 @@ schemaに無いKind名を書いた場合も、脱糖後の `__graphite_b.{label}
 `#[rustfmt::skip]` を付ける。
 
 **短縮形の正確な脱糖**。`alice = Person { .. }` は `insert_named("alice", ..)` へ
-脱糖し、生成ファイルの `insert_named` が束縛名の文字列から既定IDを作る
-(`crates/graphite/tests/generated/edge_roles_commerce.rs:1315-1325` と `764-775`)。
+脱糖する (`crates/graphite/tests/generated/edge_roles_commerce.rs:1315-1325`)。
 
 ```rust
     pub fn insert_named<N>(
@@ -1501,6 +1500,9 @@ schemaに無いKind名を書いた場合も、脱糖後の `__graphite_b.{label}
         value.insert_named_with_binding(self, key.into(), permit)
     }
 ```
+
+`insert_named` が呼ぶ `insert_named_with_binding` が、束縛名の文字列から既定IDを
+作る (`crates/graphite/tests/generated/edge_roles_commerce.rs:815-827`)。
 
 ```rust
 impl CommerceDefaultId for super::Person {

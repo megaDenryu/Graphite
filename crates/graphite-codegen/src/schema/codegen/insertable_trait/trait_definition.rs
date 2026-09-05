@@ -68,7 +68,7 @@ pub(crate) fn gen_insertable_traits(
                 permit: &graphite::NamedInsertPermit,
             ) -> (Self::Id, Self::NamedPosition);
 
-            /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
+            /// 型付きの公開IDを指定して、この要素を `Builder` へ挿入する。
             fn insert_with_id(self, b: &mut #builder_ident, id: Self::Id) -> Self::Id;
         }
 
@@ -83,7 +83,7 @@ pub(crate) fn gen_insertable_traits(
                 permit: &graphite::NamedInsertPermit,
             ) -> (Self::Id, Self::NamedPosition);
 
-            /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
+            /// 束縛名の文字列から既定IDを作り、この要素を `Builder` へ挿入する。
             fn insert_with_binding(self, b: &mut #builder_ident, binding: String) -> Self::Id;
         }
     }
