@@ -139,8 +139,8 @@ check-doc-comments が検査しないもの:
   private な型に対する inherent impl の pub なメソッド (rustc は要求しないが、
   この検査は公開項目として数える。生成コードには現れない形である)
 
-この検査は `xtask/tests/doc_comments_check.rs` からも呼んでおり、
-`cargo test --workspace` で同じ違反が検出される。";
+`xtask/tests/doc_comments_check.rs` がこの検査を呼ぶため、
+`cargo test --workspace` も同じ違反を検出する。";
 
 impl Command {
     fn from_arguments(arguments: &[String]) -> Result<Self, Box<dyn Error>> {

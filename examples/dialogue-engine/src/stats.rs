@@ -10,12 +10,15 @@ use crate::schema::{DialogueGraph, SceneId};
 // である。グラフには循環があるため「最長ルート」はループ回数を増やせば無限に
 // 伸ばせてしまい定義できない。代わりに「各エンディングへの最短経路長」の
 // 最小値・最大値を「一番近いエンディング/一番遠いエンディング」として報告する。
+//
+// `convergence_count` は合流点の数である。合流点とは、2本以上の異なる choice 辺
+// から到達されるシーンのことである。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Stats {
     pub scene_count: usize,
     pub ending_count: usize,
-    pub choice_count: usize,      // choice 辺の総数 (= 分岐選択肢の総数)。
-    pub convergence_count: usize, // 合流点の数 (2本以上の異なる choice 辺から到達されるシーンの数)。
+    pub choice_count: usize, // choice 辺の総数 (= 分岐選択肢の総数)。
+    pub convergence_count: usize,
     pub shortest_routes: Vec<(String, usize)>,
 }
 
