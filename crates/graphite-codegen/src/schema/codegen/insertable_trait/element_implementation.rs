@@ -6,7 +6,7 @@ use syn::Ident;
 
 use crate::schema::codegen::public_id_type::PublicIdType;
 
-/// ノードと辺に共通する名前付き挿入・名前付き位置の束縛実装を生成する。
+// ノードと辺に共通する名前付き挿入・名前付き位置の束縛実装を生成する。
 pub(crate) struct InsertableNamedSpec<'a> {
     pub(crate) insertable_trait_ident: &'a Ident,
     pub(crate) builder_ident: &'a Ident,

@@ -9,8 +9,8 @@ use crate::schema::codegen::reference::core_methods::edge_reference_core_methods
 use crate::schema::codegen::reference::debug_implementation::gen_reference_debug_impl;
 use crate::schema::codegen::reference::payload_methods::edge_reference_payload_methods;
 
-/// 有向辺1種別分の `EdgeRef` を生成する。両端は役割名のメソッドで返し、
-/// `from`/`to`/`from_id`/`to_id` は役割名によらない固定名の別名にする。
+// 有向辺1種別分の `EdgeRef` を生成する。両端は役割名のメソッドで返し、
+// `from`/`to`/`from_id`/`to_id` は役割名によらない固定名の別名にする。
 pub(crate) fn gen_directed_edge_reference_type(
     graph_ident: &Ident,
     edge: &EdgeInfo<'_>,

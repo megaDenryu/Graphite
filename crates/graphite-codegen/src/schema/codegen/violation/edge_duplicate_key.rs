@@ -6,7 +6,7 @@ use syn::Ident;
 
 use crate::schema::codegen::edge_names::EdgeInfo;
 
-/// 辺のキー重複 (`{Kind}DuplicateKey`、v4 で追加。辺も第一級キーを持つため)。
+// 辺のキー重複 (`{Kind}DuplicateKey`、v4 で追加。辺も第一級キーを持つため)。
 pub(crate) fn gen_edge_duplicate_key_case(
     violation_ident: &Ident,
     edge: &EdgeInfo<'_>,

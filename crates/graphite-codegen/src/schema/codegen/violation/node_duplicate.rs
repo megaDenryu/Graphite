@@ -6,7 +6,7 @@ use syn::Ident;
 
 use crate::schema::codegen::node_names::NodeInfo;
 
-/// ノードのキー重複 (`Duplicate{Node}`、v3 から維持)。
+// ノードのキー重複 (`Duplicate{Node}`、v3 から維持)。
 pub(crate) fn gen_node_duplicate_key_case(
     violation_ident: &Ident,
     node: &NodeInfo<'_>,

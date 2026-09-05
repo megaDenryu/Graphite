@@ -7,9 +7,9 @@ use syn::Ident;
 use crate::schema::codegen::declaration_doc::宣言元への参照;
 use crate::schema::codegen::public_id_type::PublicIdType;
 
-/// 辺参照値の共通メソッド (内部レコードの取得、`id()`) を生成する。
-/// 有向/無向のどちらの `impl<'graph> #reference<'graph> { .. }` 本体からも
-/// 同形で使うため共有する。`id()` のスパンは辺種別トークンを継承する。
+// 辺参照値の共通メソッド (内部レコードの取得、`id()`) を生成する。
+// 有向/無向のどちらの `impl<'graph> #reference<'graph> { .. }` 本体からも
+// 同形で使うため共有する。`id()` のスパンは辺種別トークンを継承する。
 pub(crate) fn edge_reference_core_methods(
     accessor: &Ident,
     record: &Ident,

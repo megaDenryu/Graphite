@@ -9,8 +9,8 @@ use crate::schema::codegen::reference::core_methods::edge_reference_core_methods
 use crate::schema::codegen::reference::debug_implementation::gen_reference_debug_impl;
 use crate::schema::codegen::reference::payload_methods::edge_reference_payload_methods;
 
-/// 無向辺1種別分の `EdgeRef` を生成する。位置の区別が無いため、両端は
-/// `endpoints()` が順序なし対として返す。
+// 無向辺1種別分の `EdgeRef` を生成する。位置の区別が無いため、両端は
+// `endpoints()` が順序なし対として返す。
 pub(crate) fn gen_undirected_edge_reference_type(
     graph_ident: &Ident,
     edge: &EdgeInfo<'_>,

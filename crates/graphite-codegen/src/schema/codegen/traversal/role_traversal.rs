@@ -8,11 +8,11 @@ use crate::naming::traversal_method_ident;
 use crate::schema::codegen::edge_names::EdgeInfo;
 use crate::schema::semantic::{EachSide, RoleCardinality};
 
-/// 有向辺の役割探索メソッド `{kind}_as_{役割}()` を1つ生成する。
-///
-/// 凍結時に構築済みの役割索引を内部位置で引くだけなので O(1)、追加確保なし。
-/// 戻り型は問い合わせた役割そのものの `each` 制約で決まる
-/// (`docs/schema_v4.md` §3.2)。
+// 有向辺の役割探索メソッド `{kind}_as_{役割}()` を1つ生成する。
+//
+// 凍結時に構築済みの役割索引を内部位置で引くだけなので O(1)、追加確保なし。
+// 戻り型は問い合わせた役割そのものの `each` 制約で決まる
+// (`docs/schema_v4.md` §3.2)。
 pub(crate) fn gen_role_traversal_method(
     edge: &EdgeInfo<'_>,
     role: &Ident,

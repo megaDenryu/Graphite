@@ -6,11 +6,11 @@ use quote::quote;
 use crate::naming::kind_api_method_ident;
 use crate::schema::codegen::edge_names::EdgeInfo;
 
-/// 辺の構造を保ったまま積み荷だけを可変借用する `{kind}_payload_mut` を
-/// `Graph` のメソッドとして生成する (積み荷が無ければ空)。
-///
-/// 主語は `&mut Graph` である。`EdgeRef` は共有借用のハンドルなのでそこから
-/// 可変借用は作れず、引数も公開IDのままにする。
+// 辺の構造を保ったまま積み荷だけを可変借用する `{kind}_payload_mut` を
+// `Graph` のメソッドとして生成する (積み荷が無ければ空)。
+//
+// 主語は `&mut Graph` である。`EdgeRef` は共有借用のハンドルなのでそこから
+// 可変借用は作れず、引数も公開IDのままにする。
 pub(crate) fn gen_edge_payload_mut_method(edge: &EdgeInfo<'_>) -> TokenStream {
     let Some(payload) = edge.payload() else {
         return quote! {};

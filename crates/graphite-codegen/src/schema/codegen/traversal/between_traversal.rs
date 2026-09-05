@@ -10,18 +10,15 @@ use crate::naming::{
 use crate::schema::codegen::edge_names::EdgeInfo;
 use crate::schema::semantic::端点対のキーの形;
 
-/// 端点対検索 (`{kind}_between` / `{kind}_try_between`) の生成で、有向辺と
-/// 無向辺で異なる部分だけを束ねる。有向辺は端点対索引のキーが
-/// `(位置, 位置)` のタプル、無向辺は `UnorderedPair::new(位置, 位置)` になる
-/// (`gen_directed_edge_freeze_block`/`gen_undirected_edge_freeze_block` が
-/// 積む索引のキー型に合わせる)。
+// 端点対検索 (`{kind}_between` / `{kind}_try_between`) の生成で、有向辺と
+// 無向辺で異なる部分だけを束ねる。有向辺は端点対索引のキーが
+// `(位置, 位置)` のタプル、無向辺は `UnorderedPair::new(位置, 位置)` になる
+// (`gen_directed_edge_freeze_block`/`gen_undirected_edge_freeze_block` が
+// 積む索引のキー型に合わせる)。
 pub(crate) struct EdgeQueryPairSpec {
-    /// 相手側端点の参照型 (有向辺は終点側、無向辺は位置0側と同じ型)。
-    other_reference: Ident,
-    /// 端点対索引 (`{accessor}_by_pair`) を検索するキー式。
-    pair_key: TokenStream,
-    /// `try_between` の doc コメントに書く対の種類 (`順序付き`/`順序なし`)。
-    pair_order_description: &'static str,
+    other_reference: Ident, // 相手側端点の参照型 (有向辺は終点側、無向辺は位置0側と同型)
+    pair_key: TokenStream, // 端点対索引 (`{accessor}_by_pair`) を検索するキー式
+    pair_order_description: &'static str, // 生成物の doc に書く対の種類 (`順序付き`/`順序なし`)
 }
 
 impl EdgeQueryPairSpec {
@@ -47,13 +44,13 @@ impl EdgeQueryPairSpec {
     }
 }
 
-/// 位置0側 `NodeRef` へ端点対検索 `{kind}_try_between` / `{kind}_between` を
-/// 生成する。
-///
-/// `try_between` は2つの参照が同じ `Graph` から得られたかを構築印で照合し、
-/// 異なれば [`graphite::GraphMismatch`] を返す。照合は受け手と相手の2者だけを
-/// 突き合わせる (一方が有効なら他方も同じ `Graph` に属することが決まるため、
-/// 3者目の照合は要らない)。
+// 位置0側 `NodeRef` へ端点対検索 `{kind}_try_between` / `{kind}_between` を
+// 生成する。
+//
+// `try_between` は2つの参照が同じ `Graph` から得られたかを構築印で照合し、
+// 異なれば `graphite::GraphMismatch` を返す。照合は受け手と相手の2者だけを
+// 突き合わせる (一方が有効なら他方も同じ `Graph` に属することが決まるため、
+// 3者目の照合は要らない)。
 pub(crate) fn gen_between_traversal_methods(edge: &EdgeInfo<'_>) -> TokenStream {
     let EdgeQueryPairSpec {
         other_reference,

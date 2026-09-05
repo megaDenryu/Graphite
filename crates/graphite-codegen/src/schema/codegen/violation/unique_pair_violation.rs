@@ -6,8 +6,8 @@ use syn::Ident;
 
 use crate::schema::codegen::edge_names::EdgeInfo;
 
-/// `unique pair` 違反 (`{Kind}UniquePairViolation`)。有向辺は `source`/`target`、
-/// 無向辺は順序の意味が無いため `a`/`b` を持つ。
+// `unique pair` 違反 (`{Kind}UniquePairViolation`)。有向辺は `source`/`target`、
+// 無向辺は順序の意味が無いため `a`/`b` を持つ。
 pub(crate) fn gen_unique_pair_violation_case(
     violation_ident: &Ident,
     edge: &EdgeInfo<'_>,

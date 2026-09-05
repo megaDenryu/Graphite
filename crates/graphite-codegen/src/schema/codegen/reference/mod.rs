@@ -15,8 +15,8 @@ use crate::schema::semantic::辺の向き;
 use directed_edge_reference::gen_directed_edge_reference_type;
 use undirected_edge_reference::gen_undirected_edge_reference_type;
 
-/// 完成済みグラフ上の辺個体を表す薄い参照値を生成する。端点を返すメソッドは、
-/// 保存レコード内の内部位置から NodeRef を直接作り、公開IDの索引を検索しない。
+// 完成済みグラフ上の辺個体を表す薄い参照値を生成する。端点を返すメソッドは、
+// 保存レコード内の内部位置から NodeRef を直接作り、公開IDの索引を検索しない。
 pub(crate) fn gen_edge_reference_types(
     graph_ident: &Ident,
     edges: &[EdgeInfo<'_>],

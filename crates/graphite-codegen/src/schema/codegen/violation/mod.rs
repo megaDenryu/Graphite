@@ -22,18 +22,18 @@ use unknown_endpoint::{
     gen_unknown_endpoint_case, gen_unknown_source_case, gen_unknown_target_case,
 };
 
-/// 違反 enum を生成する。
-///
-/// - ノード重複 (`Duplicate{Node}`) は v3 から維持。
-/// - 辺キー重複 (`{Kind}DuplicateKey`) は v4 で新規追加 (辺も第一級キーを
-///   持つため)。
-/// - 未知の端点参照: 有向は `{Kind}UnknownSource`/`{Kind}UnknownTarget`
-///   (どの辺がどちらの端点で未知キーを参照したかを型付きで持つ)、無向は
-///   位置の区別が無いため `{Kind}UnknownEndpoint` 1種類。
-/// - `each` 制約違反 (`{Kind}{Role}EachViolation`) は解決された側
-///   (出次数/入次数) に応じて `source` または `target` を持つ。
-/// - `unique pair` 違反 (`{Kind}UniquePairViolation`) は有向なら
-///   `source`/`target`、無向なら順序の意味が無いため `a`/`b`。
+// 違反 enum を生成する。
+//
+// - ノード重複 (`Duplicate{Node}`) は v3 から維持。
+// - 辺キー重複 (`{Kind}DuplicateKey`) は v4 で新規追加 (辺も第一級キーを
+//   持つため)。
+// - 未知の端点参照: 有向は `{Kind}UnknownSource`/`{Kind}UnknownTarget`
+//   (どの辺がどちらの端点で未知キーを参照したかを型付きで持つ)、無向は
+//   位置の区別が無いため `{Kind}UnknownEndpoint` 1種類。
+// - `each` 制約違反 (`{Kind}{Role}EachViolation`) は解決された側
+//   (出次数/入次数) に応じて `source` または `target` を持つ。
+// - `unique pair` 違反 (`{Kind}UniquePairViolation`) は有向なら
+//   `source`/`target`、無向なら順序の意味が無いため `a`/`b`。
 pub(crate) fn gen_violation_enum(
     violation_ident: &Ident,
     nodes: &[NodeInfo<'_>],
@@ -76,7 +76,7 @@ pub(crate) fn gen_violation_enum(
     }
 }
 
-/// 違反定義1件を、違反列挙型の variant とその `Display` の分岐へ写す。
+// 違反定義1件を、違反列挙型の variant とその `Display` の分岐へ写す。
 pub(crate) fn gen_violation_case(
     violation_ident: &Ident,
     nodes: &[NodeInfo<'_>],

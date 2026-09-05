@@ -10,7 +10,7 @@ use syn::Ident;
 
 use crate::schema::codegen::edge_names::EdgeInfo;
 
-/// 有向辺が未知の始点キーを参照した場合 (`{Kind}UnknownSource`)。
+// 有向辺が未知の始点キーを参照した場合 (`{Kind}UnknownSource`)。
 pub(crate) fn gen_unknown_source_case(
     violation_ident: &Ident,
     edge: &EdgeInfo<'_>,
@@ -50,7 +50,7 @@ pub(crate) fn gen_unknown_source_case(
     (variant, display_arm)
 }
 
-/// 有向辺が未知の終点キーを参照した場合 (`{Kind}UnknownTarget`)。
+// 有向辺が未知の終点キーを参照した場合 (`{Kind}UnknownTarget`)。
 pub(crate) fn gen_unknown_target_case(
     violation_ident: &Ident,
     edge: &EdgeInfo<'_>,
@@ -90,9 +90,9 @@ pub(crate) fn gen_unknown_target_case(
     (variant, display_arm)
 }
 
-/// 無向辺が未知の端点キーを参照した場合 (`{Kind}UnknownEndpoint`)。
-/// 無向辺は位置の区別が無いため1種類で足りる。両端は同じノード型なので
-/// `from_node` で代表する。
+// 無向辺が未知の端点キーを参照した場合 (`{Kind}UnknownEndpoint`)。
+// 無向辺は位置の区別が無いため1種類で足りる。両端は同じノード型なので
+// `from_node` で代表する。
 pub(crate) fn gen_unknown_endpoint_case(
     violation_ident: &Ident,
     edge: &EdgeInfo<'_>,

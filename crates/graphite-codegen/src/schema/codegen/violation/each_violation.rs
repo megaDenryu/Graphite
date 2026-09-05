@@ -8,8 +8,8 @@ use crate::naming::each_violation_ident;
 use crate::schema::codegen::edge_names::EdgeInfo;
 use crate::schema::semantic::EachSide;
 
-/// `each` 制約違反 (`{Kind}{Role}EachViolation`)。制約が指す側に応じて
-/// `source` (出次数) または `target` (入次数) を持つ。
+// `each` 制約違反 (`{Kind}{Role}EachViolation`)。制約が指す側に応じて
+// `source` (出次数) または `target` (入次数) を持つ。
 pub(crate) fn gen_each_violation_case(
     violation_ident: &Ident,
     edge: &EdgeInfo<'_>,

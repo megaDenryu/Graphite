@@ -18,40 +18,41 @@ use crate::schema::codegen::node_names::NodeInfo;
 use crate::schema::codegen::reference::node_reference::gen_node_reference_type;
 use crate::schema::semantic::ノードの探索計画;
 
-/// v4 (`docs/schema_v4.md` §3.2) が要求する「ノード挿入用トレイト」
-/// とその各ノード型への impl、およびノード種別ごとの `NodeRef` 型を生成する。
-///
-/// ## 背景: なぜこのトレイトが必要か
-///
-/// `graph!` はノード項を `key = 式` と書かせ、値の型をマクロが一切パース
-/// しない (式の型は rustc の型推論に委ねる、という設計上の決定)。その結果
-/// `graph!` はもはや「どのビルダーメソッドを呼ぶべきか」を型名から逆引き
-/// できないため、値の型さえ分かれば正しい内部ストレージへ振り分けられる
-/// **総称メソッド**が要る。この trait 境界を介した単相化がそれを実現する
-/// (実行時のリフレクション・型判別・`dyn` ディスパッチは一切無い。
-/// `docs/development/design_principles.md` 原則5: ゼロコスト志向)。
-///
-/// ## 読み取り側をここへ置かない理由
-///
-/// 公開IDからの検索と種別全体への操作 (`{node}_by_id`/`{node}_ids`/
-/// `{node}_iter`/`{node}_len`/`{node}_value_mut`) は、個体と索引を所有する
-/// `Graph` のメソッドとして `gen_schema_impl` が生成する。ノード型
-/// (`Person` 等) はユーザーが `graph_schema!` の外で宣言する型であり複数
-/// schema 間で共有されうるため、ユーザー struct への固有 impl は追加しない。
-/// schema module 内にノード名の空 struct (読み取り用マーカー) も置かない
-/// (issue #9: `Graph` を外から引数で渡す型名前空間を作らない)。
-///
-/// ## `{Schema}Insertable` と `{Schema}DefaultId`
-///
-/// 型付き挿入と関連型 `Id` は `{Schema}Insertable` に置く。文字列の束縛名から
-/// IDを作る操作は自動生成IDだけが実装する `{Schema}DefaultId` に置く。
-/// `{Schema}Node` はノード専用の型境界を保つマーカートレイトである。
-///
-/// ## 命名判断 (`docs/development/design_principles.md` 原則3: std 命名規約準拠)
-///
-/// **内部 trait 名は `{Schema}Node` とした**。生成 module に移した後も
-/// `node Node;` や `edge Edge = ..;` と生成基盤名が衝突する可能性を増やさず、
-/// コンパイラ診断から所属 schema を判別できる名前を維持する。
+// v4 (`docs/schema_v4.md` §3.2) が要求する「ノード挿入用トレイト」
+// とその各ノード型への impl、およびノード種別ごとの `NodeRef` 型を生成する。
+//
+// このトレイトが必要になる背景を述べる。
+//
+// `graph!` はノード項を `key = 式` と書かせ、値の型をマクロが一切パース
+// しない (式の型は rustc の型推論に委ねる、という設計上の決定)。その結果
+// `graph!` はもはや「どのビルダーメソッドを呼ぶべきか」を型名から逆引き
+// できないため、値の型さえ分かれば正しい内部ストレージへ振り分けられる
+// 総称メソッドが要る。この trait 境界を介した単相化がそれを実現する
+// (実行時のリフレクション・型判別・`dyn` ディスパッチは一切無い。
+// `docs/development/design_principles.md` 原則5: ゼロコスト志向)。
+//
+// 読み取り側をここへ置かないのには理由がある。
+//
+// 公開IDからの検索と種別全体への操作 (`{node}_by_id`/`{node}_ids`/
+// `{node}_iter`/`{node}_len`/`{node}_value_mut`) は、個体と索引を所有する
+// `Graph` のメソッドとして `gen_schema_impl` が生成する。ノード型
+// (`Person` 等) はユーザーが `graph_schema!` の外で宣言する型であり複数
+// schema 間で共有されうるため、ユーザー struct への固有 impl は追加しない。
+// schema module 内にノード名の空 struct (読み取り用マーカー) も置かない
+// (issue #9: `Graph` を外から引数で渡す型名前空間を作らない)。
+//
+// `{Schema}Insertable` と `{Schema}DefaultId` は役割を次のように分ける。
+//
+// 型付き挿入と関連型 `Id` は `{Schema}Insertable` に置く。文字列の束縛名から
+// IDを作る操作は自動生成IDだけが実装する `{Schema}DefaultId` に置く。
+// `{Schema}Node` はノード専用の型境界を保つマーカートレイトである。
+//
+// 命名は `docs/development/design_principles.md` 原則3 (std 命名規約準拠) に沿って
+// 判断した。
+//
+// 内部 trait 名は `{Schema}Node` とした。生成 module に移した後も
+// `node Node;` や `edge Edge = ..;` と生成基盤名が衝突する可能性を増やさず、
+// コンパイラ診断から所属 schema を判別できる名前を維持する。
 pub(crate) fn gen_node_trait_and_impls(
     予約表: &固定生成名の予約表,
     nodes: &[NodeInfo<'_>],
@@ -124,17 +125,17 @@ pub(crate) fn gen_node_trait_and_impls(
     }
 }
 
-/// エッジ挿入用トレイト (書き込み側専用)。`graph!` の辺行
-/// `key = Kind(from -> to)` は名前付きフィールドの辺値型を関連コンストラクタで
-/// 構築したあと、この trait 境界を介した総称 `{Builder}::add` に脱糖する
-/// (`docs/schema_v4.md` §2/§3.2)。読み取り側は `Graph` の種別メソッド
-/// (`{kind}_by_id`/`{kind}_iter`/`{kind}_ids`/`{kind}_len`、`gen_schema_impl`
-/// 参照) と `NodeRef` のメソッド (`{kind}_as_{役割}`/`{kind}_incident`/
-/// `{kind}_between`、`gen_node_traversal_methods` 参照) が提供するため、
-/// このトレイトには含めない。
-///
-/// 型付き挿入と関連型 `Id` は `{Schema}Insertable` に集約する。このトレイトは
-/// エッジ専用の型境界を保つマーカーになる。
+// エッジ挿入用トレイト (書き込み側専用)。`graph!` の辺行
+// `key = Kind(from -> to)` は名前付きフィールドの辺値型を関連コンストラクタで
+// 構築したあと、この trait 境界を介した総称 `{Builder}::add` に脱糖する
+// (`docs/schema_v4.md` §2/§3.2)。読み取り側は `Graph` の種別メソッド
+// (`{kind}_by_id`/`{kind}_iter`/`{kind}_ids`/`{kind}_len`、`gen_schema_impl`
+// 参照) と `NodeRef` のメソッド (`{kind}_as_{役割}`/`{kind}_incident`/
+// `{kind}_between`、`gen_node_traversal_methods` 参照) が提供するため、
+// このトレイトには含めない。
+//
+// 型付き挿入と関連型 `Id` は `{Schema}Insertable` に集約する。このトレイトは
+// エッジ専用の型境界を保つマーカーになる。
 pub(crate) fn gen_edge_trait_and_impls(
     予約表: &固定生成名の予約表,
     edges: &[EdgeInfo<'_>],

@@ -6,8 +6,8 @@ use syn::Ident;
 
 use crate::schema::codegen::public_id_type::PublicIdType;
 
-/// 束縛名の文字列から既定IDを作る `{Schema}DefaultId` の実装を生成する。
-/// 明示ID型の要素には実装しないため、その場合は空を返す。
+// 束縛名の文字列から既定IDを作る `{Schema}DefaultId` の実装を生成する。
+// 明示ID型の要素には実装しないため、その場合は空を返す。
 pub(crate) fn gen_default_id_impl(
     default_id_trait_ident: &Ident,
     insertable_trait_ident: &Ident,

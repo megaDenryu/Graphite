@@ -7,8 +7,8 @@ use crate::naming::kind_api_method_ident;
 use crate::schema::codegen::edge_names::EdgeInfo;
 use crate::schema::codegen::kind_api::edge_payload_mutation::gen_edge_payload_mut_method;
 
-/// 辺種別1つ分の種別API (`Graph` のメソッド) を生成する。
-/// `{kind}_payload_mut` は積み荷を持つ辺種別にだけ生やす。
+// 辺種別1つ分の種別API (`Graph` のメソッド) を生成する。
+// `{kind}_payload_mut` は積み荷を持つ辺種別にだけ生やす。
 pub(crate) fn gen_edge_kind_api_methods(edge: &EdgeInfo<'_>) -> TokenStream {
     let id_ty = &edge.id_ty;
     let accessor = &edge.accessor_ident;

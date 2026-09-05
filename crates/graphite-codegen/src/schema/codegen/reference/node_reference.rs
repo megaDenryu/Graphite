@@ -10,10 +10,10 @@ use crate::schema::codegen::reference::debug_implementation::gen_reference_debug
 use crate::schema::codegen::traversal::gen_node_traversal_methods;
 use crate::schema::semantic::ノードの探索計画;
 
-/// ノード種別1つ分の `NodeRef` 型と、そこへ生やす読み取り・探索メソッドを生成する。
-///
-/// `NodeRef` は親 `Graph` と内部位置だけを持つ複製可能な参照値である。値そのものは
-/// `Deref` でも読めるようにして、ノード値型のメソッドをそのまま呼べるようにする。
+// ノード種別1つ分の `NodeRef` 型と、そこへ生やす読み取り・探索メソッドを生成する。
+//
+// `NodeRef` は親 `Graph` と内部位置だけを持つ複製可能な参照値である。値そのものは
+// `Deref` でも読めるようにして、ノード値型のメソッドをそのまま呼べるようにする。
 pub(crate) fn gen_node_reference_type(
     graph_ident: &Ident,
     n: &NodeInfo<'_>,

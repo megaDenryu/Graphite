@@ -6,7 +6,7 @@ use quote::quote;
 use crate::naming::incident_method_ident;
 use crate::schema::codegen::edge_names::EdgeInfo;
 
-/// 無向辺の接続探索メソッド `{kind}_incident()` を生成する。
+// 無向辺の接続探索メソッド `{kind}_incident()` を生成する。
 pub(crate) fn gen_incident_traversal_method(edge: &EdgeInfo<'_>) -> TokenStream {
     let method = incident_method_ident(edge.kind);
     let edge_reference = edge.reference_ident();
