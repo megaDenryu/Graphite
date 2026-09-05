@@ -3,12 +3,12 @@
 
 use crate::schema::{Orchestration, Service};
 
-/// 本編の10サービス依存グラフ:
-/// `config -> (logger, db, cache, queue) -> (migration, metrics) ->
-/// (api, worker) -> healthcheck`。
-///
-/// 起動時間 (ms) は「敵1のベースライン (直列実行)」との対比が分かりやすい
-/// ように、依存の合流点 (`migration`・`api`/`worker`) を重めに設定してある。
+// 本編の10サービス依存グラフ:
+// `config -> (logger, db, cache, queue) -> (migration, metrics) ->
+// (api, worker) -> healthcheck`。
+//
+// 起動時間 (ms) は「敵1のベースライン (直列実行)」との対比が分かりやすい
+// ように、依存の合流点 (`migration`・`api`/`worker`) を重めに設定してある。
 #[rustfmt::skip]
 pub fn sample_orchestration() -> Orchestration::Graph {
     graphite::graph!(Orchestration {
@@ -41,13 +41,13 @@ pub fn sample_orchestration() -> Orchestration::Graph {
     .into_graph()
 }
 
-/// 循環依存デモ用の小さな3サービス例 (a -> b -> c -> a)。
-///
-/// `DependsOn = Service -> Service` という図式適合の検査は循環を禁止
-/// しない (where 制約は「1本のエッジの本数・平行辺の有無」の制約であり、
-/// 「グラフ全体の形」の制約ではないため) ので、この呼び出し自体は
-/// 成功する。循環の検出は `depgraph::compute_waves`
-/// (=汎用`graphite::Graph`への射影+`topological_levels`) が担う。
+// 循環依存デモ用の小さな3サービス例 (a -> b -> c -> a)。
+//
+// `DependsOn = Service -> Service` という図式適合の検査は循環を禁止
+// しない (where 制約は「1本のエッジの本数・平行辺の有無」の制約であり、
+// 「グラフ全体の形」の制約ではないため) ので、この呼び出し自体は
+// 成功する。循環の検出は `depgraph::compute_waves`
+// (=汎用`graphite::Graph`への射影+`topological_levels`) が担う。
 #[rustfmt::skip]
 pub fn cyclic_demo() -> Orchestration::Graph {
     graphite::graph!(Orchestration {

@@ -3,7 +3,7 @@
 use super::parse_error::{err, ParseError};
 use super::parsed_pipeline::{EdgeKind, ParsedEdge};
 
-/// `<タスク名> produces|consumes <パス>` をパースする。
+// `<タスク名> produces|consumes <パス>` をパースする。
 pub(super) fn parse_edge_line(line: &str, line_no: usize) -> Result<ParsedEdge, ParseError> {
     let tokens: Vec<&str> = line.split_whitespace().collect();
     if tokens.len() != 3 {

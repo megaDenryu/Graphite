@@ -3,7 +3,7 @@
 use super::parse_error::{err, ParseError};
 use super::parsed_pipeline::ParsedTask;
 
-/// `<名前>: <コマンド...> (<秒数>s)` (先頭の `task ` は既に剥がされている) をパースする。
+// `<名前>: <コマンド...> (<秒数>s)` (先頭の `task ` は既に剥がされている) をパースする。
 pub(super) fn parse_task_line(rest: &str, line_no: usize) -> Result<ParsedTask, ParseError> {
     let (name_part, remainder) = rest.split_once(':').ok_or_else(|| {
         err(

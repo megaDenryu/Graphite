@@ -2,19 +2,19 @@
 
 use crate::schema::BuildPipeline;
 
-/// 識別子を mermaid ノードIDとして安全な文字列へ変換する
-/// (英数字と `_` 以外を `_` に置換する素朴な実装)。
+// 識別子を mermaid ノードIDとして安全な文字列へ変換する
+// (英数字と `_` 以外を `_` に置換する素朴な実装)。
 fn sanitize_id(raw: &str) -> String {
     raw.chars()
         .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
         .collect()
 }
 
-/// グラフ全体を mermaid flowchart として出力する。
-/// Task は矩形 (`["..."]`)、Artifact は円柱形 (`[("...")]`、
-/// 「保存された成果物」を表す慣用のノード形状) で描き分ける。
-/// `consumes` は「成果物がタスクへ流れ込む」という読みやすさを優先して
-/// 矢印を Artifact -> Task 方向 (スキーマ上の `from`/`to` とは逆) に描く。
+// グラフ全体を mermaid flowchart として出力する。
+// Task は矩形 (`["..."]`)、Artifact は円柱形 (`[("...")]`、
+// 「保存された成果物」を表す慣用のノード形状) で描き分ける。
+// `consumes` は「成果物がタスクへ流れ込む」という読みやすさを優先して
+// 矢印を Artifact -> Task 方向 (スキーマ上の `from`/`to` とは逆) に描く。
 pub fn mermaid(g: &BuildPipeline::Graph) -> String {
     let mut out = String::new();
     out.push_str("flowchart TD\n");

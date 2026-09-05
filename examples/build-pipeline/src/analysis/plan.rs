@@ -7,7 +7,7 @@ use graphite::CycleError;
 use super::task_dependency_graph::task_dependency_graph;
 use crate::schema::{BuildPipeline, TaskId};
 
-/// 並列実行可能なタスクの「波」1 つ分。
+// 並列実行可能なタスクの「波」1 つ分。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Wave {
     pub index: usize,
@@ -15,9 +15,9 @@ pub struct Wave {
     pub duration_secs: u32,
 }
 
-/// トポロジカル順序から、依存が解決済みのタスクをまとめて 1 波とする実行計画
-/// を計算する (Kahn のアルゴリズムを波単位でまとめて実行するレベル分割版)。
-/// 波の所要時間 = 波内タスクの `max(secs)` (無限並列ワーカーを仮定)。
+// トポロジカル順序から、依存が解決済みのタスクをまとめて 1 波とする実行計画
+// を計算する (Kahn のアルゴリズムを波単位でまとめて実行するレベル分割版)。
+// 波の所要時間 = 波内タスクの `max(secs)` (無限並列ワーカーを仮定)。
 pub fn plan(g: &BuildPipeline::Graph) -> Result<Vec<Wave>, CycleError<TaskId>> {
     let dep_graph = task_dependency_graph(g);
     // 循環があれば代表ノード付きで早期に報告する。

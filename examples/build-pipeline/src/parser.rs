@@ -28,7 +28,7 @@ use task_line::parse_task_line;
 pub use parse_error::ParseError;
 pub use parsed_pipeline::{EdgeKind, ParsedEdge, ParsedPipeline, ParsedTask};
 
-/// `pipeline.txt` の内容全体をパースする。
+// `pipeline.txt` の内容全体をパースする。
 pub fn parse(input: &str) -> Result<ParsedPipeline, ParseError> {
     let mut pipeline = ParsedPipeline::default();
 

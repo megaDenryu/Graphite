@@ -11,7 +11,7 @@ pub use graph_diagram::mermaid;
 use crate::analysis::{CriticalPath, DomainIssue, Wave};
 use crate::schema::BuildPipeline;
 
-/// `validate` サブコマンドの結果表示。
+// `validate` サブコマンドの結果表示。
 pub fn format_domain_issues(issues: &[DomainIssue]) -> String {
     if issues.is_empty() {
         return "ドメイン検証: 違反なし (孤児成果物 / produce競合 / 循環依存のいずれも検出されませんでした)".to_string();
@@ -23,7 +23,7 @@ pub fn format_domain_issues(issues: &[DomainIssue]) -> String {
     out
 }
 
-/// `plan` サブコマンドの表形式出力。
+// `plan` サブコマンドの表形式出力。
 pub fn format_plan(waves: &[Wave]) -> String {
     if waves.is_empty() {
         return "実行計画: タスクがありません".to_string();
@@ -50,7 +50,7 @@ pub fn format_plan(waves: &[Wave]) -> String {
     out
 }
 
-/// `critical-path` サブコマンドの出力。
+// `critical-path` サブコマンドの出力。
 pub fn format_critical_path(cp: &CriticalPath, g: &BuildPipeline::Graph) -> String {
     if cp.path.is_empty() {
         return "クリティカルパス: タスクがありません".to_string();

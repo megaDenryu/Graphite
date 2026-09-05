@@ -19,13 +19,12 @@
 //! `build_dependency_graph` が一箇所で担う (README「グラフによる
 //! 再定式化」節参照)。
 
-/// ノード型。`graph_schema!` はこの型を生成せず参照するだけ。
+// ノード型。`graph_schema!` はこの型を生成せず参照するだけ。
+// `startup_ms` は起動所要時間 (ミリ秒) であり、`engine::simulate_startup` が
+// この時間だけ `std::thread::sleep` することで、実際のサービス起動を模擬する。
 #[derive(Debug, Clone, PartialEq)]
 pub struct Service {
-    /// サービス名 (表示用。キーである `ServiceId` とは独立)。
-    pub name: String,
-    /// 起動所要時間 (ミリ秒)。`engine::simulate_startup` がこの時間だけ
-    /// `std::thread::sleep` することで、実際のサービス起動を模擬する。
+    pub name: String, // サービス名 (表示用。キーである `ServiceId` とは独立)。
     pub startup_ms: u64,
 }
 

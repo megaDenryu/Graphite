@@ -10,8 +10,8 @@ use super::domain_issue::DomainIssue;
 use super::task_dependency_graph::task_dependency_graph;
 use crate::schema::{ArtifactId, BuildPipeline, TaskId};
 
-/// ドメイン検証を実行する。図式適合 (`BuildPipeline::Graph::create` 時点) は既に
-/// 通っている前提で、意味的な妥当性だけを検査する。
+// ドメイン検証を実行する。図式適合 (`BuildPipeline::Graph::create` 時点) は既に
+// 通っている前提で、意味的な妥当性だけを検査する。
 pub fn validate(g: &BuildPipeline::Graph) -> Vec<DomainIssue> {
     let mut issues = Vec::new();
 

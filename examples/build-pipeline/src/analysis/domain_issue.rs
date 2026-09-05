@@ -4,22 +4,26 @@ use std::fmt;
 
 use crate::schema::{ArtifactId, TaskId};
 
-/// `validate` サブコマンドが報告するドメイン違反 1 件。
+// `validate` サブコマンドが報告するドメイン違反 1 件。
+//
+// `OrphanArtifact` は、誰も produce しない artifact を consume しているタスクがある
+// ことを表す。`ConflictingProducers` は、同じ artifact を複数のタスクが produce して
+// いる (競合) ことを表す。`CyclicDependency` は、タスク依存グラフに循環があることを
+// 表し、その `cycle` は循環を構成するタスク列 (`cycle[0]` から辿って `cycle[0]` に
+// 戻る) である。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DomainIssue {
-    /// 誰も produce しない artifact を consume しているタスクがある。
     OrphanArtifact {
         artifact: ArtifactId,
         consumers: Vec<TaskId>,
     },
-    /// 同じ artifact を複数のタスクが produce している (競合)。
     ConflictingProducers {
         artifact: ArtifactId,
         producers: Vec<TaskId>,
     },
-    /// タスク依存グラフに循環がある。`cycle` は循環を構成するタスク列
-    /// (`cycle[0]` から辿って `cycle[0]` に戻る)。
-    CyclicDependency { cycle: Vec<TaskId> },
+    CyclicDependency {
+        cycle: Vec<TaskId>,
+    },
 }
 
 impl fmt::Display for DomainIssue {

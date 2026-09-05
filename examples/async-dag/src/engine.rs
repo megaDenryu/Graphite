@@ -24,17 +24,17 @@ use std::sync::Mutex;
 use std::thread;
 use std::time::{Duration, Instant};
 
-/// 本物のサービス起動の代わりに `startup_ms` だけ sleep する。
+// 本物のサービス起動の代わりに `startup_ms` だけ sleep する。
 fn simulate_startup(startup_ms: u64) {
     thread::sleep(Duration::from_millis(startup_ms));
 }
 
-/// 波ごとに `std::thread::scope` でスレッドを起こし、実際に並列実行する。
-///
-/// 波内のスレッドは全て同時に `spawn` され、`thread::scope` の呼び出しが
-/// 戻る (=波内の全スレッドが join し終える) まで次の波へは進まない。この
-/// 「波の完了を待ってから次の波へ」という同期こそが、依存関係
-/// (「先行サービスが起動完了していること」) を実際に守っている箇所。
+// 波ごとに `std::thread::scope` でスレッドを起こし、実際に並列実行する。
+//
+// 波内のスレッドは全て同時に `spawn` され、`thread::scope` の呼び出しが
+// 戻る (=波内の全スレッドが join し終える) まで次の波へは進まない。この
+// 「波の完了を待ってから次の波へ」という同期こそが、依存関係
+// (「先行サービスが起動完了していること」) を実際に守っている箇所。
 pub fn run_waves(g: &Orchestration::Graph, waves: &[Vec<ServiceId>]) -> ExecutionReport {
     let overall_start = Instant::now();
     let records: Mutex<Vec<ExecutionRecord>> = Mutex::new(Vec::new());
@@ -69,9 +69,9 @@ pub fn run_waves(g: &Orchestration::Graph, waves: &[Vec<ServiceId>]) -> Executio
     }
 }
 
-/// 「敵1」のベースライン: 依存関係の並行性を一切活かさず、渡された順に
-/// 直列に起動する (素朴な `await` の連鎖に相当)。所要時間は起動時間の
-/// 総和に一致する。並列実行版 (`run_waves`) との比較対象として使う。
+// 「敵1」のベースライン: 依存関係の並行性を一切活かさず、渡された順に
+// 直列に起動する (素朴な `await` の連鎖に相当)。所要時間は起動時間の
+// 総和に一致する。並列実行版 (`run_waves`) との比較対象として使う。
 pub fn run_serial(g: &Orchestration::Graph, order: &[ServiceId]) -> Duration {
     let start = Instant::now();
     for id in order {

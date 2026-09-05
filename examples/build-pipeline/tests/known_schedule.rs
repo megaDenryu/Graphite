@@ -8,9 +8,9 @@ fn build(input: &str) -> BuildPipeline::Graph {
     builder::build_graph(&parsed).expect("構築に成功するはず")
 }
 
-/// 手計算できる小さな既知データ (fetch -> {build_a, build_b} -> link) での
-/// 波数・クリティカルパス長の一致を確認する (analysis.rs 内のユニットテストと
-/// 同じ題材を、モジュール外からの統合テストとしても固定しておく)。
+// 手計算できる小さな既知データ (fetch -> {build_a, build_b} -> link) での
+// 波数・クリティカルパス長の一致を確認する (analysis.rs 内のユニットテストと
+// 同じ題材を、モジュール外からの統合テストとしても固定しておく)。
 #[test]
 fn 既知データでの波数とクリティカルパス長が一致する() {
     let g = build(

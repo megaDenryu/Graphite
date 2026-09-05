@@ -3,7 +3,7 @@
 
 use std::fmt;
 
-/// 行番号付きパースエラー。
+// 行番号付きパースエラー。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParseError {
     pub line: usize,

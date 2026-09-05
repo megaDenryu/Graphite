@@ -11,24 +11,24 @@
 use crate::schema::{Orchestration, ServiceId};
 use graphite::{CycleError, Graph};
 
-/// ノード値・辺値のいずれも不要 (依存関係の「形」だけが要る) なので
-/// 両方 `()` にし、キー型だけ `ServiceId` にする
-/// (`examples/build-pipeline` の `TaskDependencyGraph` と同じ手法)。
+// ノード値・辺値のいずれも不要 (依存関係の「形」だけが要る) なので
+// 両方 `()` にし、キー型だけ `ServiceId` にする
+// (`examples/build-pipeline` の `TaskDependencyGraph` と同じ手法)。
 pub type ServiceDependencyGraph = Graph<(), (), ServiceId>;
 
-/// `Orchestration` から実行順序グラフを射影する。
-///
-/// `g.depends_on_iter()` は `(from, to)` = `(dependent, prerequisite)` の
-/// 辺 (`DependsOn(dependent -> prerequisite)`) を返す。実行順序としては
-/// `prerequisite` (to) が先に完了していなければならないので、汎用
-/// `Graph` 上の辺は向きを反転し `prerequisite -> dependent`
-/// (`to -> from`) として積む。これにより `topological_sort`/
-/// `topological_levels` が仮定する「辺の始点が先」という向きと
-/// 実行順序が一致する。
-///
-/// `DependsOn` の終点キーは常に `g.service_ids()` 由来 (schema の
-/// 図式適合検査が保証する) なので、`Graph::build` が `UnknownEndpoint`
-/// を返すことはない。
+// `Orchestration` から実行順序グラフを射影する。
+//
+// `g.depends_on_iter()` は `(from, to)` = `(dependent, prerequisite)` の
+// 辺 (`DependsOn(dependent -> prerequisite)`) を返す。実行順序としては
+// `prerequisite` (to) が先に完了していなければならないので、汎用
+// `Graph` 上の辺は向きを反転し `prerequisite -> dependent`
+// (`to -> from`) として積む。これにより `topological_sort`/
+// `topological_levels` が仮定する「辺の始点が先」という向きと
+// 実行順序が一致する。
+//
+// `DependsOn` の終点キーは常に `g.service_ids()` 由来 (schema の
+// 図式適合検査が保証する) なので、`Graph::build` が `UnknownEndpoint`
+// を返すことはない。
 pub fn build_dependency_graph(g: &Orchestration::Graph) -> ServiceDependencyGraph {
     let nodes: Vec<(ServiceId, ())> = g.service_ids().map(|id| (id.clone(), ())).collect();
 
@@ -43,12 +43,12 @@ pub fn build_dependency_graph(g: &Orchestration::Graph) -> ServiceDependencyGrap
         .expect("g.depends_onの端点は必ずservice_ids()由来なので未知キーにはならない")
 }
 
-/// 「並行実行できる波」を依存関係グラフから計算する。
-///
-/// 循環がある場合はハングせず `CycleError` を返す — README が主張する
-/// 「循環はデータ検証で構築直後に死ぬ、実行時にハングしない」の実装
-/// そのもの。各波の要素順序は `Orchestration` へサービスを登録した順
-/// (`Service` ノードの挿入順) で決定的。
+// 「並行実行できる波」を依存関係グラフから計算する。
+//
+// 循環がある場合はハングせず `CycleError` を返す — README が主張する
+// 「循環はデータ検証で構築直後に死ぬ、実行時にハングしない」の実装
+// そのもの。各波の要素順序は `Orchestration` へサービスを登録した順
+// (`Service` ノードの挿入順) で決定的。
 pub fn compute_waves(
     g: &Orchestration::Graph,
 ) -> Result<Vec<Vec<ServiceId>>, CycleError<ServiceId>> {
@@ -60,7 +60,7 @@ pub fn compute_waves(
         .collect())
 }
 
-/// 波1つ分の想定所要時間 (無限並列ワーカーを仮定した `max(startup_ms)`)。
+// 波1つ分の想定所要時間 (無限並列ワーカーを仮定した `max(startup_ms)`)。
 pub fn wave_duration_ms(g: &Orchestration::Graph, wave: &[ServiceId]) -> u64 {
     wave.iter()
         .filter_map(|id| g.service_by_id(id))
@@ -69,7 +69,7 @@ pub fn wave_duration_ms(g: &Orchestration::Graph, wave: &[ServiceId]) -> u64 {
         .unwrap_or(0)
 }
 
-/// 全サービスの起動時間の総和 (直列実行した場合の下限見積り)。
+// 全サービスの起動時間の総和 (直列実行した場合の下限見積り)。
 pub fn total_serial_ms(g: &Orchestration::Graph) -> u64 {
     g.service_ids()
         .filter_map(|id| g.service_by_id(id))
