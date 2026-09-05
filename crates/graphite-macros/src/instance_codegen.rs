@@ -218,10 +218,10 @@ fn generate_items(model: &検証済みグラフリテラル, schema_name: &Ident
     }
 }
 
-/// 検証済みグラフリテラルから `graph!` の展開結果を生成する。意味の判断
-/// (重複キー検査・端点解決・G4bの二次エラー抑制の決定) は呼び出し元
-/// (`lib.rs`) が `instance_semantic::構文を検証してグラフリテラルを組み立てる`
-/// で既に完了させているため、ここでは失敗しない。
+// 検証済みグラフリテラルから `graph!` の展開結果を生成する。意味の判断
+// (重複キー検査・端点解決・G4bの二次エラー抑制の決定) は呼び出し元
+// (`lib.rs`) が `instance_semantic::構文を検証してグラフリテラルを組み立てる`
+// で既に完了させているため、ここでは失敗しない。
 pub fn generate(model: &検証済みグラフリテラル) -> TokenStream {
     let schema_name = model.スキーマ名();
     let graph_ident = graph_type_ident(schema_name);

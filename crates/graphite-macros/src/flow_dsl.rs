@@ -56,16 +56,16 @@ use proc_macro2::{Delimiter, TokenStream as TokenStream2, TokenTree};
 use syn::parse::{Parse, ParseStream};
 use syn::{bracketed, Expr, Ident, Token};
 
-/// 次のトークンが矢印の開始 (`-[`) かどうかを判定する。`->` (素の矢印。
-/// `flow!` の始点・関数式の境界には出現しない) と区別するため、`-` の直後が
-/// `[` (ブラケットグループ) であることまで確認する。
+// 次のトークンが矢印の開始 (`-[`) かどうかを判定する。`->` (素の矢印。
+// `flow!` の始点・関数式の境界には出現しない) と区別するため、`-` の直後が
+// `[` (ブラケットグループ) であることまで確認する。
 fn at_arrow_start(input: ParseStream) -> bool {
     input.peek(Token![-]) && input.peek2(syn::token::Bracket)
 }
 
-/// 次のトップレベルの矢印開始 (`-[`) まで、トークン木を1つずつ捕獲する
-/// (構造化パースを経由しないため、これ自体が [`syn::parse::ParseBuffer`] の
-/// Drop 汚染を起こすことはない)。
+// 次のトップレベルの矢印開始 (`-[`) まで、トークン木を1つずつ捕獲する
+// (構造化パースを経由しないため、これ自体が `syn::parse::ParseBuffer` の
+// Drop 汚染を起こすことはない)。
 fn capture_until_arrow(input: ParseStream) -> syn::Result<TokenStream2> {
     let mut collected = TokenStream2::new();
     loop {
@@ -81,8 +81,8 @@ fn capture_until_arrow(input: ParseStream) -> syn::Result<TokenStream2> {
     Ok(collected)
 }
 
-/// 捕獲済みのトークン列を、**新規の独立したトップレベル呼び出し**として
-/// `Expr` にパースする (ファイル冒頭のドキュメントコメント参照)。
+// 捕獲済みのトークン列を、**新規の独立したトップレベル呼び出し**として
+// `Expr` にパースする (ファイル冒頭のドキュメントコメント参照)。
 fn parse_expr_isolated(tokens: TokenStream2, empty_span: proc_macro2::Span) -> syn::Result<Expr> {
     if tokens.is_empty() {
         return Err(syn::Error::new(empty_span, "式を期待しました"));
@@ -90,7 +90,7 @@ fn parse_expr_isolated(tokens: TokenStream2, empty_span: proc_macro2::Span) -> s
     syn::parse2::<Expr>(tokens)
 }
 
-/// `(式, 式, ..)` のカンマ区切り式列 (独立呼び出し専用の小さな `Parse` 実装)。
+// `(式, 式, ..)` のカンマ区切り式列 (独立呼び出し専用の小さな `Parse` 実装)。
 struct ExprList(Vec<Expr>);
 
 impl Parse for ExprList {
@@ -100,10 +100,10 @@ impl Parse for ExprList {
     }
 }
 
-/// 捕獲した始点トークン列が「1個の丸括弧グループそのもの」であれば、その
-/// 中身のトークン列を返す (fan-in 判別。ファイル冒頭のドキュメントコメント
-/// 参照)。丸括弧グループの前後に余分なトークンがある場合 (例: `(x).foo()`)
-/// は該当しない (=通常の式として扱う)。
+// 捕獲した始点トークン列が「1個の丸括弧グループそのもの」であれば、その
+// 中身のトークン列を返す (fan-in 判別。ファイル冒頭のドキュメントコメント
+// 参照)。丸括弧グループの前後に余分なトークンがある場合 (例: `(x).foo()`)
+// は該当しない (=通常の式として扱う)。
 fn as_single_paren_group(tokens: &TokenStream2) -> Option<TokenStream2> {
     let mut iter = tokens.clone().into_iter();
     let TokenTree::Group(group) = iter.next()? else {
@@ -118,8 +118,8 @@ fn as_single_paren_group(tokens: &TokenStream2) -> Option<TokenStream2> {
     Some(group.stream())
 }
 
-/// 始点 (`任意の式` または `(式, 式, ..)`) をパースする。戻り値は関数呼び出し
-/// の引数列そのもの (fan-in でなければ長さ1)。
+// 始点 (`任意の式` または `(式, 式, ..)`) をパースする。戻り値は関数呼び出し
+// の引数列そのもの (fan-in でなければ長さ1)。
 fn parse_source(input: ParseStream) -> syn::Result<Vec<Expr>> {
     let span = input.span();
     let captured = capture_until_arrow(input)?;
@@ -131,9 +131,9 @@ fn parse_source(input: ParseStream) -> syn::Result<Vec<Expr>> {
     Ok(vec![expr])
 }
 
-/// `-[関数式]-> 束縛名` 一段分をパースする。呼び出し前提: `input` の次の
-/// トークンが `-[` であること ([`at_arrow_start`] で確認済みの箇所からのみ
-/// 呼ぶ)。
+// `-[関数式]-> 束縛名` 一段分をパースする。呼び出し前提: `input` の次の
+// トークンが `-[` であること (`at_arrow_start` で確認済みの箇所からのみ
+// 呼ぶ)。
 fn parse_arrow_step(input: ParseStream) -> syn::Result<(Expr, Ident)> {
     input.parse::<Token![-]>()?;
     let content;
@@ -148,18 +148,18 @@ fn parse_arrow_step(input: ParseStream) -> syn::Result<(Expr, Ident)> {
     Ok((func, binding))
 }
 
-/// 矢印文1段分。`func` は `-[..]->` の中身、`binding` はその段の束縛名。
+// 矢印文1段分。`func` は `-[..]->` の中身、`binding` はその段の束縛名。
 pub struct FlowStep {
     pub func: Expr,
     pub binding: Ident,
 }
 
-/// 矢印文1項分 (チェーン形含む): `始点 -[f]-> y -[g]-> z` 。
-///
-/// 2段目以降の「始点」を構文的に持たないのは意図的: チェーン形の2段目の
-/// 始点は必ず直前の段の束縛名そのもの ([`crate::flow_codegen::generate`] が
-/// 生成する `let` 束縛の識別子を再利用する) であり、これは構文ではなく脱糖
-/// 側の責務。`docs/flow_macro.md`: 「チェーン形 ... も許す (≡ ... の糖衣)」。
+// 矢印文1項分 (チェーン形含む): `始点 -[f]-> y -[g]-> z` 。
+//
+// 2段目以降の「始点」を構文的に持たないのは意図的: チェーン形の2段目の
+// 始点は必ず直前の段の束縛名そのもの (`crate::flow_codegen::generate` が
+// 生成する `let` 束縛の識別子を再利用する) であり、これは構文ではなく脱糖
+// 側の責務。`docs/flow_macro.md`: 「チェーン形 ... も許す (≡ ... の糖衣)」。
 pub struct FlowStmt {
     pub source: Vec<Expr>,
     pub steps: Vec<FlowStep>,
@@ -181,38 +181,36 @@ impl Parse for FlowStmt {
     }
 }
 
-/// `flow!` 全体: カンマ区切りの矢印文の列。`graph!` のようなヘッダ
-/// (スキーマ名) は無い。
+// `flow!` 全体: カンマ区切りの矢印文の列。`graph!` のようなヘッダ
+// (スキーマ名) は無い。
 pub struct FlowInput {
     pub stmts: Vec<FlowStmt>,
 }
 
-/// 項単位で回復パースした結果 (`docs/flow_macro.md`: 「項単位のエラー回復
-/// (G4 方針、drain_rest 厳守)」)。
+// 項単位で回復パースした結果 (`docs/flow_macro.md`: 「項単位のエラー回復
+// (G4 方針、drain_rest 厳守)」)。
 pub struct FlowParse {
     pub flow: FlowInput,
-    /// 個々の項のパースに失敗した箇所を蓄積したもの。空なら全項が正常に
-    /// パースできている。
-    pub errors: Vec<syn::Error>,
+    pub errors: Vec<syn::Error>, // 個々の項のパースに失敗した箇所を蓄積したもの。空なら全項が正常にパースできている。
 }
 
 impl FlowInput {
-    /// 項単位の回復パーサ (G4)。
-    ///
-    /// `flow!` には `graph!`/`graph_schema!` のような「壊れていたら全体を
-    /// 諦める」ヘッダが無いため (スキーマ名も波括弧宣言も不要)、常にこの
-    /// 関数がトップレベルの `Parser::parse2` 呼び出しそのものになる。ループは
-    /// `input` が空になるまで必ず進む (各分岐が最低1トークンを消費するため)
-    /// ので `input` は関数終了時に必ず空になり、`syn::parse::ParseBuffer` の
-    /// Drop 時未消費チェックを汚染することはない。
-    ///
-    /// ## 境界の定義
-    ///
-    /// 項はカンマ区切りなので、1項のパースに失敗したら次のトップレベルの
-    /// `,` (もしくは入力終端) までトークン木を1つずつ読み飛ばす
-    /// ([`skip_to_comma_boundary`])。`instance_dsl.rs`/
-    /// `graphite_codegen::schema::syntax::schema_declaration`
-    /// (`skip_to_decl_boundary`) と同じ境界定義。
+    // 項単位の回復パーサ (G4)。
+    //
+    // `flow!` には `graph!`/`graph_schema!` のような「壊れていたら全体を
+    // 諦める」ヘッダが無いため (スキーマ名も波括弧宣言も不要)、常にこの
+    // 関数がトップレベルの `Parser::parse2` 呼び出しそのものになる。ループは
+    // `input` が空になるまで必ず進む (各分岐が最低1トークンを消費するため)
+    // ので `input` は関数終了時に必ず空になり、`syn::parse::ParseBuffer` の
+    // Drop 時未消費チェックを汚染することはない。
+    //
+    // 境界の定義:
+    //
+    // 項はカンマ区切りなので、1項のパースに失敗したら次のトップレベルの
+    // `,` (もしくは入力終端) までトークン木を1つずつ読み飛ばす
+    // (`skip_to_comma_boundary`)。`instance_dsl.rs`/
+    // `graphite_codegen::schema::syntax::schema_declaration`
+    // (`skip_to_decl_boundary`) と同じ境界定義。
     pub fn parse_recovering(input: ParseStream) -> syn::Result<FlowParse> {
         let mut stmts = Vec::new();
         let mut errors = Vec::new();
@@ -247,9 +245,9 @@ impl FlowInput {
     }
 }
 
-/// 次のトップレベルの `,` (もしくは入力終端) まで、トークン木を1つずつ
-/// 読み飛ばす。[`FlowInput::parse_recovering`] のドキュメントコメント
-/// (境界の定義) を参照。
+// 次のトップレベルの `,` (もしくは入力終端) まで、トークン木を1つずつ
+// 読み飛ばす。`FlowInput::parse_recovering` のドキュメントコメント
+// (境界の定義) を参照。
 fn skip_to_comma_boundary(input: ParseStream) {
     while !input.is_empty() && !input.peek(Token![,]) {
         let _ = input.parse::<TokenTree>();

@@ -109,26 +109,26 @@ use proc_macro2::{Delimiter, TokenStream as TokenStream2, TokenTree};
 use syn::parse::{Parse, ParseStream};
 use syn::{braced, parenthesized, Expr, Ident, Token};
 
-/// 残りのトークンを丸ごと読み飛ばして `ParseStream` を空にする。
-///
-/// syn の `ParseBuffer` は drop 時に「まだトークンが残っているか」を
-/// チェックし、残っていれば共有の `Unexpected` セルにその位置を記録する
-/// (`syn::parse::Parser::parse2` はこのセルを最終チェックで読み、"unexpected
-/// token" エラーとして再浮上させる)。項目単位のエラー回復 (G4b) では、内側の
-/// `Parse` 実装がデリミタの途中でエラーを返した後もそのデリミタの中身が
-/// 未消費のまま残ることがあり、これを放置すると「回復して続行したはず」の
-/// 箇所で無関係な "unexpected token" が幽霊のように出る。そのため、
-/// デリミタ内 (`{ .. }`/`[ .. ]`) でエラーを返す全ての箇所は、返す前に
-/// この関数で中身を空にしておく。
+// 残りのトークンを丸ごと読み飛ばして `ParseStream` を空にする。
+//
+// syn の `ParseBuffer` は drop 時に「まだトークンが残っているか」を
+// チェックし、残っていれば共有の `Unexpected` セルにその位置を記録する
+// (`syn::parse::Parser::parse2` はこのセルを最終チェックで読み、"unexpected
+// token" エラーとして再浮上させる)。項目単位のエラー回復 (G4b) では、内側の
+// `Parse` 実装がデリミタの途中でエラーを返した後もそのデリミタの中身が
+// 未消費のまま残ることがあり、これを放置すると「回復して続行したはず」の
+// 箇所で無関係な "unexpected token" が幽霊のように出る。そのため、
+// デリミタ内 (`{ .. }`/`[ .. ]`) でエラーを返す全ての箇所は、返す前に
+// この関数で中身を空にしておく。
 fn drain_rest(content: ParseStream) {
     let _ = content.parse::<proc_macro2::TokenStream>();
 }
 
-/// 次のトップレベルの `,` (もしくは入力終端) まで、トークン木を1つずつ
-/// 捕獲する (構造化パースを一切経由しないため、これ自体が
-/// [`ParseBuffer`] の Drop 汚染を起こすことはない)。捕獲したトークン列は
-/// 呼び出し元が [`parse_expr_isolated`]/[`try_parse_edge_literal`] で
-/// 独立に再パースする。
+// 次のトップレベルの `,` (もしくは入力終端) まで、トークン木を1つずつ
+// 捕獲する (構造化パースを一切経由しないため、これ自体が
+// `ParseBuffer` の Drop 汚染を起こすことはない)。捕獲したトークン列は
+// 呼び出し元が `parse_expr_isolated`/`try_parse_edge_literal` で
+// 独立に再パースする。
 fn capture_until_top_level_comma(content: ParseStream) -> syn::Result<TokenStream2> {
     let mut collected = TokenStream2::new();
     while !content.is_empty() && !content.peek(Token![,]) {
@@ -138,8 +138,8 @@ fn capture_until_top_level_comma(content: ParseStream) -> syn::Result<TokenStrea
     Ok(collected)
 }
 
-/// `@` の後から次のトップレベルの単独 `=` までID式を捕獲し、区切りも消費する。
-/// `==`・`>=`・`+=`などの演算子に含まれる`=`は式の一部として残す。
+// `@` の後から次のトップレベルの単独 `=` までID式を捕獲し、区切りも消費する。
+// `==`・`>=`・`+=`などの演算子に含まれる`=`は式の一部として残す。
 fn capture_until_top_level_equal(content: ParseStream) -> syn::Result<TokenStream2> {
     let mut collected = TokenStream2::new();
     let mut previous_punct_is_joint = false;
@@ -164,11 +164,11 @@ fn capture_until_top_level_equal(content: ParseStream) -> syn::Result<TokenStrea
     Err(content.error("ID式の後に`=`が必要です"))
 }
 
-/// 捕獲済みのトークン列を、**新規の独立したトップレベル呼び出し**として
-/// `Expr` にパースする。このファイル冒頭のドキュメントコメント「syn::Expr
-/// を回復パーサに混ぜる際のリスク」参照: `syn::parse2` は呼ぶたびに新しい
-/// `Rc<Cell<Unexpected>>` を作るため、ここで起きるエラーは呼び出し元
-/// (G4b の回復パーサ) が共有する `Unexpected` セルを汚染しない。
+// 捕獲済みのトークン列を、**新規の独立したトップレベル呼び出し**として
+// `Expr` にパースする。このファイル冒頭のドキュメントコメント「syn::Expr
+// を回復パーサに混ぜる際のリスク」参照: `syn::parse2` は呼ぶたびに新しい
+// `Rc<Cell<Unexpected>>` を作るため、ここで起きるエラーは呼び出し元
+// (G4b の回復パーサ) が共有する `Unexpected` セルを汚染しない。
 fn parse_expr_isolated(
     tokens: TokenStream2,
     empty_input_span: proc_macro2::Span,
@@ -179,16 +179,16 @@ fn parse_expr_isolated(
     syn::parse2::<Expr>(tokens)
 }
 
-/// 捕獲したトークン列が「エッジリテラルのつもり」に見えるかどうかを軽く
-/// 判定する。ファイル冒頭のドキュメントコメント「ノード項とエッジ項の判別」
-/// 参照。
-///
-/// 判定基準: `識別子 + 丸括弧グループ` という形にまず一致し、丸括弧の中身の
-/// 最初の2トークンが `識別子` + `-` (パンクト) であること。`->`/`-[` は
-/// いずれも最初のトークンが `-` の punct であり、この判定だけで両方拾える。
-/// 通常の関数呼び出し・タプル struct 構築式の引数列がこの形 (最初の識別子の
-/// 直後がハイフン) になることは実質的に無い (`->` は式の中に出現しない
-/// トークン列のため)。
+// 捕獲したトークン列が「エッジリテラルのつもり」に見えるかどうかを軽く
+// 判定する。ファイル冒頭のドキュメントコメント「ノード項とエッジ項の判別」
+// 参照。
+//
+// 判定基準: `識別子 + 丸括弧グループ` という形にまず一致し、丸括弧の中身の
+// 最初の2トークンが `識別子` + `-` (パンクト) であること。`->`/`-[` は
+// いずれも最初のトークンが `-` の punct であり、この判定だけで両方拾える。
+// 通常の関数呼び出し・タプル struct 構築式の引数列がこの形 (最初の識別子の
+// 直後がハイフン) になることは実質的に無い (`->` は式の中に出現しない
+// トークン列のため)。
 fn looks_like_edge_literal(tokens: &TokenStream2) -> bool {
     let mut top_level = tokens.clone().into_iter();
     let Some(TokenTree::Ident(_kind)) = top_level.next() else {
@@ -213,10 +213,10 @@ fn looks_like_edge_literal(tokens: &TokenStream2) -> bool {
     matches!(inner.next(), Some(TokenTree::Punct(p)) if p.as_char() == '-')
 }
 
-/// `Kind(from -> to)` / `Kind(from -[式]-> to)` の内側構造。
-/// [`looks_like_edge_literal`] が「エッジのつもり」と判定した捕獲済み
-/// トークン列を、**独立したトップレベル呼び出し** `syn::parse2` でこの型に
-/// パースする (ファイル冒頭のドキュメントコメント参照)。
+// `Kind(from -> to)` / `Kind(from -[式]-> to)` の内側構造。
+// `looks_like_edge_literal` が「エッジのつもり」と判定した捕獲済み
+// トークン列を、**独立したトップレベル呼び出し** `syn::parse2` でこの型に
+// パースする (ファイル冒頭のドキュメントコメント参照)。
 struct EdgeLiteralInner {
     kind: Ident,
     from: Ident,
@@ -259,9 +259,9 @@ impl Parse for EdgeLiteralInner {
     }
 }
 
-/// 柄 (4形: `->` / `-[式]->` / `--` / `-[式]-`) をパースし、積み荷式の有無と
-/// 向きを返す。コード生成は向きに対応する辺種別専用コンストラクタを呼び、
-/// スキーマ宣言と異なる柄をコンパイルエラーにする。
+// 柄 (4形: `->` / `-[式]->` / `--` / `-[式]-`) をパースし、積み荷式の有無と
+// 向きを返す。コード生成は向きに対応する辺種別専用コンストラクタを呼び、
+// スキーマ宣言と異なる柄をコンパイルエラーにする。
 fn parse_instance_arrow_payload(
     content: ParseStream,
 ) -> syn::Result<(Option<Expr>, EdgeDirection)> {
@@ -300,27 +300,27 @@ fn parse_instance_arrow_payload(
     }
 }
 
-/// [`looks_like_edge_literal`] が真を返した捕獲済みトークン列を、実際に
-/// [`EdgeLiteralInner`] としてパースする。ここで返る `Err` は「エッジの
-/// つもりだが壊れている」という確定した診断であり (曖昧性はもう無い)、
-/// ノード式へのフォールバックはしない (フォールバックすると `->` を含む
-/// トークン列が `syn::Expr` としても失敗し、かえって分かりにくい
-/// "expected expression" に化けてしまうため)。
+// `looks_like_edge_literal` が真を返した捕獲済みトークン列を、実際に
+// `EdgeLiteralInner` としてパースする。ここで返る `Err` は「エッジの
+// つもりだが壊れている」という確定した診断であり (曖昧性はもう無い)、
+// ノード式へのフォールバックはしない (フォールバックすると `->` を含む
+// トークン列が `syn::Expr` としても失敗し、かえって分かりにくい
+// "expected expression" に化けてしまうため)。
 fn parse_edge_literal_isolated(tokens: TokenStream2) -> syn::Result<EdgeLiteralInner> {
     syn::parse2::<EdgeLiteralInner>(tokens)
 }
 
-/// `alice = Person { name: "Alice".into() }` / `alice = alice_value`
+// `alice = Person { name: "Alice".into() }` / `alice = alice_value`
 pub struct NodeInstance {
     pub key: Ident,
     pub id: Option<Expr>,
     pub value: Expr,
 }
 
-/// `a_team = BelongsTo(alice -> eng)` / `b_boss = Boss(bob -[promo]-> alice)`
-///
-/// `docs/schema_v4.md` §2: 全行が `名前 = 値` であり、エッジ項の名前も
-/// (ノードと同様) キーの束縛である。
+// `a_team = BelongsTo(alice -> eng)` / `b_boss = Boss(bob -[promo]-> alice)`
+//
+// `docs/schema_v4.md` §2: 全行が `名前 = 値` であり、エッジ項の名前も
+// (ノードと同様) キーの束縛である。
 pub struct EdgeInstance {
     pub key: Ident,
     pub id: Option<Expr>,
@@ -331,12 +331,12 @@ pub struct EdgeInstance {
     pub direction: EdgeDirection,
 }
 
-/// `..式` — 実行時コレクションからノード/辺を一括で流し込む
-/// (`docs/graph_splice.md` §1)。式の型は `IntoIterator<Item = (K, T)>` で、
-/// `K: Into<String>`・`T` がノード型か辺種別かは静的な項と同様 rustc の
-/// 型推論が決める。スプライスの要素は名前を持たない (名前は静的な項だけの
-/// 概念) ため、`NodeInstance`/`EdgeInstance` と異なり `key` フィールドが
-/// 無い。
+// `..式` — 実行時コレクションからノード/辺を一括で流し込む
+// (`docs/graph_splice.md` §1)。式の型は `IntoIterator<Item = (K, T)>` で、
+// `K: Into<String>`・`T` がノード型か辺種別かは静的な項と同様 rustc の
+// 型推論が決める。スプライスの要素は名前を持たない (名前は静的な項だけの
+// 概念) ため、`NodeInstance`/`EdgeInstance` と異なり `key` フィールドが
+// 無い。
 pub struct SpreadInstance {
     pub expr: Expr,
 }
@@ -404,35 +404,33 @@ impl Parse for GraphItem {
     }
 }
 
-/// `graph!` 全体: `SchemaName { item, item, ... }`。
+// `graph!` 全体: `SchemaName { item, item, ... }`。
 pub struct GraphInput {
     pub schema_name: Ident,
     pub items: Vec<GraphItem>,
 }
 
-/// 項目単位で回復パースした結果 (`docs/development/ide_support_spec.md` G4b)。
+// 項目単位で回復パースした結果 (`docs/development/ide_support_spec.md` G4b)。
 pub struct GraphParse {
     pub graph: GraphInput,
-    /// 個々の項目のパースに失敗した箇所を蓄積したもの。空なら全項目が
-    /// 正常にパースできている。
-    pub errors: Vec<syn::Error>,
+    pub errors: Vec<syn::Error>, // 個々の項目のパースに失敗した箇所を蓄積したもの。空なら全項目が正常にパースできている。
 }
 
 impl GraphInput {
-    /// 項目単位の回復パーサ (G4b)。
-    ///
-    /// ## 回復戦略
-    ///
-    /// - ヘッダ (`SchemaName {`) 自体が壊れている場合は回復せず `Err` を
-    ///   返す。
-    /// - ボディはカンマ区切りの項目 (ノード / エッジ、どちらも `key = ..`
-    ///   の形、またはスプライス `..式`) 単位でパースする。
-    /// - **境界の定義**: 「項目はカンマ区切り」という構文上の性質を使い、
-    ///   次のトップレベルの `,` (もしくは入力終端) まで、トークン木を1つ
-    ///   ずつ読み飛ばす境界とする。proc_macro2 では `{ .. }`/`[ .. ]`/
-    ///   `( .. )` の中身がまるごと1つの `Group` トークン木として扱われる
-    ///   ため、その中にあるカンマを誤ってトップレベルの区切りだと誤認する
-    ///   ことはない。
+    // 項目単位の回復パーサ (G4b)。
+    //
+    // 回復戦略:
+    //
+    // - ヘッダ (`SchemaName {`) 自体が壊れている場合は回復せず `Err` を
+    //   返す。
+    // - ボディはカンマ区切りの項目 (ノード / エッジ、どちらも `key = ..`
+    //   の形、またはスプライス `..式`) 単位でパースする。
+    // - **境界の定義**: 「項目はカンマ区切り」という構文上の性質を使い、
+    //   次のトップレベルの `,` (もしくは入力終端) まで、トークン木を1つ
+    //   ずつ読み飛ばす境界とする。proc_macro2 では `{ .. }`/`[ .. ]`/
+    //   `( .. )` の中身がまるごと1つの `Group` トークン木として扱われる
+    //   ため、その中にあるカンマを誤ってトップレベルの区切りだと誤認する
+    //   ことはない。
     pub fn parse_recovering(input: ParseStream) -> syn::Result<GraphParse> {
         let schema_name: Ident = input.parse()?;
         let content;
@@ -471,9 +469,9 @@ impl GraphInput {
     }
 }
 
-/// 次のトップレベルの `,` (もしくは入力終端) まで、トークン木を1つずつ
-/// 読み飛ばす。[`GraphInput::parse_recovering`] のドキュメントコメント
-/// (境界の定義) を参照。
+// 次のトップレベルの `,` (もしくは入力終端) まで、トークン木を1つずつ
+// 読み飛ばす。`GraphInput::parse_recovering` のドキュメントコメント
+// (境界の定義) を参照。
 fn skip_to_comma_boundary(content: ParseStream) {
     while !content.is_empty() && !content.peek(Token![,]) {
         let _ = content.parse::<TokenTree>();

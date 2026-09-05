@@ -23,11 +23,11 @@ use syn::Ident;
 
 use crate::flow_dsl::{FlowInput, FlowStmt};
 
-/// 束縛名の重複を検査する (`graph!` の `collect_declared_keys` と同じ
-/// 親切さ: 最初の宣言箇所の span を併記する)。`flow!` はスキーマを持たず
-/// 「未宣言参照」の検証もしない (`docs/flow_macro.md`: 先行未定義の名前を
-/// 使えば rustc の普通のエラーに任せる) ため、意味検査はこの重複チェック
-/// だけで足りる。
+// 束縛名の重複を検査する (`graph!` の `collect_declared_keys` と同じ
+// 親切さ: 最初の宣言箇所の span を併記する)。`flow!` はスキーマを持たず
+// 「未宣言参照」の検証もしない (`docs/flow_macro.md`: 先行未定義の名前を
+// 使えば rustc の普通のエラーに任せる) ため、意味検査はこの重複チェック
+// だけで足りる。
 fn check_unique_bindings(stmts: &[FlowStmt]) -> syn::Result<()> {
     let mut seen: HashMap<String, Span> = HashMap::new();
     for stmt in stmts {
@@ -47,9 +47,9 @@ fn check_unique_bindings(stmts: &[FlowStmt]) -> syn::Result<()> {
     Ok(())
 }
 
-/// `input.stmts` は既に項単位の回復パース ([`crate::flow_dsl::FlowInput::
-/// parse_recovering`]) を経ており、パースに失敗した項は除かれている。
-/// ここでは残った項だけから `let` 文の列を生成する。
+// `input.stmts` は既に項単位の回復パース (`crate::flow_dsl::FlowInput::
+// parse_recovering`) を経ており、パースに失敗した項は除かれている。
+// ここでは残った項だけから `let` 文の列を生成する。
 pub fn generate(input: &FlowInput) -> syn::Result<TokenStream> {
     check_unique_bindings(&input.stmts)?;
 
