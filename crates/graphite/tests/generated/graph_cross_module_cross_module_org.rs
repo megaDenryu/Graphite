@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    3384557504274654326u64, 10670998955246496683u64, 8221520459489957680u64,
-    6338026797930345292u64,
+    7686973392141955137u64, 10376301873818300038u64, 3605432399244605143u64,
+    8086788751910322739u64,
 ];
 /// `BelongsTo` 辺の公開ID。
 ///
@@ -45,7 +45,9 @@ pub struct __BossNamedPosition(__BossInternalPosition, u64);
 /// 宣言: `tests/graph_cross_module.rs` の `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1`
 #[derive(Clone, PartialEq)]
 pub struct BelongsTo {
+    /// この辺の始点ノードの公開ID。
     pub employee: EmployeeId,
+    /// この辺の終点ノードの公開ID。
     pub department: DepartmentId,
 }
 impl BelongsTo {
@@ -74,8 +76,11 @@ impl std::fmt::Debug for BelongsTo {
 /// 宣言: `tests/graph_cross_module.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
 #[derive(Clone, PartialEq)]
 pub struct Boss {
+    /// この辺の始点ノードの公開ID。
     pub subordinate: EmployeeId,
+    /// この辺の終点ノードの公開ID。
     pub superior: EmployeeId,
+    /// この辺が運ぶ積み荷。
     pub appointment: BossEdge,
 }
 impl Boss {
@@ -123,24 +128,56 @@ struct __BossRecord {
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
+    /// このノード種別のキーが重複している。
     DuplicateEmployee(EmployeeId),
+    /// このノード種別のキーが重複している。
     DuplicateDepartment(DepartmentId),
     /// このエッジ種別のキーが重複している。
     BelongsToDuplicateKey(BelongsToId),
     /// このエッジが未知の始点キーを参照している。
-    BelongsToUnknownSource { edge: BelongsToId, source: EmployeeId },
+    BelongsToUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: BelongsToId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: EmployeeId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    BelongsToUnknownTarget { edge: BelongsToId, target: DepartmentId },
+    BelongsToUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: BelongsToId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: DepartmentId,
+    },
     /// このエッジ種別の `each` 制約違反 (出次数)。
-    BelongsToEmployeeEachViolation { source: EmployeeId, count: usize },
+    BelongsToEmployeeEachViolation {
+        /// 出次数が制約に反した始点ノードの公開ID。
+        source: EmployeeId,
+        /// この始点から実際に出ている辺の本数。
+        count: usize,
+    },
     /// このエッジ種別のキーが重複している。
     BossDuplicateKey(BossId),
     /// このエッジが未知の始点キーを参照している。
-    BossUnknownSource { edge: BossId, source: EmployeeId },
+    BossUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: BossId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: EmployeeId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    BossUnknownTarget { edge: BossId, target: EmployeeId },
+    BossUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: BossId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: EmployeeId,
+    },
     /// このエッジ種別の `each` 制約違反 (出次数)。
-    BossSubordinateEachViolation { source: EmployeeId, count: usize },
+    BossSubordinateEachViolation {
+        /// 出次数が制約に反した始点ノードの公開ID。
+        source: EmployeeId,
+        /// この始点から実際に出ている辺の本数。
+        count: usize,
+    },
 }
 impl std::fmt::Display for Violation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -659,6 +696,7 @@ pub struct Builder {
 /// 実装を持ち、`insert_named_with_id` を経由しない
 /// (`create` のクロージャから許可証なしで呼べる必要があるため)。
 pub trait CrossModuleOrgInsertable: Sized {
+    /// この要素を挿入したときに受け取る公開ID型。
     type Id;
     #[doc(hidden)]
     type NamedPosition;
@@ -669,6 +707,7 @@ pub trait CrossModuleOrgInsertable: Sized {
         id: Self::Id,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
     fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
 }
 /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
@@ -681,6 +720,7 @@ pub trait CrossModuleOrgDefaultId: CrossModuleOrgInsertable {
         binding: String,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
 /// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと

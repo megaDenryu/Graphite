@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    98790467789525830u64, 15000877685061719459u64, 2095012025533620868u64,
-    14626679661976999760u64,
+    18107074413995755045u64, 9542882290698294038u64, 11391908036587967383u64,
+    17605973286829022011u64,
 ];
 /// `Person` ノードの公開ID。
 ///
@@ -35,7 +35,9 @@ pub struct __RelationNamedPosition(__RelationInternalPosition, u64);
 /// 宣言: `tests/schema_namespace.rs` の `edge Relation = (source: Person) -> (target: Person)`
 #[derive(Clone, PartialEq)]
 pub struct Relation {
+    /// この辺の始点ノードの公開ID。
     pub source: PersonId,
+    /// この辺の終点ノードの公開ID。
     pub target: PersonId,
 }
 impl Relation {
@@ -70,13 +72,24 @@ struct __RelationRecord {
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
+    /// このノード種別のキーが重複している。
     DuplicatePerson(PersonId),
     /// このエッジ種別のキーが重複している。
     RelationDuplicateKey(RelationId),
     /// このエッジが未知の始点キーを参照している。
-    RelationUnknownSource { edge: RelationId, source: PersonId },
+    RelationUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: RelationId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: PersonId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    RelationUnknownTarget { edge: RelationId, target: PersonId },
+    RelationUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: RelationId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: PersonId,
+    },
 }
 impl std::fmt::Display for Violation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -359,6 +372,7 @@ pub struct Builder {
 /// 実装を持ち、`insert_named_with_id` を経由しない
 /// (`create` のクロージャから許可証なしで呼べる必要があるため)。
 pub trait OrgInsertable: Sized {
+    /// この要素を挿入したときに受け取る公開ID型。
     type Id;
     #[doc(hidden)]
     type NamedPosition;
@@ -369,6 +383,7 @@ pub trait OrgInsertable: Sized {
         id: Self::Id,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
     fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
 }
 /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
@@ -381,6 +396,7 @@ pub trait OrgDefaultId: OrgInsertable {
         binding: String,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
 /// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと

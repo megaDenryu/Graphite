@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    3536189147059688369u64, 14830515318720335256u64, 3621131064272937927u64,
-    12606130664328457075u64,
+    14705315250001369017u64, 18065834460180308192u64, 16132219683487765995u64,
+    6369597547959336287u64,
 ];
 /// `Cell` ノードの公開ID。
 ///
@@ -55,7 +55,9 @@ pub struct __RhsNamedPosition(__RhsInternalPosition, u64);
 /// 宣言: `src/schema.rs` の `edge Feeds = (dependency: Cell) -> (dependent: Cell) where unique pair`
 #[derive(Clone, PartialEq)]
 pub struct Feeds {
+    /// この辺の始点ノードの公開ID。
     pub dependency: CellId,
+    /// この辺の終点ノードの公開ID。
     pub dependent: CellId,
 }
 impl Feeds {
@@ -87,7 +89,9 @@ impl std::fmt::Debug for Feeds {
 /// 宣言: `src/schema.rs` の `edge Lhs = (operand: Cell) -> (operation: Cell) where unique pair`
 #[derive(Clone, PartialEq)]
 pub struct Lhs {
+    /// この辺の始点ノードの公開ID。
     pub operand: CellId,
+    /// この辺の終点ノードの公開ID。
     pub operation: CellId,
 }
 impl Lhs {
@@ -119,7 +123,9 @@ impl std::fmt::Debug for Lhs {
 /// 宣言: `src/schema.rs` の `edge Rhs = (operand: Cell) -> (operation: Cell) where unique pair`
 #[derive(Clone, PartialEq)]
 pub struct Rhs {
+    /// この辺の始点ノードの公開ID。
     pub operand: CellId,
+    /// この辺の終点ノードの公開ID。
     pub operation: CellId,
 }
 impl Rhs {
@@ -167,34 +173,80 @@ struct __RhsRecord {
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
+    /// このノード種別のキーが重複している。
     DuplicateCell(CellId),
     /// このエッジ種別のキーが重複している。
     FeedsDuplicateKey(FeedsId),
     /// このエッジが未知の始点キーを参照している。
-    FeedsUnknownSource { edge: FeedsId, source: CellId },
+    FeedsUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: FeedsId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: CellId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    FeedsUnknownTarget { edge: FeedsId, target: CellId },
+    FeedsUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: FeedsId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: CellId,
+    },
     /// このエッジ種別の `unique pair` 違反 (同じ始点・終点の対に
     /// 2本目の辺が張られた)。
-    FeedsUniquePairViolation { source: CellId, target: CellId },
+    FeedsUniquePairViolation {
+        /// 2本目の辺が張られた対の始点ノードの公開ID。
+        source: CellId,
+        /// 2本目の辺が張られた対の終点ノードの公開ID。
+        target: CellId,
+    },
     /// このエッジ種別のキーが重複している。
     LhsDuplicateKey(LhsId),
     /// このエッジが未知の始点キーを参照している。
-    LhsUnknownSource { edge: LhsId, source: CellId },
+    LhsUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: LhsId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: CellId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    LhsUnknownTarget { edge: LhsId, target: CellId },
+    LhsUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: LhsId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: CellId,
+    },
     /// このエッジ種別の `unique pair` 違反 (同じ始点・終点の対に
     /// 2本目の辺が張られた)。
-    LhsUniquePairViolation { source: CellId, target: CellId },
+    LhsUniquePairViolation {
+        /// 2本目の辺が張られた対の始点ノードの公開ID。
+        source: CellId,
+        /// 2本目の辺が張られた対の終点ノードの公開ID。
+        target: CellId,
+    },
     /// このエッジ種別のキーが重複している。
     RhsDuplicateKey(RhsId),
     /// このエッジが未知の始点キーを参照している。
-    RhsUnknownSource { edge: RhsId, source: CellId },
+    RhsUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: RhsId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: CellId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    RhsUnknownTarget { edge: RhsId, target: CellId },
+    RhsUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: RhsId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: CellId,
+    },
     /// このエッジ種別の `unique pair` 違反 (同じ始点・終点の対に
     /// 2本目の辺が張られた)。
-    RhsUniquePairViolation { source: CellId, target: CellId },
+    RhsUniquePairViolation {
+        /// 2本目の辺が張られた対の始点ノードの公開ID。
+        source: CellId,
+        /// 2本目の辺が張られた対の終点ノードの公開ID。
+        target: CellId,
+    },
 }
 impl std::fmt::Display for Violation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -776,6 +828,7 @@ pub struct Builder {
 /// 実装を持ち、`insert_named_with_id` を経由しない
 /// (`create` のクロージャから許可証なしで呼べる必要があるため)。
 pub trait SheetInsertable: Sized {
+    /// この要素を挿入したときに受け取る公開ID型。
     type Id;
     #[doc(hidden)]
     type NamedPosition;
@@ -786,6 +839,7 @@ pub trait SheetInsertable: Sized {
         id: Self::Id,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
     fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
 }
 /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
@@ -798,6 +852,7 @@ pub trait SheetDefaultId: SheetInsertable {
         binding: String,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
 /// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと

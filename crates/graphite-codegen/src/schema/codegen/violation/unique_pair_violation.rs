@@ -20,7 +20,12 @@ pub(crate) fn gen_unique_pair_violation_case(
         let variant = quote! {
             /// このエッジ種別の `unique pair` 違反 (同じ始点・終点の対に
             /// 2本目の辺が張られた)。
-            #v { source: #from_id, target: #to_id }
+            #v {
+                /// 2本目の辺が張られた対の始点ノードの公開ID。
+                source: #from_id,
+                /// 2本目の辺が張られた対の終点ノードの公開ID。
+                target: #to_id,
+            }
         };
         let display_arm = if edge.from_node.id_ty.is_debug_printable()
             && edge.to_node.id_ty.is_debug_printable()
@@ -47,7 +52,12 @@ pub(crate) fn gen_unique_pair_violation_case(
         let variant = quote! {
             /// このエッジ種別の `unique pair` 違反 (無向のため
             /// 順序を無視した対で判定)。
-            #v { a: #node_id, b: #node_id }
+            #v {
+                /// 2本目の辺が張られた対の一方の端点の公開ID。
+                a: #node_id,
+                /// 2本目の辺が張られた対のもう一方の端点の公開ID。
+                b: #node_id,
+            }
         };
         let display_arm = if edge.from_node.id_ty.is_debug_printable() {
             quote! {

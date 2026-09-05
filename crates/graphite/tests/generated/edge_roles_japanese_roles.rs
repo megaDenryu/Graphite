@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    5885588358647233040u64, 6143556587150587767u64, 16312500420955715278u64,
-    7773066864163283490u64,
+    1705211294243469663u64, 330541347625595440u64, 15696489486545386117u64,
+    5873429998157603929u64,
 ];
 /// `Person` ノードの公開ID。
 ///
@@ -45,7 +45,9 @@ pub struct __OwnershipNamedPosition(__OwnershipInternalPosition, u64);
 /// 宣言: `tests/edge_roles.rs` の `edge Ownership = (所有者: Person) -> (所有物: Item) where each 所有者: 1`
 #[derive(Clone, PartialEq)]
 pub struct Ownership {
+    /// この辺の始点ノードの公開ID。
     pub 所有者: PersonId,
+    /// この辺の終点ノードの公開ID。
     pub 所有物: ItemId,
 }
 impl Ownership {
@@ -83,16 +85,33 @@ struct __OwnershipRecord {
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
+    /// このノード種別のキーが重複している。
     DuplicatePerson(PersonId),
+    /// このノード種別のキーが重複している。
     DuplicateItem(ItemId),
     /// このエッジ種別のキーが重複している。
     OwnershipDuplicateKey(OwnershipId),
     /// このエッジが未知の始点キーを参照している。
-    OwnershipUnknownSource { edge: OwnershipId, source: PersonId },
+    OwnershipUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: OwnershipId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: PersonId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    OwnershipUnknownTarget { edge: OwnershipId, target: ItemId },
+    OwnershipUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: OwnershipId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: ItemId,
+    },
     /// このエッジ種別の `each` 制約違反 (出次数)。
-    Ownership所有者EachViolation { source: PersonId, count: usize },
+    Ownership所有者EachViolation {
+        /// 出次数が制約に反した始点ノードの公開ID。
+        source: PersonId,
+        /// この始点から実際に出ている辺の本数。
+        count: usize,
+    },
 }
 impl std::fmt::Display for Violation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -430,6 +449,7 @@ pub struct Builder {
 /// 実装を持ち、`insert_named_with_id` を経由しない
 /// (`create` のクロージャから許可証なしで呼べる必要があるため)。
 pub trait JapaneseRolesInsertable: Sized {
+    /// この要素を挿入したときに受け取る公開ID型。
     type Id;
     #[doc(hidden)]
     type NamedPosition;
@@ -440,6 +460,7 @@ pub trait JapaneseRolesInsertable: Sized {
         id: Self::Id,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
     fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
 }
 /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
@@ -452,6 +473,7 @@ pub trait JapaneseRolesDefaultId: JapaneseRolesInsertable {
         binding: String,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
 /// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと

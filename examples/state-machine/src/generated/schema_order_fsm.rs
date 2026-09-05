@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    3845609520283884498u64, 7967057580019453419u64, 12470256070841884480u64,
-    9972050547867582108u64,
+    8169717173945259051u64, 8732966091379089196u64, 18398576336114673821u64,
+    18193020970472605073u64,
 ];
 /// `OrderState` ノードの公開ID。
 ///
@@ -85,7 +85,9 @@ pub struct __RefundNamedPosition(__RefundInternalPosition, u64);
 /// 宣言: `src/schema.rs` の `edge Submit = (before: OrderState) -> (after: OrderState) where each before: 0..1`
 #[derive(Clone, PartialEq)]
 pub struct Submit {
+    /// この辺の始点ノードの公開ID。
     pub before: OrderStateId,
+    /// この辺の終点ノードの公開ID。
     pub after: OrderStateId,
 }
 impl Submit {
@@ -111,7 +113,9 @@ impl std::fmt::Debug for Submit {
 /// 宣言: `src/schema.rs` の `edge Pay = (before: OrderState) -> (after: OrderState) where each before: 0..1`
 #[derive(Clone, PartialEq)]
 pub struct Pay {
+    /// この辺の始点ノードの公開ID。
     pub before: OrderStateId,
+    /// この辺の終点ノードの公開ID。
     pub after: OrderStateId,
 }
 impl Pay {
@@ -137,7 +141,9 @@ impl std::fmt::Debug for Pay {
 /// 宣言: `src/schema.rs` の `edge Ship = (before: OrderState) -> (after: OrderState) where each before: 0..1`
 #[derive(Clone, PartialEq)]
 pub struct Ship {
+    /// この辺の始点ノードの公開ID。
     pub before: OrderStateId,
+    /// この辺の終点ノードの公開ID。
     pub after: OrderStateId,
 }
 impl Ship {
@@ -163,7 +169,9 @@ impl std::fmt::Debug for Ship {
 /// 宣言: `src/schema.rs` の `edge Deliver = (before: OrderState) -> (after: OrderState) where each before: 0..1`
 #[derive(Clone, PartialEq)]
 pub struct Deliver {
+    /// この辺の始点ノードの公開ID。
     pub before: OrderStateId,
+    /// この辺の終点ノードの公開ID。
     pub after: OrderStateId,
 }
 impl Deliver {
@@ -192,8 +200,11 @@ impl std::fmt::Debug for Deliver {
 /// 宣言: `src/schema.rs` の `edge Cancel = (before: OrderState) -[cancellation: CancelEdge]-> (after: OrderState) where each before: 0..1`
 #[derive(Clone, PartialEq)]
 pub struct Cancel {
+    /// この辺の始点ノードの公開ID。
     pub before: OrderStateId,
+    /// この辺の終点ノードの公開ID。
     pub after: OrderStateId,
+    /// この辺が運ぶ積み荷。
     pub cancellation: CancelEdge,
 }
 impl Cancel {
@@ -233,8 +244,11 @@ impl std::fmt::Debug for Cancel {
 /// 宣言: `src/schema.rs` の `edge Refund = (before: OrderState) -[refund: RefundEdge]-> (after: OrderState) where each before: 0..1`
 #[derive(Clone, PartialEq)]
 pub struct Refund {
+    /// この辺の始点ノードの公開ID。
     pub before: OrderStateId,
+    /// この辺の終点ノードの公開ID。
     pub after: OrderStateId,
+    /// この辺が運ぶ積み荷。
     pub refund: RefundEdge,
 }
 impl Refund {
@@ -307,55 +321,146 @@ struct __RefundRecord {
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
+    /// このノード種別のキーが重複している。
     DuplicateOrderState(OrderStateId),
     /// このエッジ種別のキーが重複している。
     SubmitDuplicateKey(SubmitId),
     /// このエッジが未知の始点キーを参照している。
-    SubmitUnknownSource { edge: SubmitId, source: OrderStateId },
+    SubmitUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: SubmitId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: OrderStateId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    SubmitUnknownTarget { edge: SubmitId, target: OrderStateId },
+    SubmitUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: SubmitId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: OrderStateId,
+    },
     /// このエッジ種別の `each` 制約違反 (出次数)。
-    SubmitBeforeEachViolation { source: OrderStateId, count: usize },
+    SubmitBeforeEachViolation {
+        /// 出次数が制約に反した始点ノードの公開ID。
+        source: OrderStateId,
+        /// この始点から実際に出ている辺の本数。
+        count: usize,
+    },
     /// このエッジ種別のキーが重複している。
     PayDuplicateKey(PayId),
     /// このエッジが未知の始点キーを参照している。
-    PayUnknownSource { edge: PayId, source: OrderStateId },
+    PayUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: PayId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: OrderStateId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    PayUnknownTarget { edge: PayId, target: OrderStateId },
+    PayUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: PayId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: OrderStateId,
+    },
     /// このエッジ種別の `each` 制約違反 (出次数)。
-    PayBeforeEachViolation { source: OrderStateId, count: usize },
+    PayBeforeEachViolation {
+        /// 出次数が制約に反した始点ノードの公開ID。
+        source: OrderStateId,
+        /// この始点から実際に出ている辺の本数。
+        count: usize,
+    },
     /// このエッジ種別のキーが重複している。
     ShipDuplicateKey(ShipId),
     /// このエッジが未知の始点キーを参照している。
-    ShipUnknownSource { edge: ShipId, source: OrderStateId },
+    ShipUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: ShipId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: OrderStateId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    ShipUnknownTarget { edge: ShipId, target: OrderStateId },
+    ShipUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: ShipId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: OrderStateId,
+    },
     /// このエッジ種別の `each` 制約違反 (出次数)。
-    ShipBeforeEachViolation { source: OrderStateId, count: usize },
+    ShipBeforeEachViolation {
+        /// 出次数が制約に反した始点ノードの公開ID。
+        source: OrderStateId,
+        /// この始点から実際に出ている辺の本数。
+        count: usize,
+    },
     /// このエッジ種別のキーが重複している。
     DeliverDuplicateKey(DeliverId),
     /// このエッジが未知の始点キーを参照している。
-    DeliverUnknownSource { edge: DeliverId, source: OrderStateId },
+    DeliverUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: DeliverId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: OrderStateId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    DeliverUnknownTarget { edge: DeliverId, target: OrderStateId },
+    DeliverUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: DeliverId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: OrderStateId,
+    },
     /// このエッジ種別の `each` 制約違反 (出次数)。
-    DeliverBeforeEachViolation { source: OrderStateId, count: usize },
+    DeliverBeforeEachViolation {
+        /// 出次数が制約に反した始点ノードの公開ID。
+        source: OrderStateId,
+        /// この始点から実際に出ている辺の本数。
+        count: usize,
+    },
     /// このエッジ種別のキーが重複している。
     CancelDuplicateKey(CancelId),
     /// このエッジが未知の始点キーを参照している。
-    CancelUnknownSource { edge: CancelId, source: OrderStateId },
+    CancelUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: CancelId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: OrderStateId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    CancelUnknownTarget { edge: CancelId, target: OrderStateId },
+    CancelUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: CancelId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: OrderStateId,
+    },
     /// このエッジ種別の `each` 制約違反 (出次数)。
-    CancelBeforeEachViolation { source: OrderStateId, count: usize },
+    CancelBeforeEachViolation {
+        /// 出次数が制約に反した始点ノードの公開ID。
+        source: OrderStateId,
+        /// この始点から実際に出ている辺の本数。
+        count: usize,
+    },
     /// このエッジ種別のキーが重複している。
     RefundDuplicateKey(RefundId),
     /// このエッジが未知の始点キーを参照している。
-    RefundUnknownSource { edge: RefundId, source: OrderStateId },
+    RefundUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: RefundId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: OrderStateId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    RefundUnknownTarget { edge: RefundId, target: OrderStateId },
+    RefundUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: RefundId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: OrderStateId,
+    },
     /// このエッジ種別の `each` 制約違反 (出次数)。
-    RefundBeforeEachViolation { source: OrderStateId, count: usize },
+    RefundBeforeEachViolation {
+        /// 出次数が制約に反した始点ノードの公開ID。
+        source: OrderStateId,
+        /// この始点から実際に出ている辺の本数。
+        count: usize,
+    },
 }
 impl std::fmt::Display for Violation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -1445,6 +1550,7 @@ pub struct Builder {
 /// 実装を持ち、`insert_named_with_id` を経由しない
 /// (`create` のクロージャから許可証なしで呼べる必要があるため)。
 pub trait OrderFsmInsertable: Sized {
+    /// この要素を挿入したときに受け取る公開ID型。
     type Id;
     #[doc(hidden)]
     type NamedPosition;
@@ -1455,6 +1561,7 @@ pub trait OrderFsmInsertable: Sized {
         id: Self::Id,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
     fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
 }
 /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
@@ -1467,6 +1574,7 @@ pub trait OrderFsmDefaultId: OrderFsmInsertable {
         binding: String,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
 /// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと

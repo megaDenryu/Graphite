@@ -17,7 +17,9 @@ pub(crate) fn gen_edge_value_struct_definition(e: &EdgeInfo<'_>) -> TokenStream 
             let to_role = 終点.役割名();
             quote! {
                 pub struct #kind {
+                    /// この辺の始点ノードの公開ID。
                     pub #from_role: #p0_id,
+                    /// この辺の終点ノードの公開ID。
                     pub #to_role: #p1_id,
                 }
             }
@@ -29,8 +31,11 @@ pub(crate) fn gen_edge_value_struct_definition(e: &EdgeInfo<'_>) -> TokenStream 
             let attrs = payload.型パス();
             quote! {
                 pub struct #kind {
+                    /// この辺の始点ノードの公開ID。
                     pub #from_role: #p0_id,
+                    /// この辺の終点ノードの公開ID。
                     pub #to_role: #p1_id,
+                    /// この辺が運ぶ積み荷。
                     pub #payload_role: #attrs,
                 }
             }
@@ -44,6 +49,7 @@ pub(crate) fn gen_edge_value_struct_definition(e: &EdgeInfo<'_>) -> TokenStream 
             quote! {
                 pub struct #kind {
                     endpoints: graphite::UnorderedPair<#p0_id>,
+                    /// この辺が運ぶ積み荷。
                     pub #payload_role: #attrs,
                 }
             }

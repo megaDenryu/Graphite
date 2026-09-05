@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    3898090682734428924u64, 1533011858791974477u64, 4993737066538129158u64,
-    11680789830919899354u64,
+    7675102801626665483u64, 7086746472102801200u64, 8579649517633063273u64,
+    11188215966455500469u64,
 ];
 /// `Person` ノードの公開ID。
 ///
@@ -35,7 +35,9 @@ pub struct __KnowsNamedPosition(__KnowsInternalPosition, u64);
 /// 宣言: `tests/graph_splice.rs` の `edge Knows = (knower: Person) -> (known: Person)`
 #[derive(Clone, PartialEq)]
 pub struct Knows {
+    /// この辺の始点ノードの公開ID。
     pub knower: PersonId,
+    /// この辺の終点ノードの公開ID。
     pub known: PersonId,
 }
 impl Knows {
@@ -67,13 +69,24 @@ struct __KnowsRecord {
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
+    /// このノード種別のキーが重複している。
     DuplicatePerson(PersonId),
     /// このエッジ種別のキーが重複している。
     KnowsDuplicateKey(KnowsId),
     /// このエッジが未知の始点キーを参照している。
-    KnowsUnknownSource { edge: KnowsId, source: PersonId },
+    KnowsUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: KnowsId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: PersonId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    KnowsUnknownTarget { edge: KnowsId, target: PersonId },
+    KnowsUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: KnowsId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: PersonId,
+    },
 }
 impl std::fmt::Display for Violation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -351,6 +364,7 @@ pub struct Builder {
 /// 実装を持ち、`insert_named_with_id` を経由しない
 /// (`create` のクロージャから許可証なしで呼べる必要があるため)。
 pub trait SpliceDemoInsertable: Sized {
+    /// この要素を挿入したときに受け取る公開ID型。
     type Id;
     #[doc(hidden)]
     type NamedPosition;
@@ -361,6 +375,7 @@ pub trait SpliceDemoInsertable: Sized {
         id: Self::Id,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
     fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
 }
 /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
@@ -373,6 +388,7 @@ pub trait SpliceDemoDefaultId: SpliceDemoInsertable {
         binding: String,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
 /// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと

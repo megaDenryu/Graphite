@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    7651869440706306506u64, 6422790041484436497u64, 16983234502384131108u64,
-    11365731358438552136u64,
+    15090829158423758210u64, 1382279149380041619u64, 10931144957791480676u64,
+    3960577063778601184u64,
 ];
 /// `Person` ノードの公開ID。
 ///
@@ -75,7 +75,9 @@ pub struct __FriendsNamedPosition(__FriendsInternalPosition, u64);
 /// 宣言: `tests/traversal_api.rs` の `edge Purchase = (buyer: Person) -> (product: Product)`
 #[derive(Clone, PartialEq)]
 pub struct Purchase {
+    /// この辺の始点ノードの公開ID。
     pub buyer: PersonId,
+    /// この辺の終点ノードの公開ID。
     pub product: ProductId,
 }
 impl Purchase {
@@ -104,7 +106,9 @@ impl std::fmt::Debug for Purchase {
 /// 宣言: `tests/traversal_api.rs` の `edge Mentor = (subordinate: Person) -> (superior: Person) where each subordinate: 0..1`
 #[derive(Clone, PartialEq)]
 pub struct Mentor {
+    /// この辺の始点ノードの公開ID。
     pub subordinate: PersonId,
+    /// この辺の終点ノードの公開ID。
     pub superior: PersonId,
 }
 impl Mentor {
@@ -136,7 +140,9 @@ impl std::fmt::Debug for Mentor {
 /// 宣言: `tests/traversal_api.rs` の `edge 関係 = (始点: Person) -> (終点: Person) where unique pair`
 #[derive(Clone, PartialEq)]
 pub struct 関係 {
+    /// この辺の始点ノードの公開ID。
     pub 始点: PersonId,
+    /// この辺の終点ノードの公開ID。
     pub 終点: PersonId,
 }
 impl 関係 {
@@ -221,39 +227,91 @@ struct __FriendsRecord {
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
+    /// このノード種別のキーが重複している。
     DuplicatePerson(PersonId),
+    /// このノード種別のキーが重複している。
     DuplicateProduct(ProductId),
     /// このエッジ種別のキーが重複している。
     PurchaseDuplicateKey(PurchaseId),
     /// このエッジが未知の始点キーを参照している。
-    PurchaseUnknownSource { edge: PurchaseId, source: PersonId },
+    PurchaseUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: PurchaseId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: PersonId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    PurchaseUnknownTarget { edge: PurchaseId, target: ProductId },
+    PurchaseUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: PurchaseId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: ProductId,
+    },
     /// このエッジ種別のキーが重複している。
     MentorDuplicateKey(MentorId),
     /// このエッジが未知の始点キーを参照している。
-    MentorUnknownSource { edge: MentorId, source: PersonId },
+    MentorUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: MentorId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: PersonId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    MentorUnknownTarget { edge: MentorId, target: PersonId },
+    MentorUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: MentorId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: PersonId,
+    },
     /// このエッジ種別の `each` 制約違反 (出次数)。
-    MentorSubordinateEachViolation { source: PersonId, count: usize },
+    MentorSubordinateEachViolation {
+        /// 出次数が制約に反した始点ノードの公開ID。
+        source: PersonId,
+        /// この始点から実際に出ている辺の本数。
+        count: usize,
+    },
     /// このエッジ種別のキーが重複している。
     関係DuplicateKey(関係Id),
     /// このエッジが未知の始点キーを参照している。
-    関係UnknownSource { edge: 関係Id, source: PersonId },
+    関係UnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: 関係Id,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: PersonId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    関係UnknownTarget { edge: 関係Id, target: PersonId },
+    関係UnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: 関係Id,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: PersonId,
+    },
     /// このエッジ種別の `unique pair` 違反 (同じ始点・終点の対に
     /// 2本目の辺が張られた)。
-    関係UniquePairViolation { source: PersonId, target: PersonId },
+    関係UniquePairViolation {
+        /// 2本目の辺が張られた対の始点ノードの公開ID。
+        source: PersonId,
+        /// 2本目の辺が張られた対の終点ノードの公開ID。
+        target: PersonId,
+    },
     /// このエッジ種別のキーが重複している。
     FriendsDuplicateKey(FriendsId),
     /// このエッジが未知の端点キーを参照している (無向のため位置の
     /// 区別は無い)。
-    FriendsUnknownEndpoint { edge: FriendsId, endpoint: PersonId },
+    FriendsUnknownEndpoint {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: FriendsId,
+        /// 参照先が見つからなかった端点ノードの公開ID。
+        endpoint: PersonId,
+    },
     /// このエッジ種別の `unique pair` 違反 (無向のため
     /// 順序を無視した対で判定)。
-    FriendsUniquePairViolation { a: PersonId, b: PersonId },
+    FriendsUniquePairViolation {
+        /// 2本目の辺が張られた対の一方の端点の公開ID。
+        a: PersonId,
+        /// 2本目の辺が張られた対のもう一方の端点の公開ID。
+        b: PersonId,
+    },
 }
 impl std::fmt::Display for Violation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -1010,6 +1068,7 @@ pub struct Builder {
 /// 実装を持ち、`insert_named_with_id` を経由しない
 /// (`create` のクロージャから許可証なしで呼べる必要があるため)。
 pub trait TraversalInsertable: Sized {
+    /// この要素を挿入したときに受け取る公開ID型。
     type Id;
     #[doc(hidden)]
     type NamedPosition;
@@ -1020,6 +1079,7 @@ pub trait TraversalInsertable: Sized {
         id: Self::Id,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
     fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
 }
 /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
@@ -1032,6 +1092,7 @@ pub trait TraversalDefaultId: TraversalInsertable {
         binding: String,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
 /// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと

@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    14841066179659633705u64, 5907238363385917370u64, 6084481443374133439u64,
-    2429674126997318779u64,
+    3864467092926734009u64, 6290547580757893206u64, 14727607613201339907u64,
+    1942425145637909495u64,
 ];
 /// `人物` ノードの公開ID。
 ///
@@ -85,8 +85,11 @@ pub struct __友人NamedPosition(__友人InternalPosition, u64);
 /// 宣言: `tests/allocation_contract.rs` の `edge 購入 = (購入者: 人物) -[取引: 取引情報]-> (対象商品: 商品) where unique pair`
 #[derive(Clone, PartialEq)]
 pub struct 購入 {
+    /// この辺の始点ノードの公開ID。
     pub 購入者: 人物Id,
+    /// この辺の終点ノードの公開ID。
     pub 対象商品: 商品Id,
+    /// この辺が運ぶ積み荷。
     pub 取引: 取引情報,
 }
 impl 購入 {
@@ -122,7 +125,9 @@ impl std::fmt::Debug for 購入 {
 /// 宣言: `tests/allocation_contract.rs` の `edge 閲覧 = (閲覧者: 人物) -> (対象商品: 商品)`
 #[derive(Clone, PartialEq)]
 pub struct 閲覧 {
+    /// この辺の始点ノードの公開ID。
     pub 閲覧者: 人物Id,
+    /// この辺の終点ノードの公開ID。
     pub 対象商品: 商品Id,
 }
 impl 閲覧 {
@@ -154,7 +159,9 @@ impl std::fmt::Debug for 閲覧 {
 /// 宣言: `tests/allocation_contract.rs` の `edge 推薦 = (推薦者: 人物) -> (対象商品: 商品) where each 推薦者: 0..1`
 #[derive(Clone, PartialEq)]
 pub struct 推薦 {
+    /// この辺の始点ノードの公開ID。
     pub 推薦者: 人物Id,
+    /// この辺の終点ノードの公開ID。
     pub 対象商品: 商品Id,
 }
 impl 推薦 {
@@ -186,7 +193,9 @@ impl std::fmt::Debug for 推薦 {
 /// 宣言: `tests/allocation_contract.rs` の `edge 常用 = (常用者: 人物) -> (対象商品: 商品) where each 常用者: 1`
 #[derive(Clone, PartialEq)]
 pub struct 常用 {
+    /// この辺の始点ノードの公開ID。
     pub 常用者: 人物Id,
+    /// この辺の終点ノードの公開ID。
     pub 対象商品: 商品Id,
 }
 impl 常用 {
@@ -280,47 +289,114 @@ struct __友人Record {
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
+    /// このノード種別のキーが重複している。
     Duplicate人物(人物Id),
+    /// このノード種別のキーが重複している。
     Duplicate商品(商品Id),
     /// このエッジ種別のキーが重複している。
     購入DuplicateKey(購入Id),
     /// このエッジが未知の始点キーを参照している。
-    購入UnknownSource { edge: 購入Id, source: 人物Id },
+    購入UnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: 購入Id,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: 人物Id,
+    },
     /// このエッジが未知の終点キーを参照している。
-    購入UnknownTarget { edge: 購入Id, target: 商品Id },
+    購入UnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: 購入Id,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: 商品Id,
+    },
     /// このエッジ種別の `unique pair` 違反 (同じ始点・終点の対に
     /// 2本目の辺が張られた)。
-    購入UniquePairViolation { source: 人物Id, target: 商品Id },
+    購入UniquePairViolation {
+        /// 2本目の辺が張られた対の始点ノードの公開ID。
+        source: 人物Id,
+        /// 2本目の辺が張られた対の終点ノードの公開ID。
+        target: 商品Id,
+    },
     /// このエッジ種別のキーが重複している。
     閲覧DuplicateKey(閲覧Id),
     /// このエッジが未知の始点キーを参照している。
-    閲覧UnknownSource { edge: 閲覧Id, source: 人物Id },
+    閲覧UnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: 閲覧Id,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: 人物Id,
+    },
     /// このエッジが未知の終点キーを参照している。
-    閲覧UnknownTarget { edge: 閲覧Id, target: 商品Id },
+    閲覧UnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: 閲覧Id,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: 商品Id,
+    },
     /// このエッジ種別のキーが重複している。
     推薦DuplicateKey(推薦Id),
     /// このエッジが未知の始点キーを参照している。
-    推薦UnknownSource { edge: 推薦Id, source: 人物Id },
+    推薦UnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: 推薦Id,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: 人物Id,
+    },
     /// このエッジが未知の終点キーを参照している。
-    推薦UnknownTarget { edge: 推薦Id, target: 商品Id },
+    推薦UnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: 推薦Id,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: 商品Id,
+    },
     /// このエッジ種別の `each` 制約違反 (出次数)。
-    推薦推薦者EachViolation { source: 人物Id, count: usize },
+    推薦推薦者EachViolation {
+        /// 出次数が制約に反した始点ノードの公開ID。
+        source: 人物Id,
+        /// この始点から実際に出ている辺の本数。
+        count: usize,
+    },
     /// このエッジ種別のキーが重複している。
     常用DuplicateKey(常用Id),
     /// このエッジが未知の始点キーを参照している。
-    常用UnknownSource { edge: 常用Id, source: 人物Id },
+    常用UnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: 常用Id,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: 人物Id,
+    },
     /// このエッジが未知の終点キーを参照している。
-    常用UnknownTarget { edge: 常用Id, target: 商品Id },
+    常用UnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: 常用Id,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: 商品Id,
+    },
     /// このエッジ種別の `each` 制約違反 (出次数)。
-    常用常用者EachViolation { source: 人物Id, count: usize },
+    常用常用者EachViolation {
+        /// 出次数が制約に反した始点ノードの公開ID。
+        source: 人物Id,
+        /// この始点から実際に出ている辺の本数。
+        count: usize,
+    },
     /// このエッジ種別のキーが重複している。
     友人DuplicateKey(友人Id),
     /// このエッジが未知の端点キーを参照している (無向のため位置の
     /// 区別は無い)。
-    友人UnknownEndpoint { edge: 友人Id, endpoint: 人物Id },
+    友人UnknownEndpoint {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: 友人Id,
+        /// 参照先が見つからなかった端点ノードの公開ID。
+        endpoint: 人物Id,
+    },
     /// このエッジ種別の `unique pair` 違反 (無向のため
     /// 順序を無視した対で判定)。
-    友人UniquePairViolation { a: 人物Id, b: 人物Id },
+    友人UniquePairViolation {
+        /// 2本目の辺が張られた対の一方の端点の公開ID。
+        a: 人物Id,
+        /// 2本目の辺が張られた対のもう一方の端点の公開ID。
+        b: 人物Id,
+    },
 }
 impl std::fmt::Display for Violation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -1246,6 +1322,7 @@ pub struct Builder {
 /// 実装を持ち、`insert_named_with_id` を経由しない
 /// (`create` のクロージャから許可証なしで呼べる必要があるため)。
 pub trait 確保契約Insertable: Sized {
+    /// この要素を挿入したときに受け取る公開ID型。
     type Id;
     #[doc(hidden)]
     type NamedPosition;
@@ -1256,6 +1333,7 @@ pub trait 確保契約Insertable: Sized {
         id: Self::Id,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
     fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
 }
 /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
@@ -1268,6 +1346,7 @@ pub trait 確保契約DefaultId: 確保契約Insertable {
         binding: String,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
 /// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと

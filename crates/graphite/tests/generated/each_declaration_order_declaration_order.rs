@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    7195870102631942398u64, 5553048313475904669u64, 6024262410825338760u64,
-    15940327280457298532u64,
+    8271716890287265495u64, 16800123155580765062u64, 10257631957381888553u64,
+    153612965726286645u64,
 ];
 /// `Author` ノードの公開ID。
 ///
@@ -45,8 +45,11 @@ pub struct __WroteNamedPosition(__WroteInternalPosition, u64);
 /// 宣言: `tests/each_declaration_order.rs` の `edge Wrote = (writer: Author) -[byline: Byline]-> (article: Article) where each article: 1, each writer: 0..1`
 #[derive(Clone, PartialEq)]
 pub struct Wrote {
+    /// この辺の始点ノードの公開ID。
     pub writer: AuthorId,
+    /// この辺の終点ノードの公開ID。
     pub article: ArticleId,
+    /// この辺が運ぶ積み荷。
     pub byline: Byline,
 }
 impl Wrote {
@@ -89,18 +92,40 @@ struct __WroteRecord {
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
+    /// このノード種別のキーが重複している。
     DuplicateAuthor(AuthorId),
+    /// このノード種別のキーが重複している。
     DuplicateArticle(ArticleId),
     /// このエッジ種別のキーが重複している。
     WroteDuplicateKey(WroteId),
     /// このエッジが未知の始点キーを参照している。
-    WroteUnknownSource { edge: WroteId, source: AuthorId },
+    WroteUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: WroteId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: AuthorId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    WroteUnknownTarget { edge: WroteId, target: ArticleId },
+    WroteUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: WroteId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: ArticleId,
+    },
     /// このエッジ種別の `each` 制約違反 (入次数)。
-    WroteArticleEachViolation { target: ArticleId, count: usize },
+    WroteArticleEachViolation {
+        /// 入次数が制約に反した終点ノードの公開ID。
+        target: ArticleId,
+        /// この終点へ実際に入っている辺の本数。
+        count: usize,
+    },
     /// このエッジ種別の `each` 制約違反 (出次数)。
-    WroteWriterEachViolation { source: AuthorId, count: usize },
+    WroteWriterEachViolation {
+        /// 出次数が制約に反した始点ノードの公開ID。
+        source: AuthorId,
+        /// この始点から実際に出ている辺の本数。
+        count: usize,
+    },
 }
 impl std::fmt::Display for Violation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -461,6 +486,7 @@ pub struct Builder {
 /// 実装を持ち、`insert_named_with_id` を経由しない
 /// (`create` のクロージャから許可証なしで呼べる必要があるため)。
 pub trait DeclarationOrderInsertable: Sized {
+    /// この要素を挿入したときに受け取る公開ID型。
     type Id;
     #[doc(hidden)]
     type NamedPosition;
@@ -471,6 +497,7 @@ pub trait DeclarationOrderInsertable: Sized {
         id: Self::Id,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
     fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
 }
 /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
@@ -483,6 +510,7 @@ pub trait DeclarationOrderDefaultId: DeclarationOrderInsertable {
         binding: String,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
 /// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと

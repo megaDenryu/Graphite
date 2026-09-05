@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    5767895349172452783u64, 854066253280781012u64, 16789596717610189497u64,
-    12341138255170590525u64,
+    12499146337110549183u64, 3262882646685477400u64, 6405310993418770737u64,
+    4621563936454458733u64,
 ];
 /// `Person` ノードの公開ID。
 ///
@@ -55,8 +55,11 @@ pub struct __SubscriptionNamedPosition(__SubscriptionInternalPosition, u64);
 /// 宣言: `tests/edge_roles.rs` の `edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) where each buyer: 1..2, each product: 0..1, unique pair`
 #[derive(Clone, PartialEq)]
 pub struct Purchase {
+    /// この辺の始点ノードの公開ID。
     pub buyer: PersonId,
+    /// この辺の終点ノードの公開ID。
     pub product: ProductId,
+    /// この辺が運ぶ積み荷。
     pub info: TransactionInfo,
 }
 impl Purchase {
@@ -96,7 +99,9 @@ impl std::fmt::Debug for Purchase {
 /// 宣言: `tests/edge_roles.rs` の `edge Subscription = (member: Person) -> (product: Product) where each member: 1..*`
 #[derive(Clone, PartialEq)]
 pub struct Subscription {
+    /// この辺の始点ノードの公開ID。
     pub member: PersonId,
+    /// この辺の終点ノードの公開ID。
     pub product: ProductId,
 }
 impl Subscription {
@@ -137,29 +142,71 @@ struct __SubscriptionRecord {
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
+    /// このノード種別のキーが重複している。
     DuplicatePerson(PersonId),
+    /// このノード種別のキーが重複している。
     DuplicateProduct(ProductId),
     /// このエッジ種別のキーが重複している。
     PurchaseDuplicateKey(PurchaseId),
     /// このエッジが未知の始点キーを参照している。
-    PurchaseUnknownSource { edge: PurchaseId, source: PersonId },
+    PurchaseUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: PurchaseId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: PersonId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    PurchaseUnknownTarget { edge: PurchaseId, target: ProductId },
+    PurchaseUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: PurchaseId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: ProductId,
+    },
     /// このエッジ種別の `each` 制約違反 (出次数)。
-    PurchaseBuyerEachViolation { source: PersonId, count: usize },
+    PurchaseBuyerEachViolation {
+        /// 出次数が制約に反した始点ノードの公開ID。
+        source: PersonId,
+        /// この始点から実際に出ている辺の本数。
+        count: usize,
+    },
     /// このエッジ種別の `each` 制約違反 (入次数)。
-    PurchaseProductEachViolation { target: ProductId, count: usize },
+    PurchaseProductEachViolation {
+        /// 入次数が制約に反した終点ノードの公開ID。
+        target: ProductId,
+        /// この終点へ実際に入っている辺の本数。
+        count: usize,
+    },
     /// このエッジ種別の `unique pair` 違反 (同じ始点・終点の対に
     /// 2本目の辺が張られた)。
-    PurchaseUniquePairViolation { source: PersonId, target: ProductId },
+    PurchaseUniquePairViolation {
+        /// 2本目の辺が張られた対の始点ノードの公開ID。
+        source: PersonId,
+        /// 2本目の辺が張られた対の終点ノードの公開ID。
+        target: ProductId,
+    },
     /// このエッジ種別のキーが重複している。
     SubscriptionDuplicateKey(SubscriptionId),
     /// このエッジが未知の始点キーを参照している。
-    SubscriptionUnknownSource { edge: SubscriptionId, source: PersonId },
+    SubscriptionUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: SubscriptionId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: PersonId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    SubscriptionUnknownTarget { edge: SubscriptionId, target: ProductId },
+    SubscriptionUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: SubscriptionId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: ProductId,
+    },
     /// このエッジ種別の `each` 制約違反 (出次数)。
-    SubscriptionMemberEachViolation { source: PersonId, count: usize },
+    SubscriptionMemberEachViolation {
+        /// 出次数が制約に反した始点ノードの公開ID。
+        source: PersonId,
+        /// この始点から実際に出ている辺の本数。
+        count: usize,
+    },
 }
 impl std::fmt::Display for Violation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -694,6 +741,7 @@ pub struct Builder {
 /// 実装を持ち、`insert_named_with_id` を経由しない
 /// (`create` のクロージャから許可証なしで呼べる必要があるため)。
 pub trait CommerceInsertable: Sized {
+    /// この要素を挿入したときに受け取る公開ID型。
     type Id;
     #[doc(hidden)]
     type NamedPosition;
@@ -704,6 +752,7 @@ pub trait CommerceInsertable: Sized {
         id: Self::Id,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
     fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
 }
 /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
@@ -716,6 +765,7 @@ pub trait CommerceDefaultId: CommerceInsertable {
         binding: String,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
 /// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと

@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    7591747667156961036u64, 13197851493964670375u64, 8050212448023462346u64,
-    14170154918472472782u64,
+    10966723706670842397u64, 7047082606351946792u64, 17016691410905954871u64,
+    4535088500998633235u64,
 ];
 /// `Book` ノードの公開ID。
 ///
@@ -45,8 +45,11 @@ pub struct __BorrowedNamedPosition(__BorrowedInternalPosition, u64);
 /// 宣言: `src/lib.rs` の `edge Borrowed = (book: Book) -[loan: Loan]-> (reader: Reader) where each book: 0..1`
 #[derive(Clone, PartialEq)]
 pub struct Borrowed {
+    /// この辺の始点ノードの公開ID。
     pub book: BookId,
+    /// この辺の終点ノードの公開ID。
     pub reader: ReaderId,
+    /// この辺が運ぶ積み荷。
     pub loan: Loan,
 }
 impl Borrowed {
@@ -89,16 +92,33 @@ struct __BorrowedRecord {
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
+    /// このノード種別のキーが重複している。
     DuplicateBook(BookId),
+    /// このノード種別のキーが重複している。
     DuplicateReader(ReaderId),
     /// このエッジ種別のキーが重複している。
     BorrowedDuplicateKey(BorrowedId),
     /// このエッジが未知の始点キーを参照している。
-    BorrowedUnknownSource { edge: BorrowedId, source: BookId },
+    BorrowedUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: BorrowedId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: BookId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    BorrowedUnknownTarget { edge: BorrowedId, target: ReaderId },
+    BorrowedUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: BorrowedId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: ReaderId,
+    },
     /// このエッジ種別の `each` 制約違反 (出次数)。
-    BorrowedBookEachViolation { source: BookId, count: usize },
+    BorrowedBookEachViolation {
+        /// 出次数が制約に反した始点ノードの公開ID。
+        source: BookId,
+        /// この始点から実際に出ている辺の本数。
+        count: usize,
+    },
 }
 impl std::fmt::Display for Violation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -454,6 +474,7 @@ pub struct Builder {
 /// 実装を持ち、`insert_named_with_id` を経由しない
 /// (`create` のクロージャから許可証なしで呼べる必要があるため)。
 pub trait LibraryInsertable: Sized {
+    /// この要素を挿入したときに受け取る公開ID型。
     type Id;
     #[doc(hidden)]
     type NamedPosition;
@@ -464,6 +485,7 @@ pub trait LibraryInsertable: Sized {
         id: Self::Id,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
     fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
 }
 /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
@@ -476,6 +498,7 @@ pub trait LibraryDefaultId: LibraryInsertable {
         binding: String,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
 /// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと

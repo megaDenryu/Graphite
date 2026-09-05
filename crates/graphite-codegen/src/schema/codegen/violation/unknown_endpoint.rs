@@ -22,7 +22,12 @@ pub(crate) fn gen_unknown_source_case(
     let unk_src = edge.unknown_source_variant();
     let variant = quote! {
         /// このエッジが未知の始点キーを参照している。
-        #unk_src { edge: #edge_id, source: #from_id }
+        #unk_src {
+            /// 未知のキーを参照した辺の公開ID。
+            edge: #edge_id,
+            /// 参照先が見つからなかった始点ノードの公開ID。
+            source: #from_id,
+        }
     };
     let display_arm =
         if edge.id_ty.is_debug_printable() && edge.from_node.id_ty.is_debug_printable() {
@@ -57,7 +62,12 @@ pub(crate) fn gen_unknown_target_case(
     let unk_dst = edge.unknown_target_variant();
     let variant = quote! {
         /// このエッジが未知の終点キーを参照している。
-        #unk_dst { edge: #edge_id, target: #to_id }
+        #unk_dst {
+            /// 未知のキーを参照した辺の公開ID。
+            edge: #edge_id,
+            /// 参照先が見つからなかった終点ノードの公開ID。
+            target: #to_id,
+        }
     };
     let display_arm = if edge.id_ty.is_debug_printable() && edge.to_node.id_ty.is_debug_printable()
     {
@@ -95,7 +105,12 @@ pub(crate) fn gen_unknown_endpoint_case(
     let variant = quote! {
         /// このエッジが未知の端点キーを参照している (無向のため位置の
         /// 区別は無い)。
-        #unk { edge: #edge_id, endpoint: #node_id }
+        #unk {
+            /// 未知のキーを参照した辺の公開ID。
+            edge: #edge_id,
+            /// 参照先が見つからなかった端点ノードの公開ID。
+            endpoint: #node_id,
+        }
     };
     let display_arm =
         if edge.id_ty.is_debug_printable() && edge.from_node.id_ty.is_debug_printable() {

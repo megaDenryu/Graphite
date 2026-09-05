@@ -55,6 +55,7 @@ pub(crate) fn gen_insertable_traits(
         /// 実装を持ち、`insert_named_with_id` を経由しない
         /// (`create` のクロージャから許可証なしで呼べる必要があるため)。
         pub trait #insertable_trait_ident: Sized {
+            /// この要素を挿入したときに受け取る公開ID型。
             type Id;
             #[doc(hidden)]
             type NamedPosition;
@@ -67,6 +68,7 @@ pub(crate) fn gen_insertable_traits(
                 permit: &graphite::NamedInsertPermit,
             ) -> (Self::Id, Self::NamedPosition);
 
+            /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
             fn insert_with_id(self, b: &mut #builder_ident, id: Self::Id) -> Self::Id;
         }
 
@@ -81,6 +83,7 @@ pub(crate) fn gen_insertable_traits(
                 permit: &graphite::NamedInsertPermit,
             ) -> (Self::Id, Self::NamedPosition);
 
+            /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
             fn insert_with_binding(self, b: &mut #builder_ident, binding: String) -> Self::Id;
         }
     }

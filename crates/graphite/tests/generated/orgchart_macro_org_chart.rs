@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    10012046982416591927u64, 17345603574081840128u64, 13760464529636230493u64,
-    207746439178340521u64,
+    12360785570942602891u64, 11380408119154551408u64, 1003789227480370329u64,
+    16626603392618018173u64,
 ];
 /// `Employee` ノードの公開ID。
 ///
@@ -75,7 +75,9 @@ pub struct __LeadsNamedPosition(__LeadsInternalPosition, u64);
 /// 宣言: `tests/orgchart_macro.rs` の `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1`
 #[derive(Clone, PartialEq)]
 pub struct BelongsTo {
+    /// この辺の始点ノードの公開ID。
     pub employee: EmployeeId,
+    /// この辺の終点ノードの公開ID。
     pub department: DepartmentId,
 }
 impl BelongsTo {
@@ -107,8 +109,11 @@ impl std::fmt::Debug for BelongsTo {
 /// 宣言: `tests/orgchart_macro.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
 #[derive(Clone, PartialEq)]
 pub struct Boss {
+    /// この辺の始点ノードの公開ID。
     pub subordinate: EmployeeId,
+    /// この辺の終点ノードの公開ID。
     pub superior: EmployeeId,
+    /// この辺が運ぶ積み荷。
     pub appointment: BossEdge,
 }
 impl Boss {
@@ -144,7 +149,9 @@ impl std::fmt::Debug for Boss {
 /// 宣言: `tests/orgchart_macro.rs` の `edge Reports = (reporter: Employee) -> (recipient: Employee) where unique pair`
 #[derive(Clone, PartialEq)]
 pub struct Reports {
+    /// この辺の始点ノードの公開ID。
     pub reporter: EmployeeId,
+    /// この辺の終点ノードの公開ID。
     pub recipient: EmployeeId,
 }
 impl Reports {
@@ -176,7 +183,9 @@ impl std::fmt::Debug for Reports {
 /// 宣言: `tests/orgchart_macro.rs` の `edge Leads = (leader: Employee) -> (department: Department) where each department: 0..1`
 #[derive(Clone, PartialEq)]
 pub struct Leads {
+    /// この辺の始点ノードの公開ID。
     pub leader: EmployeeId,
+    /// この辺の終点ノードの公開ID。
     pub department: DepartmentId,
 }
 impl Leads {
@@ -230,41 +239,103 @@ struct __LeadsRecord {
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
+    /// このノード種別のキーが重複している。
     DuplicateEmployee(EmployeeId),
+    /// このノード種別のキーが重複している。
     DuplicateDepartment(DepartmentId),
     /// このエッジ種別のキーが重複している。
     BelongsToDuplicateKey(BelongsToId),
     /// このエッジが未知の始点キーを参照している。
-    BelongsToUnknownSource { edge: BelongsToId, source: EmployeeId },
+    BelongsToUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: BelongsToId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: EmployeeId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    BelongsToUnknownTarget { edge: BelongsToId, target: DepartmentId },
+    BelongsToUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: BelongsToId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: DepartmentId,
+    },
     /// このエッジ種別の `each` 制約違反 (出次数)。
-    BelongsToEmployeeEachViolation { source: EmployeeId, count: usize },
+    BelongsToEmployeeEachViolation {
+        /// 出次数が制約に反した始点ノードの公開ID。
+        source: EmployeeId,
+        /// この始点から実際に出ている辺の本数。
+        count: usize,
+    },
     /// このエッジ種別のキーが重複している。
     BossDuplicateKey(BossId),
     /// このエッジが未知の始点キーを参照している。
-    BossUnknownSource { edge: BossId, source: EmployeeId },
+    BossUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: BossId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: EmployeeId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    BossUnknownTarget { edge: BossId, target: EmployeeId },
+    BossUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: BossId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: EmployeeId,
+    },
     /// このエッジ種別の `each` 制約違反 (出次数)。
-    BossSubordinateEachViolation { source: EmployeeId, count: usize },
+    BossSubordinateEachViolation {
+        /// 出次数が制約に反した始点ノードの公開ID。
+        source: EmployeeId,
+        /// この始点から実際に出ている辺の本数。
+        count: usize,
+    },
     /// このエッジ種別のキーが重複している。
     ReportsDuplicateKey(ReportsId),
     /// このエッジが未知の始点キーを参照している。
-    ReportsUnknownSource { edge: ReportsId, source: EmployeeId },
+    ReportsUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: ReportsId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: EmployeeId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    ReportsUnknownTarget { edge: ReportsId, target: EmployeeId },
+    ReportsUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: ReportsId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: EmployeeId,
+    },
     /// このエッジ種別の `unique pair` 違反 (同じ始点・終点の対に
     /// 2本目の辺が張られた)。
-    ReportsUniquePairViolation { source: EmployeeId, target: EmployeeId },
+    ReportsUniquePairViolation {
+        /// 2本目の辺が張られた対の始点ノードの公開ID。
+        source: EmployeeId,
+        /// 2本目の辺が張られた対の終点ノードの公開ID。
+        target: EmployeeId,
+    },
     /// このエッジ種別のキーが重複している。
     LeadsDuplicateKey(LeadsId),
     /// このエッジが未知の始点キーを参照している。
-    LeadsUnknownSource { edge: LeadsId, source: EmployeeId },
+    LeadsUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: LeadsId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: EmployeeId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    LeadsUnknownTarget { edge: LeadsId, target: DepartmentId },
+    LeadsUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: LeadsId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: DepartmentId,
+    },
     /// このエッジ種別の `each` 制約違反 (入次数)。
-    LeadsDepartmentEachViolation { target: DepartmentId, count: usize },
+    LeadsDepartmentEachViolation {
+        /// 入次数が制約に反した終点ノードの公開ID。
+        target: DepartmentId,
+        /// この終点へ実際に入っている辺の本数。
+        count: usize,
+    },
 }
 impl std::fmt::Display for Violation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -1086,6 +1157,7 @@ pub struct Builder {
 /// 実装を持ち、`insert_named_with_id` を経由しない
 /// (`create` のクロージャから許可証なしで呼べる必要があるため)。
 pub trait OrgChartInsertable: Sized {
+    /// この要素を挿入したときに受け取る公開ID型。
     type Id;
     #[doc(hidden)]
     type NamedPosition;
@@ -1096,6 +1168,7 @@ pub trait OrgChartInsertable: Sized {
         id: Self::Id,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
     fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
 }
 /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
@@ -1108,6 +1181,7 @@ pub trait OrgChartDefaultId: OrgChartInsertable {
         binding: String,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
 /// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと

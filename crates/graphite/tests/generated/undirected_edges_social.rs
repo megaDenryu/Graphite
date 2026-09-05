@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    9282104624520699058u64, 1641150953224918463u64, 8292121963919487452u64,
-    13260264874892603304u64,
+    13268835114584111902u64, 15311615342483807817u64, 14267780152044001644u64,
+    2717969930247458688u64,
 ];
 /// `Person` ノードの公開ID。
 ///
@@ -82,6 +82,7 @@ impl std::fmt::Debug for Friends {
 #[derive(Clone, PartialEq)]
 pub struct Wire {
     endpoints: graphite::UnorderedPair<PersonId>,
+    /// この辺が運ぶ積み荷。
     pub cable: Cable,
 }
 impl Wire {
@@ -132,20 +133,36 @@ struct __WireRecord {
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
+    /// このノード種別のキーが重複している。
     DuplicatePerson(PersonId),
     /// このエッジ種別のキーが重複している。
     FriendsDuplicateKey(FriendsId),
     /// このエッジが未知の端点キーを参照している (無向のため位置の
     /// 区別は無い)。
-    FriendsUnknownEndpoint { edge: FriendsId, endpoint: PersonId },
+    FriendsUnknownEndpoint {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: FriendsId,
+        /// 参照先が見つからなかった端点ノードの公開ID。
+        endpoint: PersonId,
+    },
     /// このエッジ種別の `unique pair` 違反 (無向のため
     /// 順序を無視した対で判定)。
-    FriendsUniquePairViolation { a: PersonId, b: PersonId },
+    FriendsUniquePairViolation {
+        /// 2本目の辺が張られた対の一方の端点の公開ID。
+        a: PersonId,
+        /// 2本目の辺が張られた対のもう一方の端点の公開ID。
+        b: PersonId,
+    },
     /// このエッジ種別のキーが重複している。
     WireDuplicateKey(WireId),
     /// このエッジが未知の端点キーを参照している (無向のため位置の
     /// 区別は無い)。
-    WireUnknownEndpoint { edge: WireId, endpoint: PersonId },
+    WireUnknownEndpoint {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: WireId,
+        /// 参照先が見つからなかった端点ノードの公開ID。
+        endpoint: PersonId,
+    },
 }
 impl std::fmt::Display for Violation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -522,6 +539,7 @@ pub struct Builder {
 /// 実装を持ち、`insert_named_with_id` を経由しない
 /// (`create` のクロージャから許可証なしで呼べる必要があるため)。
 pub trait SocialInsertable: Sized {
+    /// この要素を挿入したときに受け取る公開ID型。
     type Id;
     #[doc(hidden)]
     type NamedPosition;
@@ -532,6 +550,7 @@ pub trait SocialInsertable: Sized {
         id: Self::Id,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
     fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
 }
 /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
@@ -544,6 +563,7 @@ pub trait SocialDefaultId: SocialInsertable {
         binding: String,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
 /// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと

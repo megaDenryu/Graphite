@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    12811233752109305556u64, 3438155976027600415u64, 4271652016615164994u64,
-    11771454647146179622u64,
+    2236488659068819532u64, 9184396117560645215u64, 1455664218342903654u64,
+    13092634718477441522u64,
 ];
 /// `AutomaticNode` ノードの公開ID。
 ///
@@ -60,7 +60,9 @@ pub struct __AutomaticLinkNamedPosition(__AutomaticLinkInternalPosition, u64);
 /// 宣言: `tests/schema_ids.rs` の `edge ExternalLink(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each source: 1`
 #[derive(Clone, PartialEq)]
 pub struct ExternalLink {
+    /// この辺の始点ノードの公開ID。
     pub source: ExternalNodeId,
+    /// この辺の終点ノードの公開ID。
     pub target: ExternalNodeId,
 }
 impl ExternalLink {
@@ -86,7 +88,9 @@ impl std::fmt::Debug for ExternalLink {
 /// 宣言: `tests/schema_ids.rs` の `edge ExternalIncoming(id: ExternalEdgeId) = (source: ExternalNode) -> (target: ExternalNode) where each target: 1`
 #[derive(Clone, PartialEq)]
 pub struct ExternalIncoming {
+    /// この辺の始点ノードの公開ID。
     pub source: ExternalNodeId,
+    /// この辺の終点ノードの公開ID。
     pub target: ExternalNodeId,
 }
 impl ExternalIncoming {
@@ -146,7 +150,9 @@ impl std::fmt::Debug for ExternalFriend {
 /// 宣言: `tests/schema_ids.rs` の `edge AutomaticLink = (source: AutomaticNode) -> (target: AutomaticNode)`
 #[derive(Clone, PartialEq)]
 pub struct AutomaticLink {
+    /// この辺の始点ノードの公開ID。
     pub source: AutomaticNodeId,
+    /// この辺の終点ノードの公開ID。
     pub target: AutomaticNodeId,
 }
 impl AutomaticLink {
@@ -196,36 +202,84 @@ struct __AutomaticLinkRecord {
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
+    /// このノード種別のキーが重複している。
     DuplicateExternalNode(ExternalNodeId),
+    /// このノード種別のキーが重複している。
     DuplicateAutomaticNode(AutomaticNodeId),
+    /// このノード種別のキーが重複している。
     DuplicateBooleanNode(bool),
     /// このエッジ種別のキーが重複している。
     ExternalLinkDuplicateKey(ExternalEdgeId),
     /// このエッジが未知の始点キーを参照している。
-    ExternalLinkUnknownSource { edge: ExternalEdgeId, source: ExternalNodeId },
+    ExternalLinkUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: ExternalEdgeId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: ExternalNodeId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    ExternalLinkUnknownTarget { edge: ExternalEdgeId, target: ExternalNodeId },
+    ExternalLinkUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: ExternalEdgeId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: ExternalNodeId,
+    },
     /// このエッジ種別の `each` 制約違反 (出次数)。
-    ExternalLinkSourceEachViolation { source: ExternalNodeId, count: usize },
+    ExternalLinkSourceEachViolation {
+        /// 出次数が制約に反した始点ノードの公開ID。
+        source: ExternalNodeId,
+        /// この始点から実際に出ている辺の本数。
+        count: usize,
+    },
     /// このエッジ種別のキーが重複している。
     ExternalIncomingDuplicateKey(ExternalEdgeId),
     /// このエッジが未知の始点キーを参照している。
-    ExternalIncomingUnknownSource { edge: ExternalEdgeId, source: ExternalNodeId },
+    ExternalIncomingUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: ExternalEdgeId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: ExternalNodeId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    ExternalIncomingUnknownTarget { edge: ExternalEdgeId, target: ExternalNodeId },
+    ExternalIncomingUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: ExternalEdgeId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: ExternalNodeId,
+    },
     /// このエッジ種別の `each` 制約違反 (入次数)。
-    ExternalIncomingTargetEachViolation { target: ExternalNodeId, count: usize },
+    ExternalIncomingTargetEachViolation {
+        /// 入次数が制約に反した終点ノードの公開ID。
+        target: ExternalNodeId,
+        /// この終点へ実際に入っている辺の本数。
+        count: usize,
+    },
     /// このエッジ種別のキーが重複している。
     ExternalFriendDuplicateKey(ExternalEdgeId),
     /// このエッジが未知の端点キーを参照している (無向のため位置の
     /// 区別は無い)。
-    ExternalFriendUnknownEndpoint { edge: ExternalEdgeId, endpoint: ExternalNodeId },
+    ExternalFriendUnknownEndpoint {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: ExternalEdgeId,
+        /// 参照先が見つからなかった端点ノードの公開ID。
+        endpoint: ExternalNodeId,
+    },
     /// このエッジ種別のキーが重複している。
     AutomaticLinkDuplicateKey(AutomaticLinkId),
     /// このエッジが未知の始点キーを参照している。
-    AutomaticLinkUnknownSource { edge: AutomaticLinkId, source: AutomaticNodeId },
+    AutomaticLinkUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: AutomaticLinkId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: AutomaticNodeId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    AutomaticLinkUnknownTarget { edge: AutomaticLinkId, target: AutomaticNodeId },
+    AutomaticLinkUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: AutomaticLinkId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: AutomaticNodeId,
+    },
 }
 impl std::fmt::Display for Violation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -1067,6 +1121,7 @@ pub struct Builder {
 /// 実装を持ち、`insert_named_with_id` を経由しない
 /// (`create` のクロージャから許可証なしで呼べる必要があるため)。
 pub trait MixedIdsInsertable: Sized {
+    /// この要素を挿入したときに受け取る公開ID型。
     type Id;
     #[doc(hidden)]
     type NamedPosition;
@@ -1077,6 +1132,7 @@ pub trait MixedIdsInsertable: Sized {
         id: Self::Id,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
     fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
 }
 /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
@@ -1089,6 +1145,7 @@ pub trait MixedIdsDefaultId: MixedIdsInsertable {
         binding: String,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
 /// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと

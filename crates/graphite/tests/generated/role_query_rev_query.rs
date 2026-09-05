@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    12806250406607328466u64, 6920247548302243091u64, 7590500245255236640u64,
-    11535999917689110220u64,
+    504404436614997475u64, 14058782070021797494u64, 4421388730538592681u64,
+    3360276122728984093u64,
 ];
 /// `NodeA` ノードの公開ID。
 ///
@@ -78,8 +78,11 @@ pub struct __ExactlyOneNamedPosition(__ExactlyOneInternalPosition, u64);
 /// 宣言: `tests/role_query.rs` の `edge Unconstrained = (source: NodeA) -[weight: Weight]-> (target: NodeB)`
 #[derive(Clone, PartialEq)]
 pub struct Unconstrained {
+    /// この辺の始点ノードの公開ID。
     pub source: NodeAId,
+    /// この辺の終点ノードの公開ID。
     pub target: NodeBId,
+    /// この辺が運ぶ積み荷。
     pub weight: Weight,
 }
 impl Unconstrained {
@@ -115,7 +118,9 @@ impl std::fmt::Debug for Unconstrained {
 /// 宣言: `tests/role_query.rs` の `edge UnconstrainedNoPayload = (source: NodeA) -> (target: NodeB)`
 #[derive(Clone, PartialEq)]
 pub struct UnconstrainedNoPayload {
+    /// この辺の始点ノードの公開ID。
     pub source: NodeAId,
+    /// この辺の終点ノードの公開ID。
     pub target: NodeBId,
 }
 impl UnconstrainedNoPayload {
@@ -144,7 +149,9 @@ impl std::fmt::Debug for UnconstrainedNoPayload {
 /// 宣言: `tests/role_query.rs` の `edge AtMostOne = (src: NodeA) -> (dst: NodeB) where each dst: 0..1`
 #[derive(Clone, PartialEq)]
 pub struct AtMostOne {
+    /// この辺の始点ノードの公開ID。
     pub src: NodeAId,
+    /// この辺の終点ノードの公開ID。
     pub dst: NodeBId,
 }
 impl AtMostOne {
@@ -170,8 +177,11 @@ impl std::fmt::Debug for AtMostOne {
 /// 宣言: `tests/role_query.rs` の `edge ExactlyOne = (src: NodeA) -[weight: Weight]-> (dst: NodeB) where each dst: 1`
 #[derive(Clone, PartialEq)]
 pub struct ExactlyOne {
+    /// この辺の始点ノードの公開ID。
     pub src: NodeAId,
+    /// この辺の終点ノードの公開ID。
     pub dst: NodeBId,
+    /// この辺が運ぶ積み荷。
     pub weight: Weight,
 }
 impl ExactlyOne {
@@ -230,42 +240,88 @@ struct __ExactlyOneRecord {
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
+    /// このノード種別のキーが重複している。
     DuplicateNodeA(NodeAId),
+    /// このノード種別のキーが重複している。
     DuplicateNodeB(NodeBId),
     /// このエッジ種別のキーが重複している。
     UnconstrainedDuplicateKey(UnconstrainedId),
     /// このエッジが未知の始点キーを参照している。
-    UnconstrainedUnknownSource { edge: UnconstrainedId, source: NodeAId },
+    UnconstrainedUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: UnconstrainedId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: NodeAId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    UnconstrainedUnknownTarget { edge: UnconstrainedId, target: NodeBId },
+    UnconstrainedUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: UnconstrainedId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: NodeBId,
+    },
     /// このエッジ種別のキーが重複している。
     UnconstrainedNoPayloadDuplicateKey(UnconstrainedNoPayloadId),
     /// このエッジが未知の始点キーを参照している。
     UnconstrainedNoPayloadUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
         edge: UnconstrainedNoPayloadId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
         source: NodeAId,
     },
     /// このエッジが未知の終点キーを参照している。
     UnconstrainedNoPayloadUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
         edge: UnconstrainedNoPayloadId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
         target: NodeBId,
     },
     /// このエッジ種別のキーが重複している。
     AtMostOneDuplicateKey(AtMostOneId),
     /// このエッジが未知の始点キーを参照している。
-    AtMostOneUnknownSource { edge: AtMostOneId, source: NodeAId },
+    AtMostOneUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: AtMostOneId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: NodeAId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    AtMostOneUnknownTarget { edge: AtMostOneId, target: NodeBId },
+    AtMostOneUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: AtMostOneId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: NodeBId,
+    },
     /// このエッジ種別の `each` 制約違反 (入次数)。
-    AtMostOneDstEachViolation { target: NodeBId, count: usize },
+    AtMostOneDstEachViolation {
+        /// 入次数が制約に反した終点ノードの公開ID。
+        target: NodeBId,
+        /// この終点へ実際に入っている辺の本数。
+        count: usize,
+    },
     /// このエッジ種別のキーが重複している。
     ExactlyOneDuplicateKey(ExactlyOneId),
     /// このエッジが未知の始点キーを参照している。
-    ExactlyOneUnknownSource { edge: ExactlyOneId, source: NodeAId },
+    ExactlyOneUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: ExactlyOneId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: NodeAId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    ExactlyOneUnknownTarget { edge: ExactlyOneId, target: NodeBId },
+    ExactlyOneUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: ExactlyOneId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: NodeBId,
+    },
     /// このエッジ種別の `each` 制約違反 (入次数)。
-    ExactlyOneDstEachViolation { target: NodeBId, count: usize },
+    ExactlyOneDstEachViolation {
+        /// 入次数が制約に反した終点ノードの公開ID。
+        target: NodeBId,
+        /// この終点へ実際に入っている辺の本数。
+        count: usize,
+    },
 }
 impl std::fmt::Display for Violation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -1116,6 +1172,7 @@ pub struct Builder {
 /// 実装を持ち、`insert_named_with_id` を経由しない
 /// (`create` のクロージャから許可証なしで呼べる必要があるため)。
 pub trait RevQueryInsertable: Sized {
+    /// この要素を挿入したときに受け取る公開ID型。
     type Id;
     #[doc(hidden)]
     type NamedPosition;
@@ -1126,6 +1183,7 @@ pub trait RevQueryInsertable: Sized {
         id: Self::Id,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
     fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
 }
 /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
@@ -1138,6 +1196,7 @@ pub trait RevQueryDefaultId: RevQueryInsertable {
         binding: String,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
 /// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと

@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    1258563856800380013u64, 14505146347717596028u64, 9456073245323484251u64,
-    2833417394957201663u64,
+    7633823920348659430u64, 13252275782633686907u64, 16839048437543680772u64,
+    15274026267688973216u64,
 ];
 /// `Consumes` 辺の公開ID。
 ///
@@ -40,7 +40,9 @@ pub struct __ConsumesNamedPosition(__ConsumesInternalPosition, u64);
 /// 宣言: `src/schema.rs` の `edge Produces(id: ProducesId) = (task: Task) -> (artifact: Artifact) where unique pair`
 #[derive(Clone, PartialEq)]
 pub struct Produces {
+    /// この辺の始点ノードの公開ID。
     pub task: TaskId,
+    /// この辺の終点ノードの公開ID。
     pub artifact: ArtifactId,
 }
 impl Produces {
@@ -66,7 +68,9 @@ impl std::fmt::Debug for Produces {
 /// 宣言: `src/schema.rs` の `edge Consumes = (task: Task) -> (artifact: Artifact) where unique pair`
 #[derive(Clone, PartialEq)]
 pub struct Consumes {
+    /// この辺の始点ノードの公開ID。
     pub task: TaskId,
+    /// この辺の終点ノードの公開ID。
     pub artifact: ArtifactId,
 }
 impl Consumes {
@@ -103,26 +107,58 @@ struct __ConsumesRecord {
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
+    /// このノード種別のキーが重複している。
     DuplicateTask(TaskId),
+    /// このノード種別のキーが重複している。
     DuplicateArtifact(ArtifactId),
     /// このエッジ種別のキーが重複している。
     ProducesDuplicateKey(ProducesId),
     /// このエッジが未知の始点キーを参照している。
-    ProducesUnknownSource { edge: ProducesId, source: TaskId },
+    ProducesUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: ProducesId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: TaskId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    ProducesUnknownTarget { edge: ProducesId, target: ArtifactId },
+    ProducesUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: ProducesId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: ArtifactId,
+    },
     /// このエッジ種別の `unique pair` 違反 (同じ始点・終点の対に
     /// 2本目の辺が張られた)。
-    ProducesUniquePairViolation { source: TaskId, target: ArtifactId },
+    ProducesUniquePairViolation {
+        /// 2本目の辺が張られた対の始点ノードの公開ID。
+        source: TaskId,
+        /// 2本目の辺が張られた対の終点ノードの公開ID。
+        target: ArtifactId,
+    },
     /// このエッジ種別のキーが重複している。
     ConsumesDuplicateKey(ConsumesId),
     /// このエッジが未知の始点キーを参照している。
-    ConsumesUnknownSource { edge: ConsumesId, source: TaskId },
+    ConsumesUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: ConsumesId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: TaskId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    ConsumesUnknownTarget { edge: ConsumesId, target: ArtifactId },
+    ConsumesUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: ConsumesId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: ArtifactId,
+    },
     /// このエッジ種別の `unique pair` 違反 (同じ始点・終点の対に
     /// 2本目の辺が張られた)。
-    ConsumesUniquePairViolation { source: TaskId, target: ArtifactId },
+    ConsumesUniquePairViolation {
+        /// 2本目の辺が張られた対の始点ノードの公開ID。
+        source: TaskId,
+        /// 2本目の辺が張られた対の終点ノードの公開ID。
+        target: ArtifactId,
+    },
 }
 impl std::fmt::Display for Violation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -618,6 +654,7 @@ pub struct Builder {
 /// 実装を持ち、`insert_named_with_id` を経由しない
 /// (`create` のクロージャから許可証なしで呼べる必要があるため)。
 pub trait BuildPipelineInsertable: Sized {
+    /// この要素を挿入したときに受け取る公開ID型。
     type Id;
     #[doc(hidden)]
     type NamedPosition;
@@ -628,6 +665,7 @@ pub trait BuildPipelineInsertable: Sized {
         id: Self::Id,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
     fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
 }
 /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
@@ -640,6 +678,7 @@ pub trait BuildPipelineDefaultId: BuildPipelineInsertable {
         binding: String,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
 /// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと

@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    12570417897850223988u64, 16038955546764264369u64, 3938972196542714070u64,
-    9930963148946055426u64,
+    1172128299366712111u64, 17958058151955405488u64, 16193805289878190605u64,
+    14626573004364645305u64,
 ];
 /// `Sensor` ノードの公開ID。
 ///
@@ -45,8 +45,11 @@ pub struct __MeasuredNamedPosition(__MeasuredInternalPosition, u64);
 /// 宣言: `tests/f64_attrs.rs` の `edge Measured = (sensor: Sensor) -[measurement: MeasuredEdge]-> (reading: Reading)`
 #[derive(Clone, PartialEq)]
 pub struct Measured {
+    /// この辺の始点ノードの公開ID。
     pub sensor: SensorId,
+    /// この辺の終点ノードの公開ID。
     pub reading: ReadingId,
+    /// この辺が運ぶ積み荷。
     pub measurement: MeasuredEdge,
 }
 impl Measured {
@@ -89,14 +92,26 @@ struct __MeasuredRecord {
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
+    /// このノード種別のキーが重複している。
     DuplicateSensor(SensorId),
+    /// このノード種別のキーが重複している。
     DuplicateReading(ReadingId),
     /// このエッジ種別のキーが重複している。
     MeasuredDuplicateKey(MeasuredId),
     /// このエッジが未知の始点キーを参照している。
-    MeasuredUnknownSource { edge: MeasuredId, source: SensorId },
+    MeasuredUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: MeasuredId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: SensorId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    MeasuredUnknownTarget { edge: MeasuredId, target: ReadingId },
+    MeasuredUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: MeasuredId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: ReadingId,
+    },
 }
 impl std::fmt::Display for Violation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -453,6 +468,7 @@ pub struct Builder {
 /// 実装を持ち、`insert_named_with_id` を経由しない
 /// (`create` のクロージャから許可証なしで呼べる必要があるため)。
 pub trait MeasurementInsertable: Sized {
+    /// この要素を挿入したときに受け取る公開ID型。
     type Id;
     #[doc(hidden)]
     type NamedPosition;
@@ -463,6 +479,7 @@ pub trait MeasurementInsertable: Sized {
         id: Self::Id,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
     fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
 }
 /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
@@ -475,6 +492,7 @@ pub trait MeasurementDefaultId: MeasurementInsertable {
         binding: String,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
 /// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと

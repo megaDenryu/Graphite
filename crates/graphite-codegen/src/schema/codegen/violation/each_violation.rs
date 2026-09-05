@@ -34,7 +34,12 @@ pub(crate) fn gen_each_violation_case(
             let from_type_str = edge.from_node.type_ident.to_string();
             let variant = quote! {
                 /// このエッジ種別の `each` 制約違反 (出次数)。
-                #v { source: #from_id, count: usize }
+                #v {
+                    /// 出次数が制約に反した始点ノードの公開ID。
+                    source: #from_id,
+                    /// この始点から実際に出ている辺の本数。
+                    count: usize,
+                }
             };
             let display_arm = if edge.from_node.id_ty.is_debug_printable() {
                 quote! {
@@ -60,7 +65,12 @@ pub(crate) fn gen_each_violation_case(
             let to_type_str = edge.to_node.type_ident.to_string();
             let variant = quote! {
                 /// このエッジ種別の `each` 制約違反 (入次数)。
-                #v { target: #to_id, count: usize }
+                #v {
+                    /// 入次数が制約に反した終点ノードの公開ID。
+                    target: #to_id,
+                    /// この終点へ実際に入っている辺の本数。
+                    count: usize,
+                }
             };
             let display_arm = if edge.to_node.id_ty.is_debug_printable() {
                 quote! {

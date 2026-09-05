@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    6134022658904131793u64, 16380067185823987956u64, 17519257466611799111u64,
-    16188410930086934627u64,
+    966737740135943100u64, 18156977148511447475u64, 17693300812324124534u64,
+    6995596630121195898u64,
 ];
 /// `Knows` 辺の公開ID。
 ///
@@ -30,7 +30,9 @@ pub struct __KnowsNamedPosition(__KnowsInternalPosition, u64);
 /// 宣言: `tests/schema_ids.rs` の `edge Knows = (knower: Person) -> (known: Person)`
 #[derive(Clone, PartialEq)]
 pub struct Knows {
+    /// この辺の始点ノードの公開ID。
     pub knower: super::KnowsId,
+    /// この辺の終点ノードの公開ID。
     pub known: super::KnowsId,
 }
 impl Knows {
@@ -62,13 +64,24 @@ struct __KnowsRecord {
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
+    /// このノード種別のキーが重複している。
     DuplicatePerson(super::KnowsId),
     /// このエッジ種別のキーが重複している。
     KnowsDuplicateKey(KnowsId),
     /// このエッジが未知の始点キーを参照している。
-    KnowsUnknownSource { edge: KnowsId, source: super::KnowsId },
+    KnowsUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: KnowsId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: super::KnowsId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    KnowsUnknownTarget { edge: KnowsId, target: super::KnowsId },
+    KnowsUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: KnowsId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: super::KnowsId,
+    },
 }
 impl std::fmt::Display for Violation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -351,6 +364,7 @@ pub struct Builder {
 /// 実装を持ち、`insert_named_with_id` を経由しない
 /// (`create` のクロージャから許可証なしで呼べる必要があるため)。
 pub trait QualifiedIdsInsertable: Sized {
+    /// この要素を挿入したときに受け取る公開ID型。
     type Id;
     #[doc(hidden)]
     type NamedPosition;
@@ -361,6 +375,7 @@ pub trait QualifiedIdsInsertable: Sized {
         id: Self::Id,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
     fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
 }
 /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
@@ -373,6 +388,7 @@ pub trait QualifiedIdsDefaultId: QualifiedIdsInsertable {
         binding: String,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
 /// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと

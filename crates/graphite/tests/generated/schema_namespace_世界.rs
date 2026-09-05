@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    11711860795435610626u64, 6901705076280830225u64, 17068317966574931624u64,
-    7838666865494447140u64,
+    13765930007667902121u64, 13336033510454853282u64, 733903977500796943u64,
+    5642254158913727515u64,
 ];
 /// `人物` ノードの公開ID。
 ///
@@ -35,8 +35,11 @@ pub struct __関係NamedPosition(__関係InternalPosition, u64);
 /// 宣言: `tests/schema_namespace.rs` の `edge 関係 = (始点: 人物) -[明細: 取引情報]-> (終点: 人物)`
 #[derive(Clone, PartialEq)]
 pub struct 関係 {
+    /// この辺の始点ノードの公開ID。
     pub 始点: 人物Id,
+    /// この辺の終点ノードの公開ID。
     pub 終点: 人物Id,
+    /// この辺が運ぶ積み荷。
     pub 明細: 取引情報,
 }
 impl 関係 {
@@ -79,13 +82,24 @@ struct __関係Record {
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
+    /// このノード種別のキーが重複している。
     Duplicate人物(人物Id),
     /// このエッジ種別のキーが重複している。
     関係DuplicateKey(関係Id),
     /// このエッジが未知の始点キーを参照している。
-    関係UnknownSource { edge: 関係Id, source: 人物Id },
+    関係UnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: 関係Id,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: 人物Id,
+    },
     /// このエッジが未知の終点キーを参照している。
-    関係UnknownTarget { edge: 関係Id, target: 人物Id },
+    関係UnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: 関係Id,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: 人物Id,
+    },
 }
 impl std::fmt::Display for Violation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -384,6 +398,7 @@ pub struct Builder {
 /// 実装を持ち、`insert_named_with_id` を経由しない
 /// (`create` のクロージャから許可証なしで呼べる必要があるため)。
 pub trait 世界Insertable: Sized {
+    /// この要素を挿入したときに受け取る公開ID型。
     type Id;
     #[doc(hidden)]
     type NamedPosition;
@@ -394,6 +409,7 @@ pub trait 世界Insertable: Sized {
         id: Self::Id,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
     fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
 }
 /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
@@ -406,6 +422,7 @@ pub trait 世界DefaultId: 世界Insertable {
         binding: String,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
 /// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと

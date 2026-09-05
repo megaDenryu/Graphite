@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    3271529527118344069u64, 7360177668086881182u64, 10839754774253468179u64,
-    4079867618429221695u64,
+    13740227031853288506u64, 2558250581929126165u64, 1863382613485622224u64,
+    5340105879051887532u64,
 ];
 /// `BelongsTo` 辺の公開ID。
 ///
@@ -35,7 +35,9 @@ pub struct __BelongsToNamedPosition(__BelongsToInternalPosition, u64);
 /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge BelongsTo = (person: Person) -> (department: Department) where each person: 0..1`
 #[derive(Clone, PartialEq)]
 pub struct BelongsTo {
+    /// この辺の始点ノードの公開ID。
     pub person: PersonId,
+    /// この辺の終点ノードの公開ID。
     pub department: DepartmentId,
 }
 impl BelongsTo {
@@ -70,16 +72,33 @@ struct __BelongsToRecord {
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, PartialEq, Eq)]
 pub enum Violation {
+    /// このノード種別のキーが重複している。
     DuplicatePerson(PersonId),
+    /// このノード種別のキーが重複している。
     DuplicateDepartment(DepartmentId),
     /// このエッジ種別のキーが重複している。
     BelongsToDuplicateKey(BelongsToId),
     /// このエッジが未知の始点キーを参照している。
-    BelongsToUnknownSource { edge: BelongsToId, source: PersonId },
+    BelongsToUnknownSource {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: BelongsToId,
+        /// 参照先が見つからなかった始点ノードの公開ID。
+        source: PersonId,
+    },
     /// このエッジが未知の終点キーを参照している。
-    BelongsToUnknownTarget { edge: BelongsToId, target: DepartmentId },
+    BelongsToUnknownTarget {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: BelongsToId,
+        /// 参照先が見つからなかった終点ノードの公開ID。
+        target: DepartmentId,
+    },
     /// このエッジ種別の `each` 制約違反 (出次数)。
-    BelongsToPersonEachViolation { source: PersonId, count: usize },
+    BelongsToPersonEachViolation {
+        /// 出次数が制約に反した始点ノードの公開ID。
+        source: PersonId,
+        /// この始点から実際に出ている辺の本数。
+        count: usize,
+    },
 }
 impl std::fmt::Display for Violation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -425,6 +444,7 @@ pub struct Builder {
 /// 実装を持ち、`insert_named_with_id` を経由しない
 /// (`create` のクロージャから許可証なしで呼べる必要があるため)。
 pub trait OrgChartInsertable: Sized {
+    /// この要素を挿入したときに受け取る公開ID型。
     type Id;
     #[doc(hidden)]
     type NamedPosition;
@@ -435,6 +455,7 @@ pub trait OrgChartInsertable: Sized {
         id: Self::Id,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 型付きの公開IDを指定して、この要素を構築器へ挿入する。
     fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id;
 }
 /// 束縛名の文字列からスキーマ内限定の既定IDを作れる要素だけが
@@ -447,6 +468,7 @@ pub trait OrgChartDefaultId: OrgChartInsertable {
         binding: String,
         permit: &graphite::NamedInsertPermit,
     ) -> (Self::Id, Self::NamedPosition);
+    /// 束縛名の文字列から既定IDを作り、この要素を構築器へ挿入する。
     fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id;
 }
 /// ノード挿入で使うトレイト境界。読み取りは `Graph` の種別メソッドと

@@ -14,7 +14,10 @@ pub(crate) fn gen_node_duplicate_key_case(
     let v = node.dup_variant();
     let id = &node.id_ty;
     let type_name_str = node.type_ident.to_string();
-    let variant = quote! { #v(#id) };
+    let variant = quote! {
+        /// このノード種別のキーが重複している。
+        #v(#id)
+    };
     let display_arm = if node.id_ty.is_debug_printable() {
         quote! {
             #violation_ident::#v(id) => write!(f, "{}のキーが重複しています: {:?}", #type_name_str, id)
