@@ -2554,7 +2554,7 @@ pub struct Graph {
 生成ファイルは利用者のクレートへ `include!` されるため、22.1 に挙げた公開物は
 利用者の rustdoc と hover にそのまま出る。Graphiteは公開する生成物すべてに doc
 コメントを付け、`cargo xtask check-doc-comments` が網羅を検査する。検査の対象は
-生成ファイルの、`#[doc(hidden)]` が付いていない公開項目である。列挙の枝・
+生成ファイルの、`#[doc(hidden)]` が付いていない公開項目である。列挙のバリアント・
 構造体のフィールド・トレイトの関連型とメソッドも対象に含む。
 
 次の3種類は利用者が読む項目であるため、`#[doc(hidden)]` ではなく doc コメントを
@@ -2562,8 +2562,8 @@ pub struct Graph {
 
 | 種類 | doc を書く理由 |
 |---|---|
-| `Violation` のノードのキー重複の枝 (`Duplicate{Node}`) | 利用者は `freeze` が返した違反を `match` で分岐する。辺に関わる枝が doc を持つのに、ノードに関わる枝だけが持たない状態は書き分けの漏れである |
-| 辺値型と `Violation` の構造体フィールド (`{Kind}` の役割名フィールド、`edge` / `source` / `target` / `count` / `endpoint` / `a` / `b`) | 利用者は辺値型を自分で組み立て、違反の枝からフィールドを取り出す。フィールド名だけでは、その公開IDが辺のものかノードのものか読み取れない |
+| `Violation` のノードのキー重複のバリアント (`Duplicate{Node}`) | 利用者は `freeze` が返した違反を `match` で分岐する。辺に関わるバリアントが doc を持つのに、ノードに関わるバリアントだけが持たない状態は書き分けの漏れである |
+| 辺値型と `Violation` の構造体フィールド (`{Kind}` の役割名フィールド、`edge` / `source` / `target` / `count` / `endpoint` / `a` / `b`) | 利用者は辺値型を自分で組み立て、違反のバリアントからフィールドを取り出す。フィールド名だけでは、その公開IDが辺のものかノードのものか読み取れない |
 | `{Schema}Insertable::Id` / `insert_with_id`、`{Schema}DefaultId::insert_with_binding` | 関連型 `Id` は公開メソッド `Builder::insert` / `add` / `extend` の戻り型 (`N::Id`) に現れるため、隠すとそれらの戻り型が読めなくなる。`insert_with_id` / `insert_with_binding` は許可証を要求しない手書き用の経路であり、許可証を要求する `insert_named_with_id` / `insert_named_with_binding` を `#[doc(hidden)]` にしたのと対になる |
 
 ## 23. 自動生成物の一覧
