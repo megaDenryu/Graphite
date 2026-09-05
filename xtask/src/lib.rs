@@ -9,9 +9,12 @@
 mod doc_comment;
 mod document_index;
 mod document_reference;
+mod excerpt_file_body;
+mod excerpt_range_body;
 mod external_verification;
 mod missing_references;
 mod quoted_excerpt;
+mod quoted_excerpt_check;
 mod reference_scan;
 mod repository_package;
 mod repository_root;
@@ -67,12 +70,14 @@ pub fn check_documents(root: &RepositoryRoot) -> Result<(), Box<dyn Error>> {
     let invalid_sources = scan.invalid_source_references();
     let mismatched_excerpts = scan.mismatched_excerpts();
     println!(
-        "文書参照 {}件・ソース参照 {}件 (うち直後のコードフェンス本文を照合した引用 {}件)\
+        "文書参照 {}件・ソース参照 {}件 \
+         (うち直後のコードフェンス本文を照合した引用 {}件・その引用行 {}行)\
          と docs 配下の {}ファイルを検査しました\
          (別リポジトリを指す参照 {}件は検査対象外)",
         scan.reference_count(),
         scan.source_reference_count(),
         scan.quoted_excerpt_count(),
+        scan.quoted_excerpt_line_count(),
         existing.len(),
         scan.external_reference_count()
     );

@@ -96,9 +96,16 @@ impl RepositoryRoot {
     ///
     /// 引用本文の照合が指定の行範囲を切り出すために使う。
     pub fn source_file_lines(&self, reference: &SourceReference) -> Option<Vec<String>> {
-        fs::read_to_string(self.path.join(reference.path()))
-            .ok()
+        self.source_file_text(reference)
             .map(|text| text.lines().map(str::to_string).collect())
+    }
+
+    /// リポジトリ内 Rust ソースの本文を丸ごと読む。実在しなければ `None`。
+    ///
+    /// 引用の鮮度の照合が、行範囲によらずファイル全体を対象にするために使う。
+    /// 綴りの組み立てをこの型へ閉じるため、行ごとの読み出しもこのメソッドを通す。
+    pub fn source_file_text(&self, reference: &SourceReference) -> Option<String> {
+        fs::read_to_string(self.path.join(reference.path())).ok()
     }
 
     /// 索引ファイル (docs/README.md) の本文を読む。

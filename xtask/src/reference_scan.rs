@@ -5,7 +5,8 @@ use graphite_cli::with_path_context;
 
 use crate::document_reference::{DocumentReference, ReferenceOrigin, ReferenceTarget};
 use crate::missing_references::MissingReferences;
-use crate::quoted_excerpt::{MismatchedExcerpts, QuotedExcerpt};
+use crate::quoted_excerpt::QuotedExcerpt;
+use crate::quoted_excerpt_check::MismatchedExcerpts;
 use crate::repository_root::RepositoryRoot;
 use crate::source_reference_check::{
     InvalidSourceReferences, SourceCodeReference, UnparsableSourceReference, Violation,
@@ -91,6 +92,12 @@ impl<'root> ReferenceScan<'root> {
         self.quoted_excerpts.len()
     }
 
+    /// 照合した引用行の総数。引用の鮮度が引用の全行を対象にするため、件数だけでは
+    /// 何行を照合したかが分からない。
+    pub fn quoted_excerpt_line_count(&self) -> usize {
+        self.quoted_excerpts.iter().map(QuotedExcerpt::line_count).sum()
+    }
+
     pub fn external_reference_count(&self) -> usize {
         self.external_reference_count
     }
@@ -107,7 +114,7 @@ impl<'root> ReferenceScan<'root> {
         MissingReferences::new(references)
     }
 
-    /// 参照先の行範囲に引用本文が実在しない引用を全件返す。
+    /// 2つの判定 (行範囲の妥当性と引用の鮮度) のどちらかに違反した引用を全件返す。
     pub fn mismatched_excerpts(&self) -> MismatchedExcerpts<'_> {
         MismatchedExcerpts::new(
             self.quoted_excerpts
