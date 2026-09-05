@@ -1,11 +1,14 @@
-//! 検査結果の集計と表示。
+//! 検査結果の集計。
 //!
 //! 集計する数は6種類の違反と、検査が届いた範囲 (検査したファイル数・台帳の件数・
 //! 再設計待ちの件数) である。範囲を出すのは、通ったことを「全部を見た」と
-//! 読み違えないようにするためである。
+//! 読み違えないようにするためである。表示は `rendering.rs` が持つ。
+
+mod rendering;
+#[cfg(test)]
+mod tests;
 
 use std::collections::BTreeSet;
-use std::fmt::Write;
 
 use super::code_line_count::CodeLineCount;
 use super::judgement::FileJudgement;
@@ -45,8 +48,11 @@ impl LineCountReport {
         }
     }
 
+    // 読めなかったファイルも検査した綴りとして登録する。登録しないと `close` が同じ綴りを
+    // 「台帳にありますが検査対象に実在しません」へも積み、1件の事故を2件に見せる。
     pub(crate) fn record_unreadable(&mut self, spelling: &str, reason: &str) {
         self.inspected_file_count += 1;
+        self.inspected_spellings.insert(spelling.to_string());
         self.unreadable_files.push(format!("{spelling}: {reason}"));
     }
 
@@ -67,53 +73,5 @@ impl LineCountReport {
             && self.shrunk_entries.is_empty()
             && self.missing_entries.is_empty()
             && self.invalid_ledger_rows.is_empty()
-    }
-
-    pub(crate) fn render(&self, ledger: &LineCountLedger) -> String {
-        let mut text = format!(
-            "{}ファイルのコード行を数え、台帳の{}件と突き合わせました(再設計待ち {}件)\n",
-            self.inspected_file_count,
-            ledger.entry_count(),
-            self.awaiting_redesign.len()
-        );
-        for spelling in &self.awaiting_redesign {
-            let _ = writeln!(text, "  再設計待ち: {spelling}");
-        }
-        self.render_violations(&mut text);
-        text
-    }
-
-    fn render_violations(&self, text: &mut String) {
-        let sections: [(&str, &Vec<String>); 6] = [
-            (
-                "台帳に無いのに100行を超えています",
-                &self.unregistered_excesses,
-            ),
-            ("150行の上限を超えています", &self.upper_limit_excesses),
-            (
-                "100行以内へ収まったので台帳から削除してください",
-                &self.shrunk_entries,
-            ),
-            (
-                "台帳にありますが検査対象に実在しません",
-                &self.missing_entries,
-            ),
-            ("読み込みに失敗しました", &self.unreadable_files),
-            ("台帳の行として読めません", &self.invalid_ledger_rows),
-        ];
-        for (title, entries) in sections {
-            render_section(text, title, entries);
-        }
-    }
-}
-
-// 違反1種類分を、件数付きの見出しと一覧で書く。空なら何も書かない。
-fn render_section(text: &mut String, title: &str, entries: &[String]) {
-    if entries.is_empty() {
-        return;
-    }
-    let _ = writeln!(text, "{title} ({}件):", entries.len());
-    for entry in entries {
-        let _ = writeln!(text, "  {entry}");
     }
 }
