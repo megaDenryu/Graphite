@@ -164,7 +164,7 @@ fn capture_until_top_level_equal(content: ParseStream) -> syn::Result<TokenStrea
     Err(content.error("ID式の後に`=`が必要です"))
 }
 
-// 捕獲済みのトークン列を、**新規の独立したトップレベル呼び出し**として
+// 捕獲済みのトークン列を、新規の独立したトップレベル呼び出しとして
 // `Expr` にパースする。このファイル冒頭のドキュメントコメント「syn::Expr
 // を回復パーサに混ぜる際のリスク」参照: `syn::parse2` は呼ぶたびに新しい
 // `Rc<Cell<Unexpected>>` を作るため、ここで起きるエラーは呼び出し元
@@ -215,7 +215,7 @@ fn looks_like_edge_literal(tokens: &TokenStream2) -> bool {
 
 // `Kind(from -> to)` / `Kind(from -[式]-> to)` の内側構造。
 // `looks_like_edge_literal` が「エッジのつもり」と判定した捕獲済み
-// トークン列を、**独立したトップレベル呼び出し** `syn::parse2` でこの型に
+// トークン列を、独立したトップレベル呼び出し `syn::parse2` でこの型に
 // パースする (ファイル冒頭のドキュメントコメント参照)。
 struct EdgeLiteralInner {
     kind: Ident,
@@ -411,21 +411,21 @@ pub struct GraphInput {
 }
 
 // 項目単位で回復パースした結果 (`docs/development/ide_support_spec.md` G4b)。
+// `errors` が空なら `graph` は全項目が正常にパースできている。
 pub struct GraphParse {
     pub graph: GraphInput,
-    pub errors: Vec<syn::Error>, // 個々の項目のパースに失敗した箇所を蓄積したもの。空なら全項目が正常にパースできている。
+    pub errors: Vec<syn::Error>, // 個々の項目のパースに失敗した箇所を蓄積したもの。
 }
 
 impl GraphInput {
     // 項目単位の回復パーサ (G4b)。
     //
-    // 回復戦略:
-    //
+    // 回復の方針は次のとおりである。
     // - ヘッダ (`SchemaName {`) 自体が壊れている場合は回復せず `Err` を
     //   返す。
     // - ボディはカンマ区切りの項目 (ノード / エッジ、どちらも `key = ..`
     //   の形、またはスプライス `..式`) 単位でパースする。
-    // - **境界の定義**: 「項目はカンマ区切り」という構文上の性質を使い、
+    // - 境界の定義: 「項目はカンマ区切り」という構文上の性質を使い、
     //   次のトップレベルの `,` (もしくは入力終端) まで、トークン木を1つ
     //   ずつ読み飛ばす境界とする。proc_macro2 では `{ .. }`/`[ .. ]`/
     //   `( .. )` の中身がまるごと1つの `Group` トークン木として扱われる
@@ -470,8 +470,8 @@ impl GraphInput {
 }
 
 // 次のトップレベルの `,` (もしくは入力終端) まで、トークン木を1つずつ
-// 読み飛ばす。`GraphInput::parse_recovering` のドキュメントコメント
-// (境界の定義) を参照。
+// 読み飛ばす。`GraphInput::parse_recovering` のコメント (境界の定義) を
+// 参照。
 fn skip_to_comma_boundary(content: ParseStream) {
     while !content.is_empty() && !content.peek(Token![,]) {
         let _ = content.parse::<TokenTree>();

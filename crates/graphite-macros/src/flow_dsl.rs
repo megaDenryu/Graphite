@@ -81,7 +81,7 @@ fn capture_until_arrow(input: ParseStream) -> syn::Result<TokenStream2> {
     Ok(collected)
 }
 
-// 捕獲済みのトークン列を、**新規の独立したトップレベル呼び出し**として
+// 捕獲済みのトークン列を、新規の独立したトップレベル呼び出しとして
 // `Expr` にパースする (ファイル冒頭のドキュメントコメント参照)。
 fn parse_expr_isolated(tokens: TokenStream2, empty_span: proc_macro2::Span) -> syn::Result<Expr> {
     if tokens.is_empty() {
@@ -188,10 +188,11 @@ pub struct FlowInput {
 }
 
 // 項単位で回復パースした結果 (`docs/flow_macro.md`: 「項単位のエラー回復
-// (G4 方針、drain_rest 厳守)」)。
+// (G4 方針、drain_rest 厳守)」)。`errors` が空なら `flow` は全項が正常に
+// パースできている。
 pub struct FlowParse {
     pub flow: FlowInput,
-    pub errors: Vec<syn::Error>, // 個々の項のパースに失敗した箇所を蓄積したもの。空なら全項が正常にパースできている。
+    pub errors: Vec<syn::Error>, // 個々の項のパースに失敗した箇所を蓄積したもの。
 }
 
 impl FlowInput {
@@ -204,10 +205,9 @@ impl FlowInput {
     // ので `input` は関数終了時に必ず空になり、`syn::parse::ParseBuffer` の
     // Drop 時未消費チェックを汚染することはない。
     //
-    // 境界の定義:
-    //
-    // 項はカンマ区切りなので、1項のパースに失敗したら次のトップレベルの
-    // `,` (もしくは入力終端) までトークン木を1つずつ読み飛ばす
+    // 境界は次のように定める。項はカンマ区切りなので、1項のパースに失敗
+    // したら次のトップレベルの `,` (もしくは入力終端) までトークン木を1つ
+    // ずつ読み飛ばす
     // (`skip_to_comma_boundary`)。`instance_dsl.rs`/
     // `graphite_codegen::schema::syntax::schema_declaration`
     // (`skip_to_decl_boundary`) と同じ境界定義。
@@ -246,8 +246,8 @@ impl FlowInput {
 }
 
 // 次のトップレベルの `,` (もしくは入力終端) まで、トークン木を1つずつ
-// 読み飛ばす。`FlowInput::parse_recovering` のドキュメントコメント
-// (境界の定義) を参照。
+// 読み飛ばす。`FlowInput::parse_recovering` のコメント (境界の定義) を
+// 参照。
 fn skip_to_comma_boundary(input: ParseStream) {
     while !input.is_empty() && !input.peek(Token![,]) {
         let _ = input.parse::<TokenTree>();
