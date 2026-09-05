@@ -1,7 +1,13 @@
-//! このファイルは1ファイル100行の原則の例外である (区分: 統合による超過)。生成
-//! 計画1つを所有し、追加・古いファイルの書き出し・差分検査・孤児の検出がその計
-//! 画表への操作である。本体は105行で、残りは同居する単体テストである。超過を許
-//! す根拠の台帳は `docs/development/line_count_ledger.md` にある。
+//! 生成計画1つの所有と、その計画表への操作。
+//!
+//! このファイルは1ファイル100行の原則の例外である (区分: 統合による超過)。この
+//! ファイルは、1つの計画表に対する4つの操作 (追加・古いファイルの書き出し・差分
+//! 検査・孤児の検出) を統合している。この4つは同じ計画表の同じ不変条件を触るため、
+//! 分けると流れの一片になる。超過を許す根拠の台帳は
+//! `docs/development/line_count_ledger.md` にある。
+
+#[cfg(test)]
+mod tests;
 
 use std::collections::BTreeMap;
 use std::error::Error;
@@ -138,42 +144,5 @@ impl GenerationPlan {
             .into_iter()
             .filter(|path| !self.expected.contains_key(path))
             .collect())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::path::PathBuf;
-
-    fn target(path: &str) -> GeneratedTargetPath {
-        GeneratedTargetPath::new(PathBuf::from(path))
-    }
-
-    fn tree_at(base: &str) -> GenerationTree {
-        GenerationTree::new(PathBuf::from(base), Vec::new())
-    }
-
-    #[test]
-    fn 同じ生成先を2回追加すると重複エラーになる() {
-        let tree = tree_at("/repo");
-        let mut plan = GenerationPlan::new();
-        plan.add(&tree, target("/repo/generated/a.rs"), "one".to_string())
-            .unwrap();
-        let error = plan
-            .add(&tree, target("/repo/generated/a.rs"), "two".to_string())
-            .unwrap_err();
-        assert!(error.to_string().contains("生成先が重複しています"));
-    }
-
-    #[test]
-    fn 異なる生成先は両方追加できる() {
-        let tree = tree_at("/repo");
-        let mut plan = GenerationPlan::new();
-        plan.add(&tree, target("/repo/generated/a.rs"), "one".to_string())
-            .unwrap();
-        plan.add(&tree, target("/repo/generated/b.rs"), "two".to_string())
-            .unwrap();
-        assert_eq!(plan.expected.len(), 2);
     }
 }

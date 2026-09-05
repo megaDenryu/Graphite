@@ -1,9 +1,7 @@
 //! スキーマ1つ分の意味モデル全体を所有し、添字ハンドルからの取り出しを提供する。
-//!
-//! このファイルは1ファイル100行の原則の例外である (区分: 統合による超過)。
-//! スキーマ1つ分の意味モデル全体を所有し、添字ハンドルからの取り出しを提供する。
-//! 本体は62行で、残りは同居する単体テストである。超過を許す根拠の台帳は
-//! `docs/development/line_count_ledger.md` にある。
+
+#[cfg(test)]
+mod tests;
 
 use proc_macro2::Ident;
 
@@ -87,63 +85,5 @@ impl スキーマ定義 {
         let 始点 = self.ノード定義の列[辺.始点のノード定義番号().添字()].ノード値型名();
         let 終点 = self.ノード定義の列[辺.終点のノード定義番号().添字()].ノード値型名();
         辺.宣言の形(始点, 終点)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::super::analyze::検査用にdslからスキーマ定義を組み立てる;
-
-    #[test]
-    fn 宣言の形をノード種別と辺種別ごとに組み立てる() {
-        let 定義 = 検査用にdslからスキーマ定義を組み立てる(
-            "schema Commerce {
-                node Person;
-                node Product(id: self::ExternalProductId);
-                edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) where each buyer: 1..2, each product: 0..1, unique pair;
-                edge Subscription = (member: Person) -> (product: Product) where each member: 1..*;
-                edge Friend(id: ExternalEdgeId) = Person -- Person;
-                edge Cable = Person -[cable: Cable]- Person;
-            }",
-        );
-        assert_eq!(定義.宣言の形(), "schema Commerce");
-        assert_eq!(定義.ノード定義の列()[0].宣言の形(), "node Person");
-        assert_eq!(
-            定義.ノード定義の列()[1].宣言の形(),
-            "node Product(id: super::ExternalProductId)",
-            "明示ID型は生成 module 内から解決できる形へ正規化した綴りで書く"
-        );
-        let 辺の列 = 定義.辺定義の列();
-        assert_eq!(
-            定義.辺の宣言の形(&辺の列[0]),
-            "edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) where each buyer: 1..2, each product: 0..1, unique pair"
-        );
-        assert_eq!(
-            定義.辺の宣言の形(&辺の列[1]),
-            "edge Subscription = (member: Person) -> (product: Product) where each member: 1..*"
-        );
-        assert_eq!(
-            定義.辺の宣言の形(&辺の列[2]),
-            "edge Friend(id: ExternalEdgeId) = Person -- Person"
-        );
-        assert_eq!(
-            定義.辺の宣言の形(&辺の列[3]),
-            "edge Cable = Person -[cable: Cable]- Person"
-        );
-    }
-
-    #[test]
-    fn ちょうど1本の多重度は範囲を畳んだ綴りになる() {
-        let 定義 = 検査用にdslからスキーマ定義を組み立てる(
-            "schema Org {
-                node Person;
-                node Team;
-                edge Belongs = (member: Person) -> (team: Team) where each member: 1;
-            }",
-        );
-        assert_eq!(
-            定義.辺の宣言の形(&定義.辺定義の列()[0]),
-            "edge Belongs = (member: Person) -> (team: Team) where each member: 1"
-        );
     }
 }

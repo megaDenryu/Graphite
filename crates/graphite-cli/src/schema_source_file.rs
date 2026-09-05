@@ -1,7 +1,7 @@
-//! このファイルは1ファイル100行の原則の例外である (区分: 統合による超過)。
-//! schema 宣言を持つソースファイル1件の読み取りと宣言の切り出しが1つの流れであ
-//! る。本体は98行で、残りは同居する単体テストである。超過を許す根拠の台帳は
-//! `docs/development/line_count_ledger.md` にある。
+//! schema 宣言を持つソースファイル1件の読み取りと、宣言の切り出し。
+
+#[cfg(test)]
+mod tests;
 
 use std::error::Error;
 use std::fs;
@@ -124,53 +124,5 @@ impl<'ast> Visit<'ast> for SchemaMacroCollector {
             });
         }
         visit::visit_macro(self, node);
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::path::Path;
-
-    fn tree_at(path: &Path) -> GenerationTree {
-        GenerationTree::new(path.to_path_buf(), Vec::new())
-    }
-
-    #[test]
-    fn generatedディレクトリ配下の相対パスを受理する() {
-        let tree = tree_at(Path::new("/repo"));
-        let source = SchemaSourceFile::new(PathBuf::from("/repo/crates/graphite/tests/x.rs"));
-        let target = source
-            .generated_target(&tree, "generated/world.rs")
-            .unwrap();
-        assert_eq!(
-            target.as_path(),
-            Path::new("/repo/crates/graphite/tests/generated/world.rs")
-        );
-    }
-
-    #[test]
-    fn 絶対パスを拒否する() {
-        let tree = tree_at(Path::new("/repo"));
-        let source = SchemaSourceFile::new(PathBuf::from("/repo/crates/graphite/tests/x.rs"));
-        assert!(source.generated_target(&tree, "/etc/evil.rs").is_err());
-    }
-
-    #[test]
-    fn 上位ディレクトリへの脱出を拒否する() {
-        let tree = tree_at(Path::new("/repo"));
-        let source = SchemaSourceFile::new(PathBuf::from("/repo/crates/graphite/tests/x.rs"));
-        assert!(source
-            .generated_target(&tree, "generated/../../evil.rs")
-            .is_err());
-    }
-
-    #[test]
-    fn 拡張子がrs以外なら拒否する() {
-        let tree = tree_at(Path::new("/repo"));
-        let source = SchemaSourceFile::new(PathBuf::from("/repo/crates/graphite/tests/x.rs"));
-        assert!(source
-            .generated_target(&tree, "generated/world.txt")
-            .is_err());
     }
 }

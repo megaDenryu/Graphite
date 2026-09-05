@@ -3,11 +3,9 @@
 //! 集計を判定と同じ場所へ置かないのは、報告する数が「判定の結果」ではなく
 //! 「判定がどこまで届いたか」だからである。照合できた引用の件数と行数、参照先が
 //! 実在せず照合できなかった引用の件数を、違反0件のときも報告へ出す。
-//!
-//! このファイルは1ファイル100行の原則の例外である (区分: 統合による超過)。引用
-//! 全件への判定と、検査が届いた範囲の集計が同じ走査の結果である。本体は64行で、
-//! 残りは同居する単体テストである。超過を許す根拠の台帳は
-//! `docs/development/line_count_ledger.md` にある。
+
+#[cfg(test)]
+mod tests;
 
 use std::fmt;
 
@@ -89,52 +87,5 @@ impl fmt::Display for ExcerptInspection<'_> {
             write!(formatter, "{mismatch}")?;
         }
         Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::path::PathBuf;
-
-    use super::ExcerptInspection;
-    use crate::document_reference::ReferenceOrigin;
-    use crate::quoted_excerpt::QuotedExcerpt;
-    use crate::repository_root::RepositoryRoot;
-    use crate::source_reference::SourceReference;
-
-    fn root() -> RepositoryRoot {
-        let repository_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
-        RepositoryRoot::at(repository_root)
-            .expect("xtaskの実行場所からリポジトリルートを解決できること")
-    }
-
-    // `lines[0]` を参照が書かれた行とみなして引用1件を取り込む。
-    fn excerpt(token: &str, lines: &[&str]) -> Vec<QuotedExcerpt> {
-        let origin = ReferenceOrigin::new("テスト用の出典".to_string(), 1);
-        let target = SourceReference::parse(token).unwrap();
-        vec![QuotedExcerpt::following_fence(lines, 0, origin, target)
-            .expect("引用として取り込むこと")]
-    }
-
-    #[test]
-    fn 参照先が実在する引用は照合した件数と行数に数える() {
-        let lines = ["参照", "```rust", "mod quoted_excerpt;", "```"];
-        let excerpts = excerpt("xtask/src/lib.rs:9-25", &lines);
-        let inspection = ExcerptInspection::over(&excerpts, &root());
-        assert_eq!(inspection.compared_excerpt_count(), 1);
-        assert_eq!(inspection.compared_line_count(), 1);
-        assert_eq!(inspection.unreadable_excerpt_count(), 0);
-        assert!(inspection.is_empty());
-    }
-
-    #[test]
-    fn 参照先が実在しない引用は照合した行数に数えない() {
-        let lines = ["参照", "```rust", "mod quoted_excerpt;", "```"];
-        let excerpts = excerpt("xtask/src/存在しない.rs:1-5", &lines);
-        let inspection = ExcerptInspection::over(&excerpts, &root());
-        assert_eq!(inspection.compared_excerpt_count(), 0);
-        assert_eq!(inspection.compared_line_count(), 0);
-        assert_eq!(inspection.unreadable_excerpt_count(), 1);
-        assert!(inspection.is_empty());
     }
 }

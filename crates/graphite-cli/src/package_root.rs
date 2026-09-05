@@ -1,7 +1,7 @@
-//! このファイルは1ファイル100行の原則の例外である (区分: 統合による超過)。
-//! パッケージルートの決定と走査対象の組み立てが1つの概念である。本体は72行で、
-//! 残りは同居する単体テストである。超過を許す根拠の台帳は
-//! `docs/development/line_count_ledger.md` にある。
+//! パッケージルートの決定と、そこから作る走査対象の組み立て。
+
+#[cfg(test)]
+mod tests;
 
 use std::env;
 use std::error::Error;
@@ -120,60 +120,4 @@ fn nearest_manifest_directory(start: &Path) -> Option<PathBuf> {
         .ancestors()
         .find(|directory| directory.join("Cargo.toml").is_file())
         .map(Path::to_path_buf)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{is_package_table_header, nearest_manifest_directory, PackageRoot};
-    use std::path::PathBuf;
-
-    fn this_package() -> PathBuf {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-    }
-
-    #[test]
-    fn パッケージのマニフェストがあればsrcを走査対象にする() {
-        let root = PackageRoot::at(this_package()).unwrap();
-        let sources = root.generation_tree().schema_source_files().unwrap();
-        assert!(!sources.is_empty());
-    }
-
-    #[test]
-    fn 仮想ワークスペースのマニフェストは拒否する() {
-        let workspace_root = this_package().join("..").join("..");
-        let Err(error) = PackageRoot::at(workspace_root) else {
-            panic!("[package] を持たないマニフェストは拒否されること");
-        };
-        assert!(error.to_string().contains("[package] がありません"));
-    }
-
-    #[test]
-    fn 行末コメント付きのpackage見出しを受理する() {
-        assert!(is_package_table_header("[package]"));
-        assert!(is_package_table_header("[package] # 生成の対象"));
-        assert!(is_package_table_header("  [package]\t"));
-    }
-
-    #[test]
-    fn 先頭行のバイト順マークがあってもpackage見出しとして受理する() {
-        assert!(is_package_table_header("\u{feff}[package]"));
-        assert!(is_package_table_header("\u{feff}[package] # 説明"));
-    }
-
-    #[test]
-    fn package以外のテーブル見出しは受理しない() {
-        assert!(!is_package_table_header("[package.metadata]"));
-        assert!(!is_package_table_header("[workspace]"));
-        assert!(!is_package_table_header("[dependencies]"));
-        assert!(!is_package_table_header("[package] extra"));
-    }
-
-    #[test]
-    fn マニフェストの無いディレクトリからは上へ辿る() {
-        let source_directory = this_package().join("src");
-        assert_eq!(
-            nearest_manifest_directory(&source_directory).as_deref(),
-            Some(this_package().as_path())
-        );
-    }
 }

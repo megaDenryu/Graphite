@@ -10,11 +10,9 @@
 //! 照合する本文が別の型になったため、その理由は成り立たなくなった。今はここが引用を
 //! 集め、`excerpt_range_body` と `excerpt_file_body` がそれぞれの本文を持ち、
 //! `quoted_excerpt_check` が2つを掛ける。
-//!
-//! このファイルは1ファイル100行の原則の例外である (区分: 統合による超過)。引用
-//! の収集と照合用の正規化が「文書に書かれた引用1件」という同じ概念に属する。本
-//! 体は98行で、残りは同居する単体テストである。超過を許す根拠の台帳は
-//! `docs/development/line_count_ledger.md` にある。
+
+#[cfg(test)]
+mod tests;
 
 use std::fmt;
 
@@ -168,48 +166,4 @@ pub(crate) fn normalize(text: &str) -> String {
         .replace(",)", ")")
         .trim_end_matches(['{', ';', ','])
         .to_string()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::QuotedExcerpt;
-    use crate::document_reference::ReferenceOrigin;
-    use crate::source_reference::SourceReference;
-
-    // `lines[0]` を参照が書かれた行とみなして引用を取り込む。
-    fn excerpt(token: &str, lines: &[&str]) -> Option<QuotedExcerpt> {
-        let origin = ReferenceOrigin::new("テスト用の出典".to_string(), 1);
-        QuotedExcerpt::following_fence(lines, 0, origin, SourceReference::parse(token).unwrap())
-    }
-
-    #[test]
-    fn 行番号のない参照は照合の対象にならない() {
-        let lines = ["参照", "```rust", "fn 先頭(", "```"];
-        assert!(excerpt("xtask/src/lib.rs", &lines).is_none());
-    }
-
-    #[test]
-    fn 直後にコードフェンスが無ければ照合の対象にならない() {
-        let lines = ["参照", "続く散文", "```rust", "fn 先頭(", "```"];
-        assert!(excerpt("xtask/src/lib.rs:1-5", &lines).is_none());
-    }
-
-    #[test]
-    fn 正規化すると空になる行だけのフェンスは引用として取り込まない() {
-        let lines = ["参照", "```rust", "{", ",", "```"];
-        assert!(excerpt("xtask/src/lib.rs:1-5", &lines).is_none());
-    }
-
-    #[test]
-    fn 情報文字列がrustでないフェンスは引用として取り込まない() {
-        let lines = ["参照", "```text", "fn 先頭(", "```"];
-        assert!(excerpt("xtask/src/lib.rs:1-5", &lines).is_none());
-    }
-
-    #[test]
-    fn 空行と省略記号の行は照合の対象にしない() {
-        let lines = ["参照", "", "```rust", "// ...", "", "fn 先頭(", "...", "```"];
-        let excerpt = excerpt("xtask/src/lib.rs:1-5", &lines).expect("引用として取り込むこと");
-        assert_eq!(excerpt.line_count(), 1);
-    }
 }
