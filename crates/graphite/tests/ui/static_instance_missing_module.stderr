@@ -1,7 +1,15 @@
 error[E0433]: failed to resolve: use of unresolved module or unlinked crate `開発チーム`
-  --> tests/ui/static_instance_missing_module.rs:34:11
+  --> tests/ui/static_instance_missing_module.rs:39:17
    |
-34 |     graph 開発チーム;
+39 |     generated = "generated/開発チーム.rs";
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ use of unresolved module or unlinked crate `開発チーム`
+   |
+   = help: if you wanted to use a crate named `開発チーム`, use `cargo add 開発チーム` to add it to your `Cargo.toml`
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `開発チーム`
+  --> tests/ui/static_instance_missing_module.rs:40:11
+   |
+40 |     graph 開発チーム;
    |           ^^^^^^^^^^ use of unresolved module or unlinked crate `開発チーム`
    |
    = help: if you wanted to use a crate named `開発チーム`, use `cargo add 開発チーム` to add it to your `Cargo.toml`

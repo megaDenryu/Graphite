@@ -36,6 +36,29 @@ fn tracked形式でない無関係なマクロは対象外にする() {
 }
 
 #[test]
+fn quote系マクロのtracked形式に似た入力は対象外にする() {
+    let tree = tree();
+    let source = source();
+    let mut plan = GenerationPlan::new();
+    let 名簿 = 静的schema名簿ビルダー::default().完成する();
+
+    // `quote!`/`quote_spanned!`/`parse_quote!` はいずれもgraphite-codegen/
+    // graphite-cli自身の単体試験がフィクスチャ組み立てに使う。この3つの
+    // 入力を「typoしたinstance」と誤検出しないことを確かめる
+    // (検収指摘5。`parse_quote!` は実験で誤検出が実際に起きたマクロ)。
+    for 名前 in ["quote", "quote_spanned", "parse_quote"] {
+        let 候補 = call(名前, quote! { generated = "generated/x.rs"; graph 何か; }, 5);
+        let files = vec![FileMacros {
+            source: &source,
+            display_path: "src/main.rs".to_string(),
+            calls: vec![候補],
+        }];
+        let 件数 = instanceを解決する(&tree, &files, &名簿, &mut plan).unwrap();
+        assert_eq!(件数, 0, "{名前}! は対象外のはず");
+    }
+}
+
+#[test]
 fn 名簿の名前と一致するinstanceを解決して計画へ積む() {
     let tree = tree();
     let source = source();
@@ -78,35 +101,4 @@ fn 名簿の名前と一致するinstanceを解決して計画へ積む() {
     assert_eq!(件数, 1);
     // schemaとinstanceの2つの生成先が計画に積まれている。
     assert_eq!(plan.declaration_count(), 2);
-}
-
-#[test]
-fn 他のマクロの入力の中のinstanceはエラーになる() {
-    let source = source();
-    let mut builder = 静的schema名簿ビルダー::default();
-    let tree = tree();
-    let mut plan = GenerationPlan::new();
-    let schema呼び出し = call(
-        "static_graph_schema",
-        quote! { generated = "generated/組織.rs"; schema 組織 { node 社員; } },
-        3,
-    );
-    builder.追加する(&tree, &source, "src/main.rs", &schema呼び出し, &mut plan).unwrap();
-    let 名簿 = builder.完成する();
-
-    // 無関係な `println!` の入力の中に `組織! { .. }` が埋め込まれている。
-    let 埋め込み呼び出し = call(
-        "println",
-        quote! { "{}", 組織! { generated = "generated/x.rs"; graph 何か; } },
-        20,
-    );
-    let files = vec![FileMacros {
-        source: &source,
-        display_path: "src/main.rs".to_string(),
-        calls: vec![埋め込み呼び出し],
-    }];
-
-    let error = 埋め込まれたinstanceを検査する(&files, &名簿).err().unwrap();
-    assert!(error.to_string().contains("他のマクロの入力の中"));
-    assert!(error.to_string().contains("組織"));
 }

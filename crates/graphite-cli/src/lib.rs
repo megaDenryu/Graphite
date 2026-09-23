@@ -35,9 +35,9 @@ pub use relative_display::relative_display;
 // `build_plan` の結果。生成計画そのものに加え、件数の報告に使う内訳を持つ。
 struct 解決結果 {
     plan: GenerationPlan,
-    dynamic件数: usize,
-    static_schema件数: usize,
-    static_instance件数: usize,
+    動的schemaの宣言数: usize,
+    静的schemaの宣言数: usize,
+    静的instanceの宣言数: usize,
     解析したファイル件数: usize,
 }
 
@@ -45,7 +45,7 @@ impl 解決結果 {
     fn 内訳を表示する(&self) -> String {
         format!(
             "dynamic schema {}件、static schema {}件、static instance {}件",
-            self.dynamic件数, self.static_schema件数, self.static_instance件数
+            self.動的schemaの宣言数, self.静的schemaの宣言数, self.静的instanceの宣言数
         )
     }
 }
@@ -63,13 +63,13 @@ fn build_plan(tree: &GenerationTree) -> Result<解決結果, Box<dyn Error>> {
     let sources = tree.schema_source_files()?;
 
     let mut files: Vec<FileMacros> = Vec::with_capacity(sources.len());
-    let mut dynamic件数 = 0;
+    let mut 動的schemaの宣言数 = 0;
     for source in &sources {
         let (display_path, parsed_file) = source.parse(tree)?;
         let calls = collect_macro_calls(&parsed_file);
-        let 積む前 = plan.declaration_count();
+        let 動的schemaを積む前の宣言数 = plan.declaration_count();
         source.collect_dynamic_into(tree, &display_path, &calls, &mut plan)?;
-        dynamic件数 += plan.declaration_count() - 積む前;
+        動的schemaの宣言数 += plan.declaration_count() - 動的schemaを積む前の宣言数;
         files.push(FileMacros { source, display_path, calls });
     }
 
@@ -80,16 +80,16 @@ fn build_plan(tree: &GenerationTree) -> Result<解決結果, Box<dyn Error>> {
         }
     }
     let 名簿 = 名簿ビルダー.完成する();
-    let static_schema件数 = 名簿.len();
+    let 静的schemaの宣言数 = 名簿.len();
 
-    let static_instance件数 = instanceを解決する(tree, &files, &名簿, &mut plan)?;
+    let 静的instanceの宣言数 = instanceを解決する(tree, &files, &名簿, &mut plan)?;
     埋め込まれたinstanceを検査する(&files, &名簿)?;
 
     Ok(解決結果 {
         plan,
-        dynamic件数,
-        static_schema件数,
-        static_instance件数,
+        動的schemaの宣言数,
+        静的schemaの宣言数,
+        静的instanceの宣言数,
         解析したファイル件数: sources.len(),
     })
 }

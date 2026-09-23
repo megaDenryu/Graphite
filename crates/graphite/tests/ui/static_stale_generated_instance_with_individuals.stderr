@@ -1,0 +1,45 @@
+error[E0425]: cannot find type `三郎Ref` in module `開発チーム`
+  --> tests/ui/static_stale_generated_instance_with_individuals.rs:45:10
+   |
+36 |     pub struct 一郎Ref<'a> {
+   |     ---------------------- similarly named struct `一郎Ref` defined here
+...
+45 |     node 三郎: 社員 = 社員;
+   |          ^^^^
+   |
+help: a struct with a similar name exists
+   |
+45 -     node 三郎: 社員 = 社員;
+45 +     node 一郎Ref: 社員 = 社員;
+   |
+
+error[E0425]: cannot find type `Nodes` in module `開発チーム`
+  --> tests/ui/static_stale_generated_instance_with_individuals.rs:21:1
+   |
+21 | / graphite::static_graph_schema! {
+22 | |     generated = "generated/組織.rs";
+23 | |     schema 組織 {
+24 | |         node 社員;
+25 | |     }
+26 | | }
+   | |_^ not found in `開発チーム`
+...
+41 | / 組織! {
+42 | |     generated = "generated/開発チーム.rs";
+43 | |     graph 開発チーム;
+44 | |     node 一郎: 社員 = 社員;
+45 | |     node 三郎: 社員 = 社員;
+46 | | }
+   | |_- in this macro invocation
+   |
+   = note: this error originates in the macro `::graphite::__static_graph_impl` which comes from the expansion of the macro `組織` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider importing this struct
+   |
+ 9 + use petgraph::graphmap::Nodes;
+   |
+
+error[E0080]: evaluation panicked: Graphite 静的グラフの instance `開発チーム` の生成ファイルが古いため、パッケージのディレクトリで cargo graphite generate を実行してください (Graphite リポジトリ自身の開発では cargo xtask generate)
+  --> tests/ui/static_stale_generated_instance_with_individuals.rs:42:17
+   |
+42 |     generated = "generated/開発チーム.rs";
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_` failed here

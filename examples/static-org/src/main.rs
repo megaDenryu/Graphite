@@ -141,26 +141,32 @@ fn main() {
     // 確認後は追加した行を削除してある。
 }
 
-// 同一schemaから `組織!` を2回目に宣言しても、生成物が衝突しないことを示す。
-// `Nodes`/`Edges`/`NodeRefs`/`EdgeRefs`/`Graph` は instance ごとの生成
-// module (`mod 開発チーム`・`mod 経理チーム`) の中にあるため、同じschemaから
-// 複数のinstanceを宣言してもmodule名が違えば衝突しない。
-#[allow(non_snake_case, dead_code, private_interfaces)]
-#[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
-mod 経理チーム {
-    include!("generated/経理チーム.rs");
-}
-
-#[rustfmt::skip]
-組織! {
-    generated = "generated/経理チーム.rs";
-    graph 経理チーム;
-    node 花子 = 社員 { 名前: "花子".into() };
-    node 総務部 = 部署 { 名前: "総務部".into() };
-    edge 花子の所属 = 所属(花子 -> 総務部);
-}
-
+// この関数は、同一schemaから `組織!` を2回目に宣言しても生成物が衝突しない
+// ことを示す。生成moduleを読み込む `mod` はinstanceと同じスコープに置く
+// (`docs/static_graph.md` 「2層マクロの使い方」)。この規則どおり
+// `mod 経理チーム` と `組織! { .. }` をどちらもこの関数の中に置くと、
+// `Nodes`/`Edges`/`NodeRefs`/`EdgeRefs`/`Graph` は関数ローカルのmoduleの
+// 中にあるため、同じschemaから複数のinstanceを宣言してもmodule名が違えば
+// 衝突しない。`mod` だけを最上位に置きinstanceを関数の中に置く形だと、
+// 最上位の `mod 経理チーム` がこの関数からしか使われないため
+// `unused_macros` の警告が出る。この関数はその警告を避ける配置の実例でも
+// ある。
 fn 経理チームの花子の所属先を求める() -> String {
+    #[allow(non_snake_case, dead_code, private_interfaces)]
+    #[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
+    mod 経理チーム {
+        include!("generated/経理チーム.rs");
+    }
+
+    #[rustfmt::skip]
+    組織! {
+        generated = "generated/経理チーム.rs";
+        graph 経理チーム;
+        node 花子 = 社員 { 名前: "花子".into() };
+        node 総務部 = 部署 { 名前: "総務部".into() };
+        edge 花子の所属 = 所属(花子 -> 総務部);
+    }
+
     let nodes = 経理チーム::Nodes::new();
     let edges = 経理チーム::Edges::new(&nodes);
     let g = 経理チーム::Graph::new(&nodes, &edges);

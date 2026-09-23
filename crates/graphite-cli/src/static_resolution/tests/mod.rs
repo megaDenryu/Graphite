@@ -2,6 +2,7 @@
 // (1ファイル100行の原則。`schema_registry`・`instance_resolution` それぞれ
 // 別の責務を検査する独立したファイルへ分ける)。
 
+mod embedded_detection;
 mod instance_resolution;
 mod schema_registry;
 

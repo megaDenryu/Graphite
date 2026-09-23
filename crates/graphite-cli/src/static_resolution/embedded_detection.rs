@@ -7,9 +7,10 @@ use std::error::Error;
 
 use proc_macro2::{TokenStream, TokenTree};
 
+use graphite_codegen::DeclarationSite;
+
 use super::schema_registry::静的schema名簿;
 use super::FileMacros;
-use crate::schema_macro_collector::MacroCall;
 
 pub(crate) fn 埋め込まれたinstanceを検査する(
     files: &[FileMacros],
@@ -17,17 +18,21 @@ pub(crate) fn 埋め込まれたinstanceを検査する(
 ) -> Result<(), Box<dyn Error>> {
     for file in files {
         for call in &file.calls {
-            埋め込みを探す(&call.tokens, 名簿, file, call)?;
+            埋め込みを探す(&call.tokens, 名簿, &file.display_path)?;
         }
     }
     Ok(())
 }
 
+// `display_path` の行番号は、埋め込みが見つかった識別子自身のspan
+// (`ident.span().start().line`) から取る。外側の呼び出し (`親呼び出し.line`)
+// を使うと、複数行にまたがる呼び出しの中の後ろの方で埋め込みが見つかった
+// 場合にエラーが呼び出し全体の開始行を指してしまい、実際にどの行を直せば
+// よいかが分かりにくくなる。
 fn 埋め込みを探す(
     tokens: &TokenStream,
     名簿: &静的schema名簿,
-    file: &FileMacros,
-    親呼び出し: &MacroCall,
+    display_path: &str,
 ) -> Result<(), Box<dyn Error>> {
     let mut iter = tokens.clone().into_iter().peekable();
     while let Some(tt) = iter.next() {
@@ -38,16 +43,18 @@ fn 埋め込みを探す(
                 if 次がビックリマークか {
                     iter.next();
                     if matches!(iter.peek(), Some(TokenTree::Group(_))) {
+                        let site =
+                            DeclarationSite::new(display_path.to_string(), ident.span().start().line);
                         return Err(format!(
-                            "{}:{}: instance は他のマクロの入力の中に書けません (schema `{ident}`)",
-                            file.display_path, 親呼び出し.line
+                            "{}: instance は他のマクロの入力の中に書けません (schema `{ident}`)",
+                            site.display()
                         )
                         .into());
                     }
                 }
             }
             TokenTree::Group(group) => {
-                埋め込みを探す(&group.stream(), 名簿, file, 親呼び出し)?;
+                埋め込みを探す(&group.stream(), 名簿, display_path)?;
             }
             _ => {}
         }

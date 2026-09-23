@@ -197,7 +197,14 @@ pub fn graph(input: TokenStream) -> TokenStream {
 /// 渡して具体グラフを組み立てる。
 ///
 /// ```text
+/// #[allow(non_snake_case, dead_code, private_interfaces)]
+/// #[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
+/// mod Organization {
+///     include!("generated/organization.rs");
+/// }
+///
 /// graphite::static_graph_schema! {
+///     generated = "generated/organization.rs";
 ///     schema Organization {
 ///         node Employee;
 ///         node Department;
@@ -206,7 +213,14 @@ pub fn graph(input: TokenStream) -> TokenStream {
 ///     }
 /// }
 ///
+/// #[allow(non_snake_case, dead_code, private_interfaces)]
+/// #[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
+/// mod DevTeam {
+///     include!("generated/dev_team.rs");
+/// }
+///
 /// Organization! {
+///     generated = "generated/dev_team.rs";
 ///     graph DevTeam;
 ///     node alice = Employee { name: "alice".into() };
 ///     node dev: Department = Department { name: "dev".into() };
@@ -214,13 +228,23 @@ pub fn graph(input: TokenStream) -> TokenStream {
 /// }
 /// ```
 ///
+/// schema・instanceはどちらも `generated = "..."` を持ち、`dynamic_graph_schema!`
+/// と同じ生成ファイル・指紋照合の方式で公開APIを追跡する (`docs/code_generation.md`)。
+/// 宣言と同じファイルに、生成先を読み込む `mod <名前> { include!(..); }` を置く
+/// (moduleへ付ける属性は`docs/code_generation.md`が定める2行で固定する)。この
+/// `mod`はinstance宣言 (`Organization! { .. }`) と同じスコープに置く。`mod`だけを
+/// 最上位に置きinstance宣言を関数の中に置くと、最上位の`mod`が未使用扱いになり
+/// 警告が出る。schemaとinstanceを別ファイルに分けるときは、instance側のファイルへ
+/// `use organization::Organization;` のようにschema moduleを`use`する。
+///
 /// `node` は3形態を受理する: `node 名前 = 型 { .. };` (型はリテラルのパスから
 /// 読む)、`node 名前: 型 = 式;` (任意の式)、`node 名前: 型;` (実体値は
 /// `Nodes::new(..)` へ実行時に渡す)。
 ///
 /// 生成される `macro_rules!` はschema宣言と同じテキスト順の制約を持つ:
 /// `static_graph_schema! { schema <名前> { .. } }` より後ろの行でしか
-/// `<名前>! { .. }` を呼べない。構文・生成される名前の公開契約・
+/// `<名前>! { .. }` を呼べない。グラフ本体は `DevTeam::Graph::new(&nodes, &edges)`
+/// のようにinstance moduleへの修飾パスで構築する。構文・生成される名前の公開契約・
 /// コンパイル時検査の一覧は `docs/static_graph.md` を参照。
 #[proc_macro]
 pub fn static_graph_schema(input: TokenStream) -> TokenStream {

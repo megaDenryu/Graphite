@@ -31,9 +31,11 @@ pub(crate) fn instanceを解決する(
             }
             let Some((schema, schema_site)) = 名簿.探す(&call.name) else {
                 if 追跡形式らしいか(&call.tokens) {
+                    let site = DeclarationSite::new(file.display_path.clone(), call.line);
                     return Err(format!(
-                        "{}:{}: schema `{}` がこのパッケージに見つかりません",
-                        file.display_path, call.line, call.name
+                        "{}: schema `{}` がこのパッケージに見つかりません",
+                        site.display(),
+                        call.name
                     )
                     .into());
                 }
@@ -58,17 +60,29 @@ pub(crate) fn instanceを解決する(
 // instance候補として扱わない呼び出し名。(a) Graphiteのschema宣言マクロ自身
 // (名簿とのマッチング対象にする意味が無く、`generated = "...";` で始まる
 // 自分自身の入力を「typoしたinstance」と誤検出しても意味が無い)。
-// (b) `quote!`。graphite-codegen/graphite-cli自身の単体試験は、DSL構文木を
-// 組み立てる素材として `quote! { generated = "..."; graph X; .. }` の形の
-// トークン列を大量に持つ (`parse_tracked_static_schema`/
+// (b) `quote` crateのトークン列組み立てマクロ (`quote!`・`quote_spanned!`)と
+// `syn` crateの `parse_quote!`。graphite-codegen/graphite-cli自身の単体
+// 試験は、DSL構文木を組み立てる素材として `quote! { generated = "...";
+// graph X; .. }` の形のトークン列を大量に持つ (`parse_tracked_static_schema`/
 // `parse_tracked_static_instance` の入力フィクスチャ)。これは実在の
-// instance宣言ではなくデータであり、`quote!` の入力を「typoしたinstance」
-// として解析しようとすると、Graphite自身のソースを `cargo xtask generate`
-// で処理したときに大量の偽陽性を生む。`quote!` は文位置に直接書く
-// instance宣言の記法と違い、常に他のマクロ (ここでは `quote!` 自身) の
-// 引数としてしか存在しない値であり、検査の対象外にしてよい。
+// instance宣言ではなくデータであり、この形のマクロの入力を「typoした
+// instance」として解析しようとすると、Graphite自身のソースを
+// `cargo xtask generate` で処理したときに大量の偽陽性を生む
+// (`syn::parse_quote! { generated = "..."; graph A; }` で実際に誤検出を
+// 確認した)。この3つはどれも「トークン列を組み立てて返すマクロ」という
+// 同じ性質を持ち、文位置に直接書くinstance宣言の記法と違って常に他のマクロ
+// (ここでは `quote!`/`quote_spanned!`/`parse_quote!` 自身) の引数としてしか
+// 存在しない値であり、検査の対象外にしてよい。
 fn 候補として扱わない名前か(name: &str) -> bool {
-    matches!(name, "dynamic_graph_schema" | "graph_schema" | "static_graph_schema" | "quote")
+    matches!(
+        name,
+        "dynamic_graph_schema"
+            | "graph_schema"
+            | "static_graph_schema"
+            | "quote"
+            | "quote_spanned"
+            | "parse_quote"
+    )
 }
 
 // `generated = "文字列";` から始まる呼び出しかを見る (完全な解析はしない)。

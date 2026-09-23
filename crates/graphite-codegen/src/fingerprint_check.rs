@@ -59,7 +59,7 @@ fn 古い生成ファイルの警告文(対象: &str) -> String {
 // 呼び出し側で `quote!` へ組み立てるため、パス中の識別子は呼び出し側が
 // 持つ元トークンのspanをそのまま保つ (このspanは書き換えない)。
 //
-// `span` はこのブロック全体の足場トークン (`const`・`if`・`panic!` 等) へ
+// `span` はこのブロック全体を囲むトークン (`const`・`if`・`panic!` 等) へ
 // 付けるspanである。動的グラフは現行動作を保つため
 // `proc_macro2::Span::call_site()` を渡す (挙動を変えない)。静的グラフの
 // schema/instanceは `generated = "..."` リテラルのspanを渡し、include の

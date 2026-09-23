@@ -16,9 +16,15 @@
 //! - `internal_names`: `inline/` が使う内部生成名。
 //! - `wiring_names`: `entity`/`nodes`/`edges` (配線用、docを持たない
 //!   `pub(super)` のフィールド・引数の名前)。
+//! - `fingerprint_anchor`: `schema_entry.rs`・`instance_entry.rs` が指紋照合
+//!   コードのmoduleパスに使う、`generated = "..."` リテラルのspanを持つ
+//!   識別子 (doc を持たない。C分類でもない: 実在するschema名/instance名の
+//!   トークンを別の実在するトークン (`generated` リテラル) のspanへ respan
+//!   するだけであり、公開APIの名前ではなく診断のspanだけに使う)。
 
 mod card_names;
 mod field_card_names;
+mod fingerprint_anchor;
 mod fixed_vocabulary;
 mod internal_names;
 mod reference_paths;
@@ -39,6 +45,7 @@ pub(crate) use fixed_vocabulary::{
     個体実体所有者型名, 個体参照フィールド名, 個体参照集合型名, 構築メソッド名, 実体アクセサメソッド名, 辺実体所有者型名,
     辺参照フィールド名, 辺参照集合型名, グラフ型名,
 };
+pub(crate) use fingerprint_anchor::指紋照合パスの起点;
 pub(crate) use internal_names::{個体供給関数名, 積み荷供給関数名, 型参照関数名};
 pub(crate) use reference_paths::{個体参照パス, 辺値参照パス, 辺参照パス};
 pub(crate) use type_names::{個体参照型名, 辺値型名, 辺参照型名};

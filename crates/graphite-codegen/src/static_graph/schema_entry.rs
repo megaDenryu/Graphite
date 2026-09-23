@@ -9,6 +9,7 @@ use quote::quote;
 
 use crate::fingerprint_check::{指紋照合コードを生成する, 静的schema対象文言, 静的schema指紋定数名};
 
+use super::naming::指紋照合パスの起点;
 use super::{parse_tracked_static_schema, schema};
 
 pub fn parse_and_expand_static_graph_schema(input: TokenStream) -> TokenStream {
@@ -20,8 +21,9 @@ pub fn parse_and_expand_static_graph_schema(input: TokenStream) -> TokenStream {
     };
     let schema名 = tracked.schema_name();
     let 定数名 = 静的schema指紋定数名();
+    let 定数パスの起点 = 指紋照合パスの起点(schema名, tracked.generated_path().span());
     let 指紋照合 = 指紋照合コードを生成する(
-        quote! { #schema名::#定数名 },
+        quote! { #定数パスの起点::#定数名 },
         tracked.fingerprint(),
         &静的schema対象文言(schema名),
         tracked.generated_path().span(),

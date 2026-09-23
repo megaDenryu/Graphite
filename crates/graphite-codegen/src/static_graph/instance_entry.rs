@@ -15,6 +15,7 @@ use syn::parse::{Parse, ParseStream};
 
 use crate::fingerprint_check::{指紋照合コードを生成する, 静的instance対象文言, 静的instance指紋定数名};
 
+use super::naming::指紋照合パスの起点;
 use super::{inline, instance展開用に解析する, schema};
 
 struct 静的グラフ転送入力 {
@@ -49,8 +50,9 @@ pub fn expand_static_graph_internal(input: TokenStream) -> TokenStream {
 
     let instance名 = tracked.instance_name();
     let 定数名 = 静的instance指紋定数名();
+    let 定数パスの起点 = 指紋照合パスの起点(instance名, tracked.generated_path().span());
     let 指紋照合 = 指紋照合コードを生成する(
-        quote! { #instance名::#定数名 },
+        quote! { #定数パスの起点::#定数名 },
         tracked.fingerprint(),
         &静的instance対象文言(instance名),
         tracked.generated_path().span(),

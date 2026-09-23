@@ -9,6 +9,8 @@
 
 mod token_type_reference;
 mod value_supply;
+#[cfg(test)]
+mod tests;
 
 // `file::instance_file` が生成ファイル側の呼び出しに使う供給関数の名前は
 // `naming::internal_names` (`個体供給関数名`・`積み荷供給関数名`) から直接

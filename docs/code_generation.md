@@ -38,13 +38,15 @@ graphite::dynamic_graph_schema! {
 
 1. **動的グラフのschema** (`dynamic_graph_schema!`)。1宣言につき生成ファイル1件。
 2. **静的グラフのschema** (`static_graph_schema!`)。1宣言につき生成ファイル1件 (種別ごとの辺値 `pub struct {種別}Edge<'a>` を持つ)。
-3. **静的グラフのinstance** (schema名そのものを名前にしたマクロ、例: `Org! { .. }`)。1宣言につき生成ファイル1件。`Nodes`・`Edges`・`{個体名}Ref`・`{辺名}Ref`・`{graph名}` を持つ。
+3. **静的グラフのinstance** (schema名そのものを名前にしたマクロ、例: `Org! { .. }`)。1宣言につき生成ファイル1件。`Nodes`・`Edges`・`{個体名}Ref`・`{辺名}Ref`・グラフ本体の型 `Graph` を持つ。利用者はこの`Graph`を、instance宣言と同じ名前のmoduleを介した修飾パス (`{instance名}::Graph`) で参照する。
 
-静的グラフのschema・instanceも`generated = "..."`と生成moduleの配線を動的グラフと同じ形で書く (`docs/static_graph.md`「2層マクロの使い方」参照)。生成の探索は2段階を踏む: パッケージ内の全ファイルを1回ずつ構文解析して集めた `static_graph_schema!` の呼び出しから静的schema名簿を作り (schema名の重複はここでエラーにする)、名簿の名前と一致する残りのマクロ呼び出しをinstanceとみなして解決する。名簿に無い名前で始まるのに`generated = "...";`から始まる呼び出しは「schemaが見つからない」エラーにする。
+利用者は、静的グラフのschema・instanceも`generated = "..."`と生成moduleの配線を動的グラフと同じ形で書く (`docs/static_graph.md`「2層マクロの使い方」参照)。生成器は、生成の探索を2段階で行う: パッケージ内の全ファイルを1回ずつ構文解析して集めた `static_graph_schema!` の呼び出しから静的schema名簿を作り (schema名の重複はここでエラーにする)、名簿の名前と一致する残りのマクロ呼び出しをinstanceとみなして解決する。生成器は、名簿に無い名前で始まるのに`generated = "...";`から始まる呼び出しを「schemaが見つからない」エラーにする。
 
 instanceの生成ファイルは、instanceの値の式 (ノードの初期値・積み荷の値) を含まない。値の式は宣言元ファイルのその場展開に残るため、値だけを書き換えた編集では再生成が要らない (指紋は構造 (名前・型・値の有無・端点・積み荷の有無) だけで決まる)。
 
-Rustとして解析できないファイルは、走査から黙って除外せず違反にする (`generate`/`generate --check` を止める)。対象外にするのは`target`・`generated`・`ui`の各ディレクトリだけである。
+生成器は、Rustとして解析できないファイルを走査から黙って除外せず違反にする (`generate`/`generate --check` を止める)。対象外にするのは`target`・`generated`・`ui`の各ディレクトリだけである。
+
+この検査には及ばない範囲が3つある。(1) `quote!`・`quote_spanned!`・`parse_quote!`の入力の中に書かれた、instance宣言に似た形のトークン列は対象外にする (これらはトークン列を組み立てて返すマクロであり、その入力は文位置に直接書くinstance宣言ではなくデータであるため)。(2) 名簿に無い名前で始まり、かつ`generated = "...";`から始まらない呼び出しは対象外にする。schema名の綴り誤りと`generated`の書き忘れが同時に起きた宣言は、生成器のこの検査では検出できない (この場合は生成された`macro_rules!`が見つからず、通常の`cargo build`がコンパイルエラーとして検出する)。(3) 走査は各パッケージ直下の`src`・`tests`だけを対象にし、パッケージが個別に持てる`examples/`・`benches/`ディレクトリ (Cargoの規約による、`cargo run --example`・`cargo bench`向けのディレクトリ) は走査しない。
 
 `generate`/`generate --check`はどちらも、読んだ宣言の内訳と件数を1行で表示する: `dynamic schema N件、static schema N件、static instance N件、生成 M件 (解析したファイル K件)`。
 
