@@ -19,9 +19,8 @@ fn flowはfan_outとfan_inを組み合わせた関数の辺として動く() {
 
     #[rustfmt::skip]
     graphite::flow! {
-        "21" -[parse]-> parsed,
-        parsed -[validate]-> valid,
-        parsed -[double]-> doubled,
+        "21" -[parse]-> parsed -[validate]-> valid,
+                        parsed -[double]-> doubled,
         (valid, doubled) -[merge]-> summary,
     };
     assert_eq!(parsed, 21);

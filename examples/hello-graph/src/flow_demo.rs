@@ -33,10 +33,9 @@ pub fn section5() {
 
     #[rustfmt::skip]
     graphite::flow! {
-        "21" -[parse]-> parsed,              // 直線 (1本の矢印)
-        parsed -[validate]-> valid,          // fan-out: parsed を2本の矢印に流す
-        parsed -[double]-> doubled,
-        (valid, doubled) -[merge]-> summary, // fan-in: タプル始点は多引数呼び出しに脱糖
+        "21" -[parse]-> parsed -[validate]-> valid,
+                        parsed -[double]-> doubled,     // fan-out: parsed から2本の矢印に流す
+        (valid, doubled) -[merge]-> summary,            // fan-in: タプル始点は多引数呼び出しに脱糖
     };
     // parsed/valid/doubled/summary はいずれも flow! の後で普通のローカル
     // 変数として見える (§3 の graph! 左辺名は名前付きwrapperのメソッドとして
