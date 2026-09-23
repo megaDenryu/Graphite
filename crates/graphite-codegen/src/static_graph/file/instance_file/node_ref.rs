@@ -2,8 +2,10 @@
 // 実体・Nodes・Edgesへの配線フィールド (entity/nodes/edges) は非公開に
 // し、docは付けない。非公開にすることで、利用者が構造体リテラルで
 // `{個体名}Ref`を直接作り、由来の異なる`Nodes`/`Edges`を混ぜた不整合な
-// 値を組み立てる迂回を防ぐ (`Graph`・`NodeRefs`・`EdgeRefs`の公開フィールド
-// はA分類の公開契約なので対象外、`docs/static_graph.md`「制約」節参照)。
+// 値を組み立てる迂回を防ぐ。`Graph`・`NodeRefs`・`EdgeRefs`のフィールドも
+// 同じ理由で非公開にしてあり (`graph_struct.rs`・`ref_collections.rs`)、
+// 読み出しは`node_refs()`/`edge_refs()`等のメソッドで行う
+// (`docs/static_graph.md`「制約」節参照)。
 // `entity()` と所属辺メソッドは `pub` + 意味カードにする。
 
 use proc_macro2::TokenStream;

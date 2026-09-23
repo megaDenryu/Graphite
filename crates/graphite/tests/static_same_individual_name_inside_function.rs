@@ -72,8 +72,8 @@ fn 関数内で同名個体を持つ2つのinstanceを組み立てる() -> (Stri
     let g_d = 検証チームd::Graph::new(&edges_d);
 
     (
-        g_c.node_refs.太郎.太郎の所属().team().entity().名前.clone(),
-        g_d.node_refs.太郎.太郎の所属().team().entity().名前.clone(),
+        g_c.node_refs().太郎().太郎の所属().team().entity().名前.clone(),
+        g_d.node_refs().太郎().太郎の所属().team().entity().名前.clone(),
     )
 }
 

@@ -129,7 +129,7 @@ pub fn 読書会グラフの割り当てを求める() -> (String, String) {
     let nodes = Circle::construct::nodes!();
     let edges = Circle::construct::edges!(&nodes);
     let g = Circle::Graph::new(&edges);
-    let 割り当て = g.edge_refs.割り当て;
+    let 割り当て = g.edge_refs().割り当て();
     (割り当て.book().entity().title.clone(), 割り当て.reader().entity().name.clone())
 }
 

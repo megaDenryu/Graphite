@@ -108,21 +108,21 @@ fn main() {
     let edges = 開発チーム::construct::edges!(&nodes);
     let g = 開発チーム::Graph::new(&edges);
 
-    let 太郎の参照 = g.node_refs.太郎;
+    let 太郎の参照 = g.node_refs().太郎();
     println!("太郎の上司: {}", 太郎の参照.太郎の上司().superior().entity().名前());
     println!("太郎の上司の任命日: {}", 太郎の参照.太郎の上司().任命().任命日);
     println!("太郎の上司の所属先: {}", 太郎の参照.太郎の上司().superior().次郎の所属().team().entity().名前());
     println!("太郎の所属先: {}", 太郎の参照.太郎の所属().team().entity().名前());
-    println!("太郎の所属元 (辺参照から): {}", g.edge_refs.太郎の所属.member().entity().名前());
-    println!("太郎の友人 (無向辺の端点): {} と {}", g.edge_refs.太郎と次郎.甲().entity().名前(), g.edge_refs.太郎と次郎.乙().entity().名前());
+    println!("太郎の所属元 (辺参照から): {}", g.edge_refs().太郎の所属().member().entity().名前());
+    println!("太郎の友人 (無向辺の端点): {} と {}", g.edge_refs().太郎と次郎().甲().entity().名前(), g.edge_refs().太郎と次郎().乙().entity().名前());
     println!(
         "太郎と一郎の同僚関係 (積み荷付き無向辺): {} と {} (経緯: {})",
-        g.edge_refs.太郎と一郎の同僚.甲().entity().名前(),
-        g.edge_refs.太郎と一郎の同僚.乙().entity().名前(),
-        g.edge_refs.太郎と一郎の同僚.経緯().経緯
+        g.edge_refs().太郎と一郎の同僚().甲().entity().名前(),
+        g.edge_refs().太郎と一郎の同僚().乙().entity().名前(),
+        g.edge_refs().太郎と一郎の同僚().経緯().経緯
     );
-    println!("次郎の所属先: {}", g.node_refs.次郎.次郎の所属().team().entity().名前());
-    println!("上司関係の部下 (辺参照から): {}", g.edge_refs.太郎の上司.subordinate().entity().名前());
+    println!("次郎の所属先: {}", g.node_refs().次郎().次郎の所属().team().entity().名前());
+    println!("上司関係の部下 (辺参照から): {}", g.edge_refs().太郎の上司().subordinate().entity().名前());
     println!("太郎のあだ名 (後付けメソッド): {}", 太郎の参照.あだ名());
     println!("経理チームの花子の所属先 (同一schemaの2つ目のグラフ): {}", 経理チームの花子の所属先を求める());
 
@@ -184,5 +184,5 @@ fn 経理チームの花子の所属先を求める() -> String {
     let nodes = 経理チーム::construct::nodes!();
     let edges = 経理チーム::construct::edges!(&nodes);
     let g = 経理チーム::Graph::new(&edges);
-    g.node_refs.花子.花子の所属().team().entity().名前().to_string()
+    g.node_refs().花子().花子の所属().team().entity().名前().to_string()
 }

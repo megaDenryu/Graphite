@@ -68,7 +68,7 @@ mod dev_team {
         let nodes = 開発チーム::construct::nodes!();
         let edges = 開発チーム::construct::edges!(&nodes);
         let g = 開発チーム::Graph::new(&edges);
-        g.node_refs.太郎.太郎の所属().team().entity().名前.clone()
+        g.node_refs().太郎().太郎の所属().team().entity().名前.clone()
     }
 }
 

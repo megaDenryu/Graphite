@@ -61,7 +61,7 @@ fn 個体の値の式はnodesを組み立てるたびに1回だけ評価され�
     assert_eq!(太郎の評価回数.load(Ordering::SeqCst), 1, "1回目の組み立てで1回評価される");
     let edges1回目 = 検証評価回数チーム::construct::edges!(&組み立て結果1回目);
     let g1回目 = 検証評価回数チーム::Graph::new(&edges1回目);
-    assert_eq!(g1回目.node_refs.太郎.entity().名前, "太郎");
+    assert_eq!(g1回目.node_refs().太郎().entity().名前, "太郎");
 
     let _組み立て結果2回目 = 検証評価回数チーム::construct::nodes!();
     assert_eq!(

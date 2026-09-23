@@ -165,14 +165,14 @@ A・Bのどちらも、F12は生成ファイルの中の人間が読める定義
 | 辺を構築するマクロ | `edges` | B | `{instance名}::construct::edges!(&nodes)` | `&Nodes`を受け取り、積み荷ありの具体辺の値をすべてinstance宣言の式から計算する。`Edges<'_>`を返す。積み荷を実行時に差し替える引数は無い |
 | ノードの実体の唯一の所有者 | `Nodes` | B | `{instance名}::Nodes` | フィールドは非公開。個体の実体を読むには`Graph`構築後に`NodeRefs`経由で`entity()`を使う。内部構築子 (`__graphite_internal_new`、C分類) は`construct::nodes!`から呼ぶことを想定した橋渡しであり、直接の呼び出しを支援しない (下の「制約」節参照) |
 | 辺の実体の唯一の所有者 | `Edges<'a>` | B | `{instance名}::Edges` | フィールドは非公開。構築時に使った`&'a Nodes`を自分の中に保持しており、`Graph`はこの`Edges`だけを起点に構築する (由来の異なる`Nodes`と組み合わせられない)。内部構築子は`construct::edges!`から呼ぶことを想定した橋渡しであり、直接の呼び出しを支援しない |
-| グラフ本体 | `Graph` | B | `{instance名}::Graph` | `{instance名}::Graph::new(&edges)` で構築する。フィールドは `node_refs`/`edge_refs`。`edges`が保持する`&Nodes`を内部で使うため、`Nodes`を別途渡す引数は無い |
-| 個体参照の集まり | `NodeRefs<'a>` | B | `{instance名}::NodeRefs` | `Graph::node_refs` フィールドの型 |
-| 辺参照の集まり | `EdgeRefs<'a>` | B | `{instance名}::EdgeRefs` | `Graph::edge_refs` フィールドの型 |
-| `Graph`のフィールド | `node_refs`/`edge_refs` | B | `g.node_refs`/`g.edge_refs` | それぞれ `NodeRefs`/`EdgeRefs` を持つ |
-| `NodeRefs`・`EdgeRefs`が持つ個体名・辺名のフィールド | 個体名/辺名そのまま | A | `g.node_refs.{個体名}`・`g.edge_refs.{辺名}` | 型 (`NodeRefs`等) はB分類の固定語彙だが、フィールド名は利用者が書いた個体名・辺名をそのまま使う |
-| 個体ごとの具象参照 | `{個体名}Ref` | A | `{instance名}::{個体名}Ref` | `g.node_refs.{個体名}` からアクセスする |
+| グラフ本体 | `Graph` | B | `{instance名}::Graph` | `{instance名}::Graph::new(&edges)` で構築する。フィールドは非公開で、`node_refs()`/`edge_refs()`メソッドで読み出す。`edges`が保持する`&Nodes`を内部で使うため、`Nodes`を別途渡す引数は無い |
+| 個体参照の集まり | `NodeRefs<'a>` | B | `{instance名}::NodeRefs` | `Graph::node_refs()` が返す型 |
+| 辺参照の集まり | `EdgeRefs<'a>` | B | `{instance名}::EdgeRefs` | `Graph::edge_refs()` が返す型 |
+| `Graph`が個体参照・辺参照の集まりを返すメソッド | `node_refs`/`edge_refs` | B | `g.node_refs()`/`g.edge_refs()` | それぞれ `&NodeRefs`/`&EdgeRefs` を返す |
+| `NodeRefs`・`EdgeRefs`が持つ個体名・辺名のメソッド | 個体名/辺名そのまま | A | `g.node_refs().{個体名}()`・`g.edge_refs().{辺名}()` | 型 (`NodeRefs`等) はB分類の固定語彙だが、メソッド名は利用者が書いた個体名・辺名をそのまま使う。それぞれ`{個体名}Ref`/`{辺名}Ref`を値で返す |
+| 個体ごとの具象参照 | `{個体名}Ref` | A | `{instance名}::{個体名}Ref` | `g.node_refs().{個体名}()` からアクセスする |
 | 具象参照から実体を取り出すメソッド | `entity()` | B | `{個体名}Ref::entity()` | `&実体型` を返す |
-| 辺インスタンスごとの具象参照 | `{辺名}Ref` | A | `{instance名}::{辺名}Ref` | `g.edge_refs.{辺名}` からアクセスする |
+| 辺インスタンスごとの具象参照 | `{辺名}Ref` | A | `{instance名}::{辺名}Ref` | `g.edge_refs().{辺名}()` からアクセスする |
 | 個体参照から具体辺参照を返すメソッド | 辺名そのまま | A | `{個体名}Ref::{辺名}()` | 個体が端点になっている具体辺ごとに、その辺名をメソッド名にして生える (`太郎Ref::太郎の所属() -> 太郎の所属Ref`)。端点でない具体辺のメソッドは生えない (「存在しない辿り」検査、下の「コンパイル時検査の一覧」参照) |
 | 種別ごとの辺値 struct | `{種別名}Edge` | A | `{schema名}::{種別名}Edge` | 役割名・積み荷フィールドをそのまま持つ。schemaファイルの中にあり、同じschemaから作った複数のinstanceで共有する |
 | 辺参照のロールアクセサ | 役割名そのまま | A | `{辺名}Ref::{役割名}()` | 有向・無向を問わず、schema宣言の役割名がそのままアクセサ名になる (`所属(member: 社員) -> (team: 部署)` なら `.member()`/`.team()`、`友人 = (甲: 社員) -- (乙: 社員)` なら `.甲()`/`.乙()`)。無向辺専用の固定名は存在しない |
@@ -184,11 +184,13 @@ A・Bのどちらも、F12は生成ファイルの中の人間が読める定義
 のように、module越しの修飾パスで書け、生成されたチェーンの末尾へ通常の
 メソッドと同じ形で継ぎ足せる (`examples/static-org/src/main.rs`)。
 `{個体名}Ref`・`{辺名}Ref`の配線フィールド (`entity`/`nodes`/`edges`) は
-非公開であり、利用者は構造体リテラルで直接作れない (`Graph`・`NodeRefs`・
-`EdgeRefs`の公開フィールドはA分類の公開契約なので対象外)。非公開にする
-前は、親moduleから構造体リテラルで別の`Nodes`を混ぜた不整合な参照を
-組み立てられた。回帰試験:
+非公開であり、利用者は構造体リテラルで直接作れない。`Graph`・`NodeRefs`・
+`EdgeRefs`のフィールドも同じ理由で非公開であり、読み出しは
+`node_refs()`/`edge_refs()`、個体名・辺名のメソッドを通す。非公開にする
+前は、親moduleから構造体リテラルで別の`Nodes`を混ぜた不整合な参照や、
+2つのグラフの部品を混ぜた不整合な`Graph`を組み立てられた。回帰試験:
 `crates/graphite/tests/ui/static_ref_struct_literal_rejected.rs`・
+`static_graph_struct_literal_rejected.rs`・
 `static_graph_new_rejects_two_arguments.rs`。
 
 これらの名前は英語である。マクロ名 (`static_graph_schema!`) と生成される固定名

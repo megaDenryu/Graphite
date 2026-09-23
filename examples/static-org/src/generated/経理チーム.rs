@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_STATIC_INSTANCE_FINGERPRINT: [u64; 4] = [
-    5591389354904065411u64, 15121035826099727884u64, 15124233642140430541u64,
-    14258419586645995993u64,
+    10125427848444798714u64, 3559559731474546361u64, 15995910119598906912u64,
+    8419911210483110564u64,
 ];
 /// Graphite 静的グラフの個体実体の所有者 `Nodes` (Graphite の固定語彙)。
 ///
@@ -196,20 +196,8 @@ impl<'a> 花子の所属Ref<'a> {
 ///
 /// 固定語彙: `NodeRefs` (`docs/static_graph.md` 「生成される名前の公開契約」)
 pub struct NodeRefs<'a> {
-    /// Graphite 静的グラフの個体参照フィールド。`NodeRefs` がこの個体の具体参照を持つ。
-    ///
-    /// - graph: `経理チーム`
-    /// - 個体: `花子`
-    ///
-    /// 宣言: `src/main.rs` の `node 花子: 社員 = ..`
-    pub 花子: 花子Ref<'a>,
-    /// Graphite 静的グラフの個体参照フィールド。`NodeRefs` がこの個体の具体参照を持つ。
-    ///
-    /// - graph: `経理チーム`
-    /// - 個体: `総務部`
-    ///
-    /// 宣言: `src/main.rs` の `node 総務部: 部署 = ..`
-    pub 総務部: 総務部Ref<'a>,
+    花子: 花子Ref<'a>,
+    総務部: 総務部Ref<'a>,
 }
 impl<'a> NodeRefs<'a> {
     fn new(nodes: &'a Nodes, edges: &'a Edges<'a>) -> Self {
@@ -226,6 +214,24 @@ impl<'a> NodeRefs<'a> {
             },
         }
     }
+    /// Graphite 静的グラフの個体参照メソッド。`NodeRefs` がこのメソッドでこの個体の具体参照を返す。
+    ///
+    /// - graph: `経理チーム`
+    /// - 個体: `花子`
+    ///
+    /// 宣言: `src/main.rs` の `node 花子: 社員 = ..`
+    pub fn 花子(&self) -> 花子Ref<'a> {
+        self.花子
+    }
+    /// Graphite 静的グラフの個体参照メソッド。`NodeRefs` がこのメソッドでこの個体の具体参照を返す。
+    ///
+    /// - graph: `経理チーム`
+    /// - 個体: `総務部`
+    ///
+    /// 宣言: `src/main.rs` の `node 総務部: 部署 = ..`
+    pub fn 総務部(&self) -> 総務部Ref<'a> {
+        self.総務部
+    }
 }
 /// Graphite 静的グラフの辺参照の集まり `EdgeRefs` (Graphite の固定語彙)。
 ///
@@ -233,13 +239,7 @@ impl<'a> NodeRefs<'a> {
 ///
 /// 固定語彙: `EdgeRefs` (`docs/static_graph.md` 「生成される名前の公開契約」)
 pub struct EdgeRefs<'a> {
-    /// Graphite 静的グラフの辺参照フィールド。`EdgeRefs` がこの具体辺の具体参照を持つ。
-    ///
-    /// - graph: `経理チーム`
-    /// - 具体辺: `花子の所属`
-    ///
-    /// 宣言: `src/main.rs` の `edge 花子の所属 = 所属(花子 -> 総務部)`
-    pub 花子の所属: 花子の所属Ref<'a>,
+    花子の所属: 花子の所属Ref<'a>,
 }
 impl<'a> EdgeRefs<'a> {
     fn new(nodes: &'a Nodes, edges: &'a Edges<'a>) -> Self {
@@ -251,6 +251,15 @@ impl<'a> EdgeRefs<'a> {
             },
         }
     }
+    /// Graphite 静的グラフの辺参照メソッド。`EdgeRefs` がこのメソッドでこの具体辺の具体参照を返す。
+    ///
+    /// - graph: `経理チーム`
+    /// - 具体辺: `花子の所属`
+    ///
+    /// 宣言: `src/main.rs` の `edge 花子の所属 = 所属(花子 -> 総務部)`
+    pub fn 花子の所属(&self) -> 花子の所属Ref<'a> {
+        self.花子の所属
+    }
 }
 /// Graphite 静的グラフの具体グラフ本体 `Graph` (Graphite の固定語彙)。
 ///
@@ -258,18 +267,8 @@ impl<'a> EdgeRefs<'a> {
 ///
 /// 固定語彙: `Graph` (`docs/static_graph.md` 「生成される名前の公開契約」)
 pub struct Graph<'a> {
-    /// Graphite 静的グラフの `Graph` が持つ個体参照の集まりへのフィールド `node_refs` (Graphite の固定語彙)。
-    ///
-    /// - graph: `経理チーム`
-    ///
-    /// 固定語彙: `node_refs` (`docs/static_graph.md` 「生成される名前の公開契約」)
-    pub node_refs: NodeRefs<'a>,
-    /// Graphite 静的グラフの `Graph` が持つ辺参照の集まりへのフィールド `edge_refs` (Graphite の固定語彙)。
-    ///
-    /// - graph: `経理チーム`
-    ///
-    /// 固定語彙: `edge_refs` (`docs/static_graph.md` 「生成される名前の公開契約」)
-    pub edge_refs: EdgeRefs<'a>,
+    node_refs: NodeRefs<'a>,
+    edge_refs: EdgeRefs<'a>,
 }
 impl<'a> Graph<'a> {
     /// Graphite 静的グラフの `Graph` を構築する (Graphite の固定語彙)。
@@ -283,6 +282,22 @@ impl<'a> Graph<'a> {
             node_refs: NodeRefs::new(nodes, edges),
             edge_refs: EdgeRefs::new(nodes, edges),
         }
+    }
+    /// Graphite 静的グラフの `Graph` が個体参照の集まりを返すメソッド `node_refs` (Graphite の固定語彙)。
+    ///
+    /// - graph: `経理チーム`
+    ///
+    /// 固定語彙: `node_refs` (`docs/static_graph.md` 「生成される名前の公開契約」)
+    pub fn node_refs(&self) -> &NodeRefs<'a> {
+        &self.node_refs
+    }
+    /// Graphite 静的グラフの `Graph` が辺参照の集まりを返すメソッド `edge_refs` (Graphite の固定語彙)。
+    ///
+    /// - graph: `経理チーム`
+    ///
+    /// 固定語彙: `edge_refs` (`docs/static_graph.md` 「生成される名前の公開契約」)
+    pub fn edge_refs(&self) -> &EdgeRefs<'a> {
+        &self.edge_refs
     }
 }
 /// Graphite 静的グラフの構築の入口をまとめるmodule `construct` (Graphite の固定語彙)。

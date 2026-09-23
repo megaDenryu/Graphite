@@ -8,9 +8,11 @@
 //!   であり、doc付きの `追跡付きの名前` を返す。
 //! - `fixed_vocabulary`: `Nodes`/`Edges`/`NodeRefs`/`EdgeRefs`/`Graph`・
 //!   `Graph::new`・`entity`・`node_refs`/`edge_refs` (分類B、簡潔な意味
-//!   カード)。
+//!   カード。`node_refs`/`edge_refs`は`Graph`が持つメソッドの名前である)。
 //! - `card_names`: 意味カードの書式を §5.2 の例そのままで固定した3件
 //!   (辺アクセサメソッド・役割アクセサ・積み荷アクセサ)。
+//! - `accessor_card_names`: `NodeRefs`/`EdgeRefs`が個体・具体辺1件ごとに
+//!   持つ読み出しメソッドの意味カード。
 //! - `construct_fixed_vocabulary`: `construct::nodes!`/`construct::edges!`
 //!   (値ありの個体・積み荷を差し替えられない構築の入口。`Nodes::new`/
 //!   `Edges::new`は内部専用のC分類であり、
@@ -28,9 +30,9 @@
 //!   spanへ付け替えるだけであり、公開APIの名前ではなく診断のspanだけに
 //!   使う)。
 
+mod accessor_card_names;
 mod card_names;
 mod construct_fixed_vocabulary;
-mod field_card_names;
 mod fingerprint_anchor;
 mod fixed_vocabulary;
 mod internal_names;
@@ -41,12 +43,12 @@ mod wiring_names;
 #[cfg(test)]
 mod tests;
 
+pub(crate) use accessor_card_names::{edge_refsメソッドの追跡情報を作る, node_refsメソッドの追跡情報を作る};
 pub(crate) use card_names::{役割アクセサの追跡情報を作る, 積み荷アクセサの追跡情報を作る, 辺アクセサメソッドの追跡情報を作る};
 pub(crate) use construct_fixed_vocabulary::{個体構築マクロ名, 構築モジュール名, 辺構築マクロ名};
-pub(crate) use field_card_names::{edge_refsフィールドの追跡情報を作る, node_refsフィールドの追跡情報を作る};
 pub(crate) use fixed_vocabulary::{
-    個体実体所有者型名, 個体参照フィールド名, 個体参照集合型名, 構築メソッド名, 実体アクセサメソッド名, 辺実体所有者型名,
-    辺参照フィールド名, 辺参照集合型名, グラフ型名,
+    個体実体所有者型名, 個体参照メソッド名, 個体参照集合型名, 構築メソッド名, 実体アクセサメソッド名, 辺実体所有者型名,
+    辺参照メソッド名, 辺参照集合型名, グラフ型名,
 };
 pub(crate) use fingerprint_anchor::指紋照合パスの起点;
 pub(crate) use internal_names::{型参照関数名, 個体値マクロ名, 内部構築子名, 積み荷値マクロ名};

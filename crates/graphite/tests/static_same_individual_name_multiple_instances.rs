@@ -75,8 +75,8 @@ fn 最上位に同名個体を持つ複数instanceを置いてもビルドでき
     let edges_b = 検証チームb::construct::edges!(&nodes_b);
     let g_b = 検証チームb::Graph::new(&edges_b);
 
-    assert_eq!(g_a.node_refs.太郎.entity().名前, "太郎(A)");
-    assert_eq!(g_b.node_refs.太郎.entity().名前, "太郎(B)");
-    assert_eq!(g_a.node_refs.太郎.太郎の所属().team().entity().名前, "開発部");
-    assert_eq!(g_b.node_refs.太郎.太郎の所属().team().entity().名前, "総務部");
+    assert_eq!(g_a.node_refs().太郎().entity().名前, "太郎(A)");
+    assert_eq!(g_b.node_refs().太郎().entity().名前, "太郎(B)");
+    assert_eq!(g_a.node_refs().太郎().太郎の所属().team().entity().名前, "開発部");
+    assert_eq!(g_b.node_refs().太郎().太郎の所属().team().entity().名前, "総務部");
 }

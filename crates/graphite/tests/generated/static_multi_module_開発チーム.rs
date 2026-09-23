@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_STATIC_INSTANCE_FINGERPRINT: [u64; 4] = [
-    15100597419960183463u64, 13479447944514533572u64, 13494017775059857481u64,
-    14197044073419072677u64,
+    12933154650313473006u64, 854873101728343433u64, 9217094292727755540u64,
+    13707663768511913480u64,
 ];
 /// Graphite 静的グラフの個体実体の所有者 `Nodes` (Graphite の固定語彙)。
 ///
@@ -196,20 +196,8 @@ impl<'a> 太郎の所属Ref<'a> {
 ///
 /// 固定語彙: `NodeRefs` (`docs/static_graph.md` 「生成される名前の公開契約」)
 pub struct NodeRefs<'a> {
-    /// Graphite 静的グラフの個体参照フィールド。`NodeRefs` がこの個体の具体参照を持つ。
-    ///
-    /// - graph: `開発チーム`
-    /// - 個体: `太郎`
-    ///
-    /// 宣言: `tests/static_multi_module.rs` の `node 太郎: 社員 = ..`
-    pub 太郎: 太郎Ref<'a>,
-    /// Graphite 静的グラフの個体参照フィールド。`NodeRefs` がこの個体の具体参照を持つ。
-    ///
-    /// - graph: `開発チーム`
-    /// - 個体: `開発部`
-    ///
-    /// 宣言: `tests/static_multi_module.rs` の `node 開発部: 部署 = ..`
-    pub 開発部: 開発部Ref<'a>,
+    太郎: 太郎Ref<'a>,
+    開発部: 開発部Ref<'a>,
 }
 impl<'a> NodeRefs<'a> {
     fn new(nodes: &'a Nodes, edges: &'a Edges<'a>) -> Self {
@@ -226,6 +214,24 @@ impl<'a> NodeRefs<'a> {
             },
         }
     }
+    /// Graphite 静的グラフの個体参照メソッド。`NodeRefs` がこのメソッドでこの個体の具体参照を返す。
+    ///
+    /// - graph: `開発チーム`
+    /// - 個体: `太郎`
+    ///
+    /// 宣言: `tests/static_multi_module.rs` の `node 太郎: 社員 = ..`
+    pub fn 太郎(&self) -> 太郎Ref<'a> {
+        self.太郎
+    }
+    /// Graphite 静的グラフの個体参照メソッド。`NodeRefs` がこのメソッドでこの個体の具体参照を返す。
+    ///
+    /// - graph: `開発チーム`
+    /// - 個体: `開発部`
+    ///
+    /// 宣言: `tests/static_multi_module.rs` の `node 開発部: 部署 = ..`
+    pub fn 開発部(&self) -> 開発部Ref<'a> {
+        self.開発部
+    }
 }
 /// Graphite 静的グラフの辺参照の集まり `EdgeRefs` (Graphite の固定語彙)。
 ///
@@ -233,13 +239,7 @@ impl<'a> NodeRefs<'a> {
 ///
 /// 固定語彙: `EdgeRefs` (`docs/static_graph.md` 「生成される名前の公開契約」)
 pub struct EdgeRefs<'a> {
-    /// Graphite 静的グラフの辺参照フィールド。`EdgeRefs` がこの具体辺の具体参照を持つ。
-    ///
-    /// - graph: `開発チーム`
-    /// - 具体辺: `太郎の所属`
-    ///
-    /// 宣言: `tests/static_multi_module.rs` の `edge 太郎の所属 = 所属(太郎 -> 開発部)`
-    pub 太郎の所属: 太郎の所属Ref<'a>,
+    太郎の所属: 太郎の所属Ref<'a>,
 }
 impl<'a> EdgeRefs<'a> {
     fn new(nodes: &'a Nodes, edges: &'a Edges<'a>) -> Self {
@@ -251,6 +251,15 @@ impl<'a> EdgeRefs<'a> {
             },
         }
     }
+    /// Graphite 静的グラフの辺参照メソッド。`EdgeRefs` がこのメソッドでこの具体辺の具体参照を返す。
+    ///
+    /// - graph: `開発チーム`
+    /// - 具体辺: `太郎の所属`
+    ///
+    /// 宣言: `tests/static_multi_module.rs` の `edge 太郎の所属 = 所属(太郎 -> 開発部)`
+    pub fn 太郎の所属(&self) -> 太郎の所属Ref<'a> {
+        self.太郎の所属
+    }
 }
 /// Graphite 静的グラフの具体グラフ本体 `Graph` (Graphite の固定語彙)。
 ///
@@ -258,18 +267,8 @@ impl<'a> EdgeRefs<'a> {
 ///
 /// 固定語彙: `Graph` (`docs/static_graph.md` 「生成される名前の公開契約」)
 pub struct Graph<'a> {
-    /// Graphite 静的グラフの `Graph` が持つ個体参照の集まりへのフィールド `node_refs` (Graphite の固定語彙)。
-    ///
-    /// - graph: `開発チーム`
-    ///
-    /// 固定語彙: `node_refs` (`docs/static_graph.md` 「生成される名前の公開契約」)
-    pub node_refs: NodeRefs<'a>,
-    /// Graphite 静的グラフの `Graph` が持つ辺参照の集まりへのフィールド `edge_refs` (Graphite の固定語彙)。
-    ///
-    /// - graph: `開発チーム`
-    ///
-    /// 固定語彙: `edge_refs` (`docs/static_graph.md` 「生成される名前の公開契約」)
-    pub edge_refs: EdgeRefs<'a>,
+    node_refs: NodeRefs<'a>,
+    edge_refs: EdgeRefs<'a>,
 }
 impl<'a> Graph<'a> {
     /// Graphite 静的グラフの `Graph` を構築する (Graphite の固定語彙)。
@@ -283,6 +282,22 @@ impl<'a> Graph<'a> {
             node_refs: NodeRefs::new(nodes, edges),
             edge_refs: EdgeRefs::new(nodes, edges),
         }
+    }
+    /// Graphite 静的グラフの `Graph` が個体参照の集まりを返すメソッド `node_refs` (Graphite の固定語彙)。
+    ///
+    /// - graph: `開発チーム`
+    ///
+    /// 固定語彙: `node_refs` (`docs/static_graph.md` 「生成される名前の公開契約」)
+    pub fn node_refs(&self) -> &NodeRefs<'a> {
+        &self.node_refs
+    }
+    /// Graphite 静的グラフの `Graph` が辺参照の集まりを返すメソッド `edge_refs` (Graphite の固定語彙)。
+    ///
+    /// - graph: `開発チーム`
+    ///
+    /// 固定語彙: `edge_refs` (`docs/static_graph.md` 「生成される名前の公開契約」)
+    pub fn edge_refs(&self) -> &EdgeRefs<'a> {
+        &self.edge_refs
     }
 }
 /// Graphite 静的グラフの構築の入口をまとめるmodule `construct` (Graphite の固定語彙)。

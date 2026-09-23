@@ -55,8 +55,8 @@ fn 関数の引数を個体の値の式が参照する(名前: String, 日付: u
     let edges = 検証チーム引数::construct::edges!(&nodes);
     let g = 検証チーム引数::Graph::new(&edges);
     (
-        g.node_refs.太郎.entity().名前.clone(),
-        g.node_refs.太郎.太郎の上司().任命().任命日,
+        g.node_refs().太郎().entity().名前.clone(),
+        g.node_refs().太郎().太郎の上司().任命().任命日,
     )
 }
 
@@ -83,7 +83,7 @@ fn 関数のローカル変数を個体の値の式が参照する() -> String {
     let nodes = 検証チームローカル::construct::nodes!();
     let edges = 検証チームローカル::construct::edges!(&nodes);
     let g = 検証チームローカル::Graph::new(&edges);
-    format!("{} in {}", g.node_refs.太郎.entity().名前, 部署名)
+    format!("{} in {}", g.node_refs().太郎().entity().名前, 部署名)
 }
 
 // ジェネリックの型引数 (`T`) を経由した値を、値の式が参照する。
@@ -106,7 +106,7 @@ fn 型引数を経由した値を個体の値の式が参照する<T: std::fmt::
     let nodes = 検証チーム型引数::construct::nodes!();
     let edges = 検証チーム型引数::construct::edges!(&nodes);
     let g = 検証チーム型引数::Graph::new(&edges);
-    g.node_refs.太郎.entity().名前.clone()
+    g.node_refs().太郎().entity().名前.clone()
 }
 
 #[test]

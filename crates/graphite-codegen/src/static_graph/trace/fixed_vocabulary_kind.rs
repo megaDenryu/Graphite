@@ -20,8 +20,8 @@ pub(crate) enum 固定語彙 {
     // 等) であり、`Graph::new`だけが公開契約として残る。
     GraphNew,
     Entity,
-    NodeRefsフィールド,
-    EdgeRefsフィールド,
+    NodeRefsMethod,
+    EdgeRefsMethod,
     // instance展開が呼び出し位置から辿れる構築の入口。
     // `{instance名}::construct::nodes!`/`{instance名}::construct::edges!`と
     // いう修飾パスの、それぞれの区間の固定語彙。
@@ -40,8 +40,8 @@ impl 固定語彙 {
             Self::Graph => "Graph",
             Self::GraphNew => "new",
             Self::Entity => 実体アクセサ名,
-            Self::NodeRefsフィールド => "node_refs",
-            Self::EdgeRefsフィールド => "edge_refs",
+            Self::NodeRefsMethod => "node_refs",
+            Self::EdgeRefsMethod => "edge_refs",
             Self::ConstructModule => "construct",
             Self::ConstructNodes => "nodes",
             Self::ConstructEdges => "edges",
@@ -57,8 +57,8 @@ mod tests {
     fn 固定語彙の識別子文字列を返す() {
         assert_eq!(固定語彙::GraphNew.識別子文字列(), "new");
         assert_eq!(固定語彙::Entity.識別子文字列(), "entity");
-        assert_eq!(固定語彙::NodeRefsフィールド.識別子文字列(), "node_refs");
-        assert_eq!(固定語彙::EdgeRefsフィールド.識別子文字列(), "edge_refs");
+        assert_eq!(固定語彙::NodeRefsMethod.識別子文字列(), "node_refs");
+        assert_eq!(固定語彙::EdgeRefsMethod.識別子文字列(), "edge_refs");
         assert_eq!(固定語彙::ConstructModule.識別子文字列(), "construct");
         assert_eq!(固定語彙::ConstructNodes.識別子文字列(), "nodes");
         assert_eq!(固定語彙::ConstructEdges.識別子文字列(), "edges");

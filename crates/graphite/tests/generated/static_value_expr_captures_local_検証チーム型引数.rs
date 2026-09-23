@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_STATIC_INSTANCE_FINGERPRINT: [u64; 4] = [
-    3636001002460345347u64, 9968697384365325002u64, 10798552115659181749u64,
-    1869369654064780057u64,
+    10479518632984028748u64, 129775491881742339u64, 9819209673547994038u64,
+    9324043002914992786u64,
 ];
 /// Graphite 静的グラフの個体実体の所有者 `Nodes` (Graphite の固定語彙)。
 ///
@@ -212,20 +212,8 @@ impl<'a> 太郎の上司Ref<'a> {
 ///
 /// 固定語彙: `NodeRefs` (`docs/static_graph.md` 「生成される名前の公開契約」)
 pub struct NodeRefs<'a> {
-    /// Graphite 静的グラフの個体参照フィールド。`NodeRefs` がこの個体の具体参照を持つ。
-    ///
-    /// - graph: `検証チーム型引数`
-    /// - 個体: `太郎`
-    ///
-    /// 宣言: `tests/static_value_expr_captures_local.rs` の `node 太郎: 社員 = ..`
-    pub 太郎: 太郎Ref<'a>,
-    /// Graphite 静的グラフの個体参照フィールド。`NodeRefs` がこの個体の具体参照を持つ。
-    ///
-    /// - graph: `検証チーム型引数`
-    /// - 個体: `次郎`
-    ///
-    /// 宣言: `tests/static_value_expr_captures_local.rs` の `node 次郎: 社員 = ..`
-    pub 次郎: 次郎Ref<'a>,
+    太郎: 太郎Ref<'a>,
+    次郎: 次郎Ref<'a>,
 }
 impl<'a> NodeRefs<'a> {
     fn new(nodes: &'a Nodes, edges: &'a Edges<'a>) -> Self {
@@ -242,6 +230,24 @@ impl<'a> NodeRefs<'a> {
             },
         }
     }
+    /// Graphite 静的グラフの個体参照メソッド。`NodeRefs` がこのメソッドでこの個体の具体参照を返す。
+    ///
+    /// - graph: `検証チーム型引数`
+    /// - 個体: `太郎`
+    ///
+    /// 宣言: `tests/static_value_expr_captures_local.rs` の `node 太郎: 社員 = ..`
+    pub fn 太郎(&self) -> 太郎Ref<'a> {
+        self.太郎
+    }
+    /// Graphite 静的グラフの個体参照メソッド。`NodeRefs` がこのメソッドでこの個体の具体参照を返す。
+    ///
+    /// - graph: `検証チーム型引数`
+    /// - 個体: `次郎`
+    ///
+    /// 宣言: `tests/static_value_expr_captures_local.rs` の `node 次郎: 社員 = ..`
+    pub fn 次郎(&self) -> 次郎Ref<'a> {
+        self.次郎
+    }
 }
 /// Graphite 静的グラフの辺参照の集まり `EdgeRefs` (Graphite の固定語彙)。
 ///
@@ -249,13 +255,7 @@ impl<'a> NodeRefs<'a> {
 ///
 /// 固定語彙: `EdgeRefs` (`docs/static_graph.md` 「生成される名前の公開契約」)
 pub struct EdgeRefs<'a> {
-    /// Graphite 静的グラフの辺参照フィールド。`EdgeRefs` がこの具体辺の具体参照を持つ。
-    ///
-    /// - graph: `検証チーム型引数`
-    /// - 具体辺: `太郎の上司`
-    ///
-    /// 宣言: `tests/static_value_expr_captures_local.rs` の `edge 太郎の上司 = 上司(太郎 -[..]-> 次郎)`
-    pub 太郎の上司: 太郎の上司Ref<'a>,
+    太郎の上司: 太郎の上司Ref<'a>,
 }
 impl<'a> EdgeRefs<'a> {
     fn new(nodes: &'a Nodes, edges: &'a Edges<'a>) -> Self {
@@ -267,6 +267,15 @@ impl<'a> EdgeRefs<'a> {
             },
         }
     }
+    /// Graphite 静的グラフの辺参照メソッド。`EdgeRefs` がこのメソッドでこの具体辺の具体参照を返す。
+    ///
+    /// - graph: `検証チーム型引数`
+    /// - 具体辺: `太郎の上司`
+    ///
+    /// 宣言: `tests/static_value_expr_captures_local.rs` の `edge 太郎の上司 = 上司(太郎 -[..]-> 次郎)`
+    pub fn 太郎の上司(&self) -> 太郎の上司Ref<'a> {
+        self.太郎の上司
+    }
 }
 /// Graphite 静的グラフの具体グラフ本体 `Graph` (Graphite の固定語彙)。
 ///
@@ -274,18 +283,8 @@ impl<'a> EdgeRefs<'a> {
 ///
 /// 固定語彙: `Graph` (`docs/static_graph.md` 「生成される名前の公開契約」)
 pub struct Graph<'a> {
-    /// Graphite 静的グラフの `Graph` が持つ個体参照の集まりへのフィールド `node_refs` (Graphite の固定語彙)。
-    ///
-    /// - graph: `検証チーム型引数`
-    ///
-    /// 固定語彙: `node_refs` (`docs/static_graph.md` 「生成される名前の公開契約」)
-    pub node_refs: NodeRefs<'a>,
-    /// Graphite 静的グラフの `Graph` が持つ辺参照の集まりへのフィールド `edge_refs` (Graphite の固定語彙)。
-    ///
-    /// - graph: `検証チーム型引数`
-    ///
-    /// 固定語彙: `edge_refs` (`docs/static_graph.md` 「生成される名前の公開契約」)
-    pub edge_refs: EdgeRefs<'a>,
+    node_refs: NodeRefs<'a>,
+    edge_refs: EdgeRefs<'a>,
 }
 impl<'a> Graph<'a> {
     /// Graphite 静的グラフの `Graph` を構築する (Graphite の固定語彙)。
@@ -299,6 +298,22 @@ impl<'a> Graph<'a> {
             node_refs: NodeRefs::new(nodes, edges),
             edge_refs: EdgeRefs::new(nodes, edges),
         }
+    }
+    /// Graphite 静的グラフの `Graph` が個体参照の集まりを返すメソッド `node_refs` (Graphite の固定語彙)。
+    ///
+    /// - graph: `検証チーム型引数`
+    ///
+    /// 固定語彙: `node_refs` (`docs/static_graph.md` 「生成される名前の公開契約」)
+    pub fn node_refs(&self) -> &NodeRefs<'a> {
+        &self.node_refs
+    }
+    /// Graphite 静的グラフの `Graph` が辺参照の集まりを返すメソッド `edge_refs` (Graphite の固定語彙)。
+    ///
+    /// - graph: `検証チーム型引数`
+    ///
+    /// 固定語彙: `edge_refs` (`docs/static_graph.md` 「生成される名前の公開契約」)
+    pub fn edge_refs(&self) -> &EdgeRefs<'a> {
+        &self.edge_refs
     }
 }
 /// Graphite 静的グラフの構築の入口をまとめるmodule `construct` (Graphite の固定語彙)。

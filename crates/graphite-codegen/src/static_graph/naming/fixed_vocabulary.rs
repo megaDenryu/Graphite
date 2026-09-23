@@ -97,19 +97,19 @@ pub(crate) fn 実体アクセサメソッド名(意味モデル: &意味モデ�
     )
 }
 
-pub(crate) fn 個体参照フィールド名(意味モデル: &意味モデル) -> 追跡付きの名前 {
+pub(crate) fn 個体参照メソッド名(意味モデル: &意味モデル) -> 追跡付きの名前 {
     固定語彙の名前を作る(
-        固定語彙::NodeRefsフィールド,
+        固定語彙::NodeRefsMethod,
         意味モデル,
-        "Graphite 静的グラフの `Graph` が持つ個体参照の集まりへのフィールド `node_refs` (Graphite の固定語彙)。",
+        "Graphite 静的グラフの `Graph` が個体参照の集まりを返すメソッド `node_refs` (Graphite の固定語彙)。",
     )
 }
 
-pub(crate) fn 辺参照フィールド名(意味モデル: &意味モデル) -> 追跡付きの名前 {
+pub(crate) fn 辺参照メソッド名(意味モデル: &意味モデル) -> 追跡付きの名前 {
     固定語彙の名前を作る(
-        固定語彙::EdgeRefsフィールド,
+        固定語彙::EdgeRefsMethod,
         意味モデル,
-        "Graphite 静的グラフの `Graph` が持つ辺参照の集まりへのフィールド `edge_refs` (Graphite の固定語彙)。",
+        "Graphite 静的グラフの `Graph` が辺参照の集まりを返すメソッド `edge_refs` (Graphite の固定語彙)。",
     )
 }
 

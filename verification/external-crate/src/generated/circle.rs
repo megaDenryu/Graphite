@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_STATIC_INSTANCE_FINGERPRINT: [u64; 4] = [
-    8724010185372794112u64, 3870681999277302027u64, 6944244433017773086u64,
-    17745014741785197554u64,
+    14525001603493775856u64, 8400508092904293481u64, 1885641960989767998u64,
+    15291797682214371482u64,
 ];
 /// Graphite 静的グラフの個体実体の所有者 `Nodes` (Graphite の固定語彙)。
 ///
@@ -196,20 +196,8 @@ impl<'a> 割り当てRef<'a> {
 ///
 /// 固定語彙: `NodeRefs` (`docs/static_graph.md` 「生成される名前の公開契約」)
 pub struct NodeRefs<'a> {
-    /// Graphite 静的グラフの個体参照フィールド。`NodeRefs` がこの個体の具体参照を持つ。
-    ///
-    /// - graph: `Circle`
-    /// - 個体: `本`
-    ///
-    /// 宣言: `src/lib.rs` の `node 本: Book = ..`
-    pub 本: 本Ref<'a>,
-    /// Graphite 静的グラフの個体参照フィールド。`NodeRefs` がこの個体の具体参照を持つ。
-    ///
-    /// - graph: `Circle`
-    /// - 個体: `読者`
-    ///
-    /// 宣言: `src/lib.rs` の `node 読者: Reader = ..`
-    pub 読者: 読者Ref<'a>,
+    本: 本Ref<'a>,
+    読者: 読者Ref<'a>,
 }
 impl<'a> NodeRefs<'a> {
     fn new(nodes: &'a Nodes, edges: &'a Edges<'a>) -> Self {
@@ -226,6 +214,24 @@ impl<'a> NodeRefs<'a> {
             },
         }
     }
+    /// Graphite 静的グラフの個体参照メソッド。`NodeRefs` がこのメソッドでこの個体の具体参照を返す。
+    ///
+    /// - graph: `Circle`
+    /// - 個体: `本`
+    ///
+    /// 宣言: `src/lib.rs` の `node 本: Book = ..`
+    pub fn 本(&self) -> 本Ref<'a> {
+        self.本
+    }
+    /// Graphite 静的グラフの個体参照メソッド。`NodeRefs` がこのメソッドでこの個体の具体参照を返す。
+    ///
+    /// - graph: `Circle`
+    /// - 個体: `読者`
+    ///
+    /// 宣言: `src/lib.rs` の `node 読者: Reader = ..`
+    pub fn 読者(&self) -> 読者Ref<'a> {
+        self.読者
+    }
 }
 /// Graphite 静的グラフの辺参照の集まり `EdgeRefs` (Graphite の固定語彙)。
 ///
@@ -233,13 +239,7 @@ impl<'a> NodeRefs<'a> {
 ///
 /// 固定語彙: `EdgeRefs` (`docs/static_graph.md` 「生成される名前の公開契約」)
 pub struct EdgeRefs<'a> {
-    /// Graphite 静的グラフの辺参照フィールド。`EdgeRefs` がこの具体辺の具体参照を持つ。
-    ///
-    /// - graph: `Circle`
-    /// - 具体辺: `割り当て`
-    ///
-    /// 宣言: `src/lib.rs` の `edge 割り当て = Assigned(本 -> 読者)`
-    pub 割り当て: 割り当てRef<'a>,
+    割り当て: 割り当てRef<'a>,
 }
 impl<'a> EdgeRefs<'a> {
     fn new(nodes: &'a Nodes, edges: &'a Edges<'a>) -> Self {
@@ -251,6 +251,15 @@ impl<'a> EdgeRefs<'a> {
             },
         }
     }
+    /// Graphite 静的グラフの辺参照メソッド。`EdgeRefs` がこのメソッドでこの具体辺の具体参照を返す。
+    ///
+    /// - graph: `Circle`
+    /// - 具体辺: `割り当て`
+    ///
+    /// 宣言: `src/lib.rs` の `edge 割り当て = Assigned(本 -> 読者)`
+    pub fn 割り当て(&self) -> 割り当てRef<'a> {
+        self.割り当て
+    }
 }
 /// Graphite 静的グラフの具体グラフ本体 `Graph` (Graphite の固定語彙)。
 ///
@@ -258,18 +267,8 @@ impl<'a> EdgeRefs<'a> {
 ///
 /// 固定語彙: `Graph` (`docs/static_graph.md` 「生成される名前の公開契約」)
 pub struct Graph<'a> {
-    /// Graphite 静的グラフの `Graph` が持つ個体参照の集まりへのフィールド `node_refs` (Graphite の固定語彙)。
-    ///
-    /// - graph: `Circle`
-    ///
-    /// 固定語彙: `node_refs` (`docs/static_graph.md` 「生成される名前の公開契約」)
-    pub node_refs: NodeRefs<'a>,
-    /// Graphite 静的グラフの `Graph` が持つ辺参照の集まりへのフィールド `edge_refs` (Graphite の固定語彙)。
-    ///
-    /// - graph: `Circle`
-    ///
-    /// 固定語彙: `edge_refs` (`docs/static_graph.md` 「生成される名前の公開契約」)
-    pub edge_refs: EdgeRefs<'a>,
+    node_refs: NodeRefs<'a>,
+    edge_refs: EdgeRefs<'a>,
 }
 impl<'a> Graph<'a> {
     /// Graphite 静的グラフの `Graph` を構築する (Graphite の固定語彙)。
@@ -283,6 +282,22 @@ impl<'a> Graph<'a> {
             node_refs: NodeRefs::new(nodes, edges),
             edge_refs: EdgeRefs::new(nodes, edges),
         }
+    }
+    /// Graphite 静的グラフの `Graph` が個体参照の集まりを返すメソッド `node_refs` (Graphite の固定語彙)。
+    ///
+    /// - graph: `Circle`
+    ///
+    /// 固定語彙: `node_refs` (`docs/static_graph.md` 「生成される名前の公開契約」)
+    pub fn node_refs(&self) -> &NodeRefs<'a> {
+        &self.node_refs
+    }
+    /// Graphite 静的グラフの `Graph` が辺参照の集まりを返すメソッド `edge_refs` (Graphite の固定語彙)。
+    ///
+    /// - graph: `Circle`
+    ///
+    /// 固定語彙: `edge_refs` (`docs/static_graph.md` 「生成される名前の公開契約」)
+    pub fn edge_refs(&self) -> &EdgeRefs<'a> {
+        &self.edge_refs
     }
 }
 /// Graphite 静的グラフの構築の入口をまとめるmodule `construct` (Graphite の固定語彙)。

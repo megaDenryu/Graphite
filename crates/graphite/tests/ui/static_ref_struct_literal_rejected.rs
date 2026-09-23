@@ -51,5 +51,5 @@ fn main() {
 
     // 別の由来の`Nodes`/`Edges`を、構造体リテラルで直接組み合わせようと
     // する迂回はコンパイルエラーになる (フィールドが非公開のため)。
-    let _迂回 = 開発チーム::太郎Ref { entity: g.node_refs.太郎.entity(), nodes: &nodes, edges: &edges };
+    let _迂回 = 開発チーム::太郎Ref { entity: g.node_refs().太郎().entity(), nodes: &nodes, edges: &edges };
 }
