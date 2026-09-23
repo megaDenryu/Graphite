@@ -1,15 +1,18 @@
 // instanceの `generated = "...";` は書いたが、instance module
 // (`mod 開発チーム { include!(..); }`) の宣言そのものを忘れた場合の診断を
 // 固定する (issue #41)。`開発チーム::..` を参照するコード全てが解決に
-// 失敗し、2件のE0433になる。
+// 失敗し、4件のE0433になる。
 //
 // 1件目は指紋照合コードが参照する `開発チーム::__GRAPHITE_STATIC_INSTANCE_FINGERPRINT`。
 // このパスの先頭識別子だけ `generated = "..."` リテラルのspanで組み立てる
 // (`instance_entry.rs`) ため、`generated` の行を指す。
-// 2件目はDSLトークンの型参照・値供給関数が参照する `開発チーム::太郎Ref`・
-// `開発チーム::Nodes` 等。これらはinstance自身のトークン (`graph 開発チーム;`
-// のグラフ名トークン) のspanをそのまま使う設計 (`docs/static_graph.md`
-// 「追跡の契約」) のため、`graph 開発チーム;` の行を指す。
+// 残り3件はDSLトークンの型参照・組み立て関数が参照する `開発チーム::太郎Ref`・
+// `開発チーム::Nodes`・`開発チーム::Edges` 等。これらはinstance自身のトークン
+// (`graph 開発チーム;` のグラフ名トークン) のspanをそのまま使う設計
+// (`docs/static_graph.md` 「追跡の契約」) のため、`graph 開発チーム;` の行を
+// 指す。`Nodes`・`Edges`は名前がpetgraphの同名structと衝突するため、rustcが
+// 無関係な `use petgraph::.. ;` のimport提案を添える (既知の制約、
+// `docs/static_graph.md` 「診断」節参照)。
 
 struct 社員;
 

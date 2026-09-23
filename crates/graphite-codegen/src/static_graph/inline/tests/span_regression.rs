@@ -85,8 +85,7 @@ fn 個体供給関数の戻り値型は実体型トークンの実際の行と�
     assert_ne!(元span始点, LineColumn { line: 1, column: 0 });
     assert_eq!(元span始点.line, 2);
 
-    let nodes型 = quote::quote! { 開発チーム::Nodes };
-    let 供給関数 = 個体供給関数を組み立てる(&nodes型, 太郎);
+    let 供給関数 = 個体供給関数を組み立てる(太郎);
     let 戻り値型ident =
         最初に一致するidentを探す(&供給関数, "社員").expect("戻り値型の社員が居るはず");
     assert_eq!(

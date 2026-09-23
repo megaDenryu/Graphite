@@ -126,8 +126,8 @@ ReadingCircle! {
 // を返す。`dynamic_graph_schema!`/`graph!` と異なり、個体・辺の集合自体がコンパイル
 // 時に固定されているため `freeze()` を呼ばない。
 pub fn 読書会グラフの割り当てを求める() -> (String, String) {
-    let nodes = Circle::Nodes::new();
-    let edges = Circle::Edges::new(&nodes);
+    let nodes = Circleの個体を組み立てる();
+    let edges = Circleの辺を組み立てる(&nodes);
     let g = Circle::Graph::new(&nodes, &edges);
     let 割り当て = g.edge_refs.割り当て;
     (割り当て.book().entity().title.clone(), 割り当て.reader().entity().name.clone())

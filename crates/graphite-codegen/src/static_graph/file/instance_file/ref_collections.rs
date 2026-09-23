@@ -13,7 +13,7 @@ use crate::static_graph::naming::{
 use crate::static_graph::semantic::意味モデル;
 use crate::static_graph::trace::固定語彙の所有者;
 
-use super::super::doc_render::doc属性を組み立てる;
+use crate::static_graph::doc_render::doc属性を組み立てる;
 
 pub(super) fn node_refs本体を組み立てる(意味モデル: &意味モデル, 宣言元: &宣言元の対) -> TokenStream {
     let 型名 = 個体参照集合型名(意味モデル);

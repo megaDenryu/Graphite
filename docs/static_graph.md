@@ -23,9 +23,8 @@ Rustの `static`/`'static` (静的な記憶域・生存期間) とは無関係�
 
 schema・instanceは共に `generated = "..."` を持ち、動的グラフ (`dynamic_graph_schema!`) と同じ生成ファイル・指紋照合の方式で公開APIを追跡する (issue #41)。
 利用者は、宣言と同じファイルへ、生成先を読み込む `mod <名前> { include!("generated/<名前>.rs"); }` を置く (配線の書式は `docs/code_generation.md` を参照)。
-利用者は、この`mod`をinstance宣言と同じスコープに置く (下の例の`mod 開発チーム`が`組織! { .. }`と同じ最上位スコープにあるのが、`mod`をinstance宣言と同じスコープに置くこの規則の実例であり、関数の中でinstanceを宣言する場合は`mod`も同じ関数の中に置く)。
-この規則を破り、instance自身の`mod`だけを外側のスコープに置いてinstance宣言を関数の中に置くと、`組織! { .. }`の展開が生成する値供給関数の`impl <名前>::Nodes { .. }`が、外側で定義された`Nodes`型に対する非局所implになり、`non_local_definitions`警告 (「`Nodes`型はローカルではありません」の趣旨) が出る (実測は下の「制約」節を参照)。
-公開の `Nodes`・`Edges`・`{個体名}Ref`・`{辺名}Ref`・`Graph` はすべてこの生成ファイルの中にあり、schema・instanceマクロのその場展開には現れない。
+この`mod`の置き場所はinstance宣言の置き場所と無関係である。instance展開はimplを一切使わず、値の橋渡しを素の関数 (呼び出し位置に生成する組み立て関数、下の「生成される名前の公開契約」参照) だけで行うため、利用者が`mod`を最上位に置いたままinstance宣言を関数の中に置いても警告は出ない (実測は `crates/graphite/tests/static_mod_outside_instance_inside_fn.rs` を参照。`#![deny(warnings)]`で警告0件を固定している)。
+公開の `Nodes`・`Edges`・`{個体名}Ref`・`{辺名}Ref`・`Graph` はすべてこの生成ファイルの中にあり、schema・instanceマクロのその場展開には現れない。組み立て関数 (`{グラフ名}の個体を組み立てる`・`{グラフ名}の辺を組み立てる`) だけは例外で、その場展開の出力としてinstance宣言の呼び出し位置に生成される。既定の可視性は `pub(crate)` であり、利用者は同じcrateの中からこの関数を呼ぶ (呼び出し位置がライブラリの最上位でも、`mod`が私有なら生成ファイルの公開型が外部に漏れないため、組み立て関数も同じ可視性に合わせる)。
 
 schemaとinstanceを別ファイルに分ける場合、利用者は2つの配線を行う。
 1つ目はschema moduleの`use`である。
@@ -137,8 +136,8 @@ schema名がそのままマクロ名になるため、instance宣言はschema名
 1. `名前 = 型 { .. };` — 構造体リテラル。実体型はリテラルのパスから読む
 2. `名前: 型 = 式;` — 型を明示すれば右辺は構造体リテラルに限らない任意の式で
    よい (関数呼び出し等)
-3. `名前: 型;` — 宣言のみ。実体値は `Nodes::new(..)` の引数として実行時に
-   渡す (次節)
+3. `名前: 型;` — 宣言のみ。実体値は、instance展開が生成する組み立て関数
+   `{グラフ名}の個体を組み立てる(..)` の引数として実行時に渡す (次節)
 
 型注釈も構造体リテラルも無い場合は `` `node 名前: 型 = 式;` か
 `node 名前 = 型 { ... };` の形で書いてください `` という展開時エラーになる。
@@ -161,8 +160,10 @@ A・Bのどちらも、F12は生成ファイルの中の人間が読める定義
 
 | 生成されるもの | 名前 | 分類 | 修飾パスの例 | 備考 |
 |---|---|---|---|---|
-| ノードの実体の唯一の所有者 | `Nodes` | B | `{instance名}::Nodes` | `Nodes::new(..)` は値なし宣言 (`node 名前: 型;`) の個体だけを宣言順の位置引数に取る (引数名は個体名、型はその個体の実体型)。全個体が値ありなら引数なし |
-| 辺の実体の唯一の所有者 | `Edges<'a>` | B | `{instance名}::Edges` | `Edges::new(&nodes)` |
+| 個体を組み立てる関数 | `{グラフ名}の個体を組み立てる` | A | `{グラフ名}の個体を組み立てる(..)` | instance展開がその場展開の出力として呼び出し位置に生成する (生成ファイルの中には無い)。値なし宣言 (`node 名前: 型;`) の個体だけを宣言順の位置引数に取り、値ありの個体はinstance宣言の式から計算した値を`Nodes::new`へ渡す。`Nodes`を返す。既定の可視性は`pub(crate)` |
+| 辺を組み立てる関数 | `{グラフ名}の辺を組み立てる` | A | `{グラフ名}の辺を組み立てる(&nodes)` | instance展開がその場展開の出力として呼び出し位置に生成する (生成ファイルの中には無い)。`&Nodes`を受け取り、積み荷ありの具体辺の値をinstance宣言の式から計算して`Edges::new`へ渡す。`Edges<'_>`を返す。既定の可視性は`pub(crate)` |
+| ノードの実体の唯一の所有者 | `Nodes` | B | `{instance名}::Nodes` | `Nodes::new(..)` は値の計算を持たない素の構築子であり、全個体を宣言順の位置引数にそのまま取る (引数名は個体名、型はその個体の実体型)。値ありの個体の値も計算済みの値として渡す必要があるため、通常は直接呼ばず `{グラフ名}の個体を組み立てる` を使う |
+| 辺の実体の唯一の所有者 | `Edges<'a>` | B | `{instance名}::Edges` | `Edges::new(&nodes, ..)` も値の計算を持たない素の構築子であり、`&'a Nodes` に加え積み荷ありの具体辺すべてを宣言順の位置引数にそのまま取る。通常は直接呼ばず `{グラフ名}の辺を組み立てる` を使う |
 | グラフ本体 | `Graph` | B | `{instance名}::Graph` | `{instance名}::Graph::new(&nodes, &edges)` で構築する。フィールドは `node_refs`/`edge_refs` |
 | 個体参照の集まり | `NodeRefs<'a>` | B | `{instance名}::NodeRefs` | `Graph::node_refs` フィールドの型 |
 | 辺参照の集まり | `EdgeRefs<'a>` | B | `{instance名}::EdgeRefs` | `Graph::edge_refs` フィールドの型 |
@@ -216,6 +217,11 @@ A・Bのどちらも、F12は生成ファイルの中の人間が読める定義
 実装追跡は生成ファイルそのものが正式経路であり、A分類・B分類どちらのF12も生成ファイルへ着地するため、実装追跡には追加の操作が要らない。
 その場展開に残る部分 (指紋照合・DSLトークンの型参照・値供給関数、「macro_rules!転送の仕組みとテキスト順の制約」節参照) を読みたい場合の補助として、`cargo expand` (`cargo install cargo-expand`が必要) を使う。
 
+**組み立て関数 (`{グラフ名}の個体を組み立てる`・`{グラフ名}の辺を組み立てる`) は、この3経路のどれについても例外である。**
+組み立て関数はその場展開の出力であり生成ファイルの中に無いため、F12は生成ファイルの定義ではなくinstance宣言そのものへ着地する (`docs/development/ide_support_spec.md`§1.16で実測)。
+組み立て関数の意味カードは「宣言:」段落を持たない (instance展開がマクロ実行中に呼び出し元のソースファイルパスを取得できないため、`instance_entry.rs`が宣言元を「分かっていない」に固定しており、意味カードの由来は「概要の1文」と「意味の箇条」だけになる)。
+本体のコードは生成ファイルに写らずその場展開に残るため、実装追跡には`cargo expand`が要る (上の段落の「補助」ではなく、組み立て関数についてはこれが唯一の経路である)。
+
 ### 意味カードの書式
 
 生成する公開型・公開メソッドのdocは、`crate::static_graph::trace`が組み立てる
@@ -239,8 +245,9 @@ A・Bのどちらも、F12は生成ファイルの中の人間が読める定義
   `static_graph_schema!`が2つ以上あれば`cargo graphite generate`/
   `cargo xtask generate`をエラーで止める。
 - **instanceを他のマクロの入力の中に書いてはならない。** `println!("{}", 組織! { .. })`のように、名簿の名前を他のマクロの引数の中へ埋め込む書き方は生成器がエラーにする (`docs/code_generation.md`参照)。利用者は、instanceを文の位置 (または関数の中の文の位置) に直接書く。
-- **生成moduleを読み込む`mod`は、instance宣言 (またはschema宣言) と同じスコープに置く。** `mod`だけを最上位に置き、instance宣言を関数の中に置くような分割は避ける (instance展開が生成する値供給関数の`impl <名前>::Nodes { .. }`が、最上位で定義された`Nodes`型に対する非局所implになり`non_local_definitions`警告が出る。`examples/static-org/src/main.rs`の`経理チームの花子の所属先を求める`関数が、両方を関数の中に置く正しい配置の実例である)。
+- **生成moduleを読み込む`mod`の置き場所は、instance宣言の置き場所と無関係である。** instance展開はimplを一切使わず、値の橋渡しを素の関数 (呼び出し位置に生成する組み立て関数) だけで行うため、利用者が`mod`を最上位に置いたままinstance宣言だけを関数の中に置いても`non_local_definitions`警告は出ない。`examples/static-org/src/main.rs`の`mod 経理チーム`(最上位)と`経理チームの花子の所属先を求める`関数(instance宣言はこの中)が、この配置の実例である。
 - **schemaとinstanceを別ファイルに分けるときは、instance側のファイルがschema moduleを`use`し、schema側の`mod`宣言に`#[macro_use]`を付けてinstance側の`mod`宣言より前に置く。** 例: instance側のファイルは`use crate::organization::組織;`のように、schemaを宣言したファイルのmoduleを`use`する。crateの入口ファイルは`#[macro_use] mod organization; mod dev_team;`のように、schema側の`mod`をinstance側の`mod`より前に置く (理由と実測は上の「2層マクロの使い方」節を参照)。
+- **同じスコープに、同名の値ありの個体・積み荷ありの辺を持つinstanceを複数置いてよい。** 組み立て関数は、値の供給関数 (`__graphite_initial_value_{名前}`・`__graphite_payload_{辺名}`) を自分の本体の中へ入れ子で定義する。供給関数の名前は個体名・辺名だけから決まりグラフ名を含まないため、この入れ子が無いと同名の個体・辺を持つ複数のinstanceを同じスコープ (ファイルの最上位、または同じ関数の中) に置いたとき名前が衝突する。組み立て関数ごとに別スコープを持つことで、instanceが違えば同名でも衝突しない。回帰試験: `crates/graphite/tests/static_same_individual_name_multiple_instances.rs` (最上位)・`static_same_individual_name_inside_function.rs` (関数の中)。個体の値の式が組み立て関数を呼ぶたびに1回だけ評価されることの回帰試験は `crates/graphite/tests/static_individual_value_evaluated_once_per_assembly.rs`。
 
 ### renameの手順
 
@@ -288,8 +295,12 @@ rust-analyzer自身のrename機能を生成APIの名前へ直接使うのでは�
 
 1. 「型が見つからない」E0425が、DSLに出現するが古い生成ファイルには無い名前 (足りない個体・辺) の、DSLでの出現箇所ごとに1件出る。rustcは「似た名前の構造体があります」という自動修正の提案を添えることがあり、この提案はGraphiteが生成した公開名 (例: 既存個体の`一郎Ref`) への書き換えを勧める。これは利用者の語彙ではなく、利用者が採用すべき修正でもない。
 2. 再生成を促す「生成ファイルが古いため、cargo graphite generate を実行
-   してください」というE0080 (指紋照合のpanic) が最後に出る。この診断
-   だけが実際に取るべき対処 (再生成) を示す。
+   してください」というE0080 (指紋照合のpanic) が出る。個体を足した場合は
+   この後ろに、組み立て関数が古い`Nodes::new`/`Edges::new`を引数の
+   個数不一致で呼び出すE0061がもう1件続くことがある
+   (`crates/graphite/tests/ui/static_stale_generated_instance_with_individuals.rs`
+   に固定した回帰試験がある)。いずれにせよE0080は再生成を促す結論として
+   一貫して現れ、この診断だけが実際に取るべき対処 (再生成) を示す。
 
 Graphiteの開発者は、この並びを変えられないか2つの案を検証し、どちらも
 採用しなかった。
@@ -310,6 +321,17 @@ Graphiteの開発者は、この並びを変えられないか2つの案を検�
 `cargo graphite generate` (Graphiteリポジトリ自身の開発では
 `cargo xtask generate`) を実行することが正しい対処である。
 
+### instance moduleの宣言を忘れたときの無関係なimport提案 (既知の制約)
+
+instance moduleの`mod`宣言そのものを書き忘れると (`crates/graphite/tests/ui/static_instance_missing_module.rs`)、`{instance名}::..`を参照するコード全てが解決に失敗しE0433が4件出る。
+このうち組み立て関数の戻り値型 (`-> {instance名}::Nodes`・`-> {instance名}::Edges<'_>`) が原因の2件には、rustcが`help: consider importing this struct`として`use petgraph::graphmap::Nodes;`・`use petgraph::csr::Edges;`等の無関係な提案を添える。
+
+原因は名前解決の失敗そのものではなく、`Nodes`・`Edges`という名前がGraphiteの依存クレートpetgraphの複数の構造体名と一致することである。
+rustcは最初のセグメント (`{instance名}`) の解決に失敗すると、パスの最後のセグメントと同じ名前を持つ、インポート可能な項目をクレート依存グラフ全体から探して提案する。
+これはrustc組み込みの診断ヒューリスティックであり、パスに付けるspanをどう変えても (`{instance名}`を`generated = "..."`リテラルのspanへ付け替える案を実験したが、提案は消えず単にエラーの行が移動しただけだった)、名前の一致という原因を取り除かない限り消えない。
+`Nodes`・`Edges`はissue #41が定めた固定語彙であり、この提案を消すためだけに公開名を変える変更はしない。
+利用者がこの提案に遭遇したら、`use petgraph::..;`を追加するのではなく、`mod {instance名} { include!(..); }`宣言が無いことを疑うのが正しい対処である。
+
 ## macro_rules!転送の仕組みとテキスト順の制約
 
 `static_graph_schema!` はschemaを検証したうえで、schemaの生トークンを本体へ
@@ -328,17 +350,26 @@ schemaとinstance両方の生トークンを束ねて `#[doc(hidden)]` の内部
 
 その場展開に残るのは、schema側が指紋照合・node型アンカー・
 `macro_rules! {schema名}`、instance側が相互検証の診断・指紋照合・値の供給
-関数・DSLトークンの型参照だけである。公開生成物 (`Nodes`・`Edges`・
-`{個体名}Ref`・`{辺名}Ref`・`Graph` 等) はすべて生成ファイルの中にあり、
-`cargo graphite generate`/`cargo xtask generate` の対象になる (issue #41)。
+関数・組み立て関数 (`{グラフ名}の個体を組み立てる`・`{グラフ名}の
+辺を組み立てる`)・DSLトークンの型参照だけである。
+公開生成物のうち `Nodes`・`Edges`・`{個体名}Ref`・`{辺名}Ref`・`Graph` は
+すべて生成ファイルの中にあり、`cargo graphite generate`/
+`cargo xtask generate` の対象になる (issue #41)。組み立て関数だけは
+その場展開の出力としてinstance宣言の呼び出し位置に生成される。
 
 ## 実装の配置
 
 - 構文解析・検証・意味モデル・生成: `crates/graphite-codegen/src/static_graph/`
   (`schema`/`literal` は構文解析、`internal` は相互検証、`semantic` は
-  意味モデル、`trace`/`naming` は追跡情報と生成名、`file` は生成ファイル
-  本文、`inline` はその場展開に残す部分、`tracked` は追跡対象の
-  schema/instance宣言、`schema_entry`/`instance_entry` はマクロ展開の入口)
+  意味モデル、`trace`/`naming` は追跡情報と生成名 (`naming::assembly_names`
+  が組み立て関数の名前、`naming::construction_card_names`が
+  `Nodes::new`/`Edges::new`の意味カードを持つ)、`file` は生成ファイル
+  本文、`inline` はその場展開に残す部分 (`inline::value_supply`が値の
+  供給を担う素の関数、`inline::assembly`が組み立て関数)、`tracked` は
+  追跡対象のschema/instance宣言、`schema_entry`/`instance_entry` はマクロ
+  展開の入口)
+- doc属性の組み立て: `crates/graphite-codegen/src/static_graph/doc_render.rs`
+  (`file`と`inline::assembly`が共有する)
 - proc マクロ入口: `crates/graphite-macros/src/lib.rs` の `static_graph_schema`/
   `__static_graph_impl`
 - 生成ファイルの探索・書き込み・差分検査: `crates/graphite-cli/src/static_resolution/`

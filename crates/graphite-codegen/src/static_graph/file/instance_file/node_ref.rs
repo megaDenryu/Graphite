@@ -13,7 +13,7 @@ use crate::static_graph::naming::{
 };
 use crate::static_graph::semantic::{個体, 意味モデル};
 
-use super::super::doc_render::doc属性を組み立てる;
+use crate::static_graph::doc_render::doc属性を組み立てる;
 
 pub(super) fn 個体参照列を組み立てる(意味モデル: &意味モデル, 宣言元: &宣言元の対) -> TokenStream {
     let 生成列 = 意味モデル.個体列().iter().map(|個体| 一個体分を組み立てる(意味モデル, 個体, 宣言元));

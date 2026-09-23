@@ -8,8 +8,13 @@
 //!   であり、doc付きの `追跡付きの名前` を返す。
 //! - `fixed_vocabulary`: `Nodes`/`Edges`/`NodeRefs`/`EdgeRefs`/`Graph`・
 //!   `new`・`entity`・`node_refs`/`edge_refs` (分類B、簡潔な意味カード)。
-//! - `card_names`: 意味カードの書式を §5.2 の例そのままで固定した4件
-//!   (辺アクセサメソッド・役割アクセサ・積み荷アクセサ・`Nodes::new`)。
+//! - `card_names`: 意味カードの書式を §5.2 の例そのままで固定した3件
+//!   (辺アクセサメソッド・役割アクセサ・積み荷アクセサ)。
+//! - `construction_card_names`: `Nodes::new`/`Edges::new` の意味カード
+//!   (値の計算を持たない素の構築子、という同じ関心事でまとめた2件)。
+//! - `assembly_names`: instanceの個体・辺を組み立てる関数の名前
+//!   (`graph <名前>;` から派生するA分類。`inline::assembly` が本体を
+//!   組み立てる)。
 //! - `reference_paths`: instance側 (instanceファイルの本文・DSLトークンの
 //!   型参照) からの、別module越しの修飾パス参照 (`{schema名}::{種別}Edge`・
 //!   `{グラフ名}::{名前}Ref`)。doc を持たない生の `TokenStream` を返す。
@@ -23,7 +28,9 @@
 //!   spanへ付け替えるだけであり、公開APIの名前ではなく診断のspanだけに
 //!   使う)。
 
+mod assembly_names;
 mod card_names;
+mod construction_card_names;
 mod field_card_names;
 mod fingerprint_anchor;
 mod fixed_vocabulary;
@@ -35,9 +42,9 @@ mod wiring_names;
 #[cfg(test)]
 mod tests;
 
-pub(crate) use card_names::{
-    個体実体所有者構築メソッド名, 役割アクセサの追跡情報を作る, 積み荷アクセサの追跡情報を作る, 辺アクセサメソッドの追跡情報を作る,
-};
+pub(crate) use assembly_names::{個体組み立て関数名, 辺組み立て関数名};
+pub(crate) use card_names::{役割アクセサの追跡情報を作る, 積み荷アクセサの追跡情報を作る, 辺アクセサメソッドの追跡情報を作る};
+pub(crate) use construction_card_names::{個体実体所有者構築メソッド名, 辺実体所有者構築メソッド名};
 pub(crate) use field_card_names::{
     edge_refsフィールドの追跡情報を作る, edgesフィールドの追跡情報を作る, node_refsフィールドの追跡情報を作る,
     nodesフィールドの追跡情報を作る,

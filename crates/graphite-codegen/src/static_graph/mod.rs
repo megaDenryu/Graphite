@@ -29,6 +29,7 @@
 //! 探索・読み書きは `graphite-cli`/`cargo xtask generate` が行う。
 
 mod declaration_sites;
+mod doc_render;
 mod file;
 mod inline;
 mod instance_entry;

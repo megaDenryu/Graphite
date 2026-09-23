@@ -28,9 +28,26 @@ graphite::static_graph_schema! {
 // このテストの意図 (指紋照合の診断だけを見る) とは無関係な「型が見つから
 // ない」エラーが混ざってしまう (`開発チーム` は指紋定数しか持たない偽の
 // モジュールのため)。個体0件ならそれらの参照が1つも生成されない。
+// `Nodes`/`Edges` とその `new` は、個体・具体辺の数によらず組み立て関数が
+// 常に参照するため、ダミーの定義を用意して指紋照合のE0080以外のノイズを
+// 消す。
 #[allow(non_snake_case)]
 mod 開発チーム {
     pub(super) const __GRAPHITE_STATIC_INSTANCE_FINGERPRINT: [u64; 4] = [0, 0, 0, 0];
+
+    pub struct Nodes;
+    impl Nodes {
+        pub fn new() -> Self {
+            Nodes
+        }
+    }
+
+    pub struct Edges<'a>(std::marker::PhantomData<&'a ()>);
+    impl<'a> Edges<'a> {
+        pub fn new(_nodes: &'a Nodes) -> Self {
+            Edges(std::marker::PhantomData)
+        }
+    }
 }
 
 組織! {

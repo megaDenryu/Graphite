@@ -3,9 +3,9 @@
 //! `static_graph::naming` から受け取った追跡付きの名前を `pub` + 意味カード
 //! で並べる。指紋定数の埋め込み・ファイル先頭の案内コメントは
 //! `crate::generated_source` (動的グラフと共有) が担うため、ここでは
-//! 本体のTokenStreamだけを組み立てる。
+//! 本体のTokenStreamだけを組み立てる。doc属性の組み立ては
+//! `static_graph::doc_render` (`inline::assembly` と共有)。
 
-mod doc_render;
 mod instance_file;
 mod schema_file;
 

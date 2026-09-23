@@ -1,13 +1,13 @@
 // このファイルは Graphite が生成したため手編集しないこと。
-// 生成元: src/main.rs:61
+// 生成元: src/main.rs:64
 // 再生成: パッケージのディレクトリで cargo graphite generate を実行してください (Graphite リポジトリ自身の開発では cargo xtask generate)
 
 #[allow(unused_imports)]
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_STATIC_INSTANCE_FINGERPRINT: [u64; 4] = [
-    12657672980691237602u64, 9621653911832747141u64, 6501097207813417528u64,
-    5885707275103584388u64,
+    17144173166168742136u64, 1205273785705112063u64, 17277178579043035158u64,
+    2245556131657350098u64,
 ];
 /// Graphite 静的グラフの個体実体の所有者 `Nodes` (Graphite の固定語彙)。
 ///
@@ -49,21 +49,25 @@ pub struct Nodes {
     pub 開発部: 部署,
 }
 impl Nodes {
-    /// Graphite 静的グラフの個体実体の所有者 `Nodes` を構築する (Graphite の固定語彙)。
+    /// Graphite 静的グラフの個体実体の所有者 `Nodes` を構築する (Graphite の固定語彙)。全個体を宣言順の位置引数にそのまま取り、値の計算は行わない。値ありの個体をinstance宣言の式から計算して渡すのは `開発チームの個体を組み立てる` の役目。
     ///
     /// - graph: `開発チーム`
-    /// - 実行時供給が必要な個体 (引数の順): `開発部: 部署`
-    /// - instance 宣言の右辺式から作る個体: `太郎`・`次郎`・`一郎`
+    /// - 引数 (宣言順): `太郎: 社員, 次郎: 社員, 一郎: 社員, 開発部: 部署`
     ///
     /// 固定語彙: `Nodes::new` (`docs/static_graph.md` 「生成される名前の公開契約」)
     ///
     /// 関係する instance 宣言: `src/main.rs` の `graph 開発チーム`
-    pub fn new(開発部: 部署) -> Self {
+    pub fn new(
+        太郎: 社員,
+        次郎: 社員,
+        一郎: 社員,
+        開発部: 部署,
+    ) -> Self {
         Self {
-            太郎: Self::__graphite_initial_value_太郎(),
-            次郎: Self::__graphite_initial_value_次郎(),
-            一郎: Self::__graphite_initial_value_一郎(),
-            開発部: 開発部,
+            太郎,
+            次郎,
+            一郎,
+            開発部,
         }
     }
 }
@@ -123,12 +127,20 @@ pub struct Edges<'a> {
     pub 太郎と一郎の同僚: 組織::同僚Edge<'a>,
 }
 impl<'a> Edges<'a> {
-    /// Graphite 静的グラフの `Edges` を構築する (Graphite の固定語彙)。
+    /// Graphite 静的グラフの辺実体の所有者 `Edges` を構築する (Graphite の固定語彙)。値の計算は行わない。積み荷ありの具体辺の値をinstance宣言の式から計算して渡すのは`開発チームの辺を組み立てる` の役目。
     ///
     /// - graph: `開発チーム`
+    /// - 第1引数: `nodes: &Nodes`
+    /// - 積み荷引数 (宣言順): `太郎の上司: 任命記録, 太郎と一郎の同僚: 経緯記録`
     ///
     /// 固定語彙: `Edges::new` (`docs/static_graph.md` 「生成される名前の公開契約」)
-    pub fn new(nodes: &'a Nodes) -> Self {
+    ///
+    /// 関係する instance 宣言: `src/main.rs` の `graph 開発チーム`
+    pub fn new(
+        nodes: &'a Nodes,
+        太郎の上司: 任命記録,
+        太郎と一郎の同僚: 経緯記録,
+    ) -> Self {
         Self {
             太郎の所属: 組織::所属Edge {
                 member: &nodes.太郎,
@@ -145,7 +157,7 @@ impl<'a> Edges<'a> {
             太郎の上司: 組織::上司Edge {
                 subordinate: &nodes.太郎,
                 superior: &nodes.次郎,
-                任命: Self::__graphite_payload_太郎の上司(),
+                任命: 太郎の上司,
             },
             太郎と次郎: 組織::友人Edge {
                 甲: &nodes.太郎,
@@ -154,7 +166,7 @@ impl<'a> Edges<'a> {
             太郎と一郎の同僚: 組織::同僚Edge {
                 甲: &nodes.太郎,
                 乙: &nodes.一郎,
-                経緯: Self::__graphite_payload_太郎と一郎の同僚(),
+                経緯: 太郎と一郎の同僚,
             },
         }
     }

@@ -1,18 +1,18 @@
 // このファイルは `Nodes` (個体の実体を唯一持つ生成物) の本体を組み立てる。
-// 値ありの個体は、初期化式を供給関数呼び出し (`inline::value_supply`、
-// issue #41 §3) に置き換え、式そのものは生成ファイルへ写さない。値なしの
-// 個体は宣言順の位置引数として `new` に加える (実行時供給)。
+// `new` は値の計算を一切持たない素の構築子であり、全個体を宣言順の位置
+// 引数にそのまま取る。値ありの個体をinstance宣言の式から計算して渡すのは、
+// instance展開側が呼び出し位置に生成する `{グラフ名}の個体を組み立てる`
+// 関数 (`inline::assembly`) の役目であり、式そのものは生成ファイルへ
+// 写さない。
 
 use proc_macro2::TokenStream;
 use quote::quote;
 
 use crate::static_graph::declaration_sites::宣言元の対;
-use crate::static_graph::naming::{
-    個体供給関数名, 個体実体所有者型名, 個体実体所有者構築メソッド名, nodesフィールドの追跡情報を作る,
-};
+use crate::static_graph::naming::{個体実体所有者型名, 個体実体所有者構築メソッド名, nodesフィールドの追跡情報を作る};
 use crate::static_graph::semantic::意味モデル;
 
-use super::super::doc_render::doc属性を組み立てる;
+use crate::static_graph::doc_render::doc属性を組み立てる;
 
 pub(super) fn nodes本体を組み立てる(意味モデル: &意味モデル, 宣言元: &宣言元の対) -> TokenStream {
     let 型名 = 個体実体所有者型名(意味モデル);
@@ -27,21 +27,14 @@ pub(super) fn nodes本体を組み立てる(意味モデル: &意味モデル, �
         let doc = doc属性を組み立てる(&nodesフィールドの追跡情報を作る(意味モデル, 個体, 宣言元));
         quote! { #doc pub #名前: #実体型 }
     });
-    let 引数列 = 意味モデル.個体列().iter().filter(|個体| 個体.値なし宣言か()).map(|個体| {
+    let 引数列 = 意味モデル.個体列().iter().map(|個体| {
         let 名前 = 個体.名前();
         let 実体型 = 個体.実体型();
         quote! { #名前: #実体型 }
     });
     let 初期化列 = 意味モデル.個体列().iter().map(|個体| {
         let 名前 = 個体.名前();
-        let 初期化式 = match 個体.値() {
-            Some(_) => {
-                let 供給関数 = 個体供給関数名(名前);
-                quote! { Self::#供給関数() }
-            }
-            None => quote! { #名前 },
-        };
-        quote! { #名前: #初期化式 }
+        quote! { #名前 }
     });
 
     quote! {

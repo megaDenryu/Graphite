@@ -13,7 +13,8 @@
 // 推測判別はしない)。node は3形態を受理する:
 //   1. `名前 = 型 { .. };`   実体型はリテラルのパスから読む
 //   2. `名前: 型 = 式;`      型を明示すれば右辺は任意の式でよい
-//   3. `名前: 型;`           宣言のみ。実体値は `Nodes::new` へ実行時に渡す
+//   3. `名前: 型;`           宣言のみ。実体値は組み立て関数の引数として
+//                            実行時に渡す
 //
 // schema名を書かないのは、schema名がそのままマクロ名になり (利用側は
 // `<schema名>! { graph <名前>; .. }` と書く)、この構文木を組み立てる時点で
@@ -50,7 +51,7 @@ pub struct 静的グラフ入力 {
 pub struct ノード宣言 {
     pub 名前: Ident,
     pub 実体型: Ident,
-    pub 値: Option<Expr>, // 値なし宣言 (`node 名前: 型;`) は None。実行時引数として `Nodes::new` へ渡す (node_entities.rs)
+    pub 値: Option<Expr>, // 値なし宣言 (`node 名前: 型;`) は None。実行時引数として組み立て関数へ渡す (inline/assembly.rs)
 }
 
 #[derive(Clone)]

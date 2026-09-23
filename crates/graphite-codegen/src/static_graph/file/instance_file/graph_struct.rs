@@ -14,7 +14,7 @@ use crate::static_graph::naming::{
 use crate::static_graph::semantic::意味モデル;
 use crate::static_graph::trace::固定語彙の所有者;
 
-use super::super::doc_render::doc属性を組み立てる;
+use crate::static_graph::doc_render::doc属性を組み立てる;
 
 pub(super) fn graph本体を組み立てる(意味モデル: &意味モデル) -> TokenStream {
     let 型名 = グラフ型名(意味モデル);

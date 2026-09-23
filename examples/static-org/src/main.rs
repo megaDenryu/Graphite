@@ -11,7 +11,10 @@
 // instanceは動的グラフと同じ生成ファイル・指紋照合の方式で公開APIを追跡する
 // (issue #41)。公開APIは `generated/組織.rs`・`generated/開発チーム.rs`・
 // `generated/経理チーム.rs` にあり、`mod 組織`・`mod 開発チーム`・
-// `mod 経理チーム` がそれぞれを読み込む。
+// `mod 経理チーム` がそれぞれを読み込む。`mod` の置き場所はinstance宣言の
+// 置き場所と無関係であり、`mod 経理チーム` がこのファイルの最上位にある
+// 一方で `組織! { .. }` (経理チーム側) は関数の中にある
+// (下の `経理チームの花子の所属先を求める` を参照)。
 //
 // 実行場所: このディレクトリ (examples/static-org) で
 //   cargo run
@@ -48,8 +51,8 @@ static_graph_schema! {
 // ---------------- instance宣言 ----------------
 //
 // 開発部 だけを値なし宣言 (`node 開発部: 部署;`) にして、実行時供給
-// (`Nodes::new` への位置引数) を示す。main() とテストの両方から呼ぶため、
-// 構築を ノードを組み立てる() へ切り出す。
+// (`開発チームの個体を組み立てる` への引数) を示す。main() とテストの
+// 両方から呼ぶため、構築を ノードを組み立てる() へ切り出す。
 
 #[allow(non_snake_case, dead_code, private_interfaces)]
 #[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
@@ -84,14 +87,17 @@ impl<'a> 開発チーム::太郎Ref<'a> {
 }
 
 // 値なし宣言 (`node 開発部: 部署;`) の実体は実行時にここで供給する。main()
-// とテストの両方から呼ぶ。
+// とテストの両方から呼ぶ。`開発チームの個体を組み立てる` は instance展開が
+// 呼び出し位置に生成する組み立て関数であり (`docs/static_graph.md` 「生成
+// される名前の公開契約」)、値ありの個体 (太郎・次郎・一郎) はinstance宣言
+// の式からこの関数が計算し、値なしの個体 (開発部) だけを引数で受け取る。
 pub(crate) fn ノードを組み立てる() -> 開発チーム::Nodes {
-    開発チーム::Nodes::new(部署 { 名前: "開発部".into() })
+    開発チームの個体を組み立てる(部署 { 名前: "開発部".into() })
 }
 
 fn main() {
     let nodes = ノードを組み立てる();
-    let edges = 開発チーム::Edges::new(&nodes);
+    let edges = 開発チームの辺を組み立てる(&nodes);
     let g = 開発チーム::Graph::new(&nodes, &edges);
 
     let 太郎の参照 = g.node_refs.太郎;
@@ -141,24 +147,23 @@ fn main() {
     // 確認後は追加した行を削除してある。
 }
 
-// この関数は、同一schemaから `組織!` を2回目に宣言しても生成物が衝突しない
-// ことを示す。生成moduleを読み込む `mod` はinstanceと同じスコープに置く
-// (`docs/static_graph.md` 「2層マクロの使い方」)。この規則どおり
-// `mod 経理チーム` と `組織! { .. }` をどちらもこの関数の中に置くと、
-// `Nodes`/`Edges`/`NodeRefs`/`EdgeRefs`/`Graph` は関数ローカルのmoduleの
-// 中にあるため、同じschemaから複数のinstanceを宣言してもmodule名が違えば
-// 衝突しない。`mod` だけを最上位に置きinstanceを関数の中に置く形だと、
-// `組織! { .. }`の展開が生成する値供給関数の `impl 経理チーム::Nodes { .. }`
-// が、最上位で定義された `Nodes` 型に対する非局所implになり
-// `non_local_definitions` 警告が出る。この関数はその警告を避ける配置の
-// 実例でもある。
-fn 経理チームの花子の所属先を求める() -> String {
-    #[allow(non_snake_case, dead_code, private_interfaces)]
-    #[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
-    mod 経理チーム {
-        include!("generated/経理チーム.rs");
-    }
+// この生成moduleは最上位 (関数の外) にあり、instance宣言
+// (`組織! { .. }`) は `経理チームの花子の所属先を求める` の中にある。
+// instance展開はimplを一切使わず、個体・積み荷の値の橋渡しを素の関数
+// (`{グラフ名}の個体を組み立てる`・`{グラフ名}の辺を組み立てる`) だけで
+// 行うため、instance宣言がユーザーの関数の中にあっても
+// `non_local_definitions` は出ない (`docs/static_graph.md` 「追跡の契約」
+// 参照)。`mod`をinstance宣言と同じスコープへ揃える配置規則はもう要らない。
+#[allow(non_snake_case, dead_code, private_interfaces)]
+#[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
+mod 経理チーム {
+    include!("generated/経理チーム.rs");
+}
 
+// この関数は、同一schemaから `組織!` を2回目に宣言しても生成物が衝突しない
+// ことと、`mod 経理チーム` を最上位に置いたままinstance宣言だけを関数の中に
+// 置ける (`non_local_definitions` 警告が出ない) ことの両方を示す。
+fn 経理チームの花子の所属先を求める() -> String {
     #[rustfmt::skip]
     組織! {
         generated = "generated/経理チーム.rs";
@@ -168,8 +173,8 @@ fn 経理チームの花子の所属先を求める() -> String {
         edge 花子の所属 = 所属(花子 -> 総務部);
     }
 
-    let nodes = 経理チーム::Nodes::new();
-    let edges = 経理チーム::Edges::new(&nodes);
+    let nodes = 経理チームの個体を組み立てる();
+    let edges = 経理チームの辺を組み立てる(&nodes);
     let g = 経理チーム::Graph::new(&nodes, &edges);
     g.node_refs.花子.花子の所属().team().entity().名前().to_string()
 }

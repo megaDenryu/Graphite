@@ -300,7 +300,7 @@ NodeRef・EdgeRefのメソッド、役割アクセサ、`Graph`の種別API
 この手順は rustc の定義スパン表示による確認であり、rust-analyzer 実機での F12
 (go to definition) の再計測ではない。
 
-## 1.16 静的グラフの受理マトリクス (issue #41 段階5、2026-09-23)
+## 1.16 静的グラフの受理マトリクス (issue #41 段階5、2026-09-23。instance展開のimpl撤去に伴い2026-09-24に再測定)
 
 静的グラフ (`static_graph_schema!`/instance) の公開生成APIも動的グラフと同じ生成ファイル方式へ移した (issue #41 段階1〜4)。
 本節は、issue #41 の「検証」節が定めるチェックリスト (A分類9項目・B分類8項目の計17項目。A分類の9項目には、instanceの辺種別からschemaへの追跡1項目を含む) を、rust-analyzer実機で実測した記録である。
@@ -310,6 +310,9 @@ NodeRef・EdgeRefのメソッド、役割アクセサ、`Graph`の種別API
 その代わりに、このセッションは、F12の着地先に付いた doc コメント (意味カード) をReadで読み、その内容をhoverの代替として記録した (rust-analyzerはこの doc コメントをそのままhoverへ表示するため、内容としては等価である)。
 このセッションは、計測前後で`get_diagnostics`が0件であることを確認し、rust-analyzerが最新のソースを読み込んでいることを確かめた。
 
+**2026-09-24の再測定**: instance展開のimpl撤去 (`docs/static_graph.md`「追跡の契約」参照) に伴い、`Nodes::new`/`Edges::new`が値の計算を持たない素の構築子へ変わり、利用者は代わりに instance展開が呼び出し位置に生成する組み立て関数 (`{グラフ名}の個体を組み立てる`・`{グラフ名}の辺を組み立てる`) を呼ぶ。`examples/static-org/src/main.rs`の該当箇所も書き換わったため、下表のうち `Nodes`・`Edges`の2行と、新設した2行 (組み立て関数) は`go_to_definition`で再実測した。それ以外の行は、main.rsおよび生成ファイルの行数がこの書き換えで動いた分だけ番号を機械的に補正した (`grep`で新しい行番号を確認済みだが、`go_to_definition`による着地先の再実測はしていない。値の橋渡しの仕組み自体は変わっていないため合否への影響は無いと判断したが、この部分は未検証として申告する)。
+このセッションは、後日 (同じ2026-09-24) の検収是正で、組み立て関数の可視性を`pub`から`pub(crate)`へ変更し、値の供給関数を組み立て関数の本体の中へ入れ子で定義する変更を加えた。この変更後も`{グラフ名}の個体を組み立てる`・`{グラフ名}の辺を組み立てる`のF12着地先 (main.rs 63〜77行目、instance宣言そのもの) が変わらないことを`go_to_definition`で再確認した。
+
 ### A分類 (利用者語彙から派生した識別子)
 
 F12起点の列は、main.rsに識別子が直接出現する行が無い4項目 (`太郎の所属Ref`・`所属Edge`・`NodeRefs`・`EdgeRefs`) では、生成ファイル自身の中で識別子が実際に使われている行 (`find_symbol`によるシンボル名検索ではなく、`go_to_definition`が使う定義プロバイダを通した実測) を起点にしている。
@@ -317,33 +320,36 @@ F12起点の列は、main.rsに識別子が直接出現する行が無い4項目
 
 | 識別子 | F12起点 | F12の着地先 | 意味カードの要約 | 合否 |
 |---|---|---|---|---|
-| `太郎Ref` | `impl<'a> 開発チーム::太郎Ref<'a>`の型 (main.rs:80) | `generated/開発チーム.rs`の`struct 太郎Ref<'a>`定義 | 「Graphite 静的グラフの具体個体参照。graph: 開発チーム / 個体: 太郎 / 実体型: 社員」+ 宣言: `node 太郎: 社員 = ..` | 合格 |
-| `太郎の所属Ref` | `pub fn 太郎の所属(&self) -> 太郎の所属Ref<'a>`の戻り値型 (`generated/開発チーム.rs:196`) | `generated/開発チーム.rs`の`struct 太郎の所属Ref<'a>`定義 (196行目) | 「具体辺参照。graph/具体辺/辺種別」+ 宣言: `edge 太郎の所属 = 所属(太郎 -> 開発部)` + 関係する schema 宣言: `edge 所属 = (member: 社員) -> (team: 部署) where each member: 1` | 合格 |
-| `g.node_refs.太郎` | `g.node_refs.太郎` の `太郎` (main.rs:97) | `generated/開発チーム.rs`の`NodeRefs`の`太郎`フィールド | 「個体参照フィールド。NodeRefsがこの個体の具体参照を持つ」+ 宣言: `node 太郎: 社員 = ..` | 合格 |
-| `g.edge_refs.太郎の所属` | `g.edge_refs.太郎の所属` の `太郎の所属` (main.rs:102) | `generated/開発チーム.rs`の`EdgeRefs`の`太郎の所属`フィールド | 「辺参照フィールド」+ 宣言: `edge 太郎の所属 = 所属(太郎 -> 開発部)` | 合格 |
-| `太郎の参照.太郎の所属()` | `.太郎の所属(` (main.rs:101) | `impl<'a> 太郎Ref<'a>`の`太郎の所属`メソッド | 「具体辺参照を返す。個体/具体辺/辺種別/この個体の役割/戻り値」+ 宣言: instance edge + 関係する schema 宣言: schema edge | 合格 |
-| `.member()`/`.team()` | `.team(` (main.rs:101)・`.member(` (main.rs:102) の両方を実測 | `impl<'a> 太郎の所属Ref<'a>`の`team`メソッド (`.team()`)・`member`メソッド (`.member()`) | 「端点の役割アクセサ。辺種別/役割/具体辺/具体端点/戻り値/検証制約」+ 宣言: schema edge + 関係する instance 宣言: instance edge (両メソッドとも同型) | 合格 |
-| payload accessor (`.任命()`) | `.任命(` (main.rs:99) | `impl<'a> 太郎の上司Ref<'a>`の`任命`メソッド | 「積み荷アクセサ。辺種別/積み荷/具体辺」+ 宣言: schema edge + 関係する instance 宣言: instance edge | 合格 |
-| `所属Edge` | `pub(super) entity: &'a 組織::所属Edge<'a>`の型参照 (`generated/開発チーム.rs:493`) | `generated/組織.rs`の`struct 所属Edge<'a>`定義 | 「辺値。端点への参照を保持する。辺種別: 所属」+ 宣言: `edge 所属 = (member: 社員) -> (team: 部署) where each member: 1` | 合格 |
-| instance辺種別`所属`→schema | `edge 太郎の所属 = 所属(太郎 -> 開発部);` の中間の`所属` (main.rs:68) | `generated/組織.rs`の`struct 所属Edge<'a>`定義 (DSLトークンの錨、`docs/static_graph.md`「追跡の契約」) | 上記と同じ | 合格 |
+| `太郎Ref` | `impl<'a> 開発チーム::太郎Ref<'a>`の型 (main.rs:83) | `generated/開発チーム.rs`の`struct 太郎Ref<'a>`定義 | 「Graphite 静的グラフの具体個体参照。graph: 開発チーム / 個体: 太郎 / 実体型: 社員」+ 宣言: `node 太郎: 社員 = ..` | 合格 |
+| `太郎の所属Ref` | `pub fn 太郎の所属(&self) -> 太郎の所属Ref<'a>`の戻り値型 (`generated/開発チーム.rs:208`) | `generated/開発チーム.rs`の`struct 太郎の所属Ref<'a>`定義 (494行目) | 「具体辺参照。graph/具体辺/辺種別」+ 宣言: `edge 太郎の所属 = 所属(太郎 -> 開発部)` + 関係する schema 宣言: `edge 所属 = (member: 社員) -> (team: 部署) where each member: 1` | 合格 |
+| `g.node_refs.太郎` | `g.node_refs.太郎` の `太郎` (main.rs:103) | `generated/開発チーム.rs`の`NodeRefs`の`太郎`フィールド | 「個体参照フィールド。NodeRefsがこの個体の具体参照を持つ」+ 宣言: `node 太郎: 社員 = ..` | 合格 |
+| `g.edge_refs.太郎の所属` | `g.edge_refs.太郎の所属` の `太郎の所属` (main.rs:108) | `generated/開発チーム.rs`の`EdgeRefs`の`太郎の所属`フィールド | 「辺参照フィールド」+ 宣言: `edge 太郎の所属 = 所属(太郎 -> 開発部)` | 合格 |
+| `太郎の参照.太郎の所属()` | `.太郎の所属(` (main.rs:107) | `impl<'a> 太郎Ref<'a>`の`太郎の所属`メソッド | 「具体辺参照を返す。個体/具体辺/辺種別/この個体の役割/戻り値」+ 宣言: instance edge + 関係する schema 宣言: schema edge | 合格 |
+| `.member()`/`.team()` | `.team(` (main.rs:107)・`.member(` (main.rs:108) の両方を実測 | `impl<'a> 太郎の所属Ref<'a>`の`team`メソッド (`.team()`)・`member`メソッド (`.member()`) | 「端点の役割アクセサ。辺種別/役割/具体辺/具体端点/戻り値/検証制約」+ 宣言: schema edge + 関係する instance 宣言: instance edge (両メソッドとも同型) | 合格 |
+| payload accessor (`.任命()`) | `.任命(` (main.rs:105) | `impl<'a> 太郎の上司Ref<'a>`の`任命`メソッド | 「積み荷アクセサ。辺種別/積み荷/具体辺」+ 宣言: schema edge + 関係する instance 宣言: instance edge | 合格 |
+| `所属Edge` | `pub(super) entity: &'a 組織::所属Edge<'a>`の型参照 (`generated/開発チーム.rs:505`) | `generated/組織.rs`の`struct 所属Edge<'a>`定義 | 「辺値。端点への参照を保持する。辺種別: 所属」+ 宣言: `edge 所属 = (member: 社員) -> (team: 部署) where each member: 1` | 合格 |
+| instance辺種別`所属`→schema | `edge 太郎の所属 = 所属(太郎 -> 開発部);` の中間の`所属` (main.rs:71) | `generated/組織.rs`の`struct 所属Edge<'a>`定義 (DSLトークンの錨、`docs/static_graph.md`「追跡の契約」) | 上記と同じ | 合格 |
+| `{グラフ名}の個体を組み立てる` | `開発チームの個体を組み立てる(` の呼び出し (main.rs:95、再実測: 2026-09-24) | `main.rs`の`組織! { .. }`宣言そのもの (63〜77行目、instance展開自身の呼び出し位置。生成ファイルの中には無い) | 「個体実体の所有者`Nodes`を、instance宣言から組み立てる。graph: 開発チーム / 組み立てる個体 (宣言順): `太郎`・`次郎`・`一郎`・`開発部` / 戻り値: Nodes」(「宣言:」段落は無い。`instance_entry.rs`がマクロ実行中の呼び出し元パスを取得できず宣言元を「分かっていない」に固定しているため。`cargo expand`の実測で確認) | 合格 (他のA分類と異なり生成ファイルではなくinstance宣言そのものへ着地する。その場展開の出力であるため) |
+| `{グラフ名}の辺を組み立てる` | `開発チームの辺を組み立てる(` の呼び出し (main.rs:100、再実測: 2026-09-24) | `main.rs`の`組織! { .. }`宣言そのもの (63〜77行目、instance展開自身の呼び出し位置。生成ファイルの中には無い) | 「辺実体の所有者`Edges`を、instance宣言から組み立てる。graph: 開発チーム / 組み立てる具体辺 (宣言順): 6件 / 戻り値: Edges」(「宣言:」段落は無い。理由は上の行と同じ) | 合格 (`{グラフ名}の個体を組み立てる`と同じ理由でinstance宣言そのものへ着地する) |
 
 ### B分類 (Graphiteが定義する固定語彙)
 
 | 識別子 | F12起点 | F12の着地先 | 意味カードの要約 | 合否 |
 |---|---|---|---|---|
-| `Nodes` | `開発チーム::Nodes` の`Nodes` (main.rs:88) | `generated/開発チーム.rs`の`struct Nodes`定義 (フィールドごとに宣言doc付き) | 「個体実体の所有者 `Nodes` (Graphiteの固定語彙)」+ 固定語彙: `Nodes` | 合格 |
-| `Edges` | `開発チーム::Edges::new` の`Edges` (main.rs:94) | `generated/開発チーム.rs`の`struct Edges<'a>`定義 | 「辺実体の所有者 `Edges` (Graphiteの固定語彙)」+ 固定語彙: `Edges` | 合格 |
-| `NodeRefs` | `pub node_refs: NodeRefs<'a>`の型参照 (`generated/開発チーム.rs:1001`) | `generated/開発チーム.rs`の`struct NodeRefs<'a>`定義 (839行目) | 「個体参照の集まり `NodeRefs` (Graphiteの固定語彙)」+ 固定語彙: `NodeRefs` | 合格 |
-| `EdgeRefs` | `pub edge_refs: EdgeRefs<'a>`の型参照 (`generated/開発チーム.rs:1007`) | `generated/開発チーム.rs`の`struct EdgeRefs<'a>`定義 (905行目) | 「辺参照の集まり `EdgeRefs` (Graphiteの固定語彙)」+ 固定語彙: `EdgeRefs` | 合格 |
-| `new` (`Graph::new`) | `開発チーム::Graph::new` の`new` (main.rs:95) | `impl<'a> Graph<'a>`の`new`メソッド | 「`Graph`を構築する (Graphiteの固定語彙)」+ 固定語彙: `Graph::new` | 合格 |
-| `entity` | `.entity()` (main.rs:98) | `impl<'a> 次郎Ref<'a>`の`entity`メソッド | 「具体個体参照から実体を取り出す `entity` (Graphiteの固定語彙)」+ 固定語彙: `entity` | 合格 |
-| `node_refs` | `g.node_refs` の`node_refs` (main.rs:97) | `struct Graph<'a>`の`node_refs`フィールド | 「`Graph`が持つ個体参照の集まりへのフィールド `node_refs` (Graphiteの固定語彙)」+ 固定語彙: `node_refs` | 合格 |
-| `edge_refs` | `g.edge_refs` の`edge_refs` (main.rs:102) | `struct Graph<'a>`の`edge_refs`フィールド | 「`Graph`が持つ辺参照の集まりへのフィールド `edge_refs` (Graphiteの固定語彙)」+ 固定語彙: `edge_refs` | 合格 |
+| `Nodes` | `-> 開発チーム::Nodes`の戻り値型注釈 (main.rs:94、再実測: 2026-09-24。`Nodes::new`の呼び出し自体が組み立て関数経由に変わったため、起点をこの型注釈へ差し替えた) | `generated/開発チーム.rs`の`struct Nodes`定義 (フィールドごとに宣言doc付き) | 「個体実体の所有者 `Nodes` (Graphiteの固定語彙)」+ 固定語彙: `Nodes` | 合格 |
+| `Edges` | `pub(super) edges: &'a Edges<'a>`の型参照 (`generated/開発チーム.rs:185`、再実測: 2026-09-24。`開発チーム::Edges::new`の直接呼び出しがmain.rsから消えたため、main.rsに識別子が直接出現する行が無くなった項目として起点を生成ファイル自身へ差し替えた) | `generated/開発チーム.rs`の`struct Edges<'a>`定義 (74行目) | 「辺実体の所有者 `Edges` (Graphiteの固定語彙)」+ 固定語彙: `Edges` | 合格 |
+| `NodeRefs` | `pub node_refs: NodeRefs<'a>`の型参照 (`generated/開発チーム.rs:1013`) | `generated/開発チーム.rs`の`struct NodeRefs<'a>`定義 (846行目) | 「個体参照の集まり `NodeRefs` (Graphiteの固定語彙)」+ 固定語彙: `NodeRefs` | 合格 |
+| `EdgeRefs` | `pub edge_refs: EdgeRefs<'a>`の型参照 (`generated/開発チーム.rs:1019`) | `generated/開発チーム.rs`の`struct EdgeRefs<'a>`定義 (912行目) | 「辺参照の集まり `EdgeRefs` (Graphiteの固定語彙)」+ 固定語彙: `EdgeRefs` | 合格 |
+| `new` (`Graph::new`) | `開発チーム::Graph::new` の`new` (main.rs:101) | `impl<'a> Graph<'a>`の`new`メソッド | 「`Graph`を構築する (Graphiteの固定語彙)」+ 固定語彙: `Graph::new` | 合格 |
+| `entity` | `.entity()` (main.rs:104) | `impl<'a> 次郎Ref<'a>`の`entity`メソッド | 「具体個体参照から実体を取り出す `entity` (Graphiteの固定語彙)」+ 固定語彙: `entity` | 合格 |
+| `node_refs` | `g.node_refs` の`node_refs` (main.rs:103) | `struct Graph<'a>`の`node_refs`フィールド | 「`Graph`が持つ個体参照の集まりへのフィールド `node_refs` (Graphiteの固定語彙)」+ 固定語彙: `node_refs` | 合格 |
+| `edge_refs` | `g.edge_refs` の`edge_refs` (main.rs:108) | `struct Graph<'a>`の`edge_refs`フィールド | 「`Graph`が持つ辺参照の集まりへのフィールド `edge_refs` (Graphiteの固定語彙)」+ 固定語彙: `edge_refs` | 合格 |
 
 ### 結果
 
-A分類9項目 (instance辺種別からschemaへの追跡1項目を含む)・B分類8項目の合計17項目すべてが合格した。
+A分類11項目 (instance辺種別からschemaへの追跡1項目、組み立て関数2項目を含む)・B分類8項目の合計19項目すべてが合格した。
 このセッションは、issue #41本文が2026-09-23付のコメントで記録した先行実測 (生成ファイル化前、B分類8項目全滅・A分類の一部も生成塊全体への着地) と比べ、段階1〜4の生成ファイル化によってB分類が0/8→8/8へ改善したことを確認した。
+このセッションは、2026-09-24の再測定で、組み立て関数2項目が、他のA分類と異なり生成ファイルではなくinstance宣言そのものへ着地することを確認した (その場展開の出力であり生成ファイルの中には無いため)。これは「由来追跡」(下記) の観点では、DSL宣言そのものへ最短距離で戻れるという意味で、他のA分類より一段直接的である。
 
 「実装追跡」(issue #41本文の3つの追跡のうち3つ目) は生成ファイルそのものが
 正式経路であり、上表のF12の着地先がそのまま実装追跡を兼ねる。`cargo expand`は

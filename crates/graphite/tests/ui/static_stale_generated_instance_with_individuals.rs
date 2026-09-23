@@ -6,6 +6,12 @@
 // 「型が見つからない」E0425が1件出て、再生成を促すE0080が最後に出る。
 // この断片は個体を持つ状態で古い生成ファイルを再現し、実際に出る
 // エラーの並びをそのまま固定する。
+//
+// E0080の後ろにE0061 (`Nodes::new` の引数の個数不一致) がもう1件続く。
+// 組み立て関数は、instance側のDSLが持つ個体 (`一郎`・`三郎`) の全件を宣言順に
+// `Nodes::new` へ渡そうとするが、この断片の古い `Nodes::new` は `一郎` の
+// 1件しか受け取らない (`三郎`を追加する前の古い生成ファイルの形をそのまま
+// 模しているため)。再生成を促す結論 (E0080) が最後に出ることに変わりはない。
 
 struct 社員;
 
@@ -31,6 +37,9 @@ graphite::static_graph_schema! {
 // 手で偽装する)。`Nodes`・`NodeRefs`・`Edges`・`EdgeRefs`・`Graph`・
 // `{個体名}Ref` を実物の生成ファイルと同じ形で揃え、`Nodes`が丸ごと
 // 見つからないという実物には起こらない誤りを固定しないようにする。
+// `new` も実物と同じ形 (全個体・全積み荷を引数に取る) で揃え、組み立て
+// 関数の呼び出しがこの誤りとは無関係な `no function new` を混ぜないように
+// する。
 // instance側のDSLは `一郎` に加えて新しい個体 `三郎` を足した状態にし、
 // 生成ファイルの再生成を忘れた状況を再現する。
 #[allow(non_snake_case, dead_code)]
@@ -39,6 +48,11 @@ mod 開発チーム {
 
     pub struct Nodes {
         pub 一郎: super::社員,
+    }
+    impl Nodes {
+        pub fn new(一郎: super::社員) -> Self {
+            Nodes { 一郎 }
+        }
     }
 
     pub struct 一郎Ref<'a> {
@@ -51,6 +65,11 @@ mod 開発チーム {
 
     pub struct Edges<'a> {
         pub(super) _marker: std::marker::PhantomData<&'a ()>,
+    }
+    impl<'a> Edges<'a> {
+        pub fn new(_nodes: &'a Nodes) -> Self {
+            Edges { _marker: std::marker::PhantomData }
+        }
     }
 
     pub struct EdgeRefs<'a> {

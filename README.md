@@ -60,7 +60,7 @@ Graphite には意図的に別の概念が同居しています。用途から�
 | ドメイン固有の型付きグラフ構造を宣言し、個体集合を実行時に構築したい | `dynamic_graph_schema!` | ノード種別・辺種別・役割名・制約を型付きで宣言する。実体は `cargo graphite generate` が書き出す通常の Rust ファイルで、マクロは宣言の検証と指紋の照合を行う |
 | そのschemaの具体的な Graph 値を作りたい (個体集合を実行時に構築する `dynamic_graph_schema!` 向け) | `graph!` / 生成された `Builder` | 静的な項と実行時データの両方からグラフを構築し、凍結時に制約を検査する |
 | ドメイン固有の型付きグラフ構造を宣言し、個体集合・トポロジーをソースコードの時点で固定したい | `static_graph_schema!` | このマクロは、ノード種別・辺種別・役割名・多重度の制約を型付きで宣言し、個体・辺の集合そのものをコンパイル時に固定する。多重度・対一意の制約違反はコンパイルエラーになる。schema名がそのまま、個体を並べるinstance宣言用の `macro_rules!` の名前になる。実体は生成ファイルで、`dynamic_graph_schema!` と同じ生成ファイル・指紋照合の方式を使う |
-| そのschemaの具体的な Graph 値を作りたい (個体集合をコンパイル時に固定する `static_graph_schema!` 向け) | `<schema名>!` (schema宣言が生成する、instance宣言用の `macro_rules!`) | 個体・辺を並べてGraph値を作る。利用者は生成された `{instance名}::Nodes::new(..)` → `Edges::new(&nodes)` → `Graph::new(&nodes, &edges)` の順に Graph 値を組み立てる。多重度・対一意の検査はコンパイル時に行う (詳細: `docs/static_graph.md`) |
+| そのschemaの具体的な Graph 値を作りたい (個体集合をコンパイル時に固定する `static_graph_schema!` 向け) | `<schema名>!` (schema宣言が生成する、instance宣言用の `macro_rules!`) | 個体・辺を並べてGraph値を作る。利用者は、instance展開が呼び出し位置に生成する `{グラフ名}の個体を組み立てる(..)` → `{グラフ名}の辺を組み立てる(&nodes)` → `{instance名}::Graph::new(&nodes, &edges)` の順に Graph 値を組み立てる。多重度・対一意の検査はコンパイル時に行う (詳細: `docs/static_graph.md`) |
 | 値を独立した関数へ順に流したい | `flow!` | Graph の値を作らない即時実行の糖衣。`x -[f]-> y` は `let y = (f)(x);` へ脱糖するだけ |
 | 同種ノードの汎用グラフアルゴリズムを使いたい | `Graph<N, E, K>` | ノード型が1種類の汎用不変グラフ。`has_cycle` / `topological_sort` / `topological_levels` / `critical_path_by` / `reachable_from` / `path` を持つ。マクロを使わない |
 | 計算の依存を実行時の値として保持し、遅延評価・差分再計算したい | `ComputeGraph<V>` | 依存関係をランタイムの値として持ち、必要になった分だけ計算し、変わった入力の影響が及ぶ範囲だけを再計算する |
@@ -162,10 +162,11 @@ schema を変えて生成し忘れると、指紋が合わず通常の `cargo bu
 検査ではなく、このinstance宣言に対するコンパイルエラーとして検出されます。
 
 schema・instanceは共に `generated = "..."` を持ち、`dynamic_graph_schema!` と同じ生成
-ファイル・指紋照合の方式で公開APIを追跡します。利用者は、生成ファイルを読み込む
-`mod <名前> { include!(..); }` を、instance宣言と同じスコープに置きます。定義ジャンプ
-(F12) は生成ファイルの中の定義へ着地し、追跡の契約の詳細は `docs/static_graph.md`
-「追跡の契約」節にあります。動く完全な例は `examples/static-org` にあります。
+ファイル・指紋照合の方式で公開APIを追跡します。生成ファイルを読み込む
+`mod <名前> { include!(..); }` の置き場所はinstance宣言と無関係であり、利用者がinstance
+宣言を関数の中に置いても警告は出ません。定義ジャンプ (F12) は生成ファイルの中の定義へ着地し、
+追跡の契約の詳細は `docs/static_graph.md` 「追跡の契約」節にあります。動く完全な例は
+`examples/static-org` にあります。
 
 ## 主要な概念
 

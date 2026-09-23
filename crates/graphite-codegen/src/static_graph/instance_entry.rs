@@ -14,7 +14,9 @@ use quote::quote;
 use syn::parse::{Parse, ParseStream};
 
 use crate::fingerprint_check::{指紋照合コードを生成する, 静的instance対象文言, 静的instance指紋定数名};
+use crate::schema::codegen::宣言元ファイルの綴り;
 
+use super::declaration_sites::宣言元の対;
 use super::naming::指紋照合パスの起点;
 use super::{inline, instance展開用に解析する, schema};
 
@@ -61,27 +63,18 @@ pub fn expand_static_graph_internal(input: TokenStream) -> TokenStream {
     let 意味モデル = tracked.意味モデル();
     let 型参照 = inline::dslトークンの型参照を組み立てる(意味モデル);
 
-    let nodes型 = quote! { #instance名::Nodes };
-    let 個体供給関数列 = 意味モデル
-        .個体列()
-        .iter()
-        .filter(|個体| !個体.値なし宣言か())
-        .map(|個体| inline::個体供給関数を組み立てる(&nodes型, 個体));
-
-    // `Edges<'a>` は生成ファイルの中で生存期間パラメータを持つため、
-    // 呼び出し元 (このマクロ展開位置) からの修飾パスでは明示のライフタイム
-    // 引数が要る (`impl 開発チーム::Edges { .. }` は E0726 で拒否される)。
-    let edges型 = quote! { #instance名::Edges<'_> };
-    let 積み荷供給関数列 = 意味モデル
-        .具体辺列()
-        .iter()
-        .filter(|辺| 辺.積み荷式().is_some())
-        .map(|辺| inline::積み荷供給関数を組み立てる(&edges型, 辺));
+    // このその場展開はコンパイル時のマクロ実行中であり、呼び出し元の
+    // ソースファイルパスを取得する安定APIが無い (`tracked::instance展開用に
+    // 解析する` が自分の指紋計算に使う宣言元と同じ理由で「分かっていない」
+    // にする)。意味カードの「宣言:」段落だけが省かれ、他の項目は影響しない。
+    let 宣言元 = 宣言元の対::new(宣言元ファイルの綴り::分かっていない, 宣言元ファイルの綴り::分かっていない);
+    let 個体組み立て関数 = inline::個体組み立て関数を組み立てる(instance名, 意味モデル, &宣言元);
+    let 辺組み立て関数 = inline::辺組み立て関数を組み立てる(instance名, 意味モデル, &宣言元);
 
     quote! {
         #指紋照合
         #型参照
-        #(#個体供給関数列)*
-        #(#積み荷供給関数列)*
+        #個体組み立て関数
+        #辺組み立て関数
     }
 }

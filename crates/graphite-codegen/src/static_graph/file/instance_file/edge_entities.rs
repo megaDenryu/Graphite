@@ -1,6 +1,10 @@
 // このファイルは `Edges` (辺の実体を唯一持つ生成物) の本体を組み立てる。
-// 積み荷ありの具体辺は、積み荷式を供給関数呼び出し (`inline::value_supply`)
-// に置き換える。フィールド型は `{schema名}::{種別}Edge<'a>` (schemaファイル、
+// `new` は値の計算を一切持たない素の構築子であり、`&'a Nodes` に加え、
+// 積み荷ありの具体辺すべてを宣言順の位置引数にそのまま取る。積み荷の値を
+// instance宣言の式から計算して渡すのは、instance展開側が呼び出し位置に
+// 生成する `{グラフ名}の辺を組み立てる` 関数 (`inline::assembly`) の役目
+// であり、式そのものは生成ファイルへ写さない。フィールド型は
+// `{schema名}::{種別}Edge<'a>` (schemaファイル、
 // `naming::reference_paths::辺値参照パス`) を module越しに修飾して書く
 // (`所属Edge` はschema moduleの中にあり、instance module の
 // `use super::*;` からは修飾なしで解決できない)。向きの判定は
@@ -11,24 +15,26 @@ use proc_macro2::TokenStream;
 use quote::quote;
 
 use crate::static_graph::declaration_sites::宣言元の対;
-use crate::static_graph::naming::{
-    edgesフィールドの追跡情報を作る, nodes変数名, 構築メソッド名, 積み荷供給関数名, 辺値参照パス, 辺実体所有者型名,
-};
+use crate::static_graph::naming::{edgesフィールドの追跡情報を作る, nodes変数名, 辺値参照パス, 辺実体所有者型名, 辺実体所有者構築メソッド名};
 use crate::static_graph::schema::input::積み荷宣言;
 use crate::static_graph::semantic::{具体辺, 具体辺形状, 意味モデル};
-use crate::static_graph::trace::固定語彙の所有者;
 
-use super::super::doc_render::doc属性を組み立てる;
+use crate::static_graph::doc_render::doc属性を組み立てる;
 
 pub(super) fn edges本体を組み立てる(意味モデル: &意味モデル, 宣言元: &宣言元の対) -> TokenStream {
     let 型名 = 辺実体所有者型名(意味モデル);
     let 型doc = doc属性を組み立てる(型名.追跡());
-    let 構築名 = 構築メソッド名(固定語彙の所有者::Edges, 意味モデル);
+    let 構築名 = 辺実体所有者構築メソッド名(意味モデル, 宣言元);
     let 構築doc = doc属性を組み立てる(構築名.追跡());
     let nodes = nodes変数名();
 
     let フィールド列 = 意味モデル.具体辺列().iter().map(|辺| フィールドを組み立てる(意味モデル, 辺, 宣言元));
     let 配線列 = 意味モデル.具体辺列().iter().map(|辺| 配線を組み立てる(意味モデル, 辺, &nodes));
+    let 積み荷引数列 = 意味モデル.具体辺列().iter().filter_map(|辺| {
+        let 積み荷宣言 { 型, .. } = 辺.種別().積み荷()?;
+        let 名前 = 辺.名前();
+        Some(quote! { #名前: #型 })
+    });
 
     quote! {
         #型doc
@@ -37,7 +43,7 @@ pub(super) fn edges本体を組み立てる(意味モデル: &意味モデル, �
         }
         impl<'a> #型名<'a> {
             #構築doc
-            pub fn #構築名(#nodes: &'a Nodes) -> Self {
+            pub fn #構築名(#nodes: &'a Nodes, #(#積み荷引数列),*) -> Self {
                 Self { #(#配線列,)* }
             }
         }
@@ -72,8 +78,8 @@ fn 配線を組み立てる(意味モデル: &意味モデル, 辺: &具体辺, 
 fn 積み荷フィールドを組み立てる(辺: &具体辺) -> TokenStream {
     match (辺.種別().積み荷(), 辺.積み荷式()) {
         (Some(積み荷宣言 { 役割, .. }), Some(_)) => {
-            let 供給関数 = 積み荷供給関数名(辺.名前());
-            quote! { #役割: Self::#供給関数(), }
+            let 引数名 = 辺.名前();
+            quote! { #役割: #引数名, }
         }
         (None, None) => TokenStream::new(),
         _ => unreachable!("相互検証済みなので積み荷有無は一致している"),

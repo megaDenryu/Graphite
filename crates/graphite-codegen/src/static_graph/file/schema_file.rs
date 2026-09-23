@@ -13,7 +13,7 @@ use crate::static_graph::naming::辺値型名;
 use crate::static_graph::schema::input::{積み荷宣言, 静的グラフ型入力, 辺形状};
 use crate::static_graph::semantic::{辺種別列をschemaから組み立てる, 辺種別};
 
-use super::doc_render::doc属性を組み立てる;
+use crate::static_graph::doc_render::doc属性を組み立てる;
 
 pub(crate) fn schema本体を組み立てる(
     schema: &静的グラフ型入力,

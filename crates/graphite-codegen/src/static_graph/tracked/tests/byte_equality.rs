@@ -29,7 +29,7 @@ fn instance本文は同じschema参照からバイト単位で一致する() {
     let site = DeclarationSite::new("src/main.rs".to_string(), 12);
     let 本文 = 一回目.render_module_source(&site, &site).unwrap();
     assert_eq!(本文, 二回目.render_module_source(&site, &site).unwrap());
-    assert_eq!(fnv1a(本文.as_bytes(), 0xcbf29ce484222325), 499457837096650130);
+    assert_eq!(fnv1a(本文.as_bytes(), 0xcbf29ce484222325), 12532191446291342446);
 }
 
 #[test]

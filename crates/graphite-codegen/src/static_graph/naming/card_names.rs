@@ -2,16 +2,15 @@
 // は既にinstanceの宣言をそのまま写しただけの識別子 (辺アクセサメソッド名は
 // `具体辺.名前()` そのもの) なので `format_ident!` は使わない。
 // `static_graph::file::instance_file` (edge_ref・node_ref) が doc属性へ
-// 変換して生成ファイルへ出す。
+// 変換して生成ファイルへ出す。`Nodes::new`/`Edges::new` の意味カードは
+// 別の関心事 (`construction_card_names`) へ分けてある。
 
-use proc_macro2::{Ident, Span};
+use proc_macro2::Ident;
 
 use crate::static_graph::declaration_sites::宣言元の対;
 use crate::static_graph::schema::input::積み荷宣言;
 use crate::static_graph::semantic::{個体, 具体辺, 意味モデル};
-use crate::static_graph::trace::{固定語彙, 固定語彙の所有者, 名前の由来, 意味項目, 追跡情報, 追跡情報構築器};
-
-use super::tracked_name::追跡付きの名前;
+use crate::static_graph::trace::{名前の由来, 意味項目, 追跡情報, 追跡情報構築器};
 
 const 検証制約の補足: &str =
     "instance の辺の集合が満たすことを展開時に検査済み。戻り値の型は制約ではなく具体辺の宣言が決める";
@@ -90,35 +89,4 @@ pub(crate) fn 積み荷アクセサの追跡情報を作る(具体辺: &具体�
     .宣言を添える(宣言元.schema(), 具体辺.種別().宣言の形())
     .関係instance宣言を添える(宣言元.instance(), 具体辺.宣言の形())
     .完成する()
-}
-
-// `Nodes::new` (issue #41 のB分類、固定語彙)。instance自身の宣言 (`graph`)
-// だけを参照するため `.instance()` だけを読む。
-pub(crate) fn 個体実体所有者構築メソッド名(
-    意味モデル: &意味モデル,
-    宣言元: &宣言元の対,
-) -> 追跡付きの名前 {
-    let ident = Ident::new("new", Span::call_site());
-    let (値なし, 値あり): (Vec<&個体>, Vec<&個体>) =
-        意味モデル.個体列().iter().partition(|個体| 個体.値なし宣言か());
-    let mut 構築器 = 追跡情報構築器::new(
-        名前の由来::GraphiteLanguage(固定語彙::構築する(固定語彙の所有者::Nodes)),
-        "Graphite 静的グラフの個体実体の所有者 `Nodes` を構築する (Graphite の固定語彙)。",
-    )
-    .意味項目を足す(意味項目::new("graph", 意味モデル.グラフ名()));
-    if !値なし.is_empty() {
-        let 引数列 =
-            値なし.iter().map(|個体| format!("{}: {}", 個体.名前(), 個体.実体型())).collect::<Vec<_>>().join(", ");
-        構築器 = 構築器.意味項目を足す(意味項目::new("実行時供給が必要な個体 (引数の順)", 引数列));
-    }
-    if !値あり.is_empty() {
-        let 個体名列 =
-            値あり.iter().map(|個体| format!("`{}`", 個体.名前())).collect::<Vec<_>>().join("・");
-        構築器 = 構築器.意味項目を足す(意味項目::組み立て済みの値で("instance 宣言の右辺式から作る個体", &個体名列));
-    }
-    let 追跡 = 構築器
-        .固定語彙の宣言を添える("`Nodes::new` (`docs/static_graph.md` 「生成される名前の公開契約」)")
-        .関係instance宣言を添える(宣言元.instance(), 意味モデル.グラフ宣言の形())
-        .完成する();
-    追跡付きの名前::new(ident, 追跡)
 }

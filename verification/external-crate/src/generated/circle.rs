@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_STATIC_INSTANCE_FINGERPRINT: [u64; 4] = [
-    9046686035732622354u64, 4433573685147678167u64, 6714276816504494864u64,
-    6464016260319122012u64,
+    18312041046197007315u64, 18285859197179539232u64, 3087956162089940141u64,
+    17351323712649360769u64,
 ];
 /// Graphite 静的グラフの個体実体の所有者 `Nodes` (Graphite の固定語彙)。
 ///
@@ -33,19 +33,16 @@ pub struct Nodes {
     pub 読者: Reader,
 }
 impl Nodes {
-    /// Graphite 静的グラフの個体実体の所有者 `Nodes` を構築する (Graphite の固定語彙)。
+    /// Graphite 静的グラフの個体実体の所有者 `Nodes` を構築する (Graphite の固定語彙)。全個体を宣言順の位置引数にそのまま取り、値の計算は行わない。値ありの個体をinstance宣言の式から計算して渡すのは `Circleの個体を組み立てる` の役目。
     ///
     /// - graph: `Circle`
-    /// - instance 宣言の右辺式から作る個体: `本`・`読者`
+    /// - 引数 (宣言順): `本: Book, 読者: Reader`
     ///
     /// 固定語彙: `Nodes::new` (`docs/static_graph.md` 「生成される名前の公開契約」)
     ///
     /// 関係する instance 宣言: `src/lib.rs` の `graph Circle`
-    pub fn new() -> Self {
-        Self {
-            本: Self::__graphite_initial_value_本(),
-            読者: Self::__graphite_initial_value_読者(),
-        }
+    pub fn new(本: Book, 読者: Reader) -> Self {
+        Self { 本, 読者 }
     }
 }
 /// Graphite 静的グラフの辺実体の所有者 `Edges` (Graphite の固定語彙)。
@@ -64,11 +61,14 @@ pub struct Edges<'a> {
     pub 割り当て: ReadingCircle::AssignedEdge<'a>,
 }
 impl<'a> Edges<'a> {
-    /// Graphite 静的グラフの `Edges` を構築する (Graphite の固定語彙)。
+    /// Graphite 静的グラフの辺実体の所有者 `Edges` を構築する (Graphite の固定語彙)。値の計算は行わない。積み荷ありの具体辺の値をinstance宣言の式から計算して渡すのは`Circleの辺を組み立てる` の役目。
     ///
     /// - graph: `Circle`
+    /// - 第1引数: `nodes: &Nodes`
     ///
     /// 固定語彙: `Edges::new` (`docs/static_graph.md` 「生成される名前の公開契約」)
+    ///
+    /// 関係する instance 宣言: `src/lib.rs` の `graph Circle`
     pub fn new(nodes: &'a Nodes) -> Self {
         Self {
             割り当て: ReadingCircle::AssignedEdge {

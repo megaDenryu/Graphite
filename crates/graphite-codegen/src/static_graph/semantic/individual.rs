@@ -1,6 +1,7 @@
 // 個体 (instanceの `node` 宣言1件の意味モデル)。名前・実体型・初期化式を
-// 持つ。式が無い (`node 名前: 型;`) 場合は実行時供給であり、`Nodes::new` の
-// 引数として渡される (`file/instance_file/node_entities.rs`)。
+// 持つ。式が無い (`node 名前: 型;`) 場合は実行時供給であり、組み立て関数
+// (`{グラフ名}の個体を組み立てる`) の引数として渡される
+// (`inline/assembly.rs`)。
 
 use proc_macro2::Ident;
 use syn::Expr;

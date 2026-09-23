@@ -8,7 +8,7 @@ use super::*;
 #[test]
 fn 役割アクセサで複数段辿れる() {
     let nodes = ノードを組み立てる();
-    let edges = 開発チーム::Edges::new(&nodes);
+    let edges = 開発チームの辺を組み立てる(&nodes);
     let g = 開発チーム::Graph::new(&nodes, &edges);
     assert_eq!(g.node_refs.太郎.太郎の上司().superior().次郎の所属().team().entity().名前(), "開発部");
 }
@@ -16,7 +16,7 @@ fn 役割アクセサで複数段辿れる() {
 #[test]
 fn 有向辺の積み荷へ役割名のアクセサでアクセスできる() {
     let nodes = ノードを組み立てる();
-    let edges = 開発チーム::Edges::new(&nodes);
+    let edges = 開発チームの辺を組み立てる(&nodes);
     let g = 開発チーム::Graph::new(&nodes, &edges);
     assert_eq!(g.edge_refs.太郎の上司.任命().任命日, 2020);
 }
@@ -24,7 +24,7 @@ fn 有向辺の積み荷へ役割名のアクセサでアクセスできる() {
 #[test]
 fn 無向辺の積み荷へ役割名のアクセサでアクセスできる() {
     let nodes = ノードを組み立てる();
-    let edges = 開発チーム::Edges::new(&nodes);
+    let edges = 開発チームの辺を組み立てる(&nodes);
     let g = 開発チーム::Graph::new(&nodes, &edges);
     assert_eq!(g.edge_refs.太郎と一郎の同僚.経緯().経緯, "同期入社");
 }
@@ -32,7 +32,7 @@ fn 無向辺の積み荷へ役割名のアクセサでアクセスできる() {
 #[test]
 fn 無向辺は宣言した役割名のアクセサで両端を返す() {
     let nodes = ノードを組み立てる();
-    let edges = 開発チーム::Edges::new(&nodes);
+    let edges = 開発チームの辺を組み立てる(&nodes);
     let g = 開発チーム::Graph::new(&nodes, &edges);
     assert_eq!(g.edge_refs.太郎と次郎.甲().entity().名前(), "太郎");
     assert_eq!(g.edge_refs.太郎と次郎.乙().entity().名前(), "次郎");
@@ -41,7 +41,7 @@ fn 無向辺は宣言した役割名のアクセサで両端を返す() {
 #[test]
 fn 辿った先は宣言された実体と同一インスタンスである() {
     let nodes = ノードを組み立てる();
-    let edges = 開発チーム::Edges::new(&nodes);
+    let edges = 開発チームの辺を組み立てる(&nodes);
     let g = 開発チーム::Graph::new(&nodes, &edges);
     assert!(std::ptr::eq(g.node_refs.太郎.太郎の上司().superior().entity, &nodes.次郎));
     assert!(std::ptr::eq(g.edge_refs.太郎の上司.subordinate().entity, g.node_refs.太郎.entity));
@@ -50,7 +50,7 @@ fn 辿った先は宣言された実体と同一インスタンスである() {
 #[test]
 fn ノード参照が返す辺参照は辺参照達のものと同じ実体を指す() {
     let nodes = ノードを組み立てる();
-    let edges = 開発チーム::Edges::new(&nodes);
+    let edges = 開発チームの辺を組み立てる(&nodes);
     let g = 開発チーム::Graph::new(&nodes, &edges);
     assert!(std::ptr::eq(g.node_refs.太郎.太郎の所属().entity, g.edge_refs.太郎の所属.entity));
 }
@@ -58,7 +58,7 @@ fn ノード参照が返す辺参照は辺参照達のものと同じ実体を�
 #[test]
 fn 個体参照へ後付けしたメソッドをチェーンの末尾で呼べる() {
     let nodes = ノードを組み立てる();
-    let edges = 開発チーム::Edges::new(&nodes);
+    let edges = 開発チームの辺を組み立てる(&nodes);
     let g = 開発チーム::Graph::new(&nodes, &edges);
     assert_eq!(g.node_refs.太郎.あだ名(), "太郎くん");
 }

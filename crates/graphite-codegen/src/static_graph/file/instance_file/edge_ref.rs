@@ -15,7 +15,7 @@ use crate::static_graph::naming::{
 use crate::static_graph::schema::input::積み荷宣言;
 use crate::static_graph::semantic::{個体, 具体辺, 具体辺形状, 意味モデル};
 
-use super::super::doc_render::doc属性を組み立てる;
+use crate::static_graph::doc_render::doc属性を組み立てる;
 
 pub(super) fn 辺インスタンス参照列を組み立てる(意味モデル: &意味モデル, 宣言元: &宣言元の対) -> TokenStream {
     let 生成列 = 意味モデル.具体辺列().iter().map(|辺| 一辺分を組み立てる(意味モデル, 辺, 宣言元));

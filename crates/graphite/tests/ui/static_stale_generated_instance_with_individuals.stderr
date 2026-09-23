@@ -1,20 +1,46 @@
 error[E0425]: cannot find type `三郎Ref` in module `開発チーム`
-  --> tests/ui/static_stale_generated_instance_with_individuals.rs:70:10
+  --> tests/ui/static_stale_generated_instance_with_individuals.rs:89:10
    |
-44 |     pub struct 一郎Ref<'a> {
+58 |     pub struct 一郎Ref<'a> {
    |     ---------------------- similarly named struct `一郎Ref` defined here
 ...
-70 |     node 三郎: 社員 = 社員;
+89 |     node 三郎: 社員 = 社員;
    |          ^^^^
    |
 help: a struct with a similar name exists
    |
-70 -     node 三郎: 社員 = 社員;
-70 +     node 一郎Ref: 社員 = 社員;
+89 -     node 三郎: 社員 = 社員;
+89 +     node 一郎Ref: 社員 = 社員;
    |
 
 error[E0080]: evaluation panicked: Graphite 静的グラフの instance `開発チーム` の生成ファイルが古いため、パッケージのディレクトリで cargo graphite generate を実行してください (Graphite リポジトリ自身の開発では cargo xtask generate)
-  --> tests/ui/static_stale_generated_instance_with_individuals.rs:67:17
+  --> tests/ui/static_stale_generated_instance_with_individuals.rs:86:17
    |
-67 |     generated = "generated/開発チーム.rs";
+86 |     generated = "generated/開発チーム.rs";
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_` failed here
+
+error[E0061]: this function takes 1 argument but 2 arguments were supplied
+  --> tests/ui/static_stale_generated_instance_with_individuals.rs:28:1
+   |
+28 | / graphite::static_graph_schema! {
+29 | |     generated = "generated/組織.rs";
+30 | |     schema 組織 {
+31 | |         node 社員;
+32 | |     }
+33 | | }
+   | |_^ unexpected argument #2 of type `社員`
+...
+85 | / 組織! {
+86 | |     generated = "generated/開発チーム.rs";
+87 | |     graph 開発チーム;
+88 | |     node 一郎: 社員 = 社員;
+89 | |     node 三郎: 社員 = 社員;
+90 | | }
+   | |_- in this macro invocation
+   |
+note: associated function defined here
+  --> tests/ui/static_stale_generated_instance_with_individuals.rs:53:16
+   |
+53 |         pub fn new(一郎: super::社員) -> Self {
+   |                ^^^
+   = note: this error originates in the macro `::graphite::__static_graph_impl` which comes from the expansion of the macro `組織` (in Nightly builds, run with -Z macro-backtrace for more info)
