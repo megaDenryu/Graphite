@@ -1,0 +1,13 @@
+warning: unused macro definition: `組織`
+  --> tests/ui/static_stale_generated_schema.rs:14:12
+   |
+14 |     schema 組織 {
+   |            ^^^^
+   |
+   = note: `#[warn(unused_macros)]` (part of `#[warn(unused)]`) on by default
+
+error[E0080]: evaluation panicked: Graphite 静的グラフの schema `組織` の生成ファイルが古いため、パッケージのディレクトリで cargo graphite generate を実行してください (Graphite リポジトリ自身の開発では cargo xtask generate)
+  --> tests/ui/static_stale_generated_schema.rs:13:17
+   |
+13 |     generated = "generated/組織.rs";
+   |                 ^^^^^^^^^^^^^^^^^^^ evaluation of `_` failed here

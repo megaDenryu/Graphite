@@ -1,0 +1,5 @@
+error[E0080]: evaluation panicked: Graphite 静的グラフの instance `開発チーム` の生成ファイルが古いため、パッケージのディレクトリで cargo graphite generate を実行してください (Graphite リポジトリ自身の開発では cargo xtask generate)
+  --> tests/ui/static_stale_generated_instance.rs:37:17
+   |
+37 |     generated = "generated/開発チーム.rs";
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_` failed here

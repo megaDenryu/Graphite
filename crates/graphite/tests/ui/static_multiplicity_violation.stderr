@@ -1,0 +1,5 @@
+error: 多重度制約違反: `太郎` の `所属` (役割 `member`) の本数が0件で、範囲 1..1 の外です
+  --> tests/ui/static_multiplicity_violation.rs:34:10
+   |
+34 |     node 太郎: 社員;
+   |          ^^^^
