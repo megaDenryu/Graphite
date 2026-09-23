@@ -300,6 +300,22 @@ rust-analyzer自身のrename機能を生成APIの名前へ直接使うのでは�
 | 対一意違反 (`unique pair`) | 端点の組が (順序に依らず正規化して) 重複 | `対一意制約違反: 種別 `友人` の辺 `次郎と太郎` は端点の組 (太郎, 次郎) が既出の辺と重複しています` |
 | 存在しない辿り | 端点でない個体からロールアクセサを呼ぶ | rustcの通常のE0599 (`太郎Ref` に `次郎の所属` というメソッドは無い、と類似名を提示する) |
 
+### 生成後のRust識別子の衝突検査 (PR #45レビューE)
+
+DSLの構文としては合法でも、脱糖後に生成するRust識別子が衝突する組がある。
+この3つは相互検証を待たず、schema・instanceそれぞれの単体の構造検証
+(`crates/graphite-codegen/src/static_graph/schema/validate.rs`・
+`crates/graphite-codegen/src/static_graph/literal/validate.rs`) が検出する。
+
+| 検査 | 誤りの例 | 生成後に衝突する名前 |
+|---|---|---|
+| node名とedge名の横断重複 | `node 太郎;` と `edge 太郎 = ..;` を同じinstanceに書く | どちらも `太郎Ref` という具体参照structになる |
+| 端点役割名と積み荷役割名の横断重複 | `edge 上司 = (subordinate: 社員) -[subordinate: 任命記録]-> (superior: 社員);` | 辺値structのフィールドと`{辺名}Ref`のアクセサがどちらも`subordinate`になる |
+| 具体辺名と固定語彙`entity`の重複 | `edge entity = 所属(太郎 -> 開発部);` | 端点個体の`{個体名}Ref::entity()` (固定語彙、実体を取り出すメソッド) と衝突する |
+
+回帰試験 (compile-fail): `crates/graphite/tests/ui/static_node_edge_name_collision.rs`・
+`static_role_payload_name_collision.rs`・`static_edge_name_entity_collision.rs`。
+
 多重度違反は、その種別の辺を1本も持たない個体も含め、instanceが宣言する
 全個体を走査対象にする (schemaが宣言した全ての辺種別を起点に走査するため、
 「宣言されているが1回も使われない種別」も検査対象から漏れない)。

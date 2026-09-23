@@ -1,0 +1,5 @@
+error: 名前の衝突: 辺 `entity` は使えません。個体の具体参照が実体を取り出す固定語彙のメソッド名 `entity()` と衝突します
+  --> tests/ui/static_edge_name_entity_collision.rs:36:10
+   |
+36 |     edge entity = 所属(太郎 -> 開発部);
+   |          ^^^^^^
