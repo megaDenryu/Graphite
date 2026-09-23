@@ -105,7 +105,7 @@ pub(crate) fn 辺を組み立てる(nodes: &開発チーム::Nodes) -> 開発チ
 
 fn main() {
     let nodes = ノードを組み立てる();
-    let edges = 開発チーム::construct::edges!(&nodes);
+    let edges = 辺を組み立てる(&nodes);
     let g = 開発チーム::Graph::new(&edges);
 
     let 太郎の参照 = g.node_refs().太郎();
