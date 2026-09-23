@@ -33,9 +33,9 @@ use mod_resolution::{path属性の値, 子ファイルを解決する};
 use root_discovery::ルート一覧を求める;
 
 // `src_root`配下の全`.rs`ファイルについて、属するCargo targetを求める。
-// `mod`のどの根の木からも辿れなかったファイルが1件でもあれば、束ねずに
-// エラーにする (`orphan_check`)。`Cargo`はツール名の固有名詞であり訳さない
-// (`cargo_target`のdoc参照)。
+// `mod`のどの根の木からも辿れなかったファイルは、Graphiteの宣言を含む
+// 場合だけ束ねずにエラーにする (`orphan_check`)。`Cargo`はツール名の固有
+// 名詞であり訳さない (`cargo_target`のdoc参照)。
 #[allow(non_snake_case)]
 pub(crate) fn srcのCargoターゲット表を求める(
     src_root: &Path,
@@ -47,7 +47,7 @@ pub(crate) fn srcのCargoターゲット表を求める(
             表.entry(ファイル).or_insert_with(|| target.clone());
         }
     }
-    orphan_check::辿れなかったファイルを検査する(src_root, &表)?;
+    orphan_check::辿れなかったファイルを解決する(src_root, &mut 表)?;
     Ok(表)
 }
 

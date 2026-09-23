@@ -10,14 +10,13 @@
 
 use std::error::Error;
 
-use proc_macro2::TokenStream;
-
 use graphite_codegen::DeclarationSite;
 
 use super::schema_registry::静的schema名簿;
 use super::FileMacros;
 use crate::generation_plan::GenerationPlan;
 use crate::generation_tree::GenerationTree;
+use crate::schema_macro_collector::追跡形式らしいか;
 
 // 静的グラフのinstanceを解決する。戻り値は解決したinstanceの件数。
 pub(crate) fn instanceを解決する(
@@ -94,30 +93,4 @@ fn 候補として扱わない名前か(name: &str) -> bool {
             | "quote_spanned"
             | "parse_quote"
     )
-}
-
-// `generated = "文字列";` から始まる呼び出しかを見る (完全な解析はしない)。
-// instance候補のschema名が名簿に無いとき、この形で始まっていれば
-// 「typoしたinstance」とみなしエラーにし、そうでなければ (`println!` 等)
-// 対象外にする。
-fn 追跡形式らしいか(tokens: &TokenStream) -> bool {
-    let probe = |input: syn::parse::ParseStream| -> syn::Result<bool> {
-        let 追跡形式の先頭か = (|| -> syn::Result<()> {
-            let ident: syn::Ident = input.parse()?;
-            if ident != "generated" {
-                return Err(input.error("先頭が generated ではない"));
-            }
-            input.parse::<syn::Token![=]>()?;
-            input.parse::<syn::LitStr>()?;
-            input.parse::<syn::Token![;]>()?;
-            Ok(())
-        })()
-        .is_ok();
-        // 残りのトークンを読み捨てる (proc-macro-dev スキルの drain_rest と
-        // 同じ理由。`Parser::parse2` は末尾に未消費トークンが残ると
-        // 無関係な "unexpected token" エラーを返してしまう)。
-        let _ = input.parse::<TokenStream>();
-        Ok(追跡形式の先頭か)
-    };
-    syn::parse::Parser::parse2(probe, tokens.clone()).unwrap_or(false)
 }

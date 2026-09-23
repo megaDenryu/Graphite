@@ -1,7 +1,8 @@
 //! 構文木を辿って、ファイル中の全マクロ呼び出し (名前・入力トークン・
 //! 宣言行) を集める走査。分類 (`dynamic_graph_schema!`・旧名
 //! `graph_schema!`・`static_graph_schema!`・それ以外の静的instance候補) は
-//! 呼び出し側 (`static_resolution`・`schema_source_file`) が行う。
+//! 呼び出し側 (`static_resolution`・`schema_source_file`・`module_graph`) が
+//! 行う。
 
 #[cfg(test)]
 mod tests;
@@ -41,4 +42,33 @@ impl<'ast> Visit<'ast> for MacroCallCollector {
         }
         visit::visit_macro(self, node);
     }
+}
+
+// 呼び出しの入力トークンが `generated = "文字列";` から始まるかを見る
+// (完全な解析はしない)。schema宣言 (`dynamic_graph_schema!`・
+// `static_graph_schema!`) とinstance宣言はどちらもこの形を先頭に持つため、
+// instance宣言のようにマクロ名が利用者ごとに違う呼び出しも、名前を知らずに
+// 「Graphiteの宣言らしい」と判定できる。`static_resolution::instance_resolution`
+// が名簿照合の入口判定に、`module_graph::orphan_check`がmod木から辿れない
+// ファイルの違反判定にそれぞれ使う。
+pub(crate) fn 追跡形式らしいか(tokens: &TokenStream) -> bool {
+    let probe = |input: syn::parse::ParseStream| -> syn::Result<bool> {
+        let 追跡形式の先頭か = (|| -> syn::Result<()> {
+            let ident: syn::Ident = input.parse()?;
+            if ident != "generated" {
+                return Err(input.error("先頭が generated ではない"));
+            }
+            input.parse::<syn::Token![=]>()?;
+            input.parse::<syn::LitStr>()?;
+            input.parse::<syn::Token![;]>()?;
+            Ok(())
+        })()
+        .is_ok();
+        // 残りのトークンを読み捨てる (proc-macro-dev スキルの drain_rest と
+        // 同じ理由。`Parser::parse2` は末尾に未消費トークンが残ると
+        // 無関係な "unexpected token" エラーを返してしまう)。
+        let _ = input.parse::<TokenStream>();
+        Ok(追跡形式の先頭か)
+    };
+    syn::parse::Parser::parse2(probe, tokens.clone()).unwrap_or(false)
 }

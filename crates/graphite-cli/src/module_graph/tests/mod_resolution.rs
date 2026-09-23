@@ -45,12 +45,53 @@ fn インラインmodの中のpath属性はmod名を積み重ねた位置を基�
 }
 
 #[test]
-fn どの根からも辿れないファイルは違反になる() {
+fn schema宣言を含み辿れないファイルは違反になる() {
+    // `dynamic_graph_schema!`・`static_graph_schema!`は固定名なので、
+    // 静的schema名簿が無いこの時点でも名前だけで判定できる。
     一時srcで試す(
-        &[("lib.rs", "pub fn 甲() {}"), ("orphan.rs", "pub fn 迷子() {}")],
+        &[
+            ("lib.rs", "pub fn 甲() {}"),
+            (
+                "orphan.rs",
+                "graphite::static_graph_schema! { generated = \"x.rs\"; schema 迷子 { node 何か; } }",
+            ),
+        ],
         |_dir, 結果| {
             let error = 結果.err().unwrap();
             assert!(error.to_string().contains("orphan.rs"));
+        },
+    );
+}
+
+#[test]
+fn generatedから始まる呼び出しを含み辿れないファイルは違反になる() {
+    // instance宣言のマクロ名は利用者が選ぶschema名なので固定できないが、
+    // schema・instanceのどちらも`generated = "...";`を先頭に持つため、
+    // この形だけで「Graphiteの宣言らしい」と判定できる。
+    一時srcで試す(
+        &[
+            ("lib.rs", "pub fn 甲() {}"),
+            ("orphan.rs", "組織_不明! { generated = \"x.rs\"; graph 迷子; }"),
+        ],
+        |_dir, 結果| {
+            let error = 結果.err().unwrap();
+            assert!(error.to_string().contains("orphan.rs"));
+        },
+    );
+}
+
+#[test]
+fn 宣言を含まず辿れないファイルは対象外になる() {
+    // `include!`で読み込むだけの純粋なデータ・補助関数のファイルは、
+    // mod木から辿れなくてもGraphiteの宣言が無ければ違反にしない
+    // (`docs/code_generation.md`「宣言の種類」の検査していない範囲)。
+    一時srcで試す(
+        &[
+            ("lib.rs", "include!(\"data/table.rs\");"),
+            ("data/table.rs", "pub fn f() -> u32 { 42 }"),
+        ],
+        |_dir, 結果| {
+            結果.unwrap();
         },
     );
 }
