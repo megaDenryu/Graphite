@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_STATIC_INSTANCE_FINGERPRINT: [u64; 4] = [
-    17144173166168742136u64, 1205273785705112063u64, 17277178579043035158u64,
-    2245556131657350098u64,
+    18313031814086055621u64, 2223508362261277044u64, 1421273731340021923u64,
+    1447197881489837639u64,
 ];
 /// Graphite 静的グラフの個体実体の所有者 `Nodes` (Graphite の固定語彙)。
 ///
@@ -15,49 +15,14 @@ pub(super) const __GRAPHITE_STATIC_INSTANCE_FINGERPRINT: [u64; 4] = [
 ///
 /// 固定語彙: `Nodes` (`docs/static_graph.md` 「生成される名前の公開契約」)
 pub struct Nodes {
-    /// Graphite 静的グラフの個体実体フィールド。`Nodes` がこの個体の実体を所有する。
-    ///
-    /// - graph: `開発チーム`
-    /// - 個体: `太郎`
-    /// - 実体型: `社員`
-    ///
-    /// 宣言: `src/main.rs` の `node 太郎: 社員 = ..`
-    pub 太郎: 社員,
-    /// Graphite 静的グラフの個体実体フィールド。`Nodes` がこの個体の実体を所有する。
-    ///
-    /// - graph: `開発チーム`
-    /// - 個体: `次郎`
-    /// - 実体型: `社員`
-    ///
-    /// 宣言: `src/main.rs` の `node 次郎: 社員 = ..`
-    pub 次郎: 社員,
-    /// Graphite 静的グラフの個体実体フィールド。`Nodes` がこの個体の実体を所有する。
-    ///
-    /// - graph: `開発チーム`
-    /// - 個体: `一郎`
-    /// - 実体型: `社員`
-    ///
-    /// 宣言: `src/main.rs` の `node 一郎: 社員 = ..`
-    pub 一郎: 社員,
-    /// Graphite 静的グラフの個体実体フィールド。`Nodes` がこの個体の実体を所有する。
-    ///
-    /// - graph: `開発チーム`
-    /// - 個体: `開発部`
-    /// - 実体型: `部署`
-    ///
-    /// 宣言: `src/main.rs` の `node 開発部: 部署`
-    pub 開発部: 部署,
+    太郎: 社員,
+    次郎: 社員,
+    一郎: 社員,
+    開発部: 部署,
 }
 impl Nodes {
-    /// Graphite 静的グラフの個体実体の所有者 `Nodes` を構築する (Graphite の固定語彙)。全個体を宣言順の位置引数にそのまま取り、値の計算は行わない。値ありの個体をinstance宣言の式から計算して渡すのは `開発チームの個体を組み立てる` の役目。
-    ///
-    /// - graph: `開発チーム`
-    /// - 引数 (宣言順): `太郎: 社員, 次郎: 社員, 一郎: 社員, 開発部: 部署`
-    ///
-    /// 固定語彙: `Nodes::new` (`docs/static_graph.md` 「生成される名前の公開契約」)
-    ///
-    /// 関係する instance 宣言: `src/main.rs` の `graph 開発チーム`
-    pub fn new(
+    #[doc(hidden)]
+    pub(crate) fn __graphite_internal_new(
         太郎: 社員,
         次郎: 社員,
         一郎: 社員,
@@ -77,71 +42,23 @@ impl Nodes {
 ///
 /// 固定語彙: `Edges` (`docs/static_graph.md` 「生成される名前の公開契約」)
 pub struct Edges<'a> {
-    /// Graphite 静的グラフの辺実体フィールド。`Edges` がこの具体辺の実体を所有する。
-    ///
-    /// - graph: `開発チーム`
-    /// - 具体辺: `太郎の所属`
-    /// - 辺種別: `所属`
-    ///
-    /// 宣言: `src/main.rs` の `edge 太郎の所属 = 所属(太郎 -> 開発部)`
-    pub 太郎の所属: 組織::所属Edge<'a>,
-    /// Graphite 静的グラフの辺実体フィールド。`Edges` がこの具体辺の実体を所有する。
-    ///
-    /// - graph: `開発チーム`
-    /// - 具体辺: `次郎の所属`
-    /// - 辺種別: `所属`
-    ///
-    /// 宣言: `src/main.rs` の `edge 次郎の所属 = 所属(次郎 -> 開発部)`
-    pub 次郎の所属: 組織::所属Edge<'a>,
-    /// Graphite 静的グラフの辺実体フィールド。`Edges` がこの具体辺の実体を所有する。
-    ///
-    /// - graph: `開発チーム`
-    /// - 具体辺: `一郎の所属`
-    /// - 辺種別: `所属`
-    ///
-    /// 宣言: `src/main.rs` の `edge 一郎の所属 = 所属(一郎 -> 開発部)`
-    pub 一郎の所属: 組織::所属Edge<'a>,
-    /// Graphite 静的グラフの辺実体フィールド。`Edges` がこの具体辺の実体を所有する。
-    ///
-    /// - graph: `開発チーム`
-    /// - 具体辺: `太郎の上司`
-    /// - 辺種別: `上司`
-    ///
-    /// 宣言: `src/main.rs` の `edge 太郎の上司 = 上司(太郎 -[..]-> 次郎)`
-    pub 太郎の上司: 組織::上司Edge<'a>,
-    /// Graphite 静的グラフの辺実体フィールド。`Edges` がこの具体辺の実体を所有する。
-    ///
-    /// - graph: `開発チーム`
-    /// - 具体辺: `太郎と次郎`
-    /// - 辺種別: `友人`
-    ///
-    /// 宣言: `src/main.rs` の `edge 太郎と次郎 = 友人(太郎 -- 次郎)`
-    pub 太郎と次郎: 組織::友人Edge<'a>,
-    /// Graphite 静的グラフの辺実体フィールド。`Edges` がこの具体辺の実体を所有する。
-    ///
-    /// - graph: `開発チーム`
-    /// - 具体辺: `太郎と一郎の同僚`
-    /// - 辺種別: `同僚`
-    ///
-    /// 宣言: `src/main.rs` の `edge 太郎と一郎の同僚 = 同僚(太郎 -[..]- 一郎)`
-    pub 太郎と一郎の同僚: 組織::同僚Edge<'a>,
+    __graphite_nodes: &'a Nodes,
+    太郎の所属: 組織::所属Edge<'a>,
+    次郎の所属: 組織::所属Edge<'a>,
+    一郎の所属: 組織::所属Edge<'a>,
+    太郎の上司: 組織::上司Edge<'a>,
+    太郎と次郎: 組織::友人Edge<'a>,
+    太郎と一郎の同僚: 組織::同僚Edge<'a>,
 }
 impl<'a> Edges<'a> {
-    /// Graphite 静的グラフの辺実体の所有者 `Edges` を構築する (Graphite の固定語彙)。値の計算は行わない。積み荷ありの具体辺の値をinstance宣言の式から計算して渡すのは`開発チームの辺を組み立てる` の役目。
-    ///
-    /// - graph: `開発チーム`
-    /// - 第1引数: `nodes: &Nodes`
-    /// - 積み荷引数 (宣言順): `太郎の上司: 任命記録, 太郎と一郎の同僚: 経緯記録`
-    ///
-    /// 固定語彙: `Edges::new` (`docs/static_graph.md` 「生成される名前の公開契約」)
-    ///
-    /// 関係する instance 宣言: `src/main.rs` の `graph 開発チーム`
-    pub fn new(
+    #[doc(hidden)]
+    pub(crate) fn __graphite_internal_new(
         nodes: &'a Nodes,
         太郎の上司: 任命記録,
         太郎と一郎の同僚: 経緯記録,
     ) -> Self {
         Self {
+            __graphite_nodes: nodes,
             太郎の所属: 組織::所属Edge {
                 member: &nodes.太郎,
                 team: &nodes.開発部,
@@ -879,12 +796,7 @@ pub struct NodeRefs<'a> {
     pub 開発部: 開発部Ref<'a>,
 }
 impl<'a> NodeRefs<'a> {
-    /// Graphite 静的グラフの `NodeRefs` を構築する (Graphite の固定語彙)。
-    ///
-    /// - graph: `開発チーム`
-    ///
-    /// 固定語彙: `NodeRefs::new` (`docs/static_graph.md` 「生成される名前の公開契約」)
-    pub fn new(nodes: &'a Nodes, edges: &'a Edges<'a>) -> Self {
+    fn new(nodes: &'a Nodes, edges: &'a Edges<'a>) -> Self {
         Self {
             太郎: 太郎Ref {
                 entity: &nodes.太郎,
@@ -959,12 +871,7 @@ pub struct EdgeRefs<'a> {
     pub 太郎と一郎の同僚: 太郎と一郎の同僚Ref<'a>,
 }
 impl<'a> EdgeRefs<'a> {
-    /// Graphite 静的グラフの `EdgeRefs` を構築する (Graphite の固定語彙)。
-    ///
-    /// - graph: `開発チーム`
-    ///
-    /// 固定語彙: `EdgeRefs::new` (`docs/static_graph.md` 「生成される名前の公開契約」)
-    pub fn new(nodes: &'a Nodes, edges: &'a Edges<'a>) -> Self {
+    fn new(nodes: &'a Nodes, edges: &'a Edges<'a>) -> Self {
         Self {
             太郎の所属: 太郎の所属Ref {
                 entity: &edges.太郎の所属,
@@ -1024,10 +931,53 @@ impl<'a> Graph<'a> {
     /// - graph: `開発チーム`
     ///
     /// 固定語彙: `Graph::new` (`docs/static_graph.md` 「生成される名前の公開契約」)
-    pub fn new(nodes: &'a Nodes, edges: &'a Edges<'a>) -> Self {
+    pub fn new(edges: &'a Edges<'a>) -> Self {
+        let nodes = edges.__graphite_nodes;
         Self {
             node_refs: NodeRefs::new(nodes, edges),
             edge_refs: EdgeRefs::new(nodes, edges),
         }
     }
+}
+/// Graphite 静的グラフの構築の入口をまとめるmodule `construct` (Graphite の固定語彙)。
+///
+/// - graph: `開発チーム`
+///
+/// 固定語彙: `construct` (`docs/static_graph.md` 「生成される名前の公開契約」)
+pub mod construct {
+    /// Graphite 静的グラフの個体実体の所有者 `Nodes` を構築するマクロ `nodes` (Graphite の固定語彙)。値ありの個体はinstance宣言の式からこのマクロが計算し、値なしの個体だけを引数で受け取る。
+    ///
+    /// - graph: `開発チーム`
+    /// - 実行時に渡す個体 (宣言順): `開発部: 部署`
+    /// - 戻り値: `Nodes`
+    ///
+    /// 固定語彙: `construct::nodes!` (`docs/static_graph.md` 「生成される名前の公開契約」)
+    ///
+    /// 関係する instance 宣言: `src/main.rs` の `graph 開発チーム`
+    macro_rules! nodes {
+        ($開発部:expr) => {
+            { let (太郎, 次郎, 一郎,) = __graphite_values_開発チーム!();
+            開発チーム::Nodes::__graphite_internal_new(太郎, 次郎, 一郎,
+            $開発部) }
+        };
+    }
+    pub(crate) use nodes;
+    /// Graphite 静的グラフの辺実体の所有者 `Edges` を構築するマクロ `edges` (Graphite の固定語彙)。積み荷ありの具体辺はすべてinstance宣言の式からこのマクロが計算する。
+    ///
+    /// - graph: `開発チーム`
+    /// - 引数: `nodes: &Nodes`
+    /// - 戻り値: `Edges`
+    ///
+    /// 固定語彙: `construct::edges!` (`docs/static_graph.md` 「生成される名前の公開契約」)
+    ///
+    /// 関係する instance 宣言: `src/main.rs` の `graph 開発チーム`
+    macro_rules! edges {
+        ($nodes:expr) => {
+            { let (太郎の上司, 太郎と一郎の同僚,) =
+            __graphite_payloads_開発チーム!();
+            開発チーム::Edges::__graphite_internal_new($nodes, 太郎の上司,
+            太郎と一郎の同僚) }
+        };
+    }
+    pub(crate) use edges;
 }

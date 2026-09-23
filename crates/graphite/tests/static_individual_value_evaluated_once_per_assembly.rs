@@ -1,10 +1,10 @@
-//! 個体の値の式が、組み立て関数を呼ぶたびに (キャッシュされず) 1回だけ
-//! 評価されることを固定する回帰試験。供給関数
-//! (`crates/graphite-codegen/src/static_graph/inline/value_supply.rs`) を
-//! 組み立て関数の本体へ入れ子にしても、呼ぶたびに毎回実行される関数呼び出し
-//! であることに変わりはなく、値がどこかにキャッシュされて使い回される
-//! ことはない。同名個体を持つ複数instanceの衝突回避の検証は
-//! `static_same_individual_name_multiple_instances.rs` が別に持つ。
+//! 個体の値の式が、`construct::nodes!` を呼ぶたびに (キャッシュされず) 1回
+//! だけ評価されることを固定する回帰試験。値マクロ
+//! (`crates/graphite-codegen/src/static_graph/inline/value_supply.rs`) は
+//! 呼ぶたびに毎回展開されるマクロ呼び出しであることに変わりはなく、値が
+//! どこかにキャッシュされて使い回されることはない。同名個体を持つ複数
+//! instanceの衝突回避の検証は `static_same_individual_name_multiple_instances.rs`
+//! が別に持つ。
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -57,11 +57,13 @@ mod 検証評価回数チーム {
 fn 個体の値の式はnodesを組み立てるたびに1回だけ評価される() {
     太郎の評価回数.store(0, Ordering::SeqCst);
 
-    let 組み立て結果1回目 = 検証評価回数チームの個体を組み立てる();
+    let 組み立て結果1回目 = 検証評価回数チーム::construct::nodes!();
     assert_eq!(太郎の評価回数.load(Ordering::SeqCst), 1, "1回目の組み立てで1回評価される");
-    assert_eq!(組み立て結果1回目.太郎.名前, "太郎");
+    let edges1回目 = 検証評価回数チーム::construct::edges!(&組み立て結果1回目);
+    let g1回目 = 検証評価回数チーム::Graph::new(&edges1回目);
+    assert_eq!(g1回目.node_refs.太郎.entity().名前, "太郎");
 
-    let _組み立て結果2回目 = 検証評価回数チームの個体を組み立てる();
+    let _組み立て結果2回目 = 検証評価回数チーム::construct::nodes!();
     assert_eq!(
         太郎の評価回数.load(Ordering::SeqCst),
         2,

@@ -14,7 +14,6 @@ pub(crate) enum 名前の由来 {
     SchemaPayloadRole { #[allow(dead_code)] 種別名: Ident, 積み荷役割: Ident },
     InstanceNode { 個体名: Ident },
     InstanceEdge { 辺名: Ident },
-    InstanceGraph { グラフ名: Ident }, // instance宣言の`graph <名前>;`から機械的に派生する名前(個体・辺を組み立てる関数)の由来。
     // 内側の `固定語彙` は現状spanの計算には使わず (`Span::call_site()`
     // 固定) 読み戻していないが、A/B分類のB側がどの固定語彙かを保持する
     // ための正当なデータであり、将来の意味カード生成の選択肢を保つ
@@ -39,7 +38,6 @@ impl 名前の由来 {
             Self::SchemaPayloadRole { 積み荷役割, .. } => 積み荷役割.span(),
             Self::InstanceNode { 個体名 } => 個体名.span(),
             Self::InstanceEdge { 辺名 } => 辺名.span(),
-            Self::InstanceGraph { グラフ名 } => グラフ名.span(),
             Self::GraphiteLanguage(_) => Span::call_site(),
         }
     }
@@ -55,11 +53,10 @@ impl 名前の由来 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::super::fixed_vocabulary_kind::固定語彙の所有者;
 
     #[test]
     fn 固定語彙由来はb分類である() {
-        let 由来 = 名前の由来::GraphiteLanguage(固定語彙::構築する(固定語彙の所有者::Nodes));
+        let 由来 = 名前の由来::GraphiteLanguage(固定語彙::GraphNew);
         assert!(!由来.利用者語彙由来か());
         // proc_macro2::Span は PartialEq を持たないため、spanが取得できる
         // (panicしない) ことだけを確かめる。

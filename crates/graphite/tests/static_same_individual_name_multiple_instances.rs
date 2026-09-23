@@ -1,15 +1,12 @@
 //! 最上位 (このファイルのモジュール直下) の同じスコープに、同名の値あり
 //! 個体「太郎」・同名の積み荷あり辺「太郎の所属」を持つinstanceを2つ置いても
-//! 供給関数名が衝突しないことを固定する回帰試験
-//! (`crates/graphite-codegen/src/static_graph/inline/assembly.rs` 参照)。
-//! 供給関数 (`__graphite_initial_value_{名前}`等) を組み立て関数の本体へ
-//! 入れ子にする前は、呼び出し位置に並ぶ自由関数としてinstanceを跨いで
-//! 同じ名前を生成しており、この配置は
-//! `error[E0428]: the name '__graphite_initial_value_太郎' is defined
-//! multiple times` になっていた。関数の中に置いた場合の同じ検証は
-//! `static_same_individual_name_inside_function.rs`、個体の値の式の
-//! 評価回数の検証は `static_individual_value_evaluated_once_per_assembly.rs`
-//! が別に持つ。
+//! 値マクロ名が衝突しないことを固定する回帰試験
+//! (`crates/graphite-codegen/src/static_graph/inline/value_supply.rs`
+//! 参照)。値マクロの名前 (`__graphite_values_{グラフ名}`等) はグラフ名を
+//! 含むため、個体名・辺名が同じでもグラフ名が違えば衝突しない。関数の中に
+//! 置いた場合の同じ検証は `static_same_individual_name_inside_function.rs`、
+//! 個体の値の式の評価回数の検証は
+//! `static_individual_value_evaluated_once_per_assembly.rs` が別に持つ。
 
 pub struct 社員 {
     pub 名前: String,
@@ -70,13 +67,13 @@ mod 検証チームb {
 
 #[test]
 fn 最上位に同名個体を持つ複数instanceを置いてもビルドでき値は独立している() {
-    let nodes_a = 検証チームaの個体を組み立てる();
-    let edges_a = 検証チームaの辺を組み立てる(&nodes_a);
-    let g_a = 検証チームa::Graph::new(&nodes_a, &edges_a);
+    let nodes_a = 検証チームa::construct::nodes!();
+    let edges_a = 検証チームa::construct::edges!(&nodes_a);
+    let g_a = 検証チームa::Graph::new(&edges_a);
 
-    let nodes_b = 検証チームbの個体を組み立てる();
-    let edges_b = 検証チームbの辺を組み立てる(&nodes_b);
-    let g_b = 検証チームb::Graph::new(&nodes_b, &edges_b);
+    let nodes_b = 検証チームb::construct::nodes!();
+    let edges_b = 検証チームb::construct::edges!(&nodes_b);
+    let g_b = 検証チームb::Graph::new(&edges_b);
 
     assert_eq!(g_a.node_refs.太郎.entity().名前, "太郎(A)");
     assert_eq!(g_b.node_refs.太郎.entity().名前, "太郎(B)");

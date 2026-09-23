@@ -1,46 +1,15 @@
 error[E0433]: failed to resolve: use of unresolved module or unlinked crate `開発チーム`
-  --> tests/ui/static_instance_missing_module.rs:43:11
+  --> tests/ui/static_instance_missing_module.rs:43:17
    |
-43 |     graph 開発チーム;
-   |           ^^^^^^^^^^ use of unresolved module or unlinked crate `開発チーム`
-   |
-   = help: if you wanted to use a crate named `開発チーム`, use `cargo add 開発チーム` to add it to your `Cargo.toml`
-help: consider importing this struct
-   |
-17 + use petgraph::graphmap::Nodes;
-   |
-
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `開発チーム`
-  --> tests/ui/static_instance_missing_module.rs:43:11
-   |
-43 |     graph 開発チーム;
-   |           ^^^^^^^^^^ use of unresolved module or unlinked crate `開発チーム`
-   |
-   = help: if you wanted to use a crate named `開発チーム`, use `cargo add 開発チーム` to add it to your `Cargo.toml`
-help: consider importing one of these structs
-   |
-17 + use petgraph::csr::Edges;
-   |
-17 + use petgraph::graph::Edges;
-   |
-17 + use petgraph::graphmap::Edges;
-   |
-17 + use petgraph::matrix_graph::Edges;
-   |
-   = and 1 other candidate
-
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `開発チーム`
-  --> tests/ui/static_instance_missing_module.rs:42:17
-   |
-42 |     generated = "generated/開発チーム.rs";
+43 |     generated = "generated/開発チーム.rs";
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ use of unresolved module or unlinked crate `開発チーム`
    |
    = help: if you wanted to use a crate named `開発チーム`, use `cargo add 開発チーム` to add it to your `Cargo.toml`
 
 error[E0433]: failed to resolve: use of unresolved module or unlinked crate `開発チーム`
-  --> tests/ui/static_instance_missing_module.rs:43:11
+  --> tests/ui/static_instance_missing_module.rs:44:11
    |
-43 |     graph 開発チーム;
+44 |     graph 開発チーム;
    |           ^^^^^^^^^^ use of unresolved module or unlinked crate `開発チーム`
    |
    = help: if you wanted to use a crate named `開発チーム`, use `cargo add 開発チーム` to add it to your `Cargo.toml`

@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_STATIC_INSTANCE_FINGERPRINT: [u64; 4] = [
-    8475749471812373701u64, 9829889932572247356u64, 7079705444009163211u64,
-    16367084151182817047u64,
+    152911567854151706u64, 12413984387990356299u64, 12325192603284851712u64,
+    8724032973953650716u64,
 ];
 /// Graphite 静的グラフの個体実体の所有者 `Nodes` (Graphite の固定語彙)。
 ///
@@ -15,33 +15,12 @@ pub(super) const __GRAPHITE_STATIC_INSTANCE_FINGERPRINT: [u64; 4] = [
 ///
 /// 固定語彙: `Nodes` (`docs/static_graph.md` 「生成される名前の公開契約」)
 pub struct Nodes {
-    /// Graphite 静的グラフの個体実体フィールド。`Nodes` がこの個体の実体を所有する。
-    ///
-    /// - graph: `経理チーム`
-    /// - 個体: `花子`
-    /// - 実体型: `社員`
-    ///
-    /// 宣言: `src/main.rs` の `node 花子: 社員 = ..`
-    pub 花子: 社員,
-    /// Graphite 静的グラフの個体実体フィールド。`Nodes` がこの個体の実体を所有する。
-    ///
-    /// - graph: `経理チーム`
-    /// - 個体: `総務部`
-    /// - 実体型: `部署`
-    ///
-    /// 宣言: `src/main.rs` の `node 総務部: 部署 = ..`
-    pub 総務部: 部署,
+    花子: 社員,
+    総務部: 部署,
 }
 impl Nodes {
-    /// Graphite 静的グラフの個体実体の所有者 `Nodes` を構築する (Graphite の固定語彙)。全個体を宣言順の位置引数にそのまま取り、値の計算は行わない。値ありの個体をinstance宣言の式から計算して渡すのは `経理チームの個体を組み立てる` の役目。
-    ///
-    /// - graph: `経理チーム`
-    /// - 引数 (宣言順): `花子: 社員, 総務部: 部署`
-    ///
-    /// 固定語彙: `Nodes::new` (`docs/static_graph.md` 「生成される名前の公開契約」)
-    ///
-    /// 関係する instance 宣言: `src/main.rs` の `graph 経理チーム`
-    pub fn new(花子: 社員, 総務部: 部署) -> Self {
+    #[doc(hidden)]
+    pub(crate) fn __graphite_internal_new(花子: 社員, 総務部: 部署) -> Self {
         Self { 花子, 総務部 }
     }
 }
@@ -51,26 +30,14 @@ impl Nodes {
 ///
 /// 固定語彙: `Edges` (`docs/static_graph.md` 「生成される名前の公開契約」)
 pub struct Edges<'a> {
-    /// Graphite 静的グラフの辺実体フィールド。`Edges` がこの具体辺の実体を所有する。
-    ///
-    /// - graph: `経理チーム`
-    /// - 具体辺: `花子の所属`
-    /// - 辺種別: `所属`
-    ///
-    /// 宣言: `src/main.rs` の `edge 花子の所属 = 所属(花子 -> 総務部)`
-    pub 花子の所属: 組織::所属Edge<'a>,
+    __graphite_nodes: &'a Nodes,
+    花子の所属: 組織::所属Edge<'a>,
 }
 impl<'a> Edges<'a> {
-    /// Graphite 静的グラフの辺実体の所有者 `Edges` を構築する (Graphite の固定語彙)。値の計算は行わない。積み荷ありの具体辺の値をinstance宣言の式から計算して渡すのは`経理チームの辺を組み立てる` の役目。
-    ///
-    /// - graph: `経理チーム`
-    /// - 第1引数: `nodes: &Nodes`
-    ///
-    /// 固定語彙: `Edges::new` (`docs/static_graph.md` 「生成される名前の公開契約」)
-    ///
-    /// 関係する instance 宣言: `src/main.rs` の `graph 経理チーム`
-    pub fn new(nodes: &'a Nodes) -> Self {
+    #[doc(hidden)]
+    pub(crate) fn __graphite_internal_new(nodes: &'a Nodes) -> Self {
         Self {
+            __graphite_nodes: nodes,
             花子の所属: 組織::所属Edge {
                 member: &nodes.花子,
                 team: &nodes.総務部,
@@ -239,12 +206,7 @@ pub struct NodeRefs<'a> {
     pub 総務部: 総務部Ref<'a>,
 }
 impl<'a> NodeRefs<'a> {
-    /// Graphite 静的グラフの `NodeRefs` を構築する (Graphite の固定語彙)。
-    ///
-    /// - graph: `経理チーム`
-    ///
-    /// 固定語彙: `NodeRefs::new` (`docs/static_graph.md` 「生成される名前の公開契約」)
-    pub fn new(nodes: &'a Nodes, edges: &'a Edges<'a>) -> Self {
+    fn new(nodes: &'a Nodes, edges: &'a Edges<'a>) -> Self {
         Self {
             花子: 花子Ref {
                 entity: &nodes.花子,
@@ -274,12 +236,7 @@ pub struct EdgeRefs<'a> {
     pub 花子の所属: 花子の所属Ref<'a>,
 }
 impl<'a> EdgeRefs<'a> {
-    /// Graphite 静的グラフの `EdgeRefs` を構築する (Graphite の固定語彙)。
-    ///
-    /// - graph: `経理チーム`
-    ///
-    /// 固定語彙: `EdgeRefs::new` (`docs/static_graph.md` 「生成される名前の公開契約」)
-    pub fn new(nodes: &'a Nodes, edges: &'a Edges<'a>) -> Self {
+    fn new(nodes: &'a Nodes, edges: &'a Edges<'a>) -> Self {
         Self {
             花子の所属: 花子の所属Ref {
                 entity: &edges.花子の所属,
@@ -314,10 +271,49 @@ impl<'a> Graph<'a> {
     /// - graph: `経理チーム`
     ///
     /// 固定語彙: `Graph::new` (`docs/static_graph.md` 「生成される名前の公開契約」)
-    pub fn new(nodes: &'a Nodes, edges: &'a Edges<'a>) -> Self {
+    pub fn new(edges: &'a Edges<'a>) -> Self {
+        let nodes = edges.__graphite_nodes;
         Self {
             node_refs: NodeRefs::new(nodes, edges),
             edge_refs: EdgeRefs::new(nodes, edges),
         }
     }
+}
+/// Graphite 静的グラフの構築の入口をまとめるmodule `construct` (Graphite の固定語彙)。
+///
+/// - graph: `経理チーム`
+///
+/// 固定語彙: `construct` (`docs/static_graph.md` 「生成される名前の公開契約」)
+pub mod construct {
+    /// Graphite 静的グラフの個体実体の所有者 `Nodes` を構築するマクロ `nodes` (Graphite の固定語彙)。値ありの個体はinstance宣言の式からこのマクロが計算し、値なしの個体だけを引数で受け取る。
+    ///
+    /// - graph: `経理チーム`
+    /// - 戻り値: `Nodes`
+    ///
+    /// 固定語彙: `construct::nodes!` (`docs/static_graph.md` 「生成される名前の公開契約」)
+    ///
+    /// 関係する instance 宣言: `src/main.rs` の `graph 経理チーム`
+    macro_rules! nodes {
+        () => {
+            { let (花子, 総務部,) = __graphite_values_経理チーム!();
+            経理チーム::Nodes::__graphite_internal_new(花子, 総務部) }
+        };
+    }
+    pub(crate) use nodes;
+    /// Graphite 静的グラフの辺実体の所有者 `Edges` を構築するマクロ `edges` (Graphite の固定語彙)。積み荷ありの具体辺はすべてinstance宣言の式からこのマクロが計算する。
+    ///
+    /// - graph: `経理チーム`
+    /// - 引数: `nodes: &Nodes`
+    /// - 戻り値: `Edges`
+    ///
+    /// 固定語彙: `construct::edges!` (`docs/static_graph.md` 「生成される名前の公開契約」)
+    ///
+    /// 関係する instance 宣言: `src/main.rs` の `graph 経理チーム`
+    macro_rules! edges {
+        ($nodes:expr) => {
+            { let () = __graphite_payloads_経理チーム!();
+            経理チーム::Edges::__graphite_internal_new($nodes,) }
+        };
+    }
+    pub(crate) use edges;
 }

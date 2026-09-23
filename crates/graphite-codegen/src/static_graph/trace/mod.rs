@@ -12,7 +12,7 @@ mod origin;
 mod semantic_item;
 mod tracked_info;
 
-pub(crate) use fixed_vocabulary_kind::{固定語彙, 固定語彙の所有者};
+pub(crate) use fixed_vocabulary_kind::固定語彙;
 pub(crate) use origin::名前の由来;
 pub(crate) use semantic_item::意味項目;
 pub(crate) use tracked_info::{追跡情報, 追跡情報構築器};

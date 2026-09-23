@@ -1,25 +1,25 @@
 // このファイルは参照の層の集まり (`NodeRefs`/`EdgeRefs`) を組み立てる。
 // フィールドは個体名・辺名をそのまま使い、`pub` + 意味カードを付ける
-// (issue #41 §5.3)。
+// (issue #41 §5.3)。`new` (C分類、非公開) は `graph_struct.rs` の
+// `Graph::new` だけが呼ぶ内部専用の素の構築子であり、PR #45レビューCの
+// 対策 (`Graph::new` が `&Edges` だけを起点にする) により、由来の異なる
+// `Nodes`/`Edges` の組を渡す経路自体が存在しない。
 
 use proc_macro2::TokenStream;
 use quote::quote;
 
 use crate::static_graph::declaration_sites::宣言元の対;
 use crate::static_graph::naming::{
-    edges変数名, entityフィールド名, nodes変数名, 個体参照型名, 個体参照集合型名, 構築メソッド名, 辺参照型名, 辺参照集合型名,
-    edge_refsフィールドの追跡情報を作る, node_refsフィールドの追跡情報を作る,
+    edge_refsフィールドの追跡情報を作る, edges変数名, entityフィールド名, node_refsフィールドの追跡情報を作る, nodes変数名,
+    個体参照型名, 個体参照集合型名, 辺参照型名, 辺参照集合型名,
 };
 use crate::static_graph::semantic::意味モデル;
-use crate::static_graph::trace::固定語彙の所有者;
 
 use crate::static_graph::doc_render::doc属性を組み立てる;
 
 pub(super) fn node_refs本体を組み立てる(意味モデル: &意味モデル, 宣言元: &宣言元の対) -> TokenStream {
     let 型名 = 個体参照集合型名(意味モデル);
     let 型doc = doc属性を組み立てる(型名.追跡());
-    let 構築名 = 構築メソッド名(固定語彙の所有者::NodeRefs, 意味モデル);
-    let 構築doc = doc属性を組み立てる(構築名.追跡());
     let entity = entityフィールド名();
     let nodes = nodes変数名();
     let edges = edges変数名();
@@ -41,8 +41,7 @@ pub(super) fn node_refs本体を組み立てる(意味モデル: &意味モデ�
             #(#フィールド列,)*
         }
         impl<'a> #型名<'a> {
-            #構築doc
-            pub fn #構築名(#nodes: &'a Nodes, #edges: &'a Edges<'a>) -> Self {
+            fn new(#nodes: &'a Nodes, #edges: &'a Edges<'a>) -> Self {
                 Self { #(#初期化列,)* }
             }
         }
@@ -52,8 +51,6 @@ pub(super) fn node_refs本体を組み立てる(意味モデル: &意味モデ�
 pub(super) fn edge_refs本体を組み立てる(意味モデル: &意味モデル, 宣言元: &宣言元の対) -> TokenStream {
     let 型名 = 辺参照集合型名(意味モデル);
     let 型doc = doc属性を組み立てる(型名.追跡());
-    let 構築名 = 構築メソッド名(固定語彙の所有者::EdgeRefs, 意味モデル);
-    let 構築doc = doc属性を組み立てる(構築名.追跡());
     let entity = entityフィールド名();
     let nodes = nodes変数名();
     let edges = edges変数名();
@@ -75,8 +72,7 @@ pub(super) fn edge_refs本体を組み立てる(意味モデル: &意味モデ�
             #(#フィールド列,)*
         }
         impl<'a> #型名<'a> {
-            #構築doc
-            pub fn #構築名(#nodes: &'a Nodes, #edges: &'a Edges<'a>) -> Self {
+            fn new(#nodes: &'a Nodes, #edges: &'a Edges<'a>) -> Self {
                 Self { #(#初期化列,)* }
             }
         }

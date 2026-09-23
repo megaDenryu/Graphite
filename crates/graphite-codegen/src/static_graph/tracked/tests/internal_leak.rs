@@ -35,8 +35,16 @@ fn 項目を検査する(item: &syn::Item) -> usize {
         syn::Item::Struct(構造体) => {
             名前を確かめる(&構造体.ident, &構造体.vis, &構造体.attrs);
             if 公開か(&構造体.vis) {
-                let 型文字列 =
-                    構造体.fields.iter().map(|f| quote::quote! { #f }.to_string()).collect::<Vec<_>>().join(" ");
+                // structが公開でも、非公開の個々のフィールドは外部から
+                // アクセスできないため検査対象に含めない (`Edges`の
+                // `__graphite_nodes`が実例、PR #45レビューC対策)。
+                let 型文字列 = 構造体
+                    .fields
+                    .iter()
+                    .filter(|f| 公開か(&f.vis))
+                    .map(|f| quote::quote! { #f }.to_string())
+                    .collect::<Vec<_>>()
+                    .join(" ");
                 内部識別子が無いことを確かめる(&型文字列, "struct");
             }
             1

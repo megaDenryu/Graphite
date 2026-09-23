@@ -1,23 +1,24 @@
-// 意味カード4: 固定語彙の構築メソッド (`Nodes::new`、issue #41 §5.2)。
+// 意味カード4: 固定語彙の構築の入口 (`construct::nodes!`、issue #41 §5.2、
+// PR #45レビューA・D)。`Nodes::new` はC分類の内部専用構築子へ降格したため、
+// 利用者が辿る構築の入口は `construct::nodes!` になった。
 
-use super::super::construction_card_names::個体実体所有者構築メソッド名;
+use super::super::construct_fixed_vocabulary::個体構築マクロ名;
 use super::{src_main, 開発チームの意味モデルを作る};
 
 #[test]
-fn 意味カード4_固定語彙の構築メソッド() {
+fn 意味カード4_固定語彙の構築の入口() {
     let 意味モデル = 開発チームの意味モデルを作る();
-    let 名前 = 個体実体所有者構築メソッド名(&意味モデル, &src_main());
-    assert_eq!(名前.ident().to_string(), "new");
+    let 名前 = 個体構築マクロ名(&意味モデル, &src_main());
+    assert_eq!(名前.ident().to_string(), "nodes");
     assert_eq!(
         名前.追跡().意味カード(),
-        "Graphite 静的グラフの個体実体の所有者 `Nodes` を構築する (Graphite の固定語彙)。全個体を\
-         宣言順の位置引数にそのまま取り、値の計算は行わない。値ありの個体をinstance宣言の式から\
-         計算して渡すのは `開発チームの個体を組み立てる` の役目。\n\
+        "Graphite 静的グラフの個体実体の所有者 `Nodes` を構築するマクロ `nodes` (Graphite の固定語彙)。値ありの個体はinstance宣言の式からこのマクロが計算し、値なしの個体だけを引数で受け取る。\n\
          \n\
          - graph: `開発チーム`\n\
-         - 引数 (宣言順): `太郎: 社員, 次郎: 社員, 一郎: 社員, 開発部: 部署`\n\
+         - 実行時に渡す個体 (宣言順): `開発部: 部署`\n\
+         - 戻り値: `Nodes`\n\
          \n\
-         固定語彙: `Nodes::new` (`docs/static_graph.md` 「生成される名前の公開契約」)\n\
+         固定語彙: `construct::nodes!` (`docs/static_graph.md` 「生成される名前の公開契約」)\n\
          \n\
          関係する instance 宣言: `src/main.rs` の `graph 開発チーム`"
     );

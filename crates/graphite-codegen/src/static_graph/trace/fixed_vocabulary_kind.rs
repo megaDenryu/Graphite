@@ -2,28 +2,6 @@
 // 同名の宣言トークンが存在しない生成名の一覧と、識別子文字列への変換だけを
 // 持つ (由来としての使い方は `origin::名前の由来::GraphiteLanguage` が担う)。
 
-// `構築する(所有者)` が指す、生成する `new` がどの型に属するか。
-#[derive(Clone, Copy)]
-pub(crate) enum 固定語彙の所有者 {
-    Nodes,
-    Edges,
-    NodeRefs,
-    EdgeRefs,
-    Graph,
-}
-
-impl 固定語彙の所有者 {
-    pub(crate) fn 型名(self) -> &'static str {
-        match self {
-            Self::Nodes => "Nodes",
-            Self::Edges => "Edges",
-            Self::NodeRefs => "NodeRefs",
-            Self::EdgeRefs => "EdgeRefs",
-            Self::Graph => "Graph",
-        }
-    }
-}
-
 #[derive(Clone, Copy)]
 pub(crate) enum 固定語彙 {
     Nodes,
@@ -31,13 +9,20 @@ pub(crate) enum 固定語彙 {
     NodeRefs,
     EdgeRefs,
     Graph,
-    // `naming::fixed_vocabulary::固定語彙の宣言表示` が内側の所有者を読み、
-    // 意味カードの「固定語彙:」段落に `Edges::new` のような所有者付きの
-    // 表示を作る。
-    構築する(固定語彙の所有者),
+    // `Graph::new` だけの固定語彙。issue #41 当初は`Nodes`/`Edges`/
+    // `NodeRefs`/`EdgeRefs`も対象だったが、PR #45レビューAでそれらの`new`を
+    // C分類の内部専用構築子 (`naming::internal_names::内部構築子名` 等) へ
+    // 降格したため、`Graph::new`だけが公開契約として残った。
+    GraphNew,
     Entity,
     NodeRefsフィールド,
     EdgeRefsフィールド,
+    // instance展開が呼び出し位置から辿れる構築の入口 (PR #45レビューA・D)。
+    // `{instance名}::construct::nodes!`/`{instance名}::construct::edges!`と
+    // いう修飾パスの、それぞれの区間の固定語彙。
+    ConstructModule,
+    ConstructNodes,
+    ConstructEdges,
 }
 
 impl 固定語彙 {
@@ -48,10 +33,13 @@ impl 固定語彙 {
             Self::NodeRefs => "NodeRefs",
             Self::EdgeRefs => "EdgeRefs",
             Self::Graph => "Graph",
-            Self::構築する(_) => "new",
+            Self::GraphNew => "new",
             Self::Entity => "entity",
             Self::NodeRefsフィールド => "node_refs",
             Self::EdgeRefsフィールド => "edge_refs",
+            Self::ConstructModule => "construct",
+            Self::ConstructNodes => "nodes",
+            Self::ConstructEdges => "edges",
         }
     }
 }
@@ -61,19 +49,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn 固定語彙の所有者の型名を返す() {
-        assert_eq!(固定語彙の所有者::Nodes.型名(), "Nodes");
-        assert_eq!(固定語彙の所有者::Edges.型名(), "Edges");
-        assert_eq!(固定語彙の所有者::NodeRefs.型名(), "NodeRefs");
-        assert_eq!(固定語彙の所有者::EdgeRefs.型名(), "EdgeRefs");
-        assert_eq!(固定語彙の所有者::Graph.型名(), "Graph");
-    }
-
-    #[test]
     fn 固定語彙の識別子文字列を返す() {
-        assert_eq!(固定語彙::構築する(固定語彙の所有者::Nodes).識別子文字列(), "new");
+        assert_eq!(固定語彙::GraphNew.識別子文字列(), "new");
         assert_eq!(固定語彙::Entity.識別子文字列(), "entity");
         assert_eq!(固定語彙::NodeRefsフィールド.識別子文字列(), "node_refs");
         assert_eq!(固定語彙::EdgeRefsフィールド.識別子文字列(), "edge_refs");
+        assert_eq!(固定語彙::ConstructModule.識別子文字列(), "construct");
+        assert_eq!(固定語彙::ConstructNodes.識別子文字列(), "nodes");
+        assert_eq!(固定語彙::ConstructEdges.識別子文字列(), "edges");
     }
 }

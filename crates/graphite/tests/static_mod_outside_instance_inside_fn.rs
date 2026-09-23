@@ -48,9 +48,9 @@ fn 太郎の所属先を求める() -> String {
         edge 太郎の所属 = 所属(太郎 -> 開発部);
     }
 
-    let nodes = 配置検証チームの個体を組み立てる();
-    let edges = 配置検証チームの辺を組み立てる(&nodes);
-    let g = 配置検証チーム::Graph::new(&nodes, &edges);
+    let nodes = 配置検証チーム::construct::nodes!();
+    let edges = 配置検証チーム::construct::edges!(&nodes);
+    let g = 配置検証チーム::Graph::new(&edges);
     g.node_refs.太郎.太郎の所属().team().entity().名前.clone()
 }
 

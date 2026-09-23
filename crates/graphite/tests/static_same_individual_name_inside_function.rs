@@ -1,7 +1,8 @@
 //! 関数の中の同じスコープに、同名の値あり個体「太郎」・同名の積み荷あり辺
-//! 「太郎の所属」を持つinstanceを2つ置いても供給関数名が衝突しないことを
-//! 固定する回帰試験 (`crates/graphite-codegen/src/static_graph/inline/assembly.rs`
-//! 参照)。最上位に置いた場合の同じ検証は
+//! 「太郎の所属」を持つinstanceを2つ置いても値マクロ名が衝突しないことを
+//! 固定する回帰試験 (`crates/graphite-codegen/src/static_graph/inline/value_supply.rs`
+//! 参照。値マクロの名前はグラフ名を含むため、個体名・辺名が同じでも
+//! グラフ名が違えば衝突しない)。最上位に置いた場合の同じ検証は
 //! `static_same_individual_name_multiple_instances.rs` が別に持つ。
 
 pub struct 社員 {
@@ -62,13 +63,13 @@ fn 関数内で同名個体を持つ2つのinstanceを組み立てる() -> (Stri
         edge 太郎の所属 = 所属(太郎 -[任命記録 { 任命日: 2023 }]-> 総務部);
     }
 
-    let nodes_c = 検証チームcの個体を組み立てる();
-    let edges_c = 検証チームcの辺を組み立てる(&nodes_c);
-    let g_c = 検証チームc::Graph::new(&nodes_c, &edges_c);
+    let nodes_c = 検証チームc::construct::nodes!();
+    let edges_c = 検証チームc::construct::edges!(&nodes_c);
+    let g_c = 検証チームc::Graph::new(&edges_c);
 
-    let nodes_d = 検証チームdの個体を組み立てる();
-    let edges_d = 検証チームdの辺を組み立てる(&nodes_d);
-    let g_d = 検証チームd::Graph::new(&nodes_d, &edges_d);
+    let nodes_d = 検証チームd::construct::nodes!();
+    let edges_d = 検証チームd::construct::edges!(&nodes_d);
+    let g_d = 検証チームd::Graph::new(&edges_d);
 
     (
         g_c.node_refs.太郎.太郎の所属().team().entity().名前.clone(),

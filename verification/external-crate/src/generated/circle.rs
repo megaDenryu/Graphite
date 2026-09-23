@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_STATIC_INSTANCE_FINGERPRINT: [u64; 4] = [
-    18312041046197007315u64, 18285859197179539232u64, 3087956162089940141u64,
-    17351323712649360769u64,
+    5998135064605533141u64, 1126243004312796196u64, 7621457012386393987u64,
+    17236514055510456855u64,
 ];
 /// Graphite 静的グラフの個体実体の所有者 `Nodes` (Graphite の固定語彙)。
 ///
@@ -15,33 +15,12 @@ pub(super) const __GRAPHITE_STATIC_INSTANCE_FINGERPRINT: [u64; 4] = [
 ///
 /// 固定語彙: `Nodes` (`docs/static_graph.md` 「生成される名前の公開契約」)
 pub struct Nodes {
-    /// Graphite 静的グラフの個体実体フィールド。`Nodes` がこの個体の実体を所有する。
-    ///
-    /// - graph: `Circle`
-    /// - 個体: `本`
-    /// - 実体型: `Book`
-    ///
-    /// 宣言: `src/lib.rs` の `node 本: Book = ..`
-    pub 本: Book,
-    /// Graphite 静的グラフの個体実体フィールド。`Nodes` がこの個体の実体を所有する。
-    ///
-    /// - graph: `Circle`
-    /// - 個体: `読者`
-    /// - 実体型: `Reader`
-    ///
-    /// 宣言: `src/lib.rs` の `node 読者: Reader = ..`
-    pub 読者: Reader,
+    本: Book,
+    読者: Reader,
 }
 impl Nodes {
-    /// Graphite 静的グラフの個体実体の所有者 `Nodes` を構築する (Graphite の固定語彙)。全個体を宣言順の位置引数にそのまま取り、値の計算は行わない。値ありの個体をinstance宣言の式から計算して渡すのは `Circleの個体を組み立てる` の役目。
-    ///
-    /// - graph: `Circle`
-    /// - 引数 (宣言順): `本: Book, 読者: Reader`
-    ///
-    /// 固定語彙: `Nodes::new` (`docs/static_graph.md` 「生成される名前の公開契約」)
-    ///
-    /// 関係する instance 宣言: `src/lib.rs` の `graph Circle`
-    pub fn new(本: Book, 読者: Reader) -> Self {
+    #[doc(hidden)]
+    pub(crate) fn __graphite_internal_new(本: Book, 読者: Reader) -> Self {
         Self { 本, 読者 }
     }
 }
@@ -51,26 +30,14 @@ impl Nodes {
 ///
 /// 固定語彙: `Edges` (`docs/static_graph.md` 「生成される名前の公開契約」)
 pub struct Edges<'a> {
-    /// Graphite 静的グラフの辺実体フィールド。`Edges` がこの具体辺の実体を所有する。
-    ///
-    /// - graph: `Circle`
-    /// - 具体辺: `割り当て`
-    /// - 辺種別: `Assigned`
-    ///
-    /// 宣言: `src/lib.rs` の `edge 割り当て = Assigned(本 -> 読者)`
-    pub 割り当て: ReadingCircle::AssignedEdge<'a>,
+    __graphite_nodes: &'a Nodes,
+    割り当て: ReadingCircle::AssignedEdge<'a>,
 }
 impl<'a> Edges<'a> {
-    /// Graphite 静的グラフの辺実体の所有者 `Edges` を構築する (Graphite の固定語彙)。値の計算は行わない。積み荷ありの具体辺の値をinstance宣言の式から計算して渡すのは`Circleの辺を組み立てる` の役目。
-    ///
-    /// - graph: `Circle`
-    /// - 第1引数: `nodes: &Nodes`
-    ///
-    /// 固定語彙: `Edges::new` (`docs/static_graph.md` 「生成される名前の公開契約」)
-    ///
-    /// 関係する instance 宣言: `src/lib.rs` の `graph Circle`
-    pub fn new(nodes: &'a Nodes) -> Self {
+    #[doc(hidden)]
+    pub(crate) fn __graphite_internal_new(nodes: &'a Nodes) -> Self {
         Self {
+            __graphite_nodes: nodes,
             割り当て: ReadingCircle::AssignedEdge {
                 book: &nodes.本,
                 reader: &nodes.読者,
@@ -239,12 +206,7 @@ pub struct NodeRefs<'a> {
     pub 読者: 読者Ref<'a>,
 }
 impl<'a> NodeRefs<'a> {
-    /// Graphite 静的グラフの `NodeRefs` を構築する (Graphite の固定語彙)。
-    ///
-    /// - graph: `Circle`
-    ///
-    /// 固定語彙: `NodeRefs::new` (`docs/static_graph.md` 「生成される名前の公開契約」)
-    pub fn new(nodes: &'a Nodes, edges: &'a Edges<'a>) -> Self {
+    fn new(nodes: &'a Nodes, edges: &'a Edges<'a>) -> Self {
         Self {
             本: 本Ref {
                 entity: &nodes.本,
@@ -274,12 +236,7 @@ pub struct EdgeRefs<'a> {
     pub 割り当て: 割り当てRef<'a>,
 }
 impl<'a> EdgeRefs<'a> {
-    /// Graphite 静的グラフの `EdgeRefs` を構築する (Graphite の固定語彙)。
-    ///
-    /// - graph: `Circle`
-    ///
-    /// 固定語彙: `EdgeRefs::new` (`docs/static_graph.md` 「生成される名前の公開契約」)
-    pub fn new(nodes: &'a Nodes, edges: &'a Edges<'a>) -> Self {
+    fn new(nodes: &'a Nodes, edges: &'a Edges<'a>) -> Self {
         Self {
             割り当て: 割り当てRef {
                 entity: &edges.割り当て,
@@ -314,10 +271,49 @@ impl<'a> Graph<'a> {
     /// - graph: `Circle`
     ///
     /// 固定語彙: `Graph::new` (`docs/static_graph.md` 「生成される名前の公開契約」)
-    pub fn new(nodes: &'a Nodes, edges: &'a Edges<'a>) -> Self {
+    pub fn new(edges: &'a Edges<'a>) -> Self {
+        let nodes = edges.__graphite_nodes;
         Self {
             node_refs: NodeRefs::new(nodes, edges),
             edge_refs: EdgeRefs::new(nodes, edges),
         }
     }
+}
+/// Graphite 静的グラフの構築の入口をまとめるmodule `construct` (Graphite の固定語彙)。
+///
+/// - graph: `Circle`
+///
+/// 固定語彙: `construct` (`docs/static_graph.md` 「生成される名前の公開契約」)
+pub mod construct {
+    /// Graphite 静的グラフの個体実体の所有者 `Nodes` を構築するマクロ `nodes` (Graphite の固定語彙)。値ありの個体はinstance宣言の式からこのマクロが計算し、値なしの個体だけを引数で受け取る。
+    ///
+    /// - graph: `Circle`
+    /// - 戻り値: `Nodes`
+    ///
+    /// 固定語彙: `construct::nodes!` (`docs/static_graph.md` 「生成される名前の公開契約」)
+    ///
+    /// 関係する instance 宣言: `src/lib.rs` の `graph Circle`
+    macro_rules! nodes {
+        () => {
+            { let (本, 読者,) = __graphite_values_Circle!();
+            Circle::Nodes::__graphite_internal_new(本, 読者) }
+        };
+    }
+    pub(crate) use nodes;
+    /// Graphite 静的グラフの辺実体の所有者 `Edges` を構築するマクロ `edges` (Graphite の固定語彙)。積み荷ありの具体辺はすべてinstance宣言の式からこのマクロが計算する。
+    ///
+    /// - graph: `Circle`
+    /// - 引数: `nodes: &Nodes`
+    /// - 戻り値: `Edges`
+    ///
+    /// 固定語彙: `construct::edges!` (`docs/static_graph.md` 「生成される名前の公開契約」)
+    ///
+    /// 関係する instance 宣言: `src/lib.rs` の `graph Circle`
+    macro_rules! edges {
+        ($nodes:expr) => {
+            { let () = __graphite_payloads_Circle!();
+            Circle::Edges::__graphite_internal_new($nodes,) }
+        };
+    }
+    pub(crate) use edges;
 }

@@ -1,51 +1,63 @@
-// instanceの値の式の供給関数 (issue #41 §3)。値ありの個体・積み荷を持つ
-// 具体辺ごとに、値の式をそのまま返すだけの内部専用の素の関数 (C分類) を
-// 用意する。`inline::assembly` がこの関数を組み立て関数の本体の中へ入れ子で
-// 定義し (`inline::assembly` の冒頭コメント参照)、生成ファイル側
-// (`file::instance_file`) は式を一切写さない。これにより式のトークンは
-// 利用者のspanのまま利用者のスコープで型検査され、生成ファイルの指紋は
-// 値の編集に左右されない。名前自体は `naming::internal_names` が作る
-// (`naming/` の外で名前を作らない)。
+// instanceの値の式をまとめて返すマクロ (issue #41 §3、PR #45レビューF)。
+// 値ありの個体・積み荷それぞれについて、宣言順の式をタプルにして返す
+// `macro_rules!` を1個ずつ (グラフあたり2個) 呼び出し位置に置く。生成
+// ファイル側の `construct::nodes!`/`construct::edges!`
+// (`file::instance_file::construct`) が `$crate::` を冠した絶対パスで
+// このマクロを呼び、内部構築子 (`Nodes::__graphite_internal_new`等) へ
+// 渡す。式は生成ファイルへ一切写さない。
 //
-// implではなく素の`fn`として組み立てる (呼び出し位置がユーザーの関数の中
-// にあっても`non_local_definitions`の対象外になる。`impl`だけがこのlintの
-// 対象であり、素の関数項目は対象にならない)。
+// `macro_rules!` として展開されるため、実際に呼ばれる位置 (`construct::nodes!`
+// 等の本体、同じ呼び出し位置へ展開される) のスコープで式が評価される。
+// これにより、instanceを置いた関数のローカル変数・引数・ジェネリックの
+// 型引数を、通常のRust式と同じように参照できる (入れ子の`fn`は外側の
+// スコープを捕捉できないため、以前の実装はこれができなかった)。
+// `macro_rules!`は項目であり`impl`ではないため、呼び出し位置がユーザーの
+// 関数の中にあっても`non_local_definitions`の対象にならない。
+//
+// `pub(crate) use` も添えて、instanceをmodule最上位に置いた場合に
+// `$crate::__graphite_values_{グラフ名}!()` という絶対パスで、
+// instance宣言と別ファイル (`construct::nodes!`/`construct::edges!`の
+// 呼び出し元が別モジュールの場合を含む) からも解決できるようにする
+// (macro_rules!の既定のテキスト順スコープだけでは、`mod`宣言の順序に
+// よって呼び出し元から見えないことがある)。instanceを関数の中に置いた
+// 場合、この`use`は関数の外から到達できないため実質的な効果を持たないが、
+// 同じ関数の中で呼ぶ既存の使い方 (`docs/static_graph.md` 参照) は
+// テキスト順のスコープのままで変わらず働く。
 
-use proc_macro2::TokenStream;
+use proc_macro2::{Ident, TokenStream};
 use quote::quote;
 use syn::Expr;
 
-use crate::static_graph::naming::{個体供給関数名, 積み荷供給関数名};
-use crate::static_graph::semantic::{具体辺, 個体};
+use crate::static_graph::naming::{個体値マクロ名, 積み荷値マクロ名};
+use crate::static_graph::semantic::意味モデル;
 
-// 値ありの個体1件分の供給関数定義。値なし宣言の個体は呼び出し元が対象外に
-// する (`個体.値なし宣言か()` で事前に絞る)。
-pub(crate) fn 個体供給関数を組み立てる(個体: &個体) -> TokenStream {
-    let 関数名 = 個体供給関数名(個体.名前());
-    let 実体型 = 個体.実体型();
-    let 式 = 個体.値().expect("値ありの個体だけを渡す");
-    値供給関数を組み立てる(関数名.ident(), 実体型, 式)
+// 値ありの個体すべての式を宣言順のタプルで返すマクロ定義。値ありの個体が
+// 1件も無ければ空タプルを返す。
+pub(crate) fn 個体値マクロを組み立てる(意味モデル: &意味モデル) -> TokenStream {
+    let 式列: Vec<&Expr> =
+        意味モデル.個体列().iter().filter_map(|個体| 個体.値()).collect();
+    値マクロを組み立てる(個体値マクロ名(意味モデル.グラフ名()).ident(), &式列)
 }
 
-// 積み荷ありの具体辺1件分の供給関数定義。
-pub(crate) fn 積み荷供給関数を組み立てる(具体辺: &具体辺) -> TokenStream {
-    let 関数名 = 積み荷供給関数名(具体辺.名前());
-    let 積み荷宣言 = 具体辺.種別().積み荷().expect("積み荷ありの具体辺だけを渡す");
-    let 式 = 具体辺.積み荷式().expect("積み荷ありの具体辺だけを渡す");
-    値供給関数を組み立てる(関数名.ident(), &積み荷宣言.型, 式)
+// 積み荷ありの具体辺すべての式を宣言順のタプルで返すマクロ定義。
+pub(crate) fn 積み荷値マクロを組み立てる(意味モデル: &意味モデル) -> TokenStream {
+    let 式列: Vec<&Expr> =
+        意味モデル.具体辺列().iter().filter_map(|辺| 辺.積み荷式()).collect();
+    値マクロを組み立てる(積み荷値マクロ名(意味モデル.グラフ名()).ident(), &式列)
 }
 
-fn 値供給関数を組み立てる(関数名: &proc_macro2::Ident, 戻り値型: &proc_macro2::Ident, 式: &Expr) -> TokenStream {
-    // 個体名・辺名は利用者が自由に選ぶため大文字始まりもあり得る
-    // (`__graphite_initial_value_{個体名}` の埋め込み部分)。関数名は
-    // snake_caseの規約検査対象になるため `#[allow(non_snake_case)]` を
-    // 添える (生成ファイル側のmodule全体に掛ける
-    // `#[allow(non_snake_case, ..)]` と同じ理由、`docs/code_generation.md` 参照)。
+fn 値マクロを組み立てる(マクロ名: &Ident, 式列: &[&Expr]) -> TokenStream {
+    // グラフ名は利用者が自由に選ぶため大文字始まりもあり得る
+    // (`__graphite_values_{グラフ名}` の埋め込み部分)。マクロ名自体は
+    // snake_caseの規約検査対象にならないため `#[allow(non_snake_case)]` は
+    // 不要 (`macro_rules!` はitemの命名規約lintの対象外)。
     quote! {
-        #[allow(non_snake_case)]
-        fn #関数名() -> #戻り値型 {
-            #式
+        macro_rules! #マクロ名 {
+            () => {
+                (#(#式列,)*)
+            };
         }
+        pub(crate) use #マクロ名;
     }
 }
 
@@ -56,7 +68,6 @@ mod tests {
 
     use crate::static_graph::literal::input::静的グラフ入力;
     use crate::static_graph::schema::input::静的グラフ型入力;
-    use crate::static_graph::semantic::意味モデル;
 
     fn 意味モデルを作る() -> 意味モデル {
         let schema: 静的グラフ型入力 = syn::parse2(quote! {
@@ -78,27 +89,22 @@ mod tests {
     }
 
     #[test]
-    fn 個体供給関数の名前は個体名を含みimplを使わない() {
+    fn 個体値マクロの名前はグラフ名を含みimplを使わない() {
         let 意味モデル = 意味モデルを作る();
-        let 太郎 = 意味モデル.個体列().iter().find(|個体| 個体.名前() == "太郎").unwrap();
-        assert_eq!(個体供給関数名(太郎.名前()).ident().to_string(), "__graphite_initial_value_太郎");
+        assert_eq!(個体値マクロ名(意味モデル.グラフ名()).ident().to_string(), "__graphite_values_開発チーム");
 
-        let コード = 個体供給関数を組み立てる(太郎).to_string();
-        assert!(コード.contains("__graphite_initial_value_太郎"));
+        let コード = 個体値マクロを組み立てる(&意味モデル).to_string();
+        assert!(コード.contains("__graphite_values_開発チーム"));
         assert!(!コード.contains("impl"), "implブロックを使わないこと (non_local_definitions対策)");
     }
 
     #[test]
-    fn 積み荷供給関数の名前は辺名を含みimplを使わない() {
+    fn 積み荷値マクロの名前はグラフ名を含みimplを使わない() {
         let 意味モデル = 意味モデルを作る();
-        let 太郎の所属 = 意味モデル.具体辺列().iter().find(|辺| 辺.名前() == "太郎の所属").unwrap();
-        assert_eq!(
-            積み荷供給関数名(太郎の所属.名前()).ident().to_string(),
-            "__graphite_payload_太郎の所属"
-        );
+        assert_eq!(積み荷値マクロ名(意味モデル.グラフ名()).ident().to_string(), "__graphite_payloads_開発チーム");
 
-        let コード = 積み荷供給関数を組み立てる(太郎の所属).to_string();
-        assert!(コード.contains("__graphite_payload_太郎の所属"));
+        let コード = 積み荷値マクロを組み立てる(&意味モデル).to_string();
+        assert!(コード.contains("__graphite_payloads_開発チーム"));
         assert!(コード.contains("任命記録"));
         assert!(!コード.contains("impl"), "implブロックを使わないこと (non_local_definitions対策)");
     }

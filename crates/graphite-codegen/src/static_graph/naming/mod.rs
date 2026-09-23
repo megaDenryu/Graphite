@@ -7,14 +7,14 @@
 //!   定義箇所 (schemaファイル・instanceファイル自身のmodule内) からの参照
 //!   であり、doc付きの `追跡付きの名前` を返す。
 //! - `fixed_vocabulary`: `Nodes`/`Edges`/`NodeRefs`/`EdgeRefs`/`Graph`・
-//!   `new`・`entity`・`node_refs`/`edge_refs` (分類B、簡潔な意味カード)。
+//!   `Graph::new`・`entity`・`node_refs`/`edge_refs` (分類B、簡潔な意味
+//!   カード)。
 //! - `card_names`: 意味カードの書式を §5.2 の例そのままで固定した3件
 //!   (辺アクセサメソッド・役割アクセサ・積み荷アクセサ)。
-//! - `construction_card_names`: `Nodes::new`/`Edges::new` の意味カード
-//!   (値の計算を持たない素の構築子、という同じ関心事でまとめた2件)。
-//! - `assembly_names`: instanceの個体・辺を組み立てる関数の名前
-//!   (`graph <名前>;` から派生するA分類。`inline::assembly` が本体を
-//!   組み立てる)。
+//! - `construct_fixed_vocabulary`: `construct::nodes!`/`construct::edges!`
+//!   (PR #45レビューA・D。値ありの個体・積み荷を差し替えられない構築の
+//!   入口。`Nodes::new`/`Edges::new`は内部専用のC分類へ降格し、
+//!   `naming::internal_names::内部構築子名` が名前を持つ)。
 //! - `reference_paths`: instance側 (instanceファイルの本文・DSLトークンの
 //!   型参照) からの、別module越しの修飾パス参照 (`{schema名}::{種別}Edge`・
 //!   `{グラフ名}::{名前}Ref`)。doc を持たない生の `TokenStream` を返す。
@@ -28,9 +28,8 @@
 //!   spanへ付け替えるだけであり、公開APIの名前ではなく診断のspanだけに
 //!   使う)。
 
-mod assembly_names;
 mod card_names;
-mod construction_card_names;
+mod construct_fixed_vocabulary;
 mod field_card_names;
 mod fingerprint_anchor;
 mod fixed_vocabulary;
@@ -42,19 +41,15 @@ mod wiring_names;
 #[cfg(test)]
 mod tests;
 
-pub(crate) use assembly_names::{個体組み立て関数名, 辺組み立て関数名};
 pub(crate) use card_names::{役割アクセサの追跡情報を作る, 積み荷アクセサの追跡情報を作る, 辺アクセサメソッドの追跡情報を作る};
-pub(crate) use construction_card_names::{個体実体所有者構築メソッド名, 辺実体所有者構築メソッド名};
-pub(crate) use field_card_names::{
-    edge_refsフィールドの追跡情報を作る, edgesフィールドの追跡情報を作る, node_refsフィールドの追跡情報を作る,
-    nodesフィールドの追跡情報を作る,
-};
+pub(crate) use construct_fixed_vocabulary::{個体構築マクロ名, 構築モジュール名, 辺構築マクロ名};
+pub(crate) use field_card_names::{edge_refsフィールドの追跡情報を作る, node_refsフィールドの追跡情報を作る};
 pub(crate) use fixed_vocabulary::{
     個体実体所有者型名, 個体参照フィールド名, 個体参照集合型名, 構築メソッド名, 実体アクセサメソッド名, 辺実体所有者型名,
     辺参照フィールド名, 辺参照集合型名, グラフ型名,
 };
 pub(crate) use fingerprint_anchor::指紋照合パスの起点;
-pub(crate) use internal_names::{個体供給関数名, 積み荷供給関数名, 型参照関数名};
+pub(crate) use internal_names::{型参照関数名, 個体値マクロ名, 内部構築子名, 積み荷値マクロ名};
 pub(crate) use reference_paths::{個体参照パス, 辺値参照パス, 辺参照パス};
 pub(crate) use type_names::{個体参照型名, 辺値型名, 辺参照型名};
 pub(crate) use wiring_names::{edges変数名, entityフィールド名, nodes変数名};

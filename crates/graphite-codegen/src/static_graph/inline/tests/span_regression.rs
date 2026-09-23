@@ -1,7 +1,8 @@
 use proc_macro2::{LineColumn, TokenStream, TokenTree};
+use syn::spanned::Spanned;
 
 use crate::static_graph::inline::token_type_reference::dslトークンの型参照を組み立てる;
-use crate::static_graph::inline::value_supply::個体供給関数を組み立てる;
+use crate::static_graph::inline::value_supply::個体値マクロを組み立てる;
 use crate::static_graph::literal::input::静的グラフ入力;
 use crate::static_graph::naming::{個体参照パス, 辺値参照パス, 辺参照パス};
 use crate::static_graph::schema::input::静的グラフ型入力;
@@ -77,21 +78,25 @@ fn dslトークンの型参照は個体名トークンの実際の行と桁を�
 }
 
 #[test]
-fn 個体供給関数の戻り値型は実体型トークンの実際の行と桁を保つ() {
+fn 個体値マクロは値の式トークンの実際の行と桁を保つ() {
+    // instance_srcの2行目 (`node 太郎 = 社員 { 名前: "太郎".into() };`) の
+    // `社員` は値の式そのものの一部であり、instance展開が生成ファイルへ
+    // 複製せず呼び出し位置へそのまま埋め込む (`docs/static_graph.md`
+    // 「値の式は生成ファイルへ複製しない」)。個体値マクロの本体に、この
+    // `社員` トークンが元のspanのまま含まれることを確かめる。
     let 意味モデル = 複数行のフィクスチャから意味モデルを作る();
     let 太郎 = 太郎を取り出す(&意味モデル);
-    let 元span始点 = 太郎.実体型().span().start();
+    let 元span始点 = 太郎.値().expect("太郎は値ありの個体").span().start();
 
     assert_ne!(元span始点, LineColumn { line: 1, column: 0 });
     assert_eq!(元span始点.line, 2);
 
-    let 供給関数 = 個体供給関数を組み立てる(太郎);
-    let 戻り値型ident =
-        最初に一致するidentを探す(&供給関数, "社員").expect("戻り値型の社員が居るはず");
+    let マクロ本体 = 個体値マクロを組み立てる(&意味モデル);
+    let 式先頭ident = 最初に一致するidentを探す(&マクロ本体, "社員").expect("値の式の社員が居るはず");
     assert_eq!(
-        戻り値型ident.span().start(),
+        式先頭ident.span().start(),
         元span始点,
-        "個体供給関数の戻り値型は個体宣言の実体型トークンのspanをそのまま使う"
+        "個体値マクロは値の式トークンのspanをそのまま使う"
     );
 }
 

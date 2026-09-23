@@ -1,9 +1,11 @@
 //! instanceファイル本体 (issue #41 §2)。手書き到達点と同じ並び順 (Nodes → Edges → 個体参照 → 辺インスタンス参照 → 参照の
-//! 層の集まり → グラフ本体) で、`pub` 可視性と意味カードを添えて並べる。
-//! 各生成物の中身は配下のmoduleが持ち、この module本体は並び順だけを知る。
-//! instanceの指紋定数は呼び出し側 (`static_graph::tracked::instance`) が
+//! 層の集まり → グラフ本体 → 構築の入口) で、`pub` 可視性と意味カードを
+//! 添えて並べる。各生成物の中身は配下のmoduleが持ち、この module本体は
+//! 並び順だけを知る。instanceの指紋定数は呼び出し側
+//! (`static_graph::tracked::instance`) が
 //! `crate::generated_source::生成ファイルの本文` 経由で別途足す。
 
+mod construct;
 mod edge_entities;
 mod edge_ref;
 mod graph_struct;
@@ -28,6 +30,7 @@ pub(crate) fn instance本体を組み立てる(
     let node_refs = ref_collections::node_refs本体を組み立てる(意味モデル, 宣言元);
     let edge_refs = ref_collections::edge_refs本体を組み立てる(意味モデル, 宣言元);
     let graph = graph_struct::graph本体を組み立てる(意味モデル);
+    let construct = construct::construct本体を組み立てる(意味モデル, 宣言元);
 
     quote! {
         #nodes
@@ -37,5 +40,6 @@ pub(crate) fn instance本体を組み立てる(
         #node_refs
         #edge_refs
         #graph
+        #construct
     }
 }

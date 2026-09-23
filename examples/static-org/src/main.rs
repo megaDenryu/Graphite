@@ -51,7 +51,7 @@ static_graph_schema! {
 // ---------------- instance宣言 ----------------
 //
 // 開発部 だけを値なし宣言 (`node 開発部: 部署;`) にして、実行時供給
-// (`開発チームの個体を組み立てる` への引数) を示す。main() とテストの
+// (`開発チーム::construct::nodes!` への引数) を示す。main() とテストの
 // 両方から呼ぶため、構築を ノードを組み立てる() へ切り出す。
 
 #[allow(non_snake_case, dead_code, private_interfaces)]
@@ -87,18 +87,18 @@ impl<'a> 開発チーム::太郎Ref<'a> {
 }
 
 // 値なし宣言 (`node 開発部: 部署;`) の実体は実行時にここで供給する。main()
-// とテストの両方から呼ぶ。`開発チームの個体を組み立てる` は instance展開が
-// 呼び出し位置に生成する組み立て関数であり (`docs/static_graph.md` 「生成
-// される名前の公開契約」)、値ありの個体 (太郎・次郎・一郎) はinstance宣言
-// の式からこの関数が計算し、値なしの個体 (開発部) だけを引数で受け取る。
+// とテストの両方から呼ぶ。`開発チーム::construct::nodes!` は生成ファイルが
+// 持つ構築の入口であり (`docs/static_graph.md` 「生成される名前の公開
+// 契約」)、値ありの個体 (太郎・次郎・一郎) はinstance宣言の式からこの
+// マクロが計算し、値なしの個体 (開発部) だけを引数で受け取る。
 pub(crate) fn ノードを組み立てる() -> 開発チーム::Nodes {
-    開発チームの個体を組み立てる(部署 { 名前: "開発部".into() })
+    開発チーム::construct::nodes!(部署 { 名前: "開発部".into() })
 }
 
 fn main() {
     let nodes = ノードを組み立てる();
-    let edges = 開発チームの辺を組み立てる(&nodes);
-    let g = 開発チーム::Graph::new(&nodes, &edges);
+    let edges = 開発チーム::construct::edges!(&nodes);
+    let g = 開発チーム::Graph::new(&edges);
 
     let 太郎の参照 = g.node_refs.太郎;
     println!("太郎の上司: {}", 太郎の参照.太郎の上司().superior().entity().名前());
@@ -149,11 +149,11 @@ fn main() {
 
 // この生成moduleは最上位 (関数の外) にあり、instance宣言
 // (`組織! { .. }`) は `経理チームの花子の所属先を求める` の中にある。
-// instance展開はimplを一切使わず、個体・積み荷の値の橋渡しを素の関数
-// (`{グラフ名}の個体を組み立てる`・`{グラフ名}の辺を組み立てる`) だけで
-// 行うため、instance宣言がユーザーの関数の中にあっても
-// `non_local_definitions` は出ない (`docs/static_graph.md` 「追跡の契約」
-// 参照)。
+// instance展開はimplを一切使わず、個体・積み荷の値の橋渡しを呼び出し位置の
+// `macro_rules!` (`__graphite_values_経理チーム!`・
+// `__graphite_payloads_経理チーム!`) だけで行うため、instance宣言が
+// ユーザーの関数の中にあっても `non_local_definitions` は出ない
+// (`docs/static_graph.md` 「追跡の契約」参照)。
 #[allow(non_snake_case, dead_code, private_interfaces)]
 #[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
 mod 経理チーム {
@@ -173,8 +173,8 @@ fn 経理チームの花子の所属先を求める() -> String {
         edge 花子の所属 = 所属(花子 -> 総務部);
     }
 
-    let nodes = 経理チームの個体を組み立てる();
-    let edges = 経理チームの辺を組み立てる(&nodes);
-    let g = 経理チーム::Graph::new(&nodes, &edges);
+    let nodes = 経理チーム::construct::nodes!();
+    let edges = 経理チーム::construct::edges!(&nodes);
+    let g = 経理チーム::Graph::new(&edges);
     g.node_refs.花子.花子の所属().team().entity().名前().to_string()
 }

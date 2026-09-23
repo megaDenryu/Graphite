@@ -234,7 +234,8 @@ pub fn graph(input: TokenStream) -> TokenStream {
 /// 置く (moduleへ付ける属性は`docs/code_generation.md`が定める2行で固定する)。この
 /// `mod`の置き場所はinstance宣言 (`Organization! { .. }`) の置き場所と無関係であり、
 /// 利用者が`mod`だけを最上位に置いてinstance宣言を関数の中に置いても警告は出ない
-/// (instance展開がimplを一切使わず、値の橋渡しを素の関数だけで行うため)。
+/// (instance展開がimplを一切使わず、値の橋渡しを呼び出し位置の`macro_rules!`だけで
+/// 行うため)。
 /// schemaとinstanceを別ファイルに分けるとき、利用者はinstance側のファイルへ
 /// `use organization::Organization;` のようにschema moduleを`use`し、さらに
 /// schema側の`mod`宣言に`#[macro_use]`を付けてinstance側の`mod`宣言より前に置く
@@ -243,16 +244,18 @@ pub fn graph(input: TokenStream) -> TokenStream {
 ///
 /// `node` は3形態を受理する: `node 名前 = 型 { .. };` (型はリテラルのパスから
 /// 読む)、`node 名前: 型 = 式;` (任意の式)、`node 名前: 型;` (実体値は
-/// instance展開が生成する組み立て関数 `{グラフ名}の個体を組み立てる(..)` へ実行時に
+/// 生成ファイルが持つ構築の入口 `{グラフ名}::construct::nodes!(..)` へ実行時に
 /// 渡す)。
 ///
 /// 生成される `macro_rules!` はschema宣言と同じテキスト順の制約を持つ:
 /// `static_graph_schema! { schema <名前> { .. } }` より後ろの行でしか
-/// `<名前>! { .. }` を呼べない。利用者は、instance展開が生成する組み立て関数
-/// (`{グラフ名}の個体を組み立てる`・`{グラフ名}の辺を組み立てる`) でグラフ本体の材料
-/// を組み立て、`DevTeam::Graph::new(&nodes, &edges)` のようにinstance moduleへの
-/// 修飾パスでグラフ本体を構築する。構文・生成される名前の公開契約・コンパイル時検査の
-/// 一覧は `docs/static_graph.md` を参照。
+/// `<名前>! { .. }` を呼べない。利用者は、生成ファイルが持つ構築の入口
+/// (`{グラフ名}::construct::nodes!`・`{グラフ名}::construct::edges!`) でグラフ本体の
+/// 材料を組み立て、`DevTeam::Graph::new(&edges)` のようにinstance moduleへの
+/// 修飾パスでグラフ本体を構築する。値ありの個体・積み荷は、instance宣言の式から
+/// これらのマクロを介してのみ供給され、他の経路から差し替えることはできない。
+/// 構文・生成される名前の公開契約・コンパイル時検査の一覧は `docs/static_graph.md`
+/// を参照。
 #[proc_macro]
 pub fn static_graph_schema(input: TokenStream) -> TokenStream {
     graphite_codegen::parse_and_expand_static_graph_schema(input.into()).into()

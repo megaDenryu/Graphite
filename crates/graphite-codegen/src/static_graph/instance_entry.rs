@@ -14,9 +14,7 @@ use quote::quote;
 use syn::parse::{Parse, ParseStream};
 
 use crate::fingerprint_check::{指紋照合コードを生成する, 静的instance対象文言, 静的instance指紋定数名};
-use crate::schema::codegen::宣言元ファイルの綴り;
 
-use super::declaration_sites::宣言元の対;
 use super::naming::指紋照合パスの起点;
 use super::{inline, instance展開用に解析する, schema};
 
@@ -63,18 +61,19 @@ pub fn expand_static_graph_internal(input: TokenStream) -> TokenStream {
     let 意味モデル = tracked.意味モデル();
     let 型参照 = inline::dslトークンの型参照を組み立てる(意味モデル);
 
-    // このその場展開はコンパイル時のマクロ実行中であり、呼び出し元の
-    // ソースファイルパスを取得する安定APIが無い (`tracked::instance展開用に
-    // 解析する` が自分の指紋計算に使う宣言元と同じ理由で「分かっていない」
-    // にする)。意味カードの「宣言:」段落だけが省かれ、他の項目は影響しない。
-    let 宣言元 = 宣言元の対::new(宣言元ファイルの綴り::分かっていない, 宣言元ファイルの綴り::分かっていない);
-    let 個体組み立て関数 = inline::個体組み立て関数を組み立てる(instance名, 意味モデル, &宣言元);
-    let 辺組み立て関数 = inline::辺組み立て関数を組み立てる(instance名, 意味モデル, &宣言元);
+    // 値マクロ (`__graphite_values_*`/`__graphite_payloads_*`) はC分類の
+    // 内部生成名でありdocを持たないため、このその場展開が呼び出し元の
+    // ソースファイルパスを取得できないこと (旧・組み立て関数が「宣言:」
+    // 段落を省いていた理由) はもう問題にならない。公開契約
+    // (`construct::nodes!`/`construct::edges!`) の意味カードは
+    // `file::instance_file::construct` が生成ファイル側で組み立てる。
+    let 個体値マクロ = inline::個体値マクロを組み立てる(意味モデル);
+    let 積み荷値マクロ = inline::積み荷値マクロを組み立てる(意味モデル);
 
     quote! {
         #指紋照合
         #型参照
-        #個体組み立て関数
-        #辺組み立て関数
+        #個体値マクロ
+        #積み荷値マクロ
     }
 }
