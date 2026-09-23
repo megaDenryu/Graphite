@@ -4,7 +4,7 @@
 // と同じ)。
 //
 // 加えて、DSL上は合法でも脱糖後のRust識別子が衝突する組も検証する (issue #41
-// 生成される名前の公開契約、PR #45レビューE)。node名とedge名はどちらも
+// 生成される名前の公開契約)。node名とedge名はどちらも
 // `{名前}Ref`という同じ名前空間へ展開されるため横断で重複を禁じ、edge名は
 // 固定語彙`entity`(`{個体}Ref::entity()`)とも衝突できない。
 
@@ -13,6 +13,7 @@ use std::collections::HashSet;
 use proc_macro2::Ident;
 
 use crate::static_graph::literal::input::{辺形状, 辺宣言, 静的グラフ入力};
+use crate::static_graph::reserved_words::実体アクセサ名;
 
 impl 静的グラフ入力 {
     pub fn 検証する(&self) -> syn::Result<()> {
@@ -43,10 +44,12 @@ impl 静的グラフ入力 {
                     ),
                 ));
             }
-            if 辺宣言.名前 == "entity" {
+            if 辺宣言.名前 == 実体アクセサ名 {
                 return Err(syn::Error::new_spanned(
                     &辺宣言.名前,
-                    "名前の衝突: 辺 `entity` は使えません。個体の具体参照が実体を取り出す固定語彙のメソッド名 `entity()` と衝突します".to_string(),
+                    format!(
+                        "名前の衝突: 辺 `{実体アクセサ名}` は使えません。個体の具体参照が実体を取り出す固定語彙のメソッド名 `{実体アクセサ名}()` と衝突します"
+                    ),
                 ));
             }
             for 端点 in 辺宣言.端点を求める() {

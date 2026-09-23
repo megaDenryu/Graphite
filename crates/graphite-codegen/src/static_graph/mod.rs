@@ -36,6 +36,7 @@ mod instance_entry;
 mod internal;
 mod literal;
 mod naming;
+mod reserved_words;
 mod schema;
 mod schema_entry;
 mod semantic;

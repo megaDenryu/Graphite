@@ -1,6 +1,12 @@
 // Graphiteが定義する固定語彙のカタログ (issue #41 のB分類)。利用者のDSLに
 // 同名の宣言トークンが存在しない生成名の一覧と、識別子文字列への変換だけを
 // 持つ (由来としての使い方は `origin::名前の由来::GraphiteLanguage` が担う)。
+//
+// `Entity`の生の綴りは`literal`(instanceの構文検証) も読むため、層の向き
+// (`literal`は`trace`に依存しない) を保ったまま両者より下位の
+// `reserved_words`へ置いてある。
+
+use crate::static_graph::reserved_words::実体アクセサ名;
 
 #[derive(Clone, Copy)]
 pub(crate) enum 固定語彙 {
@@ -9,15 +15,14 @@ pub(crate) enum 固定語彙 {
     NodeRefs,
     EdgeRefs,
     Graph,
-    // `Graph::new` だけの固定語彙。issue #41 当初は`Nodes`/`Edges`/
-    // `NodeRefs`/`EdgeRefs`も対象だったが、PR #45レビューAでそれらの`new`を
-    // C分類の内部専用構築子 (`naming::internal_names::内部構築子名` 等) へ
-    // 降格したため、`Graph::new`だけが公開契約として残った。
+    // `Graph::new` だけの固定語彙。`Nodes`/`Edges`/`NodeRefs`/`EdgeRefs`の
+    // `new`はC分類の内部専用構築子 (`naming::internal_names::内部構築子名`
+    // 等) であり、`Graph::new`だけが公開契約として残る。
     GraphNew,
     Entity,
     NodeRefsフィールド,
     EdgeRefsフィールド,
-    // instance展開が呼び出し位置から辿れる構築の入口 (PR #45レビューA・D)。
+    // instance展開が呼び出し位置から辿れる構築の入口。
     // `{instance名}::construct::nodes!`/`{instance名}::construct::edges!`と
     // いう修飾パスの、それぞれの区間の固定語彙。
     ConstructModule,
@@ -34,7 +39,7 @@ impl 固定語彙 {
             Self::EdgeRefs => "EdgeRefs",
             Self::Graph => "Graph",
             Self::GraphNew => "new",
-            Self::Entity => "entity",
+            Self::Entity => 実体アクセサ名,
             Self::NodeRefsフィールド => "node_refs",
             Self::EdgeRefsフィールド => "edge_refs",
             Self::ConstructModule => "construct",
