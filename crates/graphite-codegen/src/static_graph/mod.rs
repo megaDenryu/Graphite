@@ -26,12 +26,27 @@
 //! `graphite-cli`/`cargo xtask generate` の対象にもならない (`flow!` と
 //! 同じ位置づけ)。
 
+mod file;
+// `錨を組み立てる`・`個体供給関数を組み立てる`・`積み荷供給関数を組み立てる`
+// は段階3でその場展開へ配線するまで、各ファイル内の単体試験だけが呼ぶ
+// (issue #41 段階2、`inline::mod` のdoc参照)。
+#[allow(dead_code)]
+mod inline;
 mod internal;
 mod literal;
+mod naming;
 mod schema;
+mod semantic;
+mod tracked;
+mod trace;
 
 use proc_macro2::TokenStream;
 use quote::quote;
+
+pub use tracked::{
+    parse_tracked_static_instance, parse_tracked_static_schema, TrackedStaticInstance,
+    TrackedStaticSchema,
+};
 
 // `static_graph_schema!` の展開本体。schemaを構文解析・検証し、schemaだけから
 // 決まる生成物と `macro_rules! {schema名}` (内部マクロへの転送) を並べて
@@ -70,8 +85,9 @@ pub fn expand_static_graph_internal(input: TokenStream) -> TokenStream {
         Ok(入力) => 入力,
         Err(エラー) => return エラー.to_compile_error(),
     };
-    if let Err(エラー) = 入力.検証する() {
-        return エラー.to_compile_error();
-    }
-    入力.コードを生成する()
+    let 検証済み = match 入力.検証する() {
+        Ok(検証済み) => 検証済み,
+        Err(エラー) => return エラー.to_compile_error(),
+    };
+    検証済み.コードを生成する()
 }

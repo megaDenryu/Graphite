@@ -7,22 +7,22 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 
-use crate::static_graph::literal::input::ノード宣言;
+use crate::static_graph::semantic::個体;
 
-pub(super) fn ノード達を生成する(ノード宣言達: &[ノード宣言]) -> TokenStream {
-    let フィールド達 = ノード宣言達.iter().map(|ノード| {
-        let 名前 = &ノード.名前;
-        let 実体型 = &ノード.実体型;
+pub(super) fn ノード達を生成する(個体列: &[個体]) -> TokenStream {
+    let フィールド達 = 個体列.iter().map(|個体| {
+        let 名前 = 個体.名前();
+        let 実体型 = 個体.実体型();
         quote! { #名前: #実体型 }
     });
-    let 引数達 = ノード宣言達.iter().filter(|ノード| ノード.値.is_none()).map(|ノード| {
-        let 名前 = &ノード.名前;
-        let 実体型 = &ノード.実体型;
+    let 引数達 = 個体列.iter().filter(|個体| 個体.値なし宣言か()).map(|個体| {
+        let 名前 = 個体.名前();
+        let 実体型 = 個体.実体型();
         quote! { #名前: #実体型 }
     });
-    let 初期化達 = ノード宣言達.iter().map(|ノード| {
-        let 名前 = &ノード.名前;
-        let 初期化式 = match &ノード.値 {
+    let 初期化達 = 個体列.iter().map(|個体| {
+        let 名前 = 個体.名前();
+        let 初期化式 = match 個体.値() {
             Some(式) => quote! { #式 },
             None => quote! { #名前 },
         };

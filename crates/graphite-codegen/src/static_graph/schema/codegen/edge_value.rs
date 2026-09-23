@@ -2,22 +2,27 @@
 // (instanceを見ない)。積み荷を持つ種別だけ積み荷フィールドを持つ。
 // `static_graph_schema!` の展開へ macro_rules!と並ぶ実アイテムとして出力するため、
 // 同一schemaから個体宣言のmacro_rulesを何度呼んでも、この生成物自体は
-// 1回しか展開されず重複定義にならない。
+// 1回しか展開されず重複定義にならない。型名は `naming::辺値型名` から読み、
+// ここでは `format_ident!` を書かない (issue #41 是正13)。
 
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote};
+use quote::quote;
 
-use crate::static_graph::schema::input::{辺形状, 辺宣言, 積み荷宣言, 静的グラフ型入力};
+use crate::schema::codegen::宣言元ファイルの綴り;
+use crate::static_graph::naming::辺値型名;
+use crate::static_graph::schema::input::{辺形状, 積み荷宣言, 静的グラフ型入力};
+use crate::static_graph::semantic::{辺種別列をschemaから組み立てる, 辺種別};
 
 pub(super) fn 辺値struct達を生成する(schema: &静的グラフ型入力) -> TokenStream {
-    let 生成達 = schema.辺宣言達.iter().map(一種別分を生成する);
+    let 辺種別列 = 辺種別列をschemaから組み立てる(schema);
+    let 生成達 = 辺種別列.iter().map(一種別分を生成する);
     quote! { #(#生成達)* }
 }
 
-fn 一種別分を生成する(辺: &辺宣言) -> TokenStream {
-    let 型名 = format_ident!("{}Edge", 辺.名前, span = 辺.名前.span());
-    let 積み荷フィールド = 積み荷フィールドを生成する(辺.形状.積み荷());
-    match &辺.形状 {
+fn 一種別分を生成する(辺種別: &辺種別) -> TokenStream {
+    let 型名 = 辺値型名(辺種別, &宣言元ファイルの綴り::分かっていない);
+    let 積み荷フィールド = 積み荷フィールドを生成する(辺種別.積み荷());
+    match 辺種別.形状() {
         辺形状::有向 { 始点役割, 始点型, 終点役割, 終点型, .. } => quote! {
             struct #型名<'a> {
                 #始点役割: &'a #始点型,

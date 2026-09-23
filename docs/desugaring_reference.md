@@ -230,30 +230,37 @@ moduleを囲む親のモジュール (宣言を書いたファイル) に展開�
 **5. 構築時の処理**
 
 `dynamic_graph_schema!` が展開するのは、指紋を照合する `const` ブロック1つだけである。
-展開するトークンのテンプレートは次のとおりである
-(`crates/graphite-macros/src/lib.rs:98-111`)。
+このブロックの組み立ては `graphite-codegen` の
+`指紋照合コードを生成する` (`crates/graphite-codegen/src/fingerprint_check.rs`) が
+1箇所だけで持ち、`dynamic_graph_schema!` は定数パスと期待指紋・対象の文言・spanを
+渡すだけである (静的グラフのschema・instanceも同じ関数を使う想定、issue #41 段階2)。
+`dynamic_graph_schema!` 側の呼び出しは次のとおりである
+(`crates/graphite-macros/src/lib.rs:102-111`)。定数名・対象の文言も
+`graphite-codegen` (`動的schema指紋定数名`・`動的schema対象文言`)
+から読み、`dynamic_graph_schema!` 自身は文字列を直書きしない
+(issue #41 是正16)。
 
 ```rust
 let schema_name = schema.schema_name();
-let [first, second, third, fourth] = schema.fingerprint();
-quote! {
-    const _: () = {
-        let actual = #schema_name::__GRAPHITE_SCHEMA_FINGERPRINT;
-        if !(actual[0] == #first
-            && actual[1] == #second
-            && actual[2] == #third
-            && actual[3] == #fourth)
-        {
-            panic!("Graphite schema の生成ファイルが古いため、パッケージのディレクトリで cargo graphite generate を実行してください (Graphite リポジトリ自身の開発では cargo xtask generate)");
-        }
-    };
-}
+let 定数名 = graphite_codegen::動的schema指紋定数名();
+let 定数パス = quote! { #schema_name::#定数名 };
+graphite_codegen::指紋照合コードを生成する(
+    定数パス,
+    schema.fingerprint(),
+    graphite_codegen::動的schema対象文言(),
+    proc_macro2::Span::call_site(),
+)
+.into()
 ```
 
-`#schema_name` には利用者が書いたschema module名 (`Commerce` 等) が、`#first` から
-`#fourth` には指紋の4要素が埋まる。指紋の値そのものは生成ファイルの
-`__GRAPHITE_SCHEMA_FINGERPRINT` にあり、生成器を変えるたびに変わるため、この文書は
-値を書き写さず位置だけを示す。
+`#schema_name` には利用者が書いたschema module名 (`Commerce` 等) が渡る。指紋の値
+そのものは生成ファイルの `__GRAPHITE_SCHEMA_FINGERPRINT` にあり、生成器を変えるたびに
+変わるため、この文書は値を書き写さず位置だけを示す。`指紋照合コードを生成する` は
+渡された対象の文言 (`"Graphite schema"`) から
+「`{対象} の生成ファイルが古いため、パッケージのディレクトリで cargo graphite generate
+を実行してください (Graphite リポジトリ自身の開発では cargo xtask generate)`」という
+panicメッセージを組み立てる。動的グラフはこの `対象` を固定文字列で渡すため、
+文言はこの記述を導入する前と変わらない。
 
 指紋とは、生成先の相対パスと、整形済みの生成本文を連結した文字列に対して、
 FNV-1a (64bit) を4種の初期値でそれぞれ計算した `[u64; 4]` である

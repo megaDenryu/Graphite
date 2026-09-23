@@ -4,10 +4,10 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 
-use crate::static_graph::literal::input::静的グラフ入力;
+use crate::static_graph::semantic::意味モデル;
 
-pub(super) fn グラフ本体を生成する(instance: &静的グラフ入力) -> TokenStream {
-    let グラフ名 = &instance.グラフ名;
+pub(super) fn グラフ本体を生成する(意味モデル: &意味モデル) -> TokenStream {
+    let グラフ名 = 意味モデル.グラフ名();
     quote! {
         struct #グラフ名<'a> {
             node_refs: NodeRefs<'a>,

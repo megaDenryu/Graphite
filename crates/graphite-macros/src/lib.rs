@@ -100,19 +100,14 @@ pub fn dynamic_graph_schema(input: TokenStream) -> TokenStream {
         }
     };
     let schema_name = schema.schema_name();
-    let [first, second, third, fourth] = schema.fingerprint();
-    quote! {
-        const _: () = {
-            let actual = #schema_name::__GRAPHITE_SCHEMA_FINGERPRINT;
-            if !(actual[0] == #first
-                && actual[1] == #second
-                && actual[2] == #third
-                && actual[3] == #fourth)
-            {
-                panic!("Graphite schema の生成ファイルが古いため、パッケージのディレクトリで cargo graphite generate を実行してください (Graphite リポジトリ自身の開発では cargo xtask generate)");
-            }
-        };
-    }
+    let 定数名 = graphite_codegen::動的schema指紋定数名();
+    let 定数パス = quote! { #schema_name::#定数名 };
+    graphite_codegen::指紋照合コードを生成する(
+        定数パス,
+        schema.fingerprint(),
+        graphite_codegen::動的schema対象文言(),
+        proc_macro2::Span::call_site(),
+    )
     .into()
 }
 

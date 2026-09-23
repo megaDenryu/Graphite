@@ -13,6 +13,11 @@
 //! (旧 `実体()`)・`NodeRefs`/`EdgeRefs` とその `node_refs`/`edge_refs`
 //! フィールド (旧 `ノード参照達`/`辺参照達`)。利用者が書く個体名・辺名・
 //! 役割名はそのまま (フィールド名・アクセサ名として echo する)。
+//!
+//! 入力は意味モデル (`static_graph::semantic::意味モデル`) であり、schema・
+//! instanceの構文木を直接読まない (issue #41 段階1)。`{個体名}Ref`・
+//! `{辺名}Ref`・`{種別}Edge` の名前は `static_graph::naming` から受け取り、
+//! この module 以下では `format_ident!` を書かない。
 
 mod edge_entities;
 mod edge_ref;
@@ -24,17 +29,16 @@ mod ref_collections;
 use proc_macro2::TokenStream;
 use quote::quote;
 
-use crate::static_graph::literal::input::静的グラフ入力;
-use crate::static_graph::schema::input::静的グラフ型入力;
+use crate::static_graph::semantic::意味モデル;
 
-pub(crate) fn コードを生成する(schema: &静的グラフ型入力, instance: &静的グラフ入力) -> TokenStream {
-    let ノード達 = node_entities::ノード達を生成する(&instance.ノード宣言達);
-    let 辺達 = edge_entities::辺達を生成する(schema, &instance.辺宣言達);
-    let 個体参照達 = node_ref::個体参照達を生成する(instance);
-    let 辺インスタンス参照達 = edge_ref::辺インスタンス参照達を生成する(schema, instance);
-    let ノード参照達 = ref_collections::ノード参照達を生成する(instance);
-    let 辺参照達 = ref_collections::辺参照達を生成する(instance);
-    let グラフ本体 = graph_struct::グラフ本体を生成する(instance);
+pub(crate) fn コードを生成する(意味モデル: &意味モデル) -> TokenStream {
+    let ノード達 = node_entities::ノード達を生成する(意味モデル.個体列());
+    let 辺達 = edge_entities::辺達を生成する(意味モデル.具体辺列());
+    let 個体参照達 = node_ref::個体参照達を生成する(意味モデル);
+    let 辺インスタンス参照達 = edge_ref::辺インスタンス参照達を生成する(意味モデル);
+    let ノード参照達 = ref_collections::ノード参照達を生成する(意味モデル);
+    let 辺参照達 = ref_collections::辺参照達を生成する(意味モデル);
+    let グラフ本体 = graph_struct::グラフ本体を生成する(意味モデル);
 
     quote! {
         #ノード達

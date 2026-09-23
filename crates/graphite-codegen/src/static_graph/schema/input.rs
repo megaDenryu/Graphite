@@ -37,29 +37,38 @@ syn::custom_keyword!(edge);
 
 // `static_graph_schema!` は `schema名` をそのまま `macro_rules! {schema名}` の名前として
 // 使う (利用側は `<schema名>! { graph <名前>; .. }` と書く)。
+// Clone は `static_graph::tracked::instance` が、参照で受け取ったschemaを
+// 相互検証用の `静的グラフ内部入力` へ複製して渡すために要る (issue #41 段階2)。
+#[derive(Clone)]
 pub struct 静的グラフ型入力 {
     pub schema名: Ident,
     pub ノード宣言達: Vec<ノード宣言>,
     pub 辺宣言達: Vec<辺宣言>,
 }
 
+#[derive(Clone)]
 pub struct ノード宣言 {
     pub 名前: Ident,
 }
 
 // 無向辺も有向辺と同じく両端の役割名を持つ (端点1/端点2への合成は廃止。
 // issue #24 段階2、オーナー裁定)。積み荷は名前付きの 積み荷宣言 で持つ。
+// Clone は意味モデル (`static_graph::semantic`) が辺種別を具体辺へ解決済み
+// のまま持たせるために要る (issue #41 段階1)。
+#[derive(Clone)]
 pub enum 辺形状 {
     有向 { 始点役割: Ident, 始点型: Ident, 積み荷: Option<積み荷宣言>, 終点役割: Ident, 終点型: Ident },
     無向 { 第1役割: Ident, 第1型: Ident, 積み荷: Option<積み荷宣言>, 第2役割: Ident, 第2型: Ident },
 }
 
+#[derive(Clone)]
 pub struct 辺宣言 {
     pub 名前: Ident,
     pub 形状: 辺形状,
     pub 制約達: Vec<制約>,
 }
 
+#[derive(Clone)]
 pub enum 制約 {
     多重度 { 役割: Ident, 範囲: 多重度範囲 },
     対一意,

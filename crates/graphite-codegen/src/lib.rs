@@ -18,6 +18,7 @@
 
 mod declaration_site;
 mod fingerprint;
+mod fingerprint_check;
 mod generated_path;
 mod generated_source;
 pub mod naming;
@@ -38,8 +39,13 @@ use crate::schema::codegen::宣言元ファイルの綴り;
 use crate::tracked_input::TrackedInput;
 
 pub use declaration_site::DeclarationSite;
+pub use fingerprint_check::{動的schema指紋定数名, 動的schema対象文言, 指紋照合コードを生成する};
 pub use generated_path::validate_generated_relative_path;
-pub use static_graph::{expand_static_graph_internal, parse_and_expand_static_graph_schema};
+pub use static_graph::{
+    expand_static_graph_internal, parse_and_expand_static_graph_schema,
+    parse_tracked_static_instance, parse_tracked_static_schema, TrackedStaticInstance,
+    TrackedStaticSchema,
+};
 
 // 追跡対象の schema 宣言を検証し、意味モデルまで確定させたもの。
 //
@@ -77,7 +83,7 @@ impl TrackedSchema {
             site.宣言ファイルの綴り().to_string(),
         );
         let body = schema::codegen::generate_module_body(&self.スキーマ定義, &宣言元の綴り);
-        生成ファイルの本文(&body, self.fingerprint, site)
+        生成ファイルの本文(&body, self.fingerprint, site, &動的schema指紋定数名())
     }
 }
 

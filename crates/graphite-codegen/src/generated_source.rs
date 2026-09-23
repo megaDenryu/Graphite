@@ -2,21 +2,29 @@
 
 use proc_macro2::TokenStream;
 use quote::quote;
+use syn::Ident;
 
 use crate::declaration_site::DeclarationSite;
 
 // 生成ファイルへ書き出す本文を、先頭の案内コメントごと組み立てる。
+//
+// `fingerprint_const_name` は埋め込む指紋定数の名前である。動的グラフの
+// schema (`__GRAPHITE_SCHEMA_FINGERPRINT`) と、静的グラフのschema・
+// instance (`__GRAPHITE_STATIC_SCHEMA_FINGERPRINT`・
+// `__GRAPHITE_STATIC_INSTANCE_FINGERPRINT`) が同じこの関数を共有し、定数名
+// だけを呼び出し側が指定する (issue #41 段階2、`static_graph::tracked`)。
 pub(crate) fn 生成ファイルの本文(
     body: &TokenStream,
     fingerprint: [u64; 4],
     site: &DeclarationSite,
+    fingerprint_const_name: &Ident,
 ) -> syn::Result<String> {
     let generated: syn::File = syn::parse2(quote! {
         #[allow(unused_imports)]
         use super::*;
 
         #[doc(hidden)]
-        pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
+        pub(super) const #fingerprint_const_name: [u64; 4] = [
             #(#fingerprint),*
         ];
 

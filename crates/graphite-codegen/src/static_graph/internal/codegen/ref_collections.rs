@@ -4,19 +4,21 @@
 // 「生成される名前の公開契約」参照)。
 
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote};
+use quote::quote;
 
-use crate::static_graph::literal::input::静的グラフ入力;
+use crate::schema::codegen::宣言元ファイルの綴り;
+use crate::static_graph::naming::{個体参照型名, 辺参照型名};
+use crate::static_graph::semantic::意味モデル;
 
-pub(super) fn ノード参照達を生成する(instance: &静的グラフ入力) -> TokenStream {
-    let フィールド達 = instance.ノード宣言達.iter().map(|n| {
-        let 名前 = &n.名前;
-        let 参照型 = format_ident!("{}Ref", 名前, span = 名前.span());
+pub(super) fn ノード参照達を生成する(意味モデル: &意味モデル) -> TokenStream {
+    let フィールド達 = 意味モデル.個体列().iter().map(|個体| {
+        let 名前 = 個体.名前();
+        let 参照型 = 個体参照型名(意味モデル, 個体, &宣言元ファイルの綴り::分かっていない);
         quote! { #名前: #参照型<'a> }
     });
-    let 初期化達 = instance.ノード宣言達.iter().map(|n| {
-        let 名前 = &n.名前;
-        let 参照型 = format_ident!("{}Ref", 名前, span = 名前.span());
+    let 初期化達 = 意味モデル.個体列().iter().map(|個体| {
+        let 名前 = 個体.名前();
+        let 参照型 = 個体参照型名(意味モデル, 個体, &宣言元ファイルの綴り::分かっていない);
         quote! { #名前: #参照型 { entity: &nodes.#名前, nodes, edges } }
     });
     quote! {
@@ -31,15 +33,15 @@ pub(super) fn ノード参照達を生成する(instance: &静的グラフ入力
     }
 }
 
-pub(super) fn 辺参照達を生成する(instance: &静的グラフ入力) -> TokenStream {
-    let フィールド達 = instance.辺宣言達.iter().map(|e| {
-        let 名前 = &e.名前;
-        let 参照型 = format_ident!("{}Ref", 名前, span = 名前.span());
+pub(super) fn 辺参照達を生成する(意味モデル: &意味モデル) -> TokenStream {
+    let フィールド達 = 意味モデル.具体辺列().iter().map(|辺| {
+        let 名前 = 辺.名前();
+        let 参照型 = 辺参照型名(意味モデル, 辺, &宣言元ファイルの綴り::分かっていない);
         quote! { #名前: #参照型<'a> }
     });
-    let 初期化達 = instance.辺宣言達.iter().map(|e| {
-        let 名前 = &e.名前;
-        let 参照型 = format_ident!("{}Ref", 名前, span = 名前.span());
+    let 初期化達 = 意味モデル.具体辺列().iter().map(|辺| {
+        let 名前 = 辺.名前();
+        let 参照型 = 辺参照型名(意味モデル, 辺, &宣言元ファイルの綴り::分かっていない);
         quote! { #名前: #参照型 { entity: &edges.#名前, nodes, edges } }
     });
     quote! {
