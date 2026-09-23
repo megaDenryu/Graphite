@@ -13,6 +13,27 @@
 
 use proc_macro2::{Ident, Span};
 
+// `Ident::new(&名前.to_string(), span)` は使わない。生識別子 (`r#型`等) の
+// `to_string()`は`r#`接頭辞を含む文字列を返すが、`Ident::new`はその文字列を
+// 生識別子の記法として受理せずパニックする (`Ident::new`は生の文字列から
+// 組み立て直す口であり、`r#`を構文として解釈しない)。`clone`してから
+// `set_span`で差し替えれば、文字列を経由せず生識別子かどうかも含めてその
+// まま引き継げる。
 pub(crate) fn 指紋照合パスの起点(名前: &Ident, generated文字列のspan: Span) -> Ident {
-    Ident::new(&名前.to_string(), generated文字列のspan)
+    let mut 名前 = 名前.clone();
+    名前.set_span(generated文字列のspan);
+    名前
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use quote::quote;
+
+    #[test]
+    fn 生識別子でもパニックしない() {
+        let 生識別子: Ident = syn::parse2(quote! { r#type }).unwrap();
+        let 起点 = 指紋照合パスの起点(&生識別子, Span::call_site());
+        assert_eq!(起点.to_string(), "r#type");
+    }
 }

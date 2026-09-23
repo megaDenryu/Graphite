@@ -98,5 +98,14 @@ fn 解析できないファイルは違反になる() {
 
     std::fs::remove_file(&path).unwrap();
 
-    assert!(error.to_string().contains("Rustとして解析できません"));
+    let message = error.to_string();
+    assert!(message.contains("Rustとして解析できません"));
+    // syn::Errorのspanは0始まりの行・桁を返すが、エディタの慣習である
+    // 1始まりに直して表示する。この断片 `"fn broken( {"` (12文字) は末尾で
+    // 壊れるため、1始まりなら1行12桁を指す。0始まりのまま (1行11桁) を
+    // 出すと桁がずれる。
+    assert!(
+        message.contains(":1:12 をRustとして解析できません"),
+        "1始まりの桁 (1:12) を含むはずが: {message}"
+    );
 }

@@ -44,9 +44,9 @@ graphite::dynamic_graph_schema! {
 
 instanceの生成ファイルは、instanceの値の式 (ノードの初期値・積み荷の値) を含まない。値の式は宣言元ファイルのその場展開に残るため、値だけを書き換えた編集では再生成が要らない (指紋は構造 (名前・型・値の有無・端点・積み荷の有無) だけで決まる)。
 
-生成器は、Rustとして解析できないファイルを走査から黙って除外せず違反にする (`generate`/`generate --check` を止める)。対象外にするのは`target`・`generated`・`ui`の各ディレクトリだけである。
+生成器は、Rustとして解析できないファイルを走査から黙って除外せず違反にする (`generate`/`generate --check` を止める)。生成器が走査の対象外にするのは`target`・`generated`・`ui`の各ディレクトリだけである。
 
-この検査には及ばない範囲が3つある。(1) `quote!`・`quote_spanned!`・`parse_quote!`の入力の中に書かれた、instance宣言に似た形のトークン列は対象外にする (これらはトークン列を組み立てて返すマクロであり、その入力は文位置に直接書くinstance宣言ではなくデータであるため)。(2) 名簿に無い名前で始まり、かつ`generated = "...";`から始まらない呼び出しは対象外にする。schema名の綴り誤りと`generated`の書き忘れが同時に起きた宣言は、生成器のこの検査では検出できない (この場合は生成された`macro_rules!`が見つからず、通常の`cargo build`がコンパイルエラーとして検出する)。(3) 走査は各パッケージ直下の`src`・`tests`だけを対象にし、パッケージが個別に持てる`examples/`・`benches/`ディレクトリ (Cargoの規約による、`cargo run --example`・`cargo bench`向けのディレクトリ) は走査しない。
+この「instanceとみなして解決する」検査には及ばない範囲が3つある。(1) 生成器は、`quote!`・`quote_spanned!`・`parse_quote!`という呼び出し自身を対象外にする (これらはトークン列を組み立てて返すマクロであり、その呼び出し自身は文位置に直接書くinstance宣言ではなくデータであるため)。この対象外は「instanceの解決」に限った話であり、`埋め込まれたinstanceを検査する` (`docs/static_graph.md`「制約」節の「instanceを他のマクロの入力の中に書いてはならない」参照) には及ばない。この検査は呼び出しの名前を問わず全呼び出しのトークン列を再帰的に走査するため、`quote! { 組織! { .. } }`のように登録済みschema名が`quote!`の中に書かれていても、埋め込みエラーとして検出する。(2) 生成器は、名簿に無い名前で始まり、かつ`generated = "...";`から始まらない呼び出しを対象外にする。schema名の綴り誤りと`generated`の書き忘れが同時に起きた宣言は、生成器のこの検査では検出できない (この場合は生成された`macro_rules!`が見つからず、通常の`cargo build`がコンパイルエラーとして検出する)。(3) 走査は各パッケージ直下の`src`・`tests`だけを対象にし、パッケージが個別に持てる`examples/`・`benches/`ディレクトリ (Cargoの規約による、`cargo run --example`・`cargo bench`向けのディレクトリ) は走査しない。
 
 `generate`/`generate --check`はどちらも、読んだ宣言の内訳と件数を1行で表示する: `dynamic schema N件、static schema N件、static instance N件、生成 M件 (解析したファイル K件)`。
 

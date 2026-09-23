@@ -45,7 +45,7 @@ fn quote系マクロのtracked形式に似た入力は対象外にする() {
     // `quote!`/`quote_spanned!`/`parse_quote!` はいずれもgraphite-codegen/
     // graphite-cli自身の単体試験がフィクスチャ組み立てに使う。この3つの
     // 入力を「typoしたinstance」と誤検出しないことを確かめる
-    // (検収指摘5。`parse_quote!` は実験で誤検出が実際に起きたマクロ)。
+    // (`parse_quote!` は実際に誤検出が起きたことのあるマクロ)。
     for 名前 in ["quote", "quote_spanned", "parse_quote"] {
         let 候補 = call(名前, quote! { generated = "generated/x.rs"; graph 何か; }, 5);
         let files = vec![FileMacros {

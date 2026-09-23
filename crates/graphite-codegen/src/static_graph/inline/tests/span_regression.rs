@@ -3,7 +3,7 @@ use proc_macro2::{LineColumn, TokenStream, TokenTree};
 use crate::static_graph::inline::token_type_reference::dslトークンの型参照を組み立てる;
 use crate::static_graph::inline::value_supply::個体供給関数を組み立てる;
 use crate::static_graph::literal::input::静的グラフ入力;
-use crate::static_graph::naming::個体参照パス;
+use crate::static_graph::naming::{個体参照パス, 辺値参照パス, 辺参照パス};
 use crate::static_graph::schema::input::静的グラフ型入力;
 use crate::static_graph::semantic::意味モデル;
 
@@ -39,6 +39,10 @@ fn 最初に一致するidentを探す(tokens: &TokenStream, text: &str) -> Opti
 
 fn 太郎を取り出す(意味モデル: &意味モデル) -> &crate::static_graph::semantic::個体 {
     意味モデル.個体列().iter().find(|個体| *個体.名前() == "太郎").expect("太郎が居るはず")
+}
+
+fn 太郎の所属を取り出す(意味モデル: &意味モデル) -> &crate::static_graph::semantic::具体辺 {
+    意味モデル.具体辺列().iter().find(|辺| *辺.名前() == "太郎の所属").expect("太郎の所属が居るはず")
 }
 
 #[test]
@@ -90,4 +94,37 @@ fn 個体供給関数の戻り値型は実体型トークンの実際の行と�
         元span始点,
         "個体供給関数の戻り値型は個体宣言の実体型トークンのspanをそのまま使う"
     );
+}
+
+#[test]
+fn 辺値参照パスは種別トークンの実際の行と桁を保つ() {
+    let 意味モデル = 複数行のフィクスチャから意味モデルを作る();
+    let 太郎の所属 = 太郎の所属を取り出す(&意味モデル);
+    let 元span始点 = 太郎の所属.種別トークン().span().start();
+
+    // `所属` はschema_srcの4行目 (`edge 所属 = ..`) に居る。instance_src側の
+    // `所属(太郎 -> 開発部)` の`所属`ではなく、schema宣言側の種別トークンの
+    // spanを使うことを確かめる (フォールバック既定値ではないことの前提確認)。
+    assert_ne!(元span始点, LineColumn { line: 1, column: 0 });
+    assert_eq!(元span始点.line, 4);
+
+    let 生成パス = 辺値参照パス(&意味モデル, 太郎の所属);
+    let 生成ident = 最初に一致するidentを探す(&生成パス, "所属Edge").expect("所属Edgeが居るはず");
+    assert_eq!(生成ident.span().start(), 元span始点, "辺値参照パスは種別トークンのspanを継承する");
+}
+
+#[test]
+fn 辺参照パスは辺名トークンの実際の行と桁を保つ() {
+    let 意味モデル = 複数行のフィクスチャから意味モデルを作る();
+    let 太郎の所属 = 太郎の所属を取り出す(&意味モデル);
+    let 元span始点 = 太郎の所属.名前().span().start();
+
+    // `太郎の所属` はinstance_srcの4行目 (`edge 太郎の所属 = ..`) に居る。
+    assert_ne!(元span始点, LineColumn { line: 1, column: 0 });
+    assert_eq!(元span始点.line, 4);
+
+    let 生成パス = 辺参照パス(&意味モデル, 太郎の所属.名前());
+    let 生成ident =
+        最初に一致するidentを探す(&生成パス, "太郎の所属Ref").expect("太郎の所属Refが居るはず");
+    assert_eq!(生成ident.span().start(), 元span始点, "辺参照パスは辺名トークンのspanを継承する");
 }

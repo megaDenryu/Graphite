@@ -1,8 +1,8 @@
 // `embedded_detection::埋め込まれたinstanceを検査する` の単体試験。
 // `instance_resolution.rs` (`instanceを解決する` の単体試験) とは検査対象の
-// 生成器関数が異なるため、別ファイルへ分ける (1ファイル100行の原則、
-// 検収指摘。行数合わせではなく、production側の module分割
-// (`embedded_detection.rs`/`instance_resolution.rs`) にそのまま対応する)。
+// 生成器関数が異なるため、別ファイルへ分ける。行数合わせではなく、
+// production側のmodule分割 (`embedded_detection.rs`/`instance_resolution.rs`)
+// にそのまま対応する。
 
 use quote::quote;
 

@@ -19,8 +19,9 @@
 //! - `fingerprint_anchor`: `schema_entry.rs`・`instance_entry.rs` が指紋照合
 //!   コードのmoduleパスに使う、`generated = "..."` リテラルのspanを持つ
 //!   識別子 (doc を持たない。C分類でもない: 実在するschema名/instance名の
-//!   トークンを別の実在するトークン (`generated` リテラル) のspanへ respan
-//!   するだけであり、公開APIの名前ではなく診断のspanだけに使う)。
+//!   トークンのspanを、別の実在するトークン (`generated` リテラル) の
+//!   spanへ付け替えるだけであり、公開APIの名前ではなく診断のspanだけに
+//!   使う)。
 
 mod card_names;
 mod field_card_names;

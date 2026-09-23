@@ -148,9 +148,10 @@ fn main() {
 // `Nodes`/`Edges`/`NodeRefs`/`EdgeRefs`/`Graph` は関数ローカルのmoduleの
 // 中にあるため、同じschemaから複数のinstanceを宣言してもmodule名が違えば
 // 衝突しない。`mod` だけを最上位に置きinstanceを関数の中に置く形だと、
-// 最上位の `mod 経理チーム` がこの関数からしか使われないため
-// `unused_macros` の警告が出る。この関数はその警告を避ける配置の実例でも
-// ある。
+// `組織! { .. }`の展開が生成する値供給関数の `impl 経理チーム::Nodes { .. }`
+// が、最上位で定義された `Nodes` 型に対する非局所implになり
+// `non_local_definitions` 警告が出る。この関数はその警告を避ける配置の
+// 実例でもある。
 fn 経理チームの花子の所属先を求める() -> String {
     #[allow(non_snake_case, dead_code, private_interfaces)]
     #[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]

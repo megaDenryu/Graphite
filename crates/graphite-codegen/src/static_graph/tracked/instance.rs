@@ -56,7 +56,7 @@ impl TrackedStaticInstance {
     // の案内コメントに使う)、`schema_site` はこのinstanceが由来するschemaの
     // 宣言元である。schemaとinstanceが別ファイルの場合に、意味カードの
     // 「関係する schema 宣言」の段落が実在する場所を指すよう、cliの2段階の
-    // 解決が両方を渡す (issue #41 段階3、検収指摘3)。
+    // 解決が両方を渡す (issue #41)。
     pub fn render_module_source(
         &self,
         site: &DeclarationSite,

@@ -2803,9 +2803,9 @@ crates/graphite/ の tests/edge_roles.rs:27 にある schema 宣言
 名前付き位置型も持たない (利用者向けの doc を出さないため)。
 
 静的グラフ (`static_graph_schema!`/instance) の意味カードも同じ「宣言:」の書式を
-使うが、instanceの生成物は「関係する schema 宣言:」の段落も別に持つ (由来・意味
-カードの書式は `docs/static_graph.md`「実装の配置」と issue #41 設計書 §5.2 を
-参照)。
+使うが、固定語彙の生成物は「宣言:」の代わりに「固定語彙:」を持ち、instanceの
+生成物は「関係する schema 宣言:」の段落も別に持つ (書式と分類は
+`docs/static_graph.md`「追跡の契約」を参照)。
 
 ノード種別と辺種別の例を1つずつ示す
 (`crates/graphite/tests/generated/edge_roles_commerce.rs:12-16, 827-831`)。

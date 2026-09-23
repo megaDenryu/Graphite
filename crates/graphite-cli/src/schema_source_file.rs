@@ -39,14 +39,16 @@ impl SchemaSourceFile {
         let display_path = tree.relative_display(&self.path);
         let source = with_path_context(fs::read_to_string(&self.path), &display_path)?;
         let parsed_file = syn::parse_file(&source).map_err(|error| {
-            // 検査器は解析できなかった入力を黙って対象から外さない
-            // (グローバルCLAUDE.md)。位置が無いと、複数のRustファイルを
-            // 抱えるパッケージでどのファイルのどこが壊れているかを
-            // 探す手間が生じるため、`error.span()` から行・桁を添える。
+            // 検査器は、解析できなかった入力を黙って走査から外さず、違反として
+            // 報告する。位置が無いと、複数のRustファイルを抱えるパッケージで
+            // どのファイルのどこが壊れているかを探す手間が生じるため、
+            // `error.span()` から行・桁を添える。桁は0始まりで返るため、
+            // エディタの慣習 (1始まり) に合わせて1を足す。
             let 位置 = error.span().start();
             format!(
                 "{display_path}:{}:{} をRustとして解析できません: {error}",
-                位置.line, 位置.column
+                位置.line,
+                位置.column + 1
             )
         })?;
         Ok((display_path, parsed_file))
