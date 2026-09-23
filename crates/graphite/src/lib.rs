@@ -5,14 +5,14 @@
 //! (serde/serde_derive と同じ 2 クレート構成)。
 //!
 //! 水準1相当のジェネリックグラフ [`Graph`] (フェーズ2) に加え、フェーズ3で
-//! 水準2相当の図式グラフスキーマを宣言する `graph_schema!` と、
+//! 水準2相当の図式グラフスキーマを宣言する `dynamic_graph_schema!` と、
 //! インスタンスリテラル `graph!` を実装した (`graphite-macros` から re-export)。
 //! `flow!` (`docs/flow_macro.md`) はこれらとは独立した別レイヤで、データの辺
 //! (宣言) とは対照的な「関数の辺」(即時実行) を文位置マクロとして提供する。
 //! さらに issue #24 で、全個体がコンパイル時に確定するグラフ向けの
-//! `static_schema!` (`docs/static_graph.md`) を実装した。`graph_schema!`/
+//! `static_graph_schema!` (`docs/static_graph.md`) を実装した。`dynamic_graph_schema!`/
 //! `graph!` が実行時に個体を追加できる freeze 検証のグラフを扱うのに対し、
-//! `static_schema!` は個体・辺の集合自体をコンパイル時に固定し、多重度・
+//! `static_graph_schema!` は個体・辺の集合自体をコンパイル時に固定し、多重度・
 //! 対一意制約をコンパイルエラーとして検出する。
 //! 設計の一次資料:
 //! - `../Bullet/docs/rust_graph_extension_sketch.md`
@@ -55,7 +55,7 @@ pub use schema_runtime::{
 };
 
 #[doc(hidden)]
-pub use graphite_macros::__graph_schema_inline_for_test;
+pub use graphite_macros::__dynamic_graph_schema_inline_for_test;
 #[doc(hidden)]
 pub use graphite_macros::__static_graph_impl;
-pub use graphite_macros::{flow, graph, graph_schema, static_schema};
+pub use graphite_macros::{dynamic_graph_schema, flow, graph, static_graph_schema};

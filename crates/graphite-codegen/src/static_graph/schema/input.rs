@@ -1,4 +1,4 @@
-// static_schema! の入力DSLの構文木。
+// static_graph_schema! の入力DSLの構文木。
 //
 //   schema <名前> {
 //     (node <名前>;)*
@@ -35,7 +35,7 @@ syn::custom_keyword!(schema);
 syn::custom_keyword!(node);
 syn::custom_keyword!(edge);
 
-// `static_schema!` は `schema名` をそのまま `macro_rules! {schema名}` の名前として
+// `static_graph_schema!` は `schema名` をそのまま `macro_rules! {schema名}` の名前として
 // 使う (利用側は `<schema名>! { graph <名前>; .. }` と書く)。
 pub struct 静的グラフ型入力 {
     pub schema名: Ident,

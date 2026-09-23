@@ -54,7 +54,7 @@ println!("{}", out.summary);             // 束縛は flow! の後で普通に�
 ## 実装ノート
 
 - graphite-macros に `flow` proc マクロを追加、graphite から re-export
-  (graph!/graph_schema! と同じ構成)
+  (graph!/dynamic_graph_schema! と同じ構成)
 - スパン: 束縛名・関数式・始点式は全てユーザートークン素通し (G3)。
   f への定義ジャンプ・束縛名の hover 型表示が機能すること (実装後に実測)
 - エラー回復: 項単位 (G4 と同じ方針)。壊れた項は compile_error! 蓄積 + 残りを生成

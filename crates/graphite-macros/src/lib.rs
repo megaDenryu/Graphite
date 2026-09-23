@@ -6,12 +6,12 @@
 //! 分離されている。利用者はこのクレートに直接依存せず、`graphite` 経由で
 //! re-export されたマクロを使う。
 //!
-//! フェーズ3で `graph_schema!` (図式グラフのスキーマ宣言) と `graph!`
+//! フェーズ3で `dynamic_graph_schema!` (図式グラフのスキーマ宣言) と `graph!`
 //! (インスタンスリテラル) を実装した。生成コードの形は
 //! `crates/graphite/tests/orgchart_handwritten.rs` (フェーズ2の手書き
 //! テンプレート) に準拠する。
 //!
-//! schema の公開APIは通常の Rust ファイルとして生成する。`graph_schema!`
+//! schema の公開APIは通常の Rust ファイルとして生成する。`dynamic_graph_schema!`
 //! は宣言を検証して生成ファイルの指紋と照合するだけで、型と実装を展開しない
 //! (規約は `docs/code_generation.md`)。構文解析・検証・生成は
 //! `graphite-codegen` にあり、ファイルの読み書きは `graphite-cli` と、それを
@@ -37,9 +37,9 @@
 //! (rust-analyzer の speculative expansion にも効く可能性がある)。
 //!
 //! schema 側の回復展開は、公開APIをファイル生成へ移した後も
-//! `graphite_codegen::expand_inline_for_test` に残っている。`graph_schema!`
+//! `graphite_codegen::expand_inline_for_test` に残っている。`dynamic_graph_schema!`
 //! は回復展開せず診断を全件返し、回復の挙動は `#[doc(hidden)]` の
-//! `__graph_schema_inline_for_test!` を通じて compile-fail テストが検査する。
+//! `__dynamic_graph_schema_inline_for_test!` を通じて compile-fail テストが検査する。
 //!
 //! このファイルは1ファイル100行の原則の例外である (区分: 統合による超過)。
 //! このファイルは proc-macro クレートの公開面である。6つのマクロ入口が同じ
@@ -58,14 +58,17 @@ use quote::quote;
 use syn::parse::Parser;
 
 /// ノード種別・エッジ種別を宣言し、通常の Rust 生成ファイルが宣言と一致する
-/// ことをコンパイル時に検査する。
+/// ことをコンパイル時に検査する。`dynamic` は、このschemaから作るグラフの
+/// 個体集合・トポロジーが実行時に構築できることを表す名前であり (Rustの
+/// `static`/`'static` とは無関係)、対概念は `static_graph_schema!`
+/// (`docs/static_graph.md` 参照)。
 ///
 /// ```text
 /// pub struct Employee { pub name: String, pub id: u32 }
 /// pub struct Department { pub name: String }
 /// pub struct BossEdge { pub since: i32 }
 ///
-/// graphite::graph_schema! {
+/// graphite::dynamic_graph_schema! {
 ///     generated = "generated/org_chart.rs";
 ///     schema OrgChart {
 ///         node Employee;
@@ -85,7 +88,7 @@ use syn::parse::Parser;
 /// 更新する (Graphite リポジトリ自身の開発では `cargo xtask generate`)。
 /// 公開APIの実装はこの通常の Rust ファイルだけに存在する。
 #[proc_macro]
-pub fn graph_schema(input: TokenStream) -> TokenStream {
+pub fn dynamic_graph_schema(input: TokenStream) -> TokenStream {
     let schema = match graphite_codegen::parse_tracked_schema(input.into()) {
         Ok(schema) => schema,
         Err(errors) => {
@@ -116,11 +119,11 @@ pub fn graph_schema(input: TokenStream) -> TokenStream {
 /// 回復診断のテスト専用であり、利用者向けではないインラインschema展開。
 #[doc(hidden)]
 #[proc_macro]
-pub fn __graph_schema_inline_for_test(input: TokenStream) -> TokenStream {
+pub fn __dynamic_graph_schema_inline_for_test(input: TokenStream) -> TokenStream {
     graphite_codegen::expand_inline_for_test(input.into()).into()
 }
 
-/// `graph_schema!` で宣言したスキーマのインスタンスをリテラルに近い記法で
+/// `dynamic_graph_schema!` で宣言したスキーマのインスタンスをリテラルに近い記法で
 /// 組み立てる。`SchemaName::Graph::create_named(|b| { ... })` と、左辺名の
 /// 静的アクセサを持つ呼び出し箇所ローカルラッパーへ脱糖する。
 ///
@@ -186,17 +189,20 @@ pub fn graph(input: TokenStream) -> TokenStream {
 }
 
 /// 全個体がコンパイル時に確定する静的グラフの schema を宣言する
-/// (issue #24)。`graph_schema!`/`graph!` は実行時に個体を追加できる
-/// グラフ向けだが、`static_schema!` は個体・辺の集合そのものが
+/// (issue #24)。`dynamic_graph_schema!`/`graph!` は実行時に個体を追加できる
+/// グラフ向けだが、`static_graph_schema!` は個体・辺の集合そのものが
 /// コンパイル時に固定されているグラフ向けであり、多重度・対一意といった
-/// `where` 制約を実行時検証ではなくコンパイルエラーとして検出する。
+/// `where` 制約を実行時検証ではなくコンパイルエラーとして検出する。`static`
+/// は、このschemaから作るグラフの個体集合・トポロジーが宣言時に確定する
+/// ことを表す名前であり (Rustの `static`/`'static` とは無関係)、詳細は
+/// `docs/static_graph.md` を参照。
 ///
 /// schema を検証し、schema 名そのものを名前にした `macro_rules!` を生成する
 /// (macro_rules!転送)。利用側はこの生成された `macro_rules!` へ個体宣言を
 /// 渡して具体グラフを組み立てる。
 ///
 /// ```text
-/// graphite::static_schema! {
+/// graphite::static_graph_schema! {
 ///     schema Organization {
 ///         node Employee;
 ///         node Department;
@@ -218,15 +224,15 @@ pub fn graph(input: TokenStream) -> TokenStream {
 /// `Nodes::new(..)` へ実行時に渡す)。
 ///
 /// 生成される `macro_rules!` はschema宣言と同じテキスト順の制約を持つ:
-/// `static_schema! { schema <名前> { .. } }` より後ろの行でしか
+/// `static_graph_schema! { schema <名前> { .. } }` より後ろの行でしか
 /// `<名前>! { .. }` を呼べない。構文・生成される名前の公開契約・
 /// コンパイル時検査の一覧は `docs/static_graph.md` を参照。
 #[proc_macro]
-pub fn static_schema(input: TokenStream) -> TokenStream {
-    graphite_codegen::parse_and_expand_static_schema(input.into()).into()
+pub fn static_graph_schema(input: TokenStream) -> TokenStream {
+    graphite_codegen::parse_and_expand_static_graph_schema(input.into()).into()
 }
 
-/// `static_schema!` が生成する `macro_rules!` からだけ呼ばれる内部マクロ。
+/// `static_graph_schema!` が生成する `macro_rules!` からだけ呼ばれる内部マクロ。
 /// 利用者が直接書くことは想定しない。
 #[doc(hidden)]
 #[proc_macro]
@@ -248,7 +254,7 @@ pub fn __static_graph_impl(input: TokenStream) -> TokenStream {
 /// ```
 ///
 /// **即時実行の純粋な脱糖** (消去可能な拡張)。項の記述順に
-/// `let 束縛名 = (関数式)(始点..);` を並べるだけで、graph!/graph_schema!
+/// `let 束縛名 = (関数式)(始点..);` を並べるだけで、graph!/dynamic_graph_schema!
 /// のようなスキーマ・builder は一切関与しない。`x -[f]-> y -[g]-> z`
 /// (チェーン形) は `x -[f]-> y, y -[g]-> z` の糖衣。束縛名は普通の `let`
 /// 束縛としてこのマクロ呼び出しの後に見える (`graph!` の項目キーが builder
@@ -256,7 +262,7 @@ pub fn __static_graph_impl(input: TokenStream) -> TokenStream {
 /// call-site スパンの識別子がそのまま呼び出し元のスコープに現れる)。
 #[proc_macro]
 pub fn flow(input: TokenStream) -> TokenStream {
-    // flow! には graph!/graph_schema! のような「壊れていたら全体を諦める」
+    // flow! には graph!/dynamic_graph_schema! のような「壊れていたら全体を諦める」
     // ヘッダが無いため、parse_recovering は実質常に Ok を返す
     // (`flow_dsl.rs` 参照)。他の2マクロと呼び出し規約を揃えるため、同じ
     // match の形は残す。
@@ -286,7 +292,7 @@ pub fn flow(input: TokenStream) -> TokenStream {
         }
         Err(err) => {
             // 束縛名重複などの意味検査エラー: コード生成なしで
-            // compile_error! のみ (現行の graph!/graph_schema! と同じ方針)。
+            // compile_error! のみ (現行の graph!/dynamic_graph_schema! と同じ方針)。
             let mut all = error_tokens;
             all.extend(err.to_compile_error());
             all.into()

@@ -39,7 +39,7 @@ use crate::tracked_input::TrackedInput;
 
 pub use declaration_site::DeclarationSite;
 pub use generated_path::validate_generated_relative_path;
-pub use static_graph::{expand_static_graph_internal, parse_and_expand_static_schema};
+pub use static_graph::{expand_static_graph_internal, parse_and_expand_static_graph_schema};
 
 // 追跡対象の schema 宣言を検証し、意味モデルまで確定させたもの。
 //
@@ -81,7 +81,7 @@ impl TrackedSchema {
     }
 }
 
-// 追跡形式の `graph_schema!` 入力を解析・検証する。
+// 追跡形式の `dynamic_graph_schema!` 入力を解析・検証する。
 pub fn parse_tracked_schema(input: TokenStream) -> Result<TrackedSchema, Vec<syn::Error>> {
     let tracked = syn::parse2::<TrackedInput>(input).map_err(|error| vec![error])?;
     if let Err(reason) = validate_generated_relative_path(&tracked.generated_path.value()) {
@@ -99,7 +99,7 @@ pub fn parse_tracked_schema(input: TokenStream) -> Result<TrackedSchema, Vec<syn
             &検証済み構文,
         );
     // 指紋の材料には宣言元への参照を入れない。指紋を計算するのは
-    // `graph_schema!` であり、マクロは自分が書かれたファイルのパッケージ相対の
+    // `dynamic_graph_schema!` であり、マクロは自分が書かれたファイルのパッケージ相対の
     // 綴りを知らないためである (`schema::codegen::declaration_doc` 参照)。
     let 生成コード = schema::codegen::generate_module_body(
         &スキーマ定義,
@@ -229,7 +229,7 @@ mod tests {
             .unwrap();
         assert!(甲.contains("`src/甲.rs`") && 乙.contains("`src/乙.rs`"));
         // 宣言元を書かない行が全て一致することは、埋め込む指紋が宣言元に
-        // 左右されないことを含む。指紋を計算する `graph_schema!` は自分の
+        // 左右されないことを含む。指紋を計算する `dynamic_graph_schema!` は自分の
         // ファイルのパッケージ相対の綴りを知らないため、指紋が宣言元に
         // 左右されると生成ファイルの指紋と一致しなくなる。
         let 宣言元を書かない行 = |本文: &str, 綴り: &str| {

@@ -17,8 +17,9 @@ Vertex 側では「グラフ指向」を独立言語の構文・型システム�
 **設計の一次資料** (実装で判断に迷ったら必ずこの 2 つを読み直すこと):
 
 - `../Bullet/docs/rust_graph_extension_sketch.md` — 全体構成 (2 クレート構成)・
-  水準1/水準2 の Rust での実現方針・`graph_schema!`/`graph!` の展開イメージ・
-  未決の問い・最初の一歩の提案
+  水準1/水準2 の Rust での実現方針・`graph_schema!`(現 `dynamic_graph_schema!`)/
+  `graph!` の展開イメージ・未決の問い・最初の一歩の提案。この資料自体は Vertex
+  側の文書であり、Graphite の改名 (issue #40) より前の旧名で書かれている
 - `../Bullet/docs/graph_design_sketches.md` — グラフ型そのものの設計決定 1〜6
   (ノード同一性、可変性、矢印記法、多重度検査、可視性、型推論) とその論拠
 
@@ -54,7 +55,7 @@ schema宣言の抽出・生成計画・書き込み・差分検査は`graphite-c
 書き分けると、一方が書いたファイルをもう一方が古いと判定する。
 
 利用者は `graphite` だけに依存し、`graphite-macros` のマクロは `graphite` から
-re-export される想定です (`graphite::graph_schema!` のように使う。serde が
+re-export される想定です (`graphite::dynamic_graph_schema!` のように使う。serde が
 `serde_derive` を `serde::Serialize` として re-export しているのと同じ構成)。
 `graphite-macros` に直接依存させることはしません。
 
@@ -150,10 +151,10 @@ cargo graphite generate [--check]
 2. **② 水準1ランタイム + 水準2手書きターゲット** — マクロ無しでジェネリック
    `Graph<N, E, K>` (petgraph ラッパー: `has_cycle`/`topological_sort`/
    `reachable_from` 等) を `graphite` に実装する。続けて `OrgChart` 相当の
-   図式グラフ (水準2) を**マクロを使わず手書き**し、`graph_schema!` が生成すべき
+   図式グラフ (水準2) を**マクロを使わず手書き**し、`dynamic_graph_schema!` が生成すべき
    コードの実際の形・量を確認する。
-3. **③ `graph_schema!`/`graph!` マクロ実装** — ②で確認した手書きコードの形を
-   テンプレートに、`graphite-macros` で宣言マクロ (`graph_schema!`) と
+3. **③ `dynamic_graph_schema!`/`graph!` マクロ実装** — ②で確認した手書きコードの形を
+   テンプレートに、`graphite-macros` で宣言マクロ (`dynamic_graph_schema!`) と
    インスタンスリテラルマクロ (`graph!`) を実装する。
 
 各フェーズの詳細な設計判断は `rust_graph_extension_sketch.md` の「最初の一歩の提案」

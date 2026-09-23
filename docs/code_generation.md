@@ -18,7 +18,7 @@ pub mod Org {
 }
 
 #[rustfmt::skip]
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "generated/org.rs";
     schema Org {
         node Person;
@@ -26,7 +26,7 @@ graphite::graph_schema! {
 }
 ```
 
-指紋とは、schemaの内容と生成先パスから決定的に導かれる固定長の数値列であり、生成ファイルが最新かを判定する目印である (計算方法の詳細は後述「陳腐化の検出」参照)。`graph_schema!`はschemaを解析・検証し、生成ファイルに埋め込まれた指紋との一致だけをコンパイル時に検査する。schema moduleの型や実装は生成しない。`Org::Graph`、`Org::Builder`、ID型、NodeRef、EdgeRef、役割アクセサ、探索API、公開trait実装は、`generated/org.rs`だけに存在する。
+指紋とは、schemaの内容と生成先パスから決定的に導かれる固定長の数値列であり、生成ファイルが最新かを判定する目印である (計算方法の詳細は後述「陳腐化の検出」参照)。`dynamic_graph_schema!`はschemaを解析・検証し、生成ファイルに埋め込まれた指紋との一致だけをコンパイル時に検査する。schema moduleの型や実装は生成しない。`Org::Graph`、`Org::Builder`、ID型、NodeRef、EdgeRef、役割アクセサ、探索API、公開trait実装は、`generated/org.rs`だけに存在する。
 
 生成moduleへ付ける属性は上の2行で固定する。`non_snake_case`はschema名をそのままmodule名にするため、`dead_code`は利用側が使わない生成物を許すために要る。`private_interfaces`は、Graphite内部の型ではなく、利用者が非公開で宣言した値型 (辺の積み荷型など) が生成コードの公開API (公開フィールド・公開メソッドの引数と戻り値) に現れるために要る。schemaはノード値型・辺属性型の可視性を検査しないため、利用者が`pub`を付け忘れた値型がこの形で公開APIに漏れることがある (例: `crates/graphite/tests/edge_roles.rs`の`TransactionInfo`)。clippy側の4件は、機械が書いたコードを人手のコードと同じ書き味で判定しないための指定である (省略できる生存期間、「`from`で始まる名前なのに`self`を消費する」という命名規約に反した書き方、Copy型に対する`clone`、書式文字列へ渡す型名リテラル)。この4件を許さないと、schemaの内容によっては利用者のビルドに警告が出る。
 
@@ -79,11 +79,11 @@ cargo xtask generate --check
 
 ## 陳腐化の検出
 
-`graphite-codegen`は検証済みschemaから決定的な指紋を作り、生成moduleへ埋め込む。指紋の実体はFNV-1a (64bit) を4種の初期値でそれぞれ計算した`[u64; 4]`であり、暗号強度のハッシュではなく偶発的な取り違え (schemaの位置移動・生成器の変更を含む) を検出するための目印である。`graph_schema!`も同じ純粋層から指紋を得てconst評価で比較する。schemaの意味を変更して生成し忘れた場合、通常の`cargo build`がコンパイルエラーになるため、古い公開APIが黙って残らない。
+`graphite-codegen`は検証済みschemaから決定的な指紋を作り、生成moduleへ埋め込む。指紋の実体はFNV-1a (64bit) を4種の初期値でそれぞれ計算した`[u64; 4]`であり、暗号強度のハッシュではなく偶発的な取り違え (schemaの位置移動・生成器の変更を含む) を検出するための目印である。`dynamic_graph_schema!`も同じ純粋層から指紋を得てconst評価で比較する。schemaの意味を変更して生成し忘れた場合、通常の`cargo build`がコンパイルエラーになるため、古い公開APIが黙って残らない。
 
 `cargo xtask generate --check`は生成本文全体をバイト単位で比較する。schemaの位置移動、生成器の変更、コメントに記録する元DSL位置の変化も検出する。
 
-宣言元ファイルの綴りは指紋の材料に入れない。生成物の doc へ書く宣言元への参照 (`docs/desugaring_reference.md` §26.6) とファイル先頭の案内コメントは、どちらも宣言元ファイルの綴りを含むが、指紋を計算する`graph_schema!`は自分が書かれたファイルのパッケージ相対の綴りを知らない。綴りを指紋へ効かせると、生成ファイルの指紋とマクロが計算する指紋が一致しなくなる。宣言元ファイルを移動したときの綴りのずれは`generate --check`のバイト比較が検出する。
+宣言元ファイルの綴りは指紋の材料に入れない。生成物の doc へ書く宣言元への参照 (`docs/desugaring_reference.md` §26.6) とファイル先頭の案内コメントは、どちらも宣言元ファイルの綴りを含むが、指紋を計算する`dynamic_graph_schema!`は自分が書かれたファイルのパッケージ相対の綴りを知らない。綴りを指紋へ効かせると、生成ファイルの指紋とマクロが計算する指紋が一致しなくなる。宣言元ファイルを移動したときの綴りのずれは`generate --check`のバイト比較が検出する。
 
 ## 関連文書
 

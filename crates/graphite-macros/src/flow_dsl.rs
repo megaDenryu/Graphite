@@ -203,7 +203,7 @@ pub struct FlowParse {
 impl FlowInput {
     // 項単位の回復パーサ (G4)。
     //
-    // `flow!` には `graph!`/`graph_schema!` のような「壊れていたら全体を
+    // `flow!` には `graph!`/`dynamic_graph_schema!` のような「壊れていたら全体を
     // 諦める」ヘッダが無いため (スキーマ名も波括弧宣言も不要)、常にこの
     // 関数がトップレベルの `Parser::parse2` 呼び出しそのものになる。ループは
     // `input` が空になるまで必ず進む (各分岐が最低1トークンを消費するため)

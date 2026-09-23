@@ -11,6 +11,7 @@ mod generation_tree;
 mod io_context;
 mod package_root;
 mod relative_display;
+mod schema_macro_collector;
 mod schema_source_file;
 
 use std::error::Error;

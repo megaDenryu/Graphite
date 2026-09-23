@@ -30,7 +30,7 @@
 //! (`docs/modeling_guide.md` §1) はグラフだけが持ち、二重管理は完全に
 //! 解消されている。
 //!
-//! `graph_schema!` はこの `Cell`/`Formula` 型を生成せず参照するだけである。
+//! `dynamic_graph_schema!` はこの `Cell`/`Formula` 型を生成せず参照するだけである。
 //! ID型を省略したため、`Sheet` module 内には `CellId`・`FeedsId`・`LhsId`・
 //! `RhsId` が生成される (`docs/node_id_v4_2.md`)。
 
@@ -78,7 +78,7 @@ pub mod Sheet {
 }
 
 #[rustfmt::skip]
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "generated/schema_sheet.rs";
     schema Sheet {
         node Cell;

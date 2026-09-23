@@ -1,12 +1,12 @@
 //! `__static_graph_impl!` (issue #24 段階2、`#[doc(hidden)]` の内部proc
 //! macro、`graphite_macros::__static_graph_impl` から呼ばれる)。
-//! `static_schema!` がmacro_rules!転送で焼き込んだschemaの生トークンと、
+//! `static_graph_schema!` がmacro_rules!転送で焼き込んだschemaの生トークンと、
 //! 利用側が `<schema名>! { .. }` で書いたinstanceの生トークンを1回の展開で
 //! 同時に受け取り、両者の相互検証 (validate module) と具象コード生成
 //! (codegen module) をここで配線する。
 //!
 //! 受け取るトークン列は `schema <名前> { .. } instance { .. }` の形。schema側
-//! (`静的グラフ型入力`) は `static_schema!` と同じ構文をそのままparseし直す
+//! (`静的グラフ型入力`) は `static_graph_schema!` と同じ構文をそのままparseし直す
 //! (macro_rules!転送で生トークンのままspanを保って届くため)。
 
 mod codegen;

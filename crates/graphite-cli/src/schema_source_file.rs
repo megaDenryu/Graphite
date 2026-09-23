@@ -8,14 +8,12 @@ use std::fs;
 use std::path::PathBuf;
 
 use graphite_codegen::DeclarationSite;
-use proc_macro2::TokenStream;
-use syn::spanned::Spanned;
-use syn::visit::{self, Visit};
 
 use crate::generated_target_path::GeneratedTargetPath;
 use crate::generation_plan::GenerationPlan;
 use crate::io_context::with_path_context;
 use crate::generation_tree::GenerationTree;
+use crate::schema_macro_collector::collect_schema_macros;
 
 // schema宣言を含みうる、生成元のRustファイル。
 pub struct SchemaSourceFile {
@@ -49,9 +47,14 @@ impl SchemaSourceFile {
                 return Ok(());
             }
         };
-        let mut collector = SchemaMacroCollector::default();
-        collector.visit_file(&parsed_file);
-        for invocation in collector.invocations {
+        let collected = collect_schema_macros(&parsed_file);
+        // 互換の別名として生成することはせず、改名を促すエラーで止める
+        // (issue #40)。指紋の計算方法は改名の前後で変わらないため、生成
+        // ファイルの作り直しは要らず、宣言の名前を置換するだけでよい。
+        if let Some(line) = collected.legacy_invocations.into_iter().next() {
+            return Err(format!("{display_path}:{line}: `graph_schema!` は `dynamic_graph_schema!` へ改名されました (issue #40)。宣言の名前を置換してください (指紋の計算方法は変わらないため、生成ファイルの作り直しは不要です)。").into());
+        }
+        for invocation in collected.invocations {
             let schema = graphite_codegen::parse_tracked_schema(invocation.tokens)
                 .map_err(|errors| self.format_errors(tree, errors))?;
             let target = self.generated_target(tree, &schema.generated_path().value())?;
@@ -67,7 +70,7 @@ impl SchemaSourceFile {
     // 宣言元から見た相対指定を検査し、生成先の絶対パスへ変換する。
     //
     // 形式検査そのものは `graphite_codegen::validate_generated_relative_path`
-    // (コンパイル時の `graph_schema!` 展開と共有する唯一の判定) に委ねる。
+    // (コンパイル時の `dynamic_graph_schema!` 展開と共有する唯一の判定) に委ねる。
     // ここで改めて検査するのは、この関数がファイルシステムへの書き込み先を
     // 決める境界であり、呼び出し経路によらずこの境界自身でも安全側に倒す
     // ためである。
@@ -96,33 +99,5 @@ impl SchemaSourceFile {
             "{} のschemaを生成できません:\n{details}",
             tree.relative_display(&self.path)
         )
-    }
-}
-
-// 追跡形式の `graph_schema!` 呼び出しと、その宣言行。
-struct SchemaInvocation {
-    tokens: TokenStream,
-    line: usize,
-}
-
-#[derive(Default)]
-struct SchemaMacroCollector {
-    invocations: Vec<SchemaInvocation>,
-}
-
-impl<'ast> Visit<'ast> for SchemaMacroCollector {
-    fn visit_macro(&mut self, node: &'ast syn::Macro) {
-        if node
-            .path
-            .segments
-            .last()
-            .is_some_and(|segment| segment.ident == "graph_schema")
-        {
-            self.invocations.push(SchemaInvocation {
-                tokens: node.tokens.clone(),
-                line: node.span().start().line,
-            });
-        }
-        visit::visit_macro(self, node);
     }
 }

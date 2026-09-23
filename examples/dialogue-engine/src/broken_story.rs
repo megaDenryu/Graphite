@@ -2,7 +2,7 @@
 //!
 //! 到達不能シーンとデッドエンドを持つシナリオと、どのエンディングにも
 //! 到達できない閉じたループだけを持つシナリオを分けて用意する。どちらも
-//! `graph_schema!` の検証 (`create`) は通過し、`validate` が構造上の問題
+//! `dynamic_graph_schema!` の検証 (`create`) は通過し、`validate` が構造上の問題
 //! として検出する側の題材である。
 
 use crate::schema::{ChoiceEdge, DialogueGraph, Ending, Scene, SceneId};

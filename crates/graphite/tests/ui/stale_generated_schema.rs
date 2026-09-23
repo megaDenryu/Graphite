@@ -5,7 +5,7 @@ mod Stale {
     pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [0; 4];
 }
 
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "generated/stale.rs";
     schema Stale {
         node Person;

@@ -1,7 +1,7 @@
 struct Person;
 struct PersonId;
 
-graphite::__graph_schema_inline_for_test! {
+graphite::__dynamic_graph_schema_inline_for_test! {
     schema Collision {
         node Person;
         node PersonId;

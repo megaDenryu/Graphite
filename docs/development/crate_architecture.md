@@ -28,7 +28,7 @@ Graphite ではさらに2つの分割を加えている。マクロが生成す�
 内容が一致することは `graphite-codegen` を共有することで保証し、ファイルの
 読み書きは `graphite-cli` とその利用者 (`xtask`) だけが行う。
 
-利用者は `graphite` だけに依存する。マクロは `graphite::graph_schema!` /
+利用者は `graphite` だけに依存する。マクロは `graphite::dynamic_graph_schema!` /
 `graphite::graph!` / `graphite::flow!` として re-export されたものを使い、
 `graphite-macros` へ直接依存させることはしない。
 

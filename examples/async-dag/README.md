@@ -86,7 +86,7 @@ pub struct Service {
     pub startup_ms: u64,
 }
 
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     schema Orchestration {
         node Service;
 

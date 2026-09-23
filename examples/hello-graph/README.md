@@ -1,6 +1,6 @@
 # hello-graph
 
-**これは教材です。** アプリとしての面白さは無く、Graphite (`graph_schema!`/
+**これは教材です。** アプリとしての面白さは無く、Graphite (`dynamic_graph_schema!`/
 `graph!`) の意味論を1つずつ確認するためのものです。実践的な使用例は他の
 3本を見てください:
 
@@ -12,7 +12,7 @@
 
 「`Boss` は変数なのか、型なのか、何なのか。積み荷 (`BossEdge`) にはどう
 やってアクセスするのか。逆に何にアクセスできなくてエラーになるのか。
-`graph_schema!`/`graph!` は結局どんな公開APIを生成するのか」を、
+`dynamic_graph_schema!`/`graph!` は結局どんな公開APIを生成するのか」を、
 `Person`/`Team` の2ノード種別、4本のエッジ (`docs/schema_v4.md` の
 `where` 制約パターン: `each member: 1`・`each subordinate: 0..1`・
 `unique pair`・制約なし を一通りカバー) を使った最小の題材で確認します。
@@ -28,7 +28,7 @@ cargo run
 | セクション | 置き場所 | 内容 |
 |---|---|---|
 | §1 | `src/main.rs` | ノード型・エッジ積み荷型の宣言 (普通の struct) |
-| §2 | `src/main.rs` | `graph_schema!` でのスキーマ宣言 (v4: `edge Kind = ...;` は新しい nominal 型の定義、`where` は制約) |
+| §2 | `src/main.rs` | `dynamic_graph_schema!` でのスキーマ宣言 (v4: `edge Kind = ...;` は新しい nominal 型の定義、`where` は制約) |
 | §2.5 | `src/main.rs` | 脱糖の実像。全要素キー・`KeyedTable` 格納・辺は名前付きフィールドの構造体として第一級、という実装を解説 |
 | §4 | `src/main.rs` | 「できないこと」— コメントアウトしたコード + 実際に採取したコンパイルエラー |
 | §3 | `src/cookbook.rs` とその配下 | クックブック — 生成される公開APIを1関数=1つのやりたいこと単位で全列挙 (`cargo run` で実行される) |
@@ -70,7 +70,7 @@ cargo run
 3. **`where` は制約** — `each <role>: N | N..M | N..*`・`unique pair`。
    省略時は「制約なし」(平行辺も自由)
 
-`Boss` から `graph_schema!` が機械的に生成するもの:
+`Boss` から `dynamic_graph_schema!` が機械的に生成するもの:
 
 | 生成されるもの | 命名規則 | `Boss` の場合 |
 |---|---|---|
@@ -168,7 +168,7 @@ IDによる動的検索は**`Graph` に生えた種別APIのメソッド**です
 
 ## `flow!` — 関数の辺 (`src/flow_demo.rs` の §5 と1対1対応)
 
-`graph_schema!`/`graph!` の辺は**宣言**(構築時にまとめて検証されるデータの
+`dynamic_graph_schema!`/`graph!` の辺は**宣言**(構築時にまとめて検証されるデータの
 繋がり) ですが、`graphite::flow!` (`docs/flow_macro.md`) の矢印 `-[関数式]->`
 は**実行**です — 書かれた順に `let 束縛名 = (関数式)(始点..);` という関数
 呼び出しへ即時に脱糖するだけで、スキーマ・builder は一切関与しません。

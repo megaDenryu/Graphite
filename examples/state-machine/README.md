@@ -1,6 +1,6 @@
 # state-machine
 
-Graphite (`graphite::graph_schema!`/`graph!`) が「ステートマシン地獄」を
+Graphite (`graphite::dynamic_graph_schema!`/`graph!`) が「ステートマシン地獄」を
 どう倒すかを、動くプログラムとして実証するexample。題材は注文ライフサイクル
 FSM (draft → pending_payment → paid → shipped → delivered、脱線として
 cancelled/refunded)。
@@ -107,7 +107,7 @@ Graphite ではこう考える:
   同じ状態から同じイベントで2箇所以上に遷移するような矛盾したデータは
   構築時点で `Err` になる。
 - **schema そのものが遷移表のドキュメント。** `src/schema.rs` の
-  `graph_schema!` と `src/fsm/transition_table.rs` の `graph!` を読めば、
+  `dynamic_graph_schema!` と `src/fsm/transition_table.rs` の `graph!` を読めば、
   遷移規則の全体像 (どの状態からどのイベントでどこへ行けるか) が1箇所に
   宣言的に並んでいる。ドキュメントと
   コードが同じソースなので乖離が起きない。
@@ -132,7 +132,7 @@ pub struct OrderState { pub label: String }
 pub struct CancelEdge { pub reason: String, pub refund_required: bool }
 pub struct RefundEdge { pub audit_label: String }
 
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     schema OrderFsm {
         node OrderState;
 
@@ -279,7 +279,7 @@ enum+match 散在アンチパターンの「規則が複数関数に分散する
 
 | ファイル | 役割 |
 |---|---|
-| `src/schema.rs` | `graph_schema!` による状態とイベントの宣言 |
+| `src/schema.rs` | `dynamic_graph_schema!` による状態とイベントの宣言 |
 | `src/fsm.rs` | 遷移エンジン `step` と、遷移の属性を読む補助 |
 | `src/fsm/transition_table.rs` | 遷移表そのもの (`graph!` リテラル) と初期状態・終端状態 |
 | `src/fsm/event.rs` | イベントの列挙 |

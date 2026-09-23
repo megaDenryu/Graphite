@@ -3,7 +3,7 @@
 //! 題材: マイクロサービス群の起動オーケストレータ。
 //! `config -> (logger, db, cache, queue) -> (migration, metrics) ->
 //! (api, worker) -> healthcheck` という10サービスの依存関係を
-//! `graph_schema!`/`graph!` で宣言し、汎用 `graphite::Graph` へ射影して
+//! `dynamic_graph_schema!`/`graph!` で宣言し、汎用 `graphite::Graph` へ射影して
 //! `topological_levels` で「並行実行できる波」を導出、`std::thread::scope`
 //! で実際に並列起動する。
 //!

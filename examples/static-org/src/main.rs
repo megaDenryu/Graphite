@@ -1,12 +1,12 @@
-// static_schema!/組織! (static_schema! が生成するmacro_rules!) の正式な
+// static_graph_schema!/組織! (static_graph_schema! が生成するmacro_rules!) の正式な
 // 利用例 (issue #24 段階2)。組織ドメイン (社員・部署・任命記録・経緯記録) で、
-// schema宣言 (static_schema!) とinstance宣言 (schema名そのものを名前にした
+// schema宣言 (static_graph_schema!) とinstance宣言 (schema名そのものを名前にした
 // macro_rules!、ここでは 組織!) の2段構えが、役割アクセサ・積み荷アクセサ・
 // 無向辺の端点アクセサ・多重度検査・対一意検査とともに機能することを示す。
 // 手書き検証の記録は `examples/graphitets-by-hand` (凍結済み) を参照。
 //
-// static_schema! が生成する macro_rules! は通常のmacro_rules!と同じテキスト
-// 順の制約を持つ: `static_schema! { schema 組織 { .. } }` より後ろでしか
+// static_graph_schema! が生成する macro_rules! は通常のmacro_rules!と同じテキスト
+// 順の制約を持つ: `static_graph_schema! { schema 組織 { .. } }` より後ろでしか
 // `組織! { .. }` を呼べない (詳細は `docs/static_graph.md` を参照)。
 //
 // 実行場所: このディレクトリ (examples/static-org) で
@@ -18,11 +18,11 @@ mod domain;
 mod tests;
 
 use domain::{社員, 社員を作る, 経緯記録, 部署, 任命記録, 名前持ち};
-use graphite::static_schema;
+use graphite::static_graph_schema;
 
 // ---------------- schema宣言 ----------------
 
-static_schema! {
+static_graph_schema! {
     schema 組織 {
         node 社員;
         node 部署;
@@ -123,7 +123,7 @@ fn main() {
 }
 
 // 同一schemaから `組織!` を2回目に呼んでも、辺値struct群 (`{種別}Edge`) が
-// 重複定義エラーにならないことを示す。辺値struct群は `static_schema!` 側
+// 重複定義エラーにならないことを示す。辺値struct群は `static_graph_schema!` 側
 // (schema単位、1回だけ展開) へ移してあるため、`組織!` 呼び出しの回数に
 // 依らない。一方 `Nodes`/`Edges`/`NodeRefs`/`EdgeRefs` は `組織!` 呼び出し
 // ごと (instance単位) に固定名で生成されるため、同一スコープで2回展開する

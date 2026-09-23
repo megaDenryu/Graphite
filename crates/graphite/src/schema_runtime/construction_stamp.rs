@@ -9,7 +9,7 @@ static 構築印カウンタ: AtomicU64 = AtomicU64::new(0);
 
 /// `graph!` の1回の構築を識別する印を新しく1つ発行する。名前付き位置が
 /// 生成元と異なる `Graph` へ [`crate::NamedGraphElement::bind`] されるのを
-/// 実行時に検出するために使う。`graph_schema!` が生成する `Builder::new()` が
+/// 実行時に検出するために使う。`dynamic_graph_schema!` が生成する `Builder::new()` が
 /// これを呼び、同じ builder から生まれる `Graph` と全ての名前付き位置へ同じ値を
 /// 埋め込む。`bind` はこの値を照合し、一致しなければ契約違反として
 /// `panic!` する (`# Panics` の考え方は `docs/development/design_principles.md` 原則2 —

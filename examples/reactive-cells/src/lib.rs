@@ -1,4 +1,4 @@
-//! reactive-cells — Graphite (`graph_schema!`/`graph!`) で
+//! reactive-cells — Graphite (`dynamic_graph_schema!`/`graph!`) で
 //! 「リアクティブプログラミングのスパゲッティ」を倒す実証example。
 //!
 //! 詳しい経緯・設計判断は `README.md` を参照。`main.rs` (CLIエントリポイント) と
@@ -9,7 +9,7 @@
 //! - [`antipattern`] — 敵: observer パターン (コールバック購読) のナイーブな
 //!   実装。グリッチ・無限ループ・登録順依存の非決定性を実際に再現する。
 //! - [`schema`] — セル (`Cell`) ノード1種 + 依存エッジ3種
-//!   (`Feeds`/`Lhs`/`Rhs`) の `graph_schema!` 宣言。
+//!   (`Feeds`/`Lhs`/`Rhs`) の `dynamic_graph_schema!` 宣言。
 //! - [`fixtures`] — `graph!` リテラルで組み立てる具体的な依存グラフ
 //!   (ミニスプレッドシート・循環デモ用)。
 //! - [`engine`] — 依存グラフを `topological_sort`/`reachable_from` に

@@ -1,6 +1,6 @@
 //! `generated = "..."` に書ける相対パスの形式検査。
 //!
-//! `graph_schema!` (コンパイル時) と `xtask` (生成時、`generated_target`
+//! `dynamic_graph_schema!` (コンパイル時) と `xtask` (生成時、`generated_target`
 //! 経由でこの関数を呼ぶ) の両方が同じ形式を守らせる必要があるため、判定は
 //! この純粋層に1箇所だけ置く。
 

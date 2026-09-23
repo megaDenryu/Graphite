@@ -1,6 +1,6 @@
 // 生成物1: 種別ごとの辺値struct (`{種別}Edge<'a>`)。schemaだけから決まる
 // (instanceを見ない)。積み荷を持つ種別だけ積み荷フィールドを持つ。
-// `static_schema!` の展開へ macro_rules!と並ぶ実アイテムとして出力するため、
+// `static_graph_schema!` の展開へ macro_rules!と並ぶ実アイテムとして出力するため、
 // 同一schemaから個体宣言のmacro_rulesを何度呼んでも、この生成物自体は
 // 1回しか展開されず重複定義にならない。
 

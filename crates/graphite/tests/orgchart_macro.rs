@@ -1,4 +1,4 @@
-//! `graph_schema!` で `OrgChart` を v4 構文 (`docs/schema_v4.md`) で宣言し、
+//! `dynamic_graph_schema!` で `OrgChart` を v4 構文 (`docs/schema_v4.md`) で宣言し、
 //! ノード・辺の読み書き一式を検証する統合テスト。
 //!
 //! v4 の要点 (このファイルで確認する項目):
@@ -15,11 +15,11 @@
 //! 役割名を定義する唯一の場所になる。
 //!
 //! このファイルは1ファイル100行の原則の例外である (区分: 再設計待ち)。この
-//! ファイルは150行を超える。このファイルは `graph_schema!` の読み書き一式を
+//! ファイルは150行を超える。このファイルは `dynamic_graph_schema!` の読み書き一式を
 //! 検証する。テストの分け方の判定は issue #28 のやること4 が行う。超過を許
 //! す根拠の台帳は `docs/development/line_count_ledger.md` にある。
 
-/// ノード型。`graph_schema!` はこの型を生成せず参照するだけ。
+/// ノード型。`dynamic_graph_schema!` はこの型を生成せず参照するだけ。
 #[derive(Debug, Clone, PartialEq)]
 pub struct Employee {
     pub name: String,
@@ -32,7 +32,7 @@ pub struct Department {
     pub name: String,
 }
 
-/// `Boss` 辺の積み荷。`graph_schema!` はこの型を生成せず参照するだけ。
+/// `Boss` 辺の積み荷。`dynamic_graph_schema!` はこの型を生成せず参照するだけ。
 #[derive(Debug, Clone, PartialEq)]
 pub struct BossEdge {
     pub since: i32,
@@ -46,7 +46,7 @@ pub mod OrgChart {
 }
 
 #[rustfmt::skip]
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "generated/orgchart_macro_org_chart.rs";
     schema OrgChart {
         node Employee;
@@ -66,7 +66,7 @@ use OrgChart::{
     ReportsId,
 };
 
-/// 導出エッジの例: `graph_schema!` が生成した `OrgChart` へ、保存されない
+/// 導出エッジの例: `dynamic_graph_schema!` が生成した `OrgChart` へ、保存されない
 /// 計算結果を返す普通のメソッドを追記できることを示す
 /// (`../Bullet/docs/graph_design_sketches.md` 決定「保存エッジ=フィールド、
 /// 導出エッジ=getter」)。公開クエリ API だけで導出クエリを書ける。

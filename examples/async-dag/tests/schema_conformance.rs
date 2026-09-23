@@ -1,4 +1,4 @@
-//! 統合テスト: `graph_schema!` の図式適合検査 (未知の依存先) が独立に
+//! 統合テスト: `dynamic_graph_schema!` の図式適合検査 (未知の依存先) が独立に
 //! 機能すること。
 
 use async_dag::schema::{DependsOn, Orchestration, Service, ServiceId};

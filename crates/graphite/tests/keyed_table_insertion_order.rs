@@ -40,7 +40,7 @@ pub mod Dialogue {
 }
 
 #[rustfmt::skip]
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "generated/keyed_table_insertion_order_dialogue.rs";
     schema Dialogue {
         node Speaker;

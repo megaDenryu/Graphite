@@ -19,12 +19,12 @@
 //! 「実装を単純にするため特別扱いしない」方針に合わせ、冗長な併記自体を
 //! 避けている)。
 //!
-//! `graph_schema!` は同一ファイル内に `graph!` を書く場合のみ親切な
+//! `dynamic_graph_schema!` は同一ファイル内に `graph!` を書く場合のみ親切な
 //! コンパイルエラーのハンドシェイクが効く制約があるが、本アプリはデータを
 //! すべて `dataset.rs` の合成生成器 (`OrgChart::Graph::create` の builder 呼び出し)
 //! から組み立てるため `graph!` リテラルは使わない。
 
-// ノード型。`graph_schema!` はこの型を生成せず参照するだけ。
+// ノード型。`dynamic_graph_schema!` はこの型を生成せず参照するだけ。
 #[derive(Debug, Clone, PartialEq)]
 pub struct Employee {
     pub name: String,
@@ -46,7 +46,7 @@ pub struct Project {
     pub priority: u8,
 }
 
-// `Boss` エッジの積み荷。`graph_schema!` はこの型を生成せず参照するだけ。
+// `Boss` エッジの積み荷。`dynamic_graph_schema!` はこの型を生成せず参照するだけ。
 #[derive(Debug, Clone, PartialEq)]
 pub struct BossEdge {
     pub since: i32,
@@ -66,7 +66,7 @@ pub mod OrgChart {
 }
 
 #[rustfmt::skip]
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "generated/schema_org_chart.rs";
     schema OrgChart {
         node Employee;

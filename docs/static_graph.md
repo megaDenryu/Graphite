@@ -1,21 +1,28 @@
-# static_schema! — 全個体がコンパイル時に確定するグラフ (issue #24)
+# static_graph_schema! — 全個体がコンパイル時に確定するグラフ (issue #24)
 
 > **Current reference** — 索引: `docs/README.md`
 
-`graph_schema!`/`graph!` は、`freeze()` を呼ぶまで個体を実行時に追加できる
+`static`/`dynamic` は、**そのschemaから作られるグラフの個体集合・トポロジーが
+宣言時に確定するか、実行時に構築できるか**を表す名前である。この命名は
+「schemaがstatic/dynamicか」を意味しない。schema自体の型は、どちらも通常の
+コンパイル時マクロとして静的に定義される。`static`/`dynamic` という名前は、
+Rustの `static`/`'static` (静的な記憶域・生存期間) とは無関係な、別の語彙
+である。
+
+`dynamic_graph_schema!`/`graph!` は、`freeze()` を呼ぶまで個体を実行時に追加できる
 グラフを扱う。制約 (多重度・対一意) は `freeze()` の実行時検証で確かめる。
-`static_schema!` はこれと対照的に、**個体・辺の集合自体がソースコードの
+`static_graph_schema!` はこれと対照的に、**個体・辺の集合自体がソースコードの
 時点で固定されているグラフ**を対象にし、同じ制約をコンパイルエラーとして
 検出する。利用例は `examples/static-org` を参照。
 
 ## 2層マクロの使い方
 
-`static_schema!` はschemaを検証し、**schema名そのものを名前にした
+`static_graph_schema!` はschemaを検証し、**schema名そのものを名前にした
 `macro_rules!`** を生成する。利用側はこの生成された `macro_rules!` へ
 個体宣言を渡して具体グラフを組み立てる。
 
 ```rust
-graphite::static_schema! {
+graphite::static_graph_schema! {
     schema 組織 {
         node 社員;
         node 部署;
@@ -43,7 +50,7 @@ macro_rules!転送構成は、schemaとinstanceのトークンを1回の展開�
 ### schema宣言
 
 ```text
-static_schema! {
+static_graph_schema! {
     schema <schema名> {
         (node <名前>;)*
         (edge <名前> = (<役割>: <型>) -> (<役割>: <型>) [where <制約>(, <制約>)*];)*
@@ -57,7 +64,7 @@ static_schema! {
 **役割名は有向・無向を問わず必須**。両端を必ず `(役割名: 型)` の形で書く
 (役割名を省いた裸形 `社員 -- 社員` は拒否する)。無向辺の積み荷付き記法
 `-[役割: 型]-` は、有向の積み荷付き記法 `-[役割: 型]->` から矢尻 (`>`) を
-落とした形 (`graph_schema!` の慣習に倣う)。
+落とした形 (`dynamic_graph_schema!` の慣習に倣う)。
 
 `where` 節:
 
@@ -121,7 +128,7 @@ schema名がそのままマクロ名になるため、instance宣言はschema名
 のように書け、生成されたチェーンの末尾へ通常のメソッドと同じ形で継ぎ足せる
 (`examples/static-org/src/main.rs:61-65`)。
 
-これらの名前は英語である。マクロ名 (`static_schema!`) と生成される固定名
+これらの名前は英語である。マクロ名 (`static_graph_schema!`) と生成される固定名
 だけを英語化した方針 (issue #24 段階2、オーナー承認済み) であり、
 **利用者が書く名前 (schema名・graph名・個体名・辺名・実体型・種別名・役割名)
 と診断メッセージの日本語はそのまま**残る。旧日本語名との対応は次のとおり
@@ -129,7 +136,7 @@ schema名がそのままマクロ名になるため、instance宣言はschema名
 
 | 旧 (日本語) | 新 (英語) |
 |---|---|
-| `静的グラフ型!` | `static_schema!` |
+| `静的グラフ型!` | `static_graph_schema!` |
 | `ノード達` | `Nodes` |
 | `辺達` | `Edges` |
 | `初期値()` (ノード達) / `張る()` (辺達) | どちらも `new()` |
@@ -163,7 +170,7 @@ schema名がそのままマクロ名になるため、instance宣言はschema名
 
 ## macro_rules!転送の仕組みとテキスト順の制約
 
-`static_schema!` はschemaを検証したうえで、schemaの生トークンを本体へ
+`static_graph_schema!` はschemaを検証したうえで、schemaの生トークンを本体へ
 焼き込んだ `macro_rules! {schema名}` を生成する。個体宣言は
 **schema名がそのままマクロ名**になり、この生成された `macro_rules!` が
 schemaとinstance両方の生トークンを束ねて `#[doc(hidden)]` の内部マクロ
@@ -173,11 +180,11 @@ schemaとinstance両方の生トークンを束ねて `#[doc(hidden)]` の内部
 `PhantomData`・橋渡し用traitは一切現れない。
 
 生成された `macro_rules!` は通常の `macro_rules!` と同じテキスト順の制約を
-受ける。**`static_schema! { schema <名前> { .. } }` の呼び出しより後の行で
-しか `<名前>! { .. }` を呼べない** (同じファイル内で `static_schema!` の
+受ける。**`static_graph_schema! { schema <名前> { .. } }` の呼び出しより後の行で
+しか `<名前>! { .. }` を呼べない** (同じファイル内で `static_graph_schema!` の
 呼び出しを先に書く必要がある)。
 
-この機構はインライン展開のまま完結する。`graph_schema!` のようなファイル
+この機構はインライン展開のまま完結する。`dynamic_graph_schema!` のようなファイル
 生成トラッキングには参加しないため、`cargo graphite generate`/
 `cargo xtask generate` の対象にならない (`flow!` と同じ位置づけ)。
 
@@ -187,7 +194,7 @@ schemaとinstance両方の生トークンを束ねて `#[doc(hidden)]` の内部
   (`schema`/`literal`/`internal` の3層構成。`schema` はschema宣言だけから
   決まる生成物、`literal` はinstance宣言の構文解析、`internal` は両者の
   相互検証とコード生成)
-- proc マクロ入口: `crates/graphite-macros/src/lib.rs` の `static_schema`/
+- proc マクロ入口: `crates/graphite-macros/src/lib.rs` の `static_graph_schema`/
   `__static_graph_impl`
 - 公開: `crates/graphite/src/lib.rs` から re-export
 

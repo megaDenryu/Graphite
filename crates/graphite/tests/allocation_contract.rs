@@ -113,7 +113,7 @@ pub mod 確保契約 {
 }
 
 #[rustfmt::skip]
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "generated/allocation_contract_確保契約.rs";
     schema 確保契約 {
         node 人物;

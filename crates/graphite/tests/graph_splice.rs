@@ -14,7 +14,7 @@
 //! 検証観点ごとに部分モジュールへ分ける判定を issue #28 のやること4 で行う。
 //! 超過を許す根拠の台帳は `docs/development/line_count_ledger.md` にある。
 
-/// ノード型。`graph_schema!` はこの型を生成せず参照するだけ。
+/// ノード型。`dynamic_graph_schema!` はこの型を生成せず参照するだけ。
 #[derive(Debug, Clone, PartialEq)]
 pub struct Person {
     pub name: String,
@@ -28,7 +28,7 @@ pub mod SpliceDemo {
 }
 
 #[rustfmt::skip]
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "generated/graph_splice_splice_demo.rs";
     schema SpliceDemo {
         node Person;

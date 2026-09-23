@@ -7,7 +7,7 @@ use syn::{Ident, Path, Token};
 // `edge Reports = (reporter: Employee) -> (recipient: Employee) where unique pair;`
 // `edge Friends = Person -- Person where unique pair;`
 //
-// 属性型 (`BossEdge` 等) はユーザーが `graph_schema!` の外で宣言した普通の
+// 属性型 (`BossEdge` 等) はユーザーが `dynamic_graph_schema!` の外で宣言した普通の
 // struct への参照であり、このマクロは生成しない。
 //
 // 役割名中心構文:

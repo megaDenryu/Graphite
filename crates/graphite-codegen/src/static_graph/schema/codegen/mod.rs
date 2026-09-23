@@ -1,6 +1,6 @@
 //! schemaだけから決まる生成物 (instanceを見ない) をまとめる。「辺値struct群
 //! (種別ごとの `{種別}Edge<'a>`)」と「node宣言の型アンカー」の2つを、
-//! `static_schema!` の展開へ macro_rules! と並ぶ実アイテムとして出力する。
+//! `static_graph_schema!` の展開へ macro_rules! と並ぶ実アイテムとして出力する。
 //! これにより schema トークンが macro_rules! 本体に焼き込まれた不活性な
 //! トークン列でなく、rust-analyzer が解釈できる実際のRustアイテムになる。
 //! 並び順だけをこのmodule本体が知り、各生成物の中身は配下のmoduleが持つ

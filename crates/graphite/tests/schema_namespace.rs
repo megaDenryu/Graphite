@@ -13,7 +13,7 @@ pub mod Org {
 }
 
 #[rustfmt::skip]
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "generated/schema_namespace_org.rs";
     schema Org {
         node Person;
@@ -29,7 +29,7 @@ pub mod Social {
 }
 
 #[rustfmt::skip]
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "generated/schema_namespace_social.rs";
     schema Social {
         node Person;
@@ -80,7 +80,7 @@ pub mod 世界 {
 }
 
 #[rustfmt::skip]
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "generated/schema_namespace_世界.rs";
     schema 世界 {
         node 人物;

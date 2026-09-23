@@ -24,7 +24,7 @@ fn engine_newは循環がなければ成功しトポロジカル順序を持つ(
 
 #[test]
 fn engine_newは循環があるとcycleerrorで失敗する() {
-    // `Engine`はDebugを実装しない (`Sheet`自体がgraph_schema!の生成物として
+    // `Engine`はDebugを実装しない (`Sheet`自体がdynamic_graph_schema!の生成物として
     // Debugを持たないため) ので、`expect_err`/`unwrap_err` (Ok型にDebugを
     // 要求する) ではなくmatchで直接取り出す。
     let err = match Engine::new(cyclic_demo_sheet().unwrap()) {

@@ -1,6 +1,6 @@
 //! §5 `flow!` — 関数の辺 (`graph!` の宣言される辺との対比)。
 //!
-//! `graph_schema!`/`graph!` の辺 (`edge Kind = ...` / `Kind(from -> to)`) は
+//! `dynamic_graph_schema!`/`graph!` の辺 (`edge Kind = ...` / `Kind(from -> to)`) は
 //! **宣言**です — 構築 (`create`) 時にまとめて検証されるデータの繋がりで、
 //! 矢印の中の値は `graph!` が名前付きフィールドの辺値へ組み立てます。対して
 //! `graphite::flow!` (`docs/flow_macro.md`) の矢印 `-[関数式]->` は

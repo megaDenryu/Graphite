@@ -42,7 +42,7 @@ mod 修飾済みid {
     }
 
     #[rustfmt::skip]
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "generated/schema_ids_qualified_ids.rs";
     schema QualifiedIds {
             node Person(id: super::KnowsId);
@@ -75,7 +75,7 @@ pub mod MixedIds {
 }
 
 #[rustfmt::skip]
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "generated/schema_ids_mixed_ids.rs";
     schema MixedIds {
         node ExternalNode(id: ExternalNodeId);

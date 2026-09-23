@@ -34,7 +34,7 @@ pub fn builderの型名メソッドで組み立てる() {
 
 // やりたいこと: builder の総称メソッド `insert`/`add` に値を渡し、値の型から自動で
 // 振り分けさせる (`insert` の型境界 `N: OrgNode`、`add` の型境界 `E: OrgEdge` は
-// graph_schema! が生成したトレイトで満たされる。利用者がこのトレイトを直接呼ぶことは無い)。
+// dynamic_graph_schema! が生成したトレイトで満たされる。利用者がこのトレイトを直接呼ぶことは無い)。
 pub fn builderの総称insertとaddで組み立てる() {
     let g: Org::Graph = Org::Graph::create(|b: &mut Org::Builder| {
         let eve_id: PersonId = b.insert(

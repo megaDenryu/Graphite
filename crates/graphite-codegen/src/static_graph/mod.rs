@@ -1,6 +1,6 @@
 //! 全個体がコンパイル時に確定する静的グラフの構文解析・検証・コード生成
 //! (issue #24 段階2、`examples/graphitets-by-hand/macros/` からの移設)。
-//! 公開する入口は `static_schema!` (`graphite_macros::static_schema`) 1個
+//! 公開する入口は `static_graph_schema!` (`graphite_macros::static_graph_schema`) 1個
 //! だけ。schemaを構文解析・検証し、(1) schemaだけから決まる生成物
 //! (辺値struct群・node型アンカー、`schema::codegen`) と (2) schemaの生
 //! トークンを本体に焼き込んだ `macro_rules! {schema名}` を同じ展開の中で
@@ -18,10 +18,10 @@
 //! 通常のcompile_error!として検出できる。
 //!
 //! 生成されたmacro_rulesは通常のmacro_rules!と同じテキスト順の制約を持つ:
-//! `static_schema! { schema <名前> { .. } }` より後ろの行でしか
+//! `static_graph_schema! { schema <名前> { .. } }` より後ろの行でしか
 //! `<名前>! { .. }` を呼べない (詳細は `docs/static_graph.md` を参照)。
 //!
-//! この機構はインライン展開のまま完結する (`graph_schema!` のようなファイル
+//! この機構はインライン展開のまま完結する (`dynamic_graph_schema!` のようなファイル
 //! 生成トラッキングには参加しない)。ファイルI/Oを持たないため
 //! `graphite-cli`/`cargo xtask generate` の対象にもならない (`flow!` と
 //! 同じ位置づけ)。
@@ -33,10 +33,10 @@ mod schema;
 use proc_macro2::TokenStream;
 use quote::quote;
 
-// `static_schema!` の展開本体。schemaを構文解析・検証し、schemaだけから
+// `static_graph_schema!` の展開本体。schemaを構文解析・検証し、schemaだけから
 // 決まる生成物と `macro_rules! {schema名}` (内部マクロへの転送) を並べて
 // 返す。
-pub fn parse_and_expand_static_schema(input: TokenStream) -> TokenStream {
+pub fn parse_and_expand_static_graph_schema(input: TokenStream) -> TokenStream {
     let 生トークン = input.clone();
     let 解析済み = match syn::parse2::<schema::input::静的グラフ型入力>(input) {
         Ok(解析済み) => 解析済み,
@@ -61,7 +61,7 @@ pub fn parse_and_expand_static_schema(input: TokenStream) -> TokenStream {
     }
 }
 
-// `__static_graph_impl!` の展開本体。`static_schema!` がmacro_rules!転送で
+// `__static_graph_impl!` の展開本体。`static_graph_schema!` がmacro_rules!転送で
 // 焼き込んだschemaの生トークンと、利用側が `<schema名>! { .. }` で書いた
 // instanceの生トークンを1回の展開で同時に受け取り、両者の相互検証と
 // 具象コード生成を行う。

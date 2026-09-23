@@ -38,7 +38,7 @@ pub struct ExistingPersonId(pub u64);
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct ExistingRelationId(pub u64);
 
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "generated/org.rs";
     schema Org {
         node Person(id: ExistingPersonId);
@@ -59,7 +59,7 @@ pub mod Org {
 }
 ```
 
-`graph_schema!` は宣言の検証と生成指紋の照合を行うため、モジュール直下に書く。
+`dynamic_graph_schema!` は宣言の検証と生成指紋の照合を行うため、モジュール直下に書く。
 通常のRust module本体は`cargo xtask generate`が`generated/org.rs`へ生成し、
 `include!`で読み込む。詳細は`docs/code_generation.md`を参照する。
 参照する型も関数の外に宣言する。関数本体のローカル型は、関数内に生成された

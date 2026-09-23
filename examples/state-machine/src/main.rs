@@ -1,7 +1,7 @@
 //! state-machine — 「ステートマシン地獄」を Graphite で倒す実証example。
 //!
 //! 注文ライフサイクル (draft → pending_payment → paid → shipped →
-//! delivered、脱線として cancelled/refunded) を `graph_schema!`/`graph!` で
+//! delivered、脱線として cancelled/refunded) を `dynamic_graph_schema!`/`graph!` で
 //! 定義し、(1) 正常系の遷移、(2) 未定義遷移が型でエラーになる様子、
 //! (3) グラフアルゴリズムによる FSM 設計検査、を読み物として実演する。
 //! 詳細は README.md 参照。

@@ -22,7 +22,7 @@ impl DialogueGraph::Graph {
 
     // choice 辺だけを汎用グラフ `Graph<SceneId, String, SceneId>` へ射影する。
     // `reachable_from`/`has_cycle`/`path`/`filter_nodes` のような、図式グラフ
-    // (`graph_schema!`) には無いグラフアルゴリズムを使うための橋渡し。
+    // (`dynamic_graph_schema!`) には無いグラフアルゴリズムを使うための橋渡し。
     // ノードの値には (使わないが) キー自身を積んでおく。辺の値には選択肢
     // ラベルを積み、`route` コマンドでの表示に使う。
     //

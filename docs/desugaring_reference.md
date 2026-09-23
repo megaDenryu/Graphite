@@ -28,6 +28,12 @@ Graphiteの独自構文を消去したときにどの普通のRustのファイ�
 (関数の辺の即時実行) であり、完成済み `Graph` を作らないため本書の8段組の対象外と
 する (`crates/graphite/src/lib.rs:10-11`)。
 
+この文書が扱う `dynamic_graph_schema!` の `dynamic` は、個体集合・トポロジーを
+実行時に構築できることを表す (`Builder`・`extend`・`..式`)。個体集合・トポロジー
+が宣言時に確定する対概念 `static_graph_schema!` は `docs/static_graph.md` が扱う。
+本書は、この対概念を8段組の対象外とする。どちらの名前もRustの `static`/`'static`
+とは無関係である。
+
 書いてあるのは現行の実装だけである。過去の仕様は混在させない。歴史的な経緯は
 `docs/history/edge_syntax_v2.md`・`docs/history/edge_syntax_v3.md`・`docs/history/graph_literal_v3.md`・
 `docs/history/edge_view_api.md`・`docs/history/design_journal.html` にある。
@@ -150,7 +156,7 @@ pub mod Commerce {
 }
 
 #[rustfmt::skip]
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "generated/edge_roles_commerce.rs";
     schema Commerce {
         node Person;
@@ -167,7 +173,7 @@ graphite::graph_schema! {
 **1. Graphite構文**
 
 ```rust
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "generated/edge_roles_commerce.rs";
     schema Commerce {
         node Person;
@@ -217,13 +223,13 @@ pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
 
 **4. private生成物**
 
-指紋の定数は `#[doc(hidden)] pub(super)` である。`graph_schema!` の照合はschema
+指紋の定数は `#[doc(hidden)] pub(super)` である。`dynamic_graph_schema!` の照合はschema
 moduleを囲む親のモジュール (宣言を書いたファイル) に展開されるので、そこからだけ見えれば
 足りる。より外の利用コードやクレートからは見えない。
 
 **5. 構築時の処理**
 
-`graph_schema!` が展開するのは、指紋を照合する `const` ブロック1つだけである。
+`dynamic_graph_schema!` が展開するのは、指紋を照合する `const` ブロック1つだけである。
 展開するトークンのテンプレートは次のとおりである
 (`crates/graphite-macros/src/lib.rs:98-111`)。
 
@@ -1485,12 +1491,14 @@ schemaに無いKind名を書いた場合も、脱糖後の `__graphite_b.{label}
 「メソッドが見つからない」エラーへ落ちることで検出する。「利用可能なエッジ一覧」を
 添えた `compile_error!` は出さない。これは意図した取引であり、`graph!` が参照するのが
 通常の型とメソッドだけになる代わりに、診断の親切さを手放している。この構造のため、
-`graph_schema!` と `graph!` を同じファイルへ置く制約も無い (別モジュールから `use`
+`dynamic_graph_schema!` と `graph!` を同じファイルへ置く制約も無い (別モジュールから `use`
 すれば足りる。実証は `crates/graphite/tests/graph_cross_module.rs`)。
 
-マクロ呼び出しの中の `-[式]->` は `-`・`[`・`]`・`-`・`>` という独自のトークン列で
-あり、rustfmt がこれを式として整形しようとして崩す。`graph!` の呼び出しには
-`#[rustfmt::skip]` を付ける。
+マクロ呼び出しの中の `-[式]->` は `-`・`[`・ident・`]`・`->` という独自のトークン
+列である (`->` は1つのトークンとして字句解析される)。rustfmt は波括弧 `{ }` で
+囲んだマクロ呼び出しの中身を整形しない (丸括弧の呼び出し `foo!(1   +   2)` は
+整形される)。本リポジトリは将来のrustfmtバージョンでの変化に備え、`graph!` の
+呼び出しに安全側の慣習として `#[rustfmt::skip]` を付ける。
 
 **短縮形の正確な脱糖**。`alice = Person { .. }` は `insert_named("alice", ..)` へ
 脱糖する (`crates/graphite/tests/generated/edge_roles_commerce.rs:1315-1325`)。
@@ -2523,7 +2531,7 @@ pub struct Graph {
 | `Builder::insert_named` / `add_named` / `insert_named_with_id` / `add_named_with_id` | 生成ファイル | 同上 |
 | `{Schema}Insertable::NamedPosition` / `insert_named_with_id` | 生成ファイル | 同上 |
 | `{Schema}DefaultId::insert_named_with_binding` | 生成ファイル | 同上 |
-| `__GRAPHITE_SCHEMA_FINGERPRINT` | 生成ファイル | `graph_schema!` の指紋照合が読む。`pub(super)` |
+| `__GRAPHITE_SCHEMA_FINGERPRINT` | 生成ファイル | `dynamic_graph_schema!` の指紋照合が読む。`pub(super)` |
 | `graphite::DirectedEdgeLiteral` / `UndirectedEdgeLiteral` | ランタイムクレート | 辺リテラルの脱糖先。柄の向きの静的照合を担う |
 | `graphite::NamedGraphElement` | ランタイムクレート | 静的アクセサの脱糖先 |
 | `graphite::NamedInsertPermit` / `build_named_graph` / `FreezableBuilder` | ランタイムクレート | 許可証付きの構築経路 |
@@ -2737,7 +2745,7 @@ cargo xtask generate --check
 
 2段構えである。
 
-1. `graph_schema!` が指紋をconst評価で照合する。schemaの意味を変えて生成し忘れた
+1. `dynamic_graph_schema!` が指紋をconst評価で照合する。schemaの意味を変えて生成し忘れた
    場合、通常の `cargo build` がコンパイルエラーになるため、古い公開APIがエラーの
    出ないまま残ることはない。
 2. `cargo xtask generate --check` が生成本文をバイト比較する。schemaの位置移動、
@@ -2814,7 +2822,7 @@ pub struct PersonRef<'graph> {
 
 行番号は書かない。宣言の行が動くだけで全生成ファイルが再生成の対象になるためで
 ある。行番号を持つのはファイル先頭の案内コメントだけである。この doc は指紋の
-材料にも入れない。指紋を計算するのは `graph_schema!` であり、マクロは自分が
+材料にも入れない。指紋を計算するのは `dynamic_graph_schema!` であり、マクロは自分が
 書かれたファイルのパッケージ相対の綴りを知らないためである (§26.4)。宣言元ファイルが
 移動したときのずれは `cargo graphite generate --check` の差分が検出する。
 

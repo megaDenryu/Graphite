@@ -1,6 +1,6 @@
 ---
 name: proc-macro-dev
-description: Graphite の proc-macro (graph_schema!, graph! 等) を開発・デバッグする際の注意点
+description: Graphite の proc-macro (dynamic_graph_schema!, graph! 等) を開発・デバッグする際の注意点
 ---
 
 # proc-macro 開発の注意点

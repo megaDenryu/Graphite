@@ -41,7 +41,7 @@ schema生成コードは基本的に `orgchart_handwritten.rs` と同じ形を�
 5. **導出エッジ (`colleagues` 等) はマクロが生成しない**。公開クエリAPIだけで
    導出クエリを書けるため、`impl OrgChart::Graph { .. }` へ普通のメソッドとして
    後から追記する。
-6. **ノード値の型・エッジ属性型はいずれも利用者が `graph_schema!` の外で宣言し、
+6. **ノード値の型・エッジ属性型はいずれも利用者が `dynamic_graph_schema!` の外で宣言し、
    マクロは参照するだけである**。手書き版は `pub struct Employee { .. }` /
    `pub struct BossAttrs { pub since: i32 }` をテンプレート内へ直接書いていたが、
    マクロはこれらの型を一切生成せず、スキーマ宣言 (`node Employee;` /

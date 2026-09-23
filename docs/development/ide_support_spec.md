@@ -2,7 +2,7 @@
 
 > **Development document** — 索引: `docs/README.md`
 
-Graphite の DSL (`graph_schema!` / `graph!`) を書くとき、VSCode 上で参照ジャンプ・
+Graphite の DSL (`dynamic_graph_schema!` / `graph!`) を書くとき、VSCode 上で参照ジャンプ・
 型追跡・rename などが「普通の Rust コードと同じように」機能することを目標とする。
 
 計測方法: vscode-lsp-mcp 経由で rust-analyzer の definition/references プロバイダを
@@ -39,7 +39,7 @@ Graphite の DSL (`graph_schema!` / `graph!`) を書くとき、VSCode 上で参
 | `graph!` エッジ内ノードキー → 定義 | ✅ 精密 (ノード宣言の `tanaka` トークンに着地) |
 | `graph!` ノードキー → 参照検索 | ✅ 宣言 + 全エッジ内出現を検出 (計3件を確認) |
 | `graph!` ノードキー → hover | ✅ トークン範囲で応答 (ローカル変数 `EmployeeId` として) |
-| examples/* の解析 | ✅ `Scene`/`SceneId` 等がワークスペースシンボルとして引ける。graph_schema! 内トークンへのスパンも機能 |
+| examples/* の解析 | ✅ `Scene`/`SceneId` 等がワークスペースシンボルとして引ける。dynamic_graph_schema! 内トークンへのスパンも機能 |
 | rename | ⚠️ VSCode UI (F2) での rename は機能する。schema エッジラベルの rename は派生名 (`{label}_pairs`、アクセサ、builder メソッド) の**参照側までカスケードする**が、**大文字小文字変換を挟む派生名には追従しない** (下記「rename カスケードの境界条件」) |
 
 ### rename カスケードの境界条件 (2026-07-14 実測、コミット `1c7d76d` 後に再確認)
@@ -398,7 +398,7 @@ speculative expansion する方式) も、仮識別子入りの入力をパー�
 
 方針: **宣言単位の回復型パーサ** に変える。
 
-- `graph_schema!`: `schema { .. }` ボディを宣言 (node/edge) 単位で読み、壊れた
+- `dynamic_graph_schema!`: `schema { .. }` ボディを宣言 (node/edge) 単位で読み、壊れた
   宣言はその宣言のスパンで `compile_error!` を蓄積しつつ次の宣言境界
   (`;` / ブロック終端) までスキップする。パースできた宣言だけで通常のコード
   生成を行い、`compile_error!` 群を併記する。
@@ -414,16 +414,16 @@ speculative expansion する方式) も、仮識別子入りの入力をパー�
   診断が出ない」ことを実測する。
 
 **2026-08-26 更新 (schemaの回復展開の担当替え)**: schemaの公開APIを通常の
-Rustファイルへ生成する形へ移したため、`graph_schema!` 自体はコードを展開せず、
+Rustファイルへ生成する形へ移したため、`dynamic_graph_schema!` 自体はコードを展開せず、
 検証と指紋照合だけを行う。壊れた宣言があれば蓄積した診断を全件返し、生成は
 行わない。編集途中でも利用側が生き続ける性質は、生成ファイルが前回の生成内容の
 まま残ることで保たれる。宣言単位の回復展開そのものは
 `graphite_codegen::expand_inline_for_test` に残り、`#[doc(hidden)]` の
-`graphite::__graph_schema_inline_for_test!` を通じて `tests/ui/*.rs` の
+`graphite::__dynamic_graph_schema_inline_for_test!` を通じて `tests/ui/*.rs` の
 compile-fail テストが検査する。この入口は診断テスト専用であり、利用者向けの
 経路ではない。`graph!` 側の回復は変更していない。
 
-### G5: `graph!` ↔ `graph_schema!` 同一ファイル制約 (v3 で解消済み)
+### G5: `graph!` ↔ `dynamic_graph_schema!` 同一ファイル制約 (v3 で解消済み)
 
 **2026-07-14/15 更新: `docs/history/graph_literal_v3.md` の実装により、この制約自体が
 構造的に消滅した。** 以下は制約が存在していた当時 (構文 v0〜v2) の記録として
@@ -452,7 +452,7 @@ compile-fail テストが検査する。この入口は診断テスト専用で�
 付きの親切な診断は失うが、これは意図した trade-off (ユーザー決定) である。
 
 副産物として、ハンドシェイクマクロが担っていたテキストスコープ依存が消える
-ため、**`graph_schema!` と `graph!` はもはや同一ファイルである必要がない**。
+ため、**`dynamic_graph_schema!` と `graph!` はもはや同一ファイルである必要がない**。
 `graph!` が参照するのは (1) スキーマ struct の `create`、(2) builder の総称
 `insert`、(3) builder の型名付きエッジメソッド (`b.{label}(..)`) という
 普通の Rust の型・メソッドだけになったため、別モジュールから `use` すれば

@@ -35,7 +35,7 @@ pub mod NamedWorld {
 }
 
 #[rustfmt::skip]
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "generated/named_graph_named_world.rs";
     schema NamedWorld {
         node Person;

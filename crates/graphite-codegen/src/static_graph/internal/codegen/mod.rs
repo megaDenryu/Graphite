@@ -3,7 +3,7 @@
 //! 手書き到達点 (`examples/graphitets-by-hand/src/bin/static_graph.rs`) の
 //! 層順 (実体の層 → 参照の層 → グラフ) と同じ。各生成物の中身は配下の
 //! moduleが持ち、この module本体は並び順だけを知る。schemaだけから決まる
-//! 生成物 (辺値struct群) は `static_schema!` の展開へ移した
+//! 生成物 (辺値struct群) は `static_graph_schema!` の展開へ移した
 //! (`schema::codegen`) ためここでは扱わない。`{種別}Edge` 型は
 //! edge_entities/edge_ref が参照するだけで、ここでは定義しない。
 //!

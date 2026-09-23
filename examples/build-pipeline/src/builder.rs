@@ -1,4 +1,4 @@
-//! パース結果 (`ParsedPipeline`) から `graph_schema!` 製の `BuildPipeline`
+//! パース結果 (`ParsedPipeline`) から `dynamic_graph_schema!` 製の `BuildPipeline`
 //! グラフを組み立てる。
 //!
 //! `pipeline.txt` はタスクだけを `task` 行で明示宣言し、成果物 (`Artifact`)

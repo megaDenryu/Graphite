@@ -33,7 +33,7 @@ cargo xtask check-external
 
 - `crates/graphite/tests/orgchart_handwritten.rs` — フェーズ2で手書きした
   `OrgChart` である。schema生成コードの目標形をテンプレートとして残置している。
-- `crates/graphite/tests/orgchart_macro.rs` — `graph_schema!` で `OrgChart` を
+- `crates/graphite/tests/orgchart_macro.rs` — `dynamic_graph_schema!` で `OrgChart` を
   宣言し、通常のRust生成ファイルを読み込む同等テストと、`graph!` リテラルの
   テストである。
 - `crates/graphite/tests/compile_fail.rs` + `tests/ui/*.rs` —
