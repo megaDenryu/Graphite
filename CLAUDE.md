@@ -125,6 +125,11 @@ cargo graphite generate [--check]
 - `docs/history/`の文書の本文は書き換えない。参照先の綴りの追随だけを行う
 - READMEの第一読者はGraphiteを使うRust利用者である。内部実装・開発規約・設計史を
   READMEへ書かず、`docs/development/`と`docs/history/`へ置いて案内だけを残す
+- **Claude Code は、作業の状態・決定・引き継ぎを Claude Code の記憶 (auto-memory、
+  `~/.claude/projects/.../memory/`) に残してはならない。** 記憶はリポジトリの外にあり、
+  オーナーも他のセッションも読めないためである。Claude Code は、引き継ぎを
+  `_doc/開発スレッド/` の遺言 (`YYYY-MM-DD-<作業名>-遺言.md`) に、決定の経緯を
+  issue・PR のコメントに、恒久的な規約をこの CLAUDE.md か `docs/development/` に書く
 
 ## 運用ポリシー (重要): モデル委譲
 
