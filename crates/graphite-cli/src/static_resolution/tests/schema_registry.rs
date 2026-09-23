@@ -35,7 +35,7 @@ fn 別のcargo_targetなら同名のschemaを許す() {
     let tree = tree();
     let src_source = source();
     let src_target = target(&tree, &src_source);
-    let tests_source = SchemaSourceFile::new(std::path::PathBuf::from("/repo/tests/foo.rs"));
+    let tests_source = SchemaSourceFile::new(manifest_dir().join("tests").join("foo.rs"));
     let tests_target = target(&tree, &tests_source);
     assert_ne!(src_target, tests_target);
 

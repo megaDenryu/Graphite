@@ -14,6 +14,7 @@ mod generated_target_path;
 mod generation_plan;
 mod generation_tree;
 mod io_context;
+mod module_graph;
 mod package_root;
 mod relative_display;
 mod schema_macro_collector;
@@ -71,7 +72,7 @@ fn build_plan(tree: &GenerationTree) -> Result<解決結果, Box<dyn Error>> {
         let 動的schemaを積む前の宣言数 = plan.declaration_count();
         source.collect_dynamic_into(tree, &display_path, &calls, &mut plan)?;
         動的schemaの宣言数 += plan.declaration_count() - 動的schemaを積む前の宣言数;
-        let target = source.cargo_target(tree);
+        let target = source.cargo_target(tree)?;
         files.push(FileMacros { source, display_path, calls, target });
     }
 

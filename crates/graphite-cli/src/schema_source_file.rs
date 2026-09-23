@@ -57,7 +57,7 @@ impl SchemaSourceFile {
 
     // このファイルが属するCargo target。静的グラフのschema名簿とinstanceの
     // 照合はこの単位で閉じる (`cargo_target` 参照)。
-    pub(crate) fn cargo_target(&self, tree: &GenerationTree) -> CargoTarget {
+    pub(crate) fn cargo_target(&self, tree: &GenerationTree) -> Result<CargoTarget, Box<dyn Error>> {
         tree.cargo_target(&self.path)
     }
 

@@ -14,19 +14,27 @@ use crate::cargo_target::CargoTarget;
 use crate::generation_plan::GenerationPlan;
 use crate::generation_tree::GenerationTree;
 
+// Cargo targetの判定は`src`配下について実ファイルの`mod`宣言を辿る
+// (`module_graph`) ため、このフィクスチャは実在するこのパッケージ自身
+// (`graphite-cli`) のディレクトリを基準にする。`crates/graphite-cli/src/
+// main.rs`は`mod`宣言を持たないので、`lib.rs`の木とは別targetになる
+// (`schema_registry.rs`等の「別のcargo_targetなら同名のschemaを許す」の
+// 検査対象そのもの)。`tests`側はパスの形だけで判定でき実在しなくてよい。
+fn manifest_dir() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+}
+
 fn tree() -> GenerationTree {
-    GenerationTree::new(
-        PathBuf::from("/repo"),
-        vec![PathBuf::from("/repo/src"), PathBuf::from("/repo/tests")],
-    )
+    let base = manifest_dir();
+    GenerationTree::new(base.clone(), vec![base.join("src"), base.join("tests")])
 }
 
 fn source() -> SchemaSourceFile {
-    SchemaSourceFile::new(PathBuf::from("/repo/src/main.rs"))
+    SchemaSourceFile::new(manifest_dir().join("src").join("main.rs"))
 }
 
 fn target(tree: &GenerationTree, source: &SchemaSourceFile) -> CargoTarget {
-    source.cargo_target(tree)
+    source.cargo_target(tree).unwrap()
 }
 
 fn call(name: &str, tokens: proc_macro2::TokenStream, line: usize) -> MacroCall {

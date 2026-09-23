@@ -76,7 +76,7 @@ fn 別のcargo_targetにある同名schemaはinstanceとして解決しない() 
     // `組織!` はsrcで定義したschemaの名前だが、この呼び出しはtests/foo.rs
     // という別のCargo targetにある。最後の識別子が一致するだけでは
     // instanceとして解決してはならない。
-    let tests_source = SchemaSourceFile::new(std::path::PathBuf::from("/repo/tests/foo.rs"));
+    let tests_source = SchemaSourceFile::new(manifest_dir().join("tests").join("foo.rs"));
     let tests_target = target(&tree, &tests_source);
     assert_ne!(schema_target, tests_target);
 

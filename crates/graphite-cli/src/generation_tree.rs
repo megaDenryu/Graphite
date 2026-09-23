@@ -50,8 +50,8 @@ impl GenerationTree {
 
     // このファイルが属するCargo targetを求める (`cargo_target` 参照)。
     // 静的グラフのschema名簿とinstanceの照合はこの単位で閉じる。
-    pub(crate) fn cargo_target(&self, path: &Path) -> CargoTarget {
-        cargo_target::ファイルの所属targetを求める(&self.scan_roots, path)
+    pub(crate) fn cargo_target(&self, path: &Path) -> Result<CargoTarget, Box<dyn Error>> {
+        cargo_target::ファイルの属するCargoターゲットを求める(&self.scan_roots, path)
     }
 
     // schema宣言を探す対象のRustファイルを、順序を固定して列挙する。
