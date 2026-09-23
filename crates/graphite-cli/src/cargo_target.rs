@@ -16,15 +16,32 @@
 //! 追跡できないが、生成器はRustのmodule解決を再実装しない方針
 //! (`docs/code_generation.md` 「宣言と配線」) を優先し、この既知の制約を
 //! 許容する。
+//!
+//! `src` 配下のtarget表は `module_graph::srcのCargoターゲット表を求める`が
+//! `src`全体のファイルを読み構文解析して1回で組み立てる。呼び出しのたびに
+//! 作り直すとパッケージ内のファイル数の2乗に比例する読み取り・構文解析が
+//! 発生するため、`GenerationTree`が持つ`src_target_cache`が1回だけ作って
+//! 保持し、以降の`ファイルの属するCargoターゲットを求める`呼び出しは
+//! この保持済みの表を引くだけにする。
 
+use std::cell::RefCell;
+use std::collections::BTreeMap;
 use std::error::Error;
 use std::ffi::OsStr;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::module_graph;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) struct CargoTarget(String);
+
+// `src`配下のtarget表のキャッシュ。`GenerationTree`が1件保持し、同じ
+// `GenerationTree`から呼ぶ`cargo_target`呼び出し全体で使い回す。
+pub(crate) type SrcTargetCache = RefCell<Option<BTreeMap<PathBuf, CargoTarget>>>;
+
+pub(crate) fn 空のキャッシュ() -> SrcTargetCache {
+    RefCell::new(None)
+}
 
 impl CargoTarget {
     pub(crate) fn 表示(&self) -> &str {
@@ -38,8 +55,11 @@ impl CargoTarget {
 
 // `scan_roots` ( `[パッケージ]/src` と `[パッケージ]/tests` ) のうち
 // `path` が属する走査開始点を求め、その種類に応じてCargo targetを求める。
-// どの走査開始点にも属さない場合・`src`配下で`mod`のどの根の木からも
-// 辿れない場合は、判定不能を黙って1つのtargetへ束ねずエラーにする。
+// どの走査開始点にも属さない場合は、判定不能を黙って1つのtargetへ束ねずに
+// エラーにする。`src`配下のtarget表は`cache`が保持し、1つの`GenerationTree`
+// に属する呼び出しの間は`module_graph::srcのCargoターゲット表を求める`を
+// 呼び直さない (呼び出しのたびに作り直すと、パッケージ内のファイル数の
+// 2乗に比例する読み取り・構文解析が発生する)。
 //
 // `Cargo`はツール名の固有名詞であり訳さない (プロジェクト全体の表記に合わせる)。
 // 識別子中の大文字がRustのsnake_case規約検査に引っかかるため許可する。
@@ -47,6 +67,7 @@ impl CargoTarget {
 pub(crate) fn ファイルの属するCargoターゲットを求める(
     scan_roots: &[std::path::PathBuf],
     path: &Path,
+    cache: &SrcTargetCache,
 ) -> Result<CargoTarget, Box<dyn Error>> {
     let root = scan_roots.iter().find(|root| path.strip_prefix(root).is_ok()).ok_or_else(|| {
         format!("{}: 走査開始点 (src・tests) のどれにも属しません。Cargo targetを判定できません", path.display())
@@ -59,10 +80,14 @@ pub(crate) fn ファイルの属するCargoターゲットを求める(
         let relative = path.strip_prefix(root).expect("直前のfindでstrip_prefixが成功することを確かめた");
         return Ok(tests配下のtargetを求める(relative));
     }
-    let 表 = module_graph::srcのCargoターゲット表を求める(root)?;
-    表.get(path).cloned().ok_or_else(|| {
+    let mut キャッシュ = cache.borrow_mut();
+    if キャッシュ.is_none() {
+        *キャッシュ = Some(module_graph::srcのCargoターゲット表を求める(root)?);
+    }
+    // 直前の`is_none`チェックで`Some`にしたので、この`unwrap`は必ず成功する。
+    キャッシュ.as_ref().unwrap().get(path).cloned().ok_or_else(|| {
         format!(
-            "{}: `lib.rs`・`main.rs`・`bin/*.rs` のどの `mod` 木からも辿り着けません。`mod` 宣言で到達できるようにするか、このファイルを削除してください",
+            "{}: `lib.rs`・`main.rs`・`bin/*.rs` のどの `mod` 木からも辿り着けません。`mod` 宣言で到達できるようにしてください",
             path.display()
         )
         .into()
@@ -80,34 +105,4 @@ fn tests配下のtargetを求める(relative: &Path) -> CargoTarget {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use std::path::PathBuf;
-
-    fn roots() -> Vec<PathBuf> {
-        vec![PathBuf::from("/repo/src"), PathBuf::from("/repo/tests")]
-    }
-
-    #[test]
-    fn tests直下のファイルはファイルごとに別targetになる() {
-        let a = ファイルの属するCargoターゲットを求める(&roots(), Path::new("/repo/tests/foo.rs")).unwrap();
-        let b = ファイルの属するCargoターゲットを求める(&roots(), Path::new("/repo/tests/bar.rs")).unwrap();
-        assert_eq!(a.表示(), "tests/foo");
-        assert_eq!(b.表示(), "tests/bar");
-        assert_ne!(a, b);
-    }
-
-    #[test]
-    fn tests配下のサブディレクトリは先頭の階層名でまとまる() {
-        let a = ファイルの属するCargoターゲットを求める(&roots(), Path::new("/repo/tests/foo/helper.rs")).unwrap();
-        let b = ファイルの属するCargoターゲットを求める(&roots(), Path::new("/repo/tests/foo.rs")).unwrap();
-        assert_eq!(a.表示(), "tests/foo");
-        assert_eq!(a, b);
-    }
-
-    #[test]
-    fn どの走査開始点にも属さないパスはエラーになる() {
-        let error = ファイルの属するCargoターゲットを求める(&roots(), Path::new("/other/x.rs")).err().unwrap();
-        assert!(error.to_string().contains("走査開始点"));
-    }
-}
+mod tests;
