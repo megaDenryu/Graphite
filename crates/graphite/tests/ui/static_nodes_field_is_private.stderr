@@ -1,0 +1,5 @@
+error[E0616]: field `太郎` of struct `Nodes` is private
+  --> tests/ui/static_nodes_field_is_private.rs:27:19
+   |
+27 |     let _ = nodes.太郎;
+   |                   ^^^^ private field
