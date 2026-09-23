@@ -9,6 +9,7 @@
 //! 単体で解決できるが、静的グラフの `static_graph_schema!`/instanceは
 //! パッケージ全体を横断する2段階の解決 (`static_resolution`) を要る。
 
+mod cargo_target;
 mod generated_target_path;
 mod generation_plan;
 mod generation_tree;
@@ -70,13 +71,14 @@ fn build_plan(tree: &GenerationTree) -> Result<解決結果, Box<dyn Error>> {
         let 動的schemaを積む前の宣言数 = plan.declaration_count();
         source.collect_dynamic_into(tree, &display_path, &calls, &mut plan)?;
         動的schemaの宣言数 += plan.declaration_count() - 動的schemaを積む前の宣言数;
-        files.push(FileMacros { source, display_path, calls });
+        let target = source.cargo_target(tree);
+        files.push(FileMacros { source, display_path, calls, target });
     }
 
     let mut 名簿ビルダー = 静的schema名簿ビルダー::default();
     for file in &files {
         for call in file.calls.iter().filter(|call| call.name == "static_graph_schema") {
-            名簿ビルダー.追加する(tree, file.source, &file.display_path, call, &mut plan)?;
+            名簿ビルダー.追加する(tree, file.source, &file.display_path, &file.target, call, &mut plan)?;
         }
     }
     let 名簿 = 名簿ビルダー.完成する();

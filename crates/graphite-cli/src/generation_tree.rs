@@ -13,6 +13,7 @@ use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::cargo_target::{self, CargoTarget};
 use crate::generated_target_path::GeneratedTargetPath;
 use crate::io_context::with_path_context;
 use crate::relative_display::relative_display;
@@ -45,6 +46,12 @@ impl GenerationTree {
     // 基準ディレクトリからの相対パスを、環境によらない綴りで表示する。
     pub(crate) fn relative_display(&self, path: &Path) -> String {
         relative_display(&self.base, path)
+    }
+
+    // このファイルが属するCargo targetを求める (`cargo_target` 参照)。
+    // 静的グラフのschema名簿とinstanceの照合はこの単位で閉じる。
+    pub(crate) fn cargo_target(&self, path: &Path) -> CargoTarget {
+        cargo_target::ファイルの所属targetを求める(&self.scan_roots, path)
     }
 
     // schema宣言を探す対象のRustファイルを、順序を固定して列挙する。

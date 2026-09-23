@@ -240,10 +240,28 @@ A・Bのどちらも、F12は生成ファイルの中の人間が読める定義
 
 ### 制約
 
-- **schema名はパッケージ内で一意である。** 生成器 (`graphite-cli`) は、
-  パッケージ内の全ファイルを構文解析して静的schema名簿を作り、同じ名前の
-  `static_graph_schema!`が2つ以上あれば`cargo graphite generate`/
-  `cargo xtask generate`をエラーで止める。
+- **schema名は同じCargo targetの中で一意である。** 生成器 (`graphite-cli`)
+  は、パッケージ内の全ファイルを構文解析して静的schema名簿を作るが、
+  名簿の単位はパッケージ全体ではなくCargo targetである。`src/`配下
+  (lib・bin) はまとめて1つのtarget、`tests/`配下は最初の1階層
+  (`tests/foo.rs`・`tests/foo/`はどちらも`foo`というtarget) ごとに別の
+  targetとして扱う。同じtargetの中に同じ名前の`static_graph_schema!`が
+  2つ以上あれば`cargo graphite generate`/`cargo xtask generate`をエラーで
+  止めるが、targetが違えば同名のschemaを許す。instanceの照合
+  (`{schema名}! { .. }`という呼び出しがどのschemaのinstanceか) も、
+  呼び出しと同じtargetの名簿だけを見て行う。
+  **裁定 (2026-09-24、PR #45レビュー対応):** 生成器はRustのmodule解決を
+  再実装しない。`src/lib.rs`と`tests/foo.rs`のように、本来は別クレート
+  (別のマクロスコープ) である場所を1つの名簿へ混ぜて同名衝突を検出したり、
+  無関係な同名マクロ呼び出しをinstanceと誤認したりしないよう、Cargoの
+  ビルド単位 (target) を生成器が機械的に判定できる境界として採用した。
+  この近似は、`tests/共通ヘルパー/mod.rs`のように複数のtest実行ファイルへ
+  `#[path]`/`mod`で読み込まれる補助ファイルの中にschema宣言を置いた場合、
+  実際に読み込む側のtargetと生成器が判定するtargetが食い違いうるという
+  既知の制約を持つが、Rustの完全な名前解決をCLIへ持ち込むコストと比べて
+  許容する。回帰試験: `crates/graphite-cli/src/static_resolution/tests/`
+  の`別のcargo_targetなら同名のschemaを許す`・
+  `別のcargo_targetにある同名schemaはinstanceとして解決しない`。
 - **instanceを他のマクロの入力の中に書いてはならない。** `println!("{}", 組織! { .. })`のように、名簿の名前を他のマクロの引数の中へ埋め込む書き方は生成器がエラーにする (`docs/code_generation.md`参照)。利用者は、instanceを文の位置 (または関数の中の文の位置) に直接書く。
 - **生成moduleを読み込む`mod`の置き場所は、instance宣言の置き場所と無関係である。** instance展開はimplを一切使わず、値の橋渡しを素の関数 (呼び出し位置に生成する組み立て関数) だけで行うため、利用者が`mod`を最上位に置いたままinstance宣言だけを関数の中に置いても`non_local_definitions`警告は出ない。`examples/static-org/src/main.rs`の`mod 経理チーム`(最上位)と`経理チームの花子の所属先を求める`関数(instance宣言はこの中)が、この配置の実例である。
 - **schemaとinstanceを別ファイルに分けるときは、instance側のファイルがschema moduleを`use`し、schema側の`mod`宣言に`#[macro_use]`を付けてinstance側の`mod`宣言より前に置く。** 例: instance側のファイルは`use crate::organization::組織;`のように、schemaを宣言したファイルのmoduleを`use`する。crateの入口ファイルは`#[macro_use] mod organization; mod dev_team;`のように、schema側の`mod`をinstance側の`mod`より前に置く (理由と実測は上の「2層マクロの使い方」節を参照)。

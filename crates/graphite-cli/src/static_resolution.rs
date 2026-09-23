@@ -19,13 +19,17 @@ pub(crate) use embedded_detection::埋め込まれたinstanceを検査する;
 pub(crate) use instance_resolution::instanceを解決する;
 pub(crate) use schema_registry::静的schema名簿ビルダー;
 
+use crate::cargo_target::CargoTarget;
 use crate::schema_macro_collector::MacroCall;
 use crate::schema_source_file::SchemaSourceFile;
 
 // ファイル1件分の、静的解決に必要な材料 (動的グラフの解決と共有する
-// `parse`/`collect_macro_calls` の結果)。
+// `parse`/`collect_macro_calls` の結果)。`target` はこのファイルが属する
+// Cargo target (`cargo_target` 参照)。静的schemaの名簿とinstanceの照合は
+// targetの中だけで閉じる。
 pub(crate) struct FileMacros<'a> {
     pub(crate) source: &'a SchemaSourceFile,
     pub(crate) display_path: String,
     pub(crate) calls: Vec<MacroCall>,
+    pub(crate) target: CargoTarget,
 }

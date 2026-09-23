@@ -38,7 +38,7 @@ fn 埋め込みを探す(
     let mut iter = tokens.clone().into_iter().peekable();
     while let Some(tt) = iter.next() {
         match tt {
-            TokenTree::Ident(ident) if 名簿.探す(&ident.to_string()).is_some() => {
+            TokenTree::Ident(ident) if 名簿.名前が存在するか(&ident.to_string()) => {
                 let 次がビックリマークか =
                     matches!(iter.peek(), Some(TokenTree::Punct(p)) if p.as_char() == '!');
                 if 次がビックリマークか {

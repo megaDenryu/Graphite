@@ -12,6 +12,7 @@ use std::path::PathBuf;
 
 use graphite_codegen::DeclarationSite;
 
+use crate::cargo_target::CargoTarget;
 use crate::generated_target_path::GeneratedTargetPath;
 use crate::generation_plan::GenerationPlan;
 use crate::generation_tree::GenerationTree;
@@ -52,6 +53,12 @@ impl SchemaSourceFile {
             )
         })?;
         Ok((display_path, parsed_file))
+    }
+
+    // このファイルが属するCargo target。静的グラフのschema名簿とinstanceの
+    // 照合はこの単位で閉じる (`cargo_target` 参照)。
+    pub(crate) fn cargo_target(&self, tree: &GenerationTree) -> CargoTarget {
+        tree.cargo_target(&self.path)
     }
 
     // このファイルの動的グラフのschema宣言を計画へ積む。`calls` は

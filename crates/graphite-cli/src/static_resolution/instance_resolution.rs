@@ -1,9 +1,12 @@
 //! 静的グラフのinstanceの解決 (issue #41 段階3 §2 第2段階)。
 //!
-//! 名簿 (`schema_registry::静的schema名簿`) に名前が無い残りの呼び出しの
-//! うち、名簿の名前と一致するものをinstanceとみなして解決する。一致しない
+//! 名簿 (`schema_registry::静的schema名簿`) の、instance候補と同じCargo
+//! target (`cargo_target` 参照) にある名前とだけ照合する。一致しない
 //! のに追跡形式 (`generated = "...";` で始まる) の候補は「schemaが見つから
-//! ない」エラーにする。
+//! ない」エラーにする (他のtargetに同名のschemaがあれば、その旨も案内へ
+//! 添える)。この照合はRustの実際のマクロスコープを再現するものではなく、
+//! targetという生成器が機械的に判定できる境界へ近似したものである
+//! (`docs/static_graph.md`「制約」節)。
 
 use std::error::Error;
 
@@ -29,15 +32,23 @@ pub(crate) fn instanceを解決する(
             if 候補として扱わない名前か(&call.name) {
                 continue;
             }
-            let Some((schema, schema_site)) = 名簿.探す(&call.name) else {
+            let Some((schema, schema_site)) = 名簿.探す(&file.target, &call.name) else {
                 if 追跡形式らしいか(&call.tokens) {
                     let site = DeclarationSite::new(file.display_path.clone(), call.line);
-                    return Err(format!(
-                        "{}: schema `{}` がこのパッケージに見つかりません",
-                        site.display(),
-                        call.name
-                    )
-                    .into());
+                    let 案内 = match 名簿.他のtargetの一致先(&file.target, &call.name) {
+                        Some(他target) => format!(
+                            "schema `{}` がCargo target `{}` に見つかりません (同名のschemaはtarget `{}` にありますが、targetをまたいでは解決しません)",
+                            call.name,
+                            file.target.表示(),
+                            他target.表示()
+                        ),
+                        None => format!(
+                            "schema `{}` がCargo target `{}` に見つかりません",
+                            call.name,
+                            file.target.表示()
+                        ),
+                    };
+                    return Err(format!("{}: {案内}", site.display()).into());
                 }
                 continue;
             };
