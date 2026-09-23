@@ -153,7 +153,7 @@ fn main() {
 // (`{グラフ名}の個体を組み立てる`・`{グラフ名}の辺を組み立てる`) だけで
 // 行うため、instance宣言がユーザーの関数の中にあっても
 // `non_local_definitions` は出ない (`docs/static_graph.md` 「追跡の契約」
-// 参照)。`mod`をinstance宣言と同じスコープへ揃える配置規則はもう要らない。
+// 参照)。
 #[allow(non_snake_case, dead_code, private_interfaces)]
 #[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
 mod 経理チーム {
