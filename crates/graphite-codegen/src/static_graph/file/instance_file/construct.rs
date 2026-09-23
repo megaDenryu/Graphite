@@ -1,6 +1,6 @@
-// このファイルは `construct` module (利用者が辿れる構築の唯一の入口、
-// PR #45レビューA・D) の本体を組み立てる。`construct::nodes!`/
-// `construct::edges!` は、instance展開が呼び出し位置に置く値マクロ
+// このファイルは `construct` module (利用者が辿れる構築の唯一の入口) の
+// 本体を組み立てる。`construct::nodes!`/`construct::edges!` は、instance
+// 展開が呼び出し位置に置く値マクロ
 // (`__graphite_values_{グラフ名}!`/`__graphite_payloads_{グラフ名}!`、
 // `inline::value_supply`) を無修飾の名前で呼んで値ありの個体・積み荷を
 // 計算し、内部構築子 (`{グラフ名}::Nodes::__graphite_internal_new`/
@@ -15,11 +15,20 @@
 // instanceの`mod`が関数の中にあると解決できない。`#グラフ名::Nodes`
 // (グラフ名をそのまま冠した相対パス) だけが、instanceの`mod`宣言が
 // クレートルート直下にあっても関数の中にあっても、呼び出し位置から見える
-// 名前として解決される。値マクロも同じ理由で無修飾のまま呼ぶ。instanceが
-// module最上位にある場合は、instance展開の側 (`inline::value_supply`) が
-// 値マクロを`pub(crate) use`で公開しており、これによって
-// `construct::nodes!`/`construct::edges!`の呼び出し元がinstance宣言と
-// 別ファイル・別moduleでも解決できる (`docs/static_graph.md`「制約」節)。
+// 名前として解決される。値マクロも同じ理由で無修飾のまま呼ぶ。
+//
+// 値マクロは意図的に`pub(crate) use`を付けない (`inline::value_supply`の
+// 冒頭コメント参照)。そのため`construct::nodes!`/`construct::edges!`を
+// 呼んでよいのは、instance宣言と同じテキスト順スコープ (同じmodule、または
+// instanceを置いた同じ関数の中) だけである。同じファイルの中でinstanceの
+// 後ろに書いたインラインの子module (`mod x { .. }`) からは、macro_rules!の
+// テキスト順スコープにより値マクロが見えてしまう残る穴がある
+// (`docs/static_graph.md`「制約」節)。
+//
+// 内部構築子は`#[deprecated]`を持つ (`node_entities.rs`冒頭コメント参照)。
+// この2つのマクロは自分自身の呼び出しを`#[allow(deprecated)]`で許すが、
+// 利用者が`{グラフ名}::Nodes::__graphite_internal_new`等を直接呼ぶと
+// 警告 (`#![deny(warnings)]`の下ではエラー) になる。
 
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
@@ -81,7 +90,9 @@ fn nodesマクロを組み立てる(意味モデル: &意味モデル, 宣言元
         macro_rules! #マクロ名 {
             (#(#仮引数パターン列),*) => {{
                 let (#(#値あり個体名列,)*) = #値マクロ名!();
-                #グラフ名::Nodes::#内部構築子(#(#実引数順),*)
+                #[allow(deprecated)]
+                let __graphite_nodes = #グラフ名::Nodes::#内部構築子(#(#実引数順),*);
+                __graphite_nodes
             }};
         }
         pub(crate) use #マクロ名;
@@ -103,7 +114,9 @@ fn edgesマクロを組み立てる(意味モデル: &意味モデル, 宣言元
         macro_rules! #マクロ名 {
             ($nodes:expr) => {{
                 let (#(#積み荷あり辺名列,)*) = #値マクロ名!();
-                #グラフ名::Edges::#内部構築子($nodes, #(#積み荷あり辺名列),*)
+                #[allow(deprecated)]
+                let __graphite_edges = #グラフ名::Edges::#内部構築子($nodes, #(#積み荷あり辺名列),*);
+                __graphite_edges
             }};
         }
         pub(crate) use #マクロ名;

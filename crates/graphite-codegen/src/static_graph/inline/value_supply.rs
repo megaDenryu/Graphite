@@ -1,28 +1,28 @@
-// instanceの値の式をまとめて返すマクロ (issue #41 §3、PR #45レビューF)。
-// 値ありの個体・積み荷それぞれについて、宣言順の式をタプルにして返す
-// `macro_rules!` を1個ずつ (グラフあたり2個) 呼び出し位置に置く。生成
-// ファイル側の `construct::nodes!`/`construct::edges!`
-// (`file::instance_file::construct`) が `$crate::` を冠した絶対パスで
-// このマクロを呼び、内部構築子 (`Nodes::__graphite_internal_new`等) へ
-// 渡す。式は生成ファイルへ一切写さない。
+// instanceの値の式をまとめて返すマクロ (issue #41 §3)。値ありの個体・
+// 積み荷それぞれについて、宣言順の式をタプルにして返す `macro_rules!` を
+// 1個ずつ (グラフあたり2個) 呼び出し位置に置く。生成ファイル側の
+// `construct::nodes!`/`construct::edges!` (`file::instance_file::construct`)
+// が無修飾の名前でこのマクロを呼び、内部構築子
+// (`Nodes::__graphite_internal_new`等) へ渡す。式は生成ファイルへ一切
+// 写さない。
 //
 // `macro_rules!` として展開されるため、実際に呼ばれる位置 (`construct::nodes!`
 // 等の本体、同じ呼び出し位置へ展開される) のスコープで式が評価される。
 // これにより、instanceを置いた関数のローカル変数・引数・ジェネリックの
-// 型引数を、通常のRust式と同じように参照できる (入れ子の`fn`は外側の
-// スコープを捕捉できないため、以前の実装はこれができなかった)。
+// 型引数を、通常のRust式と同じように参照できる。
 // `macro_rules!`は項目であり`impl`ではないため、呼び出し位置がユーザーの
 // 関数の中にあっても`non_local_definitions`の対象にならない。
 //
-// `pub(crate) use` も添えて、instanceをmodule最上位に置いた場合に
-// `$crate::__graphite_values_{グラフ名}!()` という絶対パスで、
-// instance宣言と別ファイル (`construct::nodes!`/`construct::edges!`の
-// 呼び出し元が別モジュールの場合を含む) からも解決できるようにする
-// (macro_rules!の既定のテキスト順スコープだけでは、`mod`宣言の順序に
-// よって呼び出し元から見えないことがある)。instanceを関数の中に置いた
-// 場合、この`use`は関数の外から到達できないため実質的な効果を持たないが、
-// 同じ関数の中で呼ぶ既存の使い方 (`docs/static_graph.md` 参照) は
-// テキスト順のスコープのままで変わらず働く。
+// `pub(crate) use`を意図的に付けない。macro_rules!の既定のテキスト順
+// スコープだけに閉じることで、`construct::nodes!`/`construct::edges!`を
+// 呼んでよい位置を「instance宣言と同じテキスト順スコープ (同じmodule、
+// またはinstanceを置いた同じ関数の中)」だけに機械的に限定する。値の式の
+// 中の関数名・型名 (ローカル変数以外の名前) はmacro_rules!の衛生規則により
+// この値マクロが実際に展開される位置 (`construct::nodes!`等の呼び出し位置)
+// を起点に解決されるため、instance宣言と無関係な別module・別ファイルから
+// 呼べてしまうと、たまたま同名の別の関数・型へ意味がすり替わる恐れがある
+// (`docs/static_graph.md`「制約」節)。`pub(crate) use`で公開してしまうと
+// この呼び出し位置の制約が失われるため、公開しないことが対策そのものである。
 
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
@@ -50,14 +50,14 @@ fn 値マクロを組み立てる(マクロ名: &Ident, 式列: &[&Expr]) -> Tok
     // グラフ名は利用者が自由に選ぶため大文字始まりもあり得る
     // (`__graphite_values_{グラフ名}` の埋め込み部分)。マクロ名自体は
     // snake_caseの規約検査対象にならないため `#[allow(non_snake_case)]` は
-    // 不要 (`macro_rules!` はitemの命名規約lintの対象外)。
+    // 不要 (`macro_rules!` はitemの命名規約lintの対象外)。`pub(crate) use`
+    // を付けないのは意図的である (このファイル冒頭のコメント参照)。
     quote! {
         macro_rules! #マクロ名 {
             () => {
                 (#(#式列,)*)
             };
         }
-        pub(crate) use #マクロ名;
     }
 }
 

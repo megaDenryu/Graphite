@@ -1,6 +1,6 @@
 //! instanceの値の式が、instanceを置いた関数のローカル変数・関数の引数・
 //! ジェネリックの型引数を、通常のRust式と同じように参照できることを固定する
-//! 回帰試験 (issue #46、PR #45レビューF)。値マクロ
+//! 回帰試験 (issue #46)。値マクロ
 //! (`crates/graphite-codegen/src/static_graph/inline/value_supply.rs`) は
 //! `macro_rules!` として呼び出し位置に展開されるため、入れ子の`fn`とは異なり
 //! 外側のスコープを捕捉できる。
@@ -33,8 +33,8 @@ graphite::static_graph_schema! {
 }
 
 // 関数の引数 (`名前`・`日付`) を、値ありの個体・積み荷の式が直接参照する。
-// 入れ子の`fn`は外側の引数を捕捉できないため、これはF (PR #45レビュー) が
-// 解決した能力そのものを検査する。
+// 入れ子の`fn`は外側の引数を捕捉できないが、値マクロは`macro_rules!`として
+// 呼び出し位置に展開されるため参照できる。
 #[allow(non_snake_case, dead_code, private_interfaces)]
 #[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
 mod 検証チーム引数 {

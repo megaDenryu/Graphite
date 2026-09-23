@@ -1,6 +1,6 @@
 // Graphiteが定義する固定語彙のうち、構築の入口
-// (`{instance名}::construct::nodes!`/`{instance名}::construct::edges!`、
-// PR #45レビューA・D) を対象にする。`naming::fixed_vocabulary` から分けた
+// (`{instance名}::construct::nodes!`/`{instance名}::construct::edges!`)
+// を対象にする。`naming::fixed_vocabulary` から分けた
 // のは、値ありの個体・積み荷を差し替えられない構築の入口という関心事が
 // 型・固定フィールド名の関心事と異なり、かつ意味カードにinstance固有の
 // 実行時個体列を組み込む (`宣言元の対` を要る) ためである。
@@ -14,7 +14,7 @@ use crate::static_graph::trace::{固定語彙, 名前の由来, 意味項目, �
 use super::fixed_vocabulary::固定語彙の名前を作る;
 use super::tracked_name::追跡付きの名前;
 
-// `{instance名}::construct` (PR #45レビューA・D)。値ありの個体・積み荷を
+// `{instance名}::construct`。値ありの個体・積み荷を
 // instance宣言の式からのみ供給し、利用者が辿れる構築の入口をGraphiteが
 // 所有するこのmoduleへ閉じる。
 pub(crate) fn 構築モジュール名(意味モデル: &意味モデル) -> 追跡付きの名前 {

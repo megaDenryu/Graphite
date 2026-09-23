@@ -1,19 +1,21 @@
 // このファイルは `Edges` (辺の実体を唯一持つ生成物) の本体を組み立てる。
-// フィールドは非公開であり (PR #45レビューA)、値ありの積み荷を公開APIから
-// 差し替えられる穴を閉じる。`__graphite_nodes` フィールドが構築に使った
-// `&'a Nodes` を保持するため (PR #45レビューC)、`Graph`・参照の集まりは
-// `&Edges` だけを起点にでき、由来の異なる `Nodes` と組み合わせられない。
-// 内部構築子 (`__graphite_internal_new`、C分類・`pub(crate)`・doc無し) は
-// 値の計算を一切持たない素の構築子で、`&'a Nodes` に加え積み荷ありの具体辺
-// すべてを宣言順の位置引数にそのまま取る。呼べるのは同じ生成moduleの中に
-// ある `construct::edges!` (`construct.rs`) だけであり、積み荷の値を
-// instance宣言の式から計算するのはそちらの役目。フィールド型は
+// フィールドは非公開であり、値ありの積み荷を公開APIから差し替えられる穴を
+// 閉じる。`__graphite_nodes` フィールドが構築に使った `&'a Nodes` を
+// 保持するため、`Graph`・参照の集まりは `&Edges` だけを起点にでき、由来の
+// 異なる `Nodes` と組み合わせられない。内部構築子
+// (`__graphite_internal_new`、C分類・`pub(crate)`・doc無し) は値の計算を
+// 一切持たない素の構築子で、`&'a Nodes` に加え積み荷ありの具体辺すべてを
+// 宣言順の位置引数にそのまま取る。積み荷の値をinstance宣言の式から計算
+// するのは `construct::edges!` (`construct.rs`) の役目。フィールド型は
 // `{schema名}::{種別}Edge<'a>` (schemaファイル、
 // `naming::reference_paths::辺値参照パス`) を module越しに修飾して書く
 // (`所属Edge` はschema moduleの中にあり、instance module の
 // `use super::*;` からは修飾なしで解決できない)。向きの判定は
 // `具体辺形状` だけで完結し、schemaの辺形状 (`型形状`) と突き合わせ直さない
 // (役割はbuilder.rsが構築時に解決済み)。
+//
+// `pub(crate)`はクレート内のどこからでも呼べてしまうため、`#[deprecated]`
+// を添えて直接呼び出しを警告にする (`node_entities.rs`冒頭コメント参照)。
 
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -24,6 +26,7 @@ use crate::static_graph::schema::input::積み荷宣言;
 use crate::static_graph::semantic::{具体辺, 具体辺形状, 意味モデル};
 
 use crate::static_graph::doc_render::doc属性を組み立てる;
+use super::内部構築子の非推奨NOTE;
 
 pub(super) fn edges本体を組み立てる(意味モデル: &意味モデル, _宣言元: &宣言元の対) -> TokenStream {
     let 型名 = 辺実体所有者型名(意味モデル);
@@ -47,6 +50,7 @@ pub(super) fn edges本体を組み立てる(意味モデル: &意味モデル, _
         }
         impl<'a> #型名<'a> {
             #[doc(hidden)]
+            #[deprecated(note = #内部構築子の非推奨NOTE)]
             pub(crate) fn #内部構築子(#nodes: &'a Nodes, #(#積み荷引数列),*) -> Self {
                 Self { __graphite_nodes: #nodes, #(#配線列,)* }
             }

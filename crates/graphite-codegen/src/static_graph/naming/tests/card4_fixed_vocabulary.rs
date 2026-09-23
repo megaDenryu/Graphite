@@ -1,6 +1,6 @@
-// 意味カード4: 固定語彙の構築の入口 (`construct::nodes!`、issue #41 §5.2、
-// PR #45レビューA・D)。`Nodes::new` はC分類の内部専用構築子へ降格したため、
-// 利用者が辿る構築の入口は `construct::nodes!` になった。
+// 意味カード4: 固定語彙の構築の入口 (`construct::nodes!`、issue #41 §5.2)。
+// `Nodes::new` はC分類の内部専用構築子であり、
+// 利用者が辿る構築の入口は `construct::nodes!` である。
 
 use super::super::construct_fixed_vocabulary::個体構築マクロ名;
 use super::{src_main, 開発チームの意味モデルを作る};

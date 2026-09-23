@@ -1,9 +1,9 @@
-// `Nodes` のフィールドが非公開であることを固定する (issue #41)。値ありの
-// 個体はinstance宣言の式からのみ供給され、利用者がフィールドへ直接
-// アクセスして迂回できない。手書きの模型ではなく、実際の生成ファイル
-// (`cargo xtask generate`が書いたもの) をそのまま`include!`して検査する
-// (schema・instanceの宣言は`static_multi_module.rs`と同じ内容にし、
-// fingerprintが一致する既存の生成ファイルを使う)。
+// `{個体名}Ref`/`{辺名}Ref` の配線フィールド (entity/nodes/edges) が非公開
+// であり、利用者が構造体リテラルで直接作れないことを固定する回帰試験。
+// 非公開にする前は、親moduleから構造体リテラルで別の`Nodes`を混ぜた
+// 不整合な参照を組み立てられた (issue #41)。schemaの宣言は
+// `static_multi_module.rs`と同じ内容にし、fingerprintが一致する既存の
+// 生成ファイルをそのまま`include!`する。
 
 pub struct 社員 {
     pub 名前: String,
@@ -46,6 +46,10 @@ mod 開発チーム {
 
 fn main() {
     let nodes = 開発チーム::construct::nodes!();
-    // フィールドへの直接アクセスはできない (private field)。
-    let _ = nodes.太郎;
+    let edges = 開発チーム::construct::edges!(&nodes);
+    let g = 開発チーム::Graph::new(&edges);
+
+    // 別の由来の`Nodes`/`Edges`を、構造体リテラルで直接組み合わせようと
+    // する迂回はコンパイルエラーになる (フィールドが非公開のため)。
+    let _迂回 = 開発チーム::太郎Ref { entity: g.node_refs.太郎.entity(), nodes: &nodes, edges: &edges };
 }

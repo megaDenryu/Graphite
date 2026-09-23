@@ -12,8 +12,8 @@
 //! - `card_names`: 意味カードの書式を §5.2 の例そのままで固定した3件
 //!   (辺アクセサメソッド・役割アクセサ・積み荷アクセサ)。
 //! - `construct_fixed_vocabulary`: `construct::nodes!`/`construct::edges!`
-//!   (PR #45レビューA・D。値ありの個体・積み荷を差し替えられない構築の
-//!   入口。`Nodes::new`/`Edges::new`は内部専用のC分類へ降格し、
+//!   (値ありの個体・積み荷を差し替えられない構築の入口。`Nodes::new`/
+//!   `Edges::new`は内部専用のC分類であり、
 //!   `naming::internal_names::内部構築子名` が名前を持つ)。
 //! - `reference_paths`: instance側 (instanceファイルの本文・DSLトークンの
 //!   型参照) からの、別module越しの修飾パス参照 (`{schema名}::{種別}Edge`・

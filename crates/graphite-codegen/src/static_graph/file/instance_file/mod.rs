@@ -19,6 +19,14 @@ use quote::quote;
 use crate::static_graph::declaration_sites::宣言元の対;
 use crate::static_graph::semantic::意味モデル;
 
+// 内部構築子 (`__graphite_internal_new`) に添える`#[deprecated]`のnote。
+// `pub(crate)`はクレート内のどこからでも呼べるため、可視性だけでは
+// 「呼べるのは`construct::nodes!`/`construct::edges!`だけ」という主張を
+// stable Rustで強制できない。この`note`は`node_entities`・`edge_entities`
+// が構築子へ、`construct`が呼び出し側の`#[allow(deprecated)]`の対にする。
+pub(super) const 内部構築子の非推奨NOTE: &str =
+    "Graphite の内部構築子である。construct::nodes!/construct::edges! を使うこと";
+
 pub(crate) fn instance本体を組み立てる(
     意味モデル: &意味モデル,
     宣言元: &宣言元の対,

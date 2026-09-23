@@ -1,9 +1,12 @@
-// `Nodes` のフィールドが非公開であることを固定する (issue #41)。値ありの
-// 個体はinstance宣言の式からのみ供給され、利用者がフィールドへ直接
-// アクセスして迂回できない。手書きの模型ではなく、実際の生成ファイル
-// (`cargo xtask generate`が書いたもの) をそのまま`include!`して検査する
-// (schema・instanceの宣言は`static_multi_module.rs`と同じ内容にし、
-// fingerprintが一致する既存の生成ファイルを使う)。
+// 内部構築子 (`__graphite_internal_new`) を利用者のコードから直接呼ぶと
+// `#[deprecated]`警告になり、`#![deny(warnings)]`の下ではエラーになる
+// ことを固定する回帰試験。`pub(crate)`はクレート内のどこからでも呼べて
+// しまうため、stable Rustの可視性だけでは「呼べるのは
+// `construct::nodes!`だけ」という主張を強制できない (`node_entities.rs`
+// 冒頭コメント参照)。schemaの宣言は`static_multi_module.rs`と同じ内容に
+// し、fingerprintが一致する既存の生成ファイルをそのまま`include!`する。
+
+#![deny(warnings)]
 
 pub struct 社員 {
     pub 名前: String,
@@ -46,6 +49,9 @@ mod 開発チーム {
 
 fn main() {
     let nodes = 開発チーム::construct::nodes!();
-    // フィールドへの直接アクセスはできない (private field)。
-    let _ = nodes.太郎;
+    let _edges = 開発チーム::construct::edges!(&nodes);
+    let _差し替え = 開発チーム::Nodes::__graphite_internal_new(
+        社員 { 名前: "差し替え".into() },
+        部署 { 名前: "差し替え".into() },
+    );
 }

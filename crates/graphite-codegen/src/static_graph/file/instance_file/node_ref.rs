@@ -1,7 +1,10 @@
 // このファイルは個体ごとの具象参照struct (`{個体名}Ref`) を組み立てる。
-// 実体・Nodes・Edgesへの配線フィールド (entity/nodes/edges) は
-// `pub(super)` にし、docは付けない。`entity()` と所属辺メソッドは `pub` +
-// 意味カードにする。
+// 実体・Nodes・Edgesへの配線フィールド (entity/nodes/edges) は非公開に
+// し、docは付けない。非公開にすることで、利用者が構造体リテラルで
+// `{個体名}Ref`を直接作り、由来の異なる`Nodes`/`Edges`を混ぜた不整合な
+// 値を組み立てる迂回を防ぐ (`Graph`・`NodeRefs`・`EdgeRefs`の公開フィールド
+// はA分類の公開契約なので対象外、`docs/static_graph.md`「制約」節参照)。
+// `entity()` と所属辺メソッドは `pub` + 意味カードにする。
 
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -47,9 +50,9 @@ fn 一個体分を組み立てる(意味モデル: &意味モデル, 個体: &�
         #型doc
         #[derive(Clone, Copy)]
         pub struct #参照名<'a> {
-            pub(super) #entity: &'a #実体型,
-            pub(super) #nodes: &'a Nodes,
-            pub(super) #edges: &'a Edges<'a>,
+            #entity: &'a #実体型,
+            #nodes: &'a Nodes,
+            #edges: &'a Edges<'a>,
         }
         impl<'a> #参照名<'a> {
             #entity_doc

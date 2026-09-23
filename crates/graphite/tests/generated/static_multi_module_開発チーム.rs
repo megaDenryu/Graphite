@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_STATIC_INSTANCE_FINGERPRINT: [u64; 4] = [
-    12126994522614446382u64, 9873783811241060931u64, 1439996579857458116u64,
-    11496694868196125968u64,
+    15100597419960183463u64, 13479447944514533572u64, 13494017775059857481u64,
+    14197044073419072677u64,
 ];
 /// Graphite 静的グラフの個体実体の所有者 `Nodes` (Graphite の固定語彙)。
 ///
@@ -20,6 +20,9 @@ pub struct Nodes {
 }
 impl Nodes {
     #[doc(hidden)]
+    #[deprecated(
+        note = "Graphite の内部構築子である。construct::nodes!/construct::edges! を使うこと"
+    )]
     pub(crate) fn __graphite_internal_new(太郎: 社員, 開発部: 部署) -> Self {
         Self { 太郎, 開発部 }
     }
@@ -35,6 +38,9 @@ pub struct Edges<'a> {
 }
 impl<'a> Edges<'a> {
     #[doc(hidden)]
+    #[deprecated(
+        note = "Graphite の内部構築子である。construct::nodes!/construct::edges! を使うこと"
+    )]
     pub(crate) fn __graphite_internal_new(nodes: &'a Nodes) -> Self {
         Self {
             __graphite_nodes: nodes,
@@ -54,9 +60,9 @@ impl<'a> Edges<'a> {
 /// 宣言: `tests/static_multi_module.rs` の `node 太郎: 社員 = ..`
 #[derive(Clone, Copy)]
 pub struct 太郎Ref<'a> {
-    pub(super) entity: &'a 社員,
-    pub(super) nodes: &'a Nodes,
-    pub(super) edges: &'a Edges<'a>,
+    entity: &'a 社員,
+    nodes: &'a Nodes,
+    edges: &'a Edges<'a>,
 }
 impl<'a> 太郎Ref<'a> {
     /// Graphite 静的グラフの具体個体参照から実体を取り出す `entity` (Graphite の固定語彙)。
@@ -96,9 +102,9 @@ impl<'a> 太郎Ref<'a> {
 /// 宣言: `tests/static_multi_module.rs` の `node 開発部: 部署 = ..`
 #[derive(Clone, Copy)]
 pub struct 開発部Ref<'a> {
-    pub(super) entity: &'a 部署,
-    pub(super) nodes: &'a Nodes,
-    pub(super) edges: &'a Edges<'a>,
+    entity: &'a 部署,
+    nodes: &'a Nodes,
+    edges: &'a Edges<'a>,
 }
 impl<'a> 開発部Ref<'a> {
     /// Graphite 静的グラフの具体個体参照から実体を取り出す `entity` (Graphite の固定語彙)。
@@ -140,9 +146,9 @@ impl<'a> 開発部Ref<'a> {
 /// 関係する schema 宣言: `tests/static_multi_module.rs` の `edge 所属 = (member: 社員) -> (team: 部署) where each member: 1`
 #[derive(Clone, Copy)]
 pub struct 太郎の所属Ref<'a> {
-    pub(super) entity: &'a 組織::所属Edge<'a>,
-    pub(super) nodes: &'a Nodes,
-    pub(super) edges: &'a Edges<'a>,
+    entity: &'a 組織::所属Edge<'a>,
+    nodes: &'a Nodes,
+    edges: &'a Edges<'a>,
 }
 impl<'a> 太郎の所属Ref<'a> {
     /// Graphite 静的グラフの端点の役割アクセサ。
@@ -296,7 +302,9 @@ pub mod construct {
     macro_rules! nodes {
         () => {
             { let (太郎, 開発部,) = __graphite_values_開発チーム!();
-            開発チーム::Nodes::__graphite_internal_new(太郎, 開発部) }
+            #[allow(deprecated)] let __graphite_nodes =
+            開発チーム::Nodes::__graphite_internal_new(太郎, 開発部);
+            __graphite_nodes }
         };
     }
     pub(crate) use nodes;
@@ -311,8 +319,9 @@ pub mod construct {
     /// 関係する instance 宣言: `tests/static_multi_module.rs` の `graph 開発チーム`
     macro_rules! edges {
         ($nodes:expr) => {
-            { let () = __graphite_payloads_開発チーム!();
-            開発チーム::Edges::__graphite_internal_new($nodes,) }
+            { let () = __graphite_payloads_開発チーム!(); #[allow(deprecated)] let
+            __graphite_edges = 開発チーム::Edges::__graphite_internal_new($nodes,);
+            __graphite_edges }
         };
     }
     pub(crate) use edges;

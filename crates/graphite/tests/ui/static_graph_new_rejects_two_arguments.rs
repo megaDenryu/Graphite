@@ -1,9 +1,10 @@
-// `Nodes` のフィールドが非公開であることを固定する (issue #41)。値ありの
-// 個体はinstance宣言の式からのみ供給され、利用者がフィールドへ直接
-// アクセスして迂回できない。手書きの模型ではなく、実際の生成ファイル
-// (`cargo xtask generate`が書いたもの) をそのまま`include!`して検査する
-// (schema・instanceの宣言は`static_multi_module.rs`と同じ内容にし、
-// fingerprintが一致する既存の生成ファイルを使う)。
+// `Graph::new` が `&Edges` だけを引数に取り、`&Nodes` を別途渡す経路が
+// 無いことを固定する回帰試験。`Edges` が構築時に使った `&'a Nodes` を
+// 自分の中に保持しているため (`__graphite_nodes`)、`Graph::new`は常に
+// 1組の`(Nodes, Edges)`に由来する値しか受け取れず、別の`Nodes`から作った
+// `Edges`と組み合わせる (`Graph::new(&他のnodes, &edges)`のような旧API)
+// ことができない。schemaの宣言は`static_multi_module.rs`と同じ内容にし、
+// fingerprintが一致する既存の生成ファイルをそのまま`include!`する。
 
 pub struct 社員 {
     pub 名前: String,
@@ -46,6 +47,8 @@ mod 開発チーム {
 
 fn main() {
     let nodes = 開発チーム::construct::nodes!();
-    // フィールドへの直接アクセスはできない (private field)。
-    let _ = nodes.太郎;
+    let edges = 開発チーム::construct::edges!(&nodes);
+    // 旧API (`Graph::new(&nodes, &edges)`) はもう無い。`Graph::new`は
+    // `&Edges`だけを取る1引数であり、これはコンパイルエラーになる。
+    let _g = 開発チーム::Graph::new(&nodes, &edges);
 }

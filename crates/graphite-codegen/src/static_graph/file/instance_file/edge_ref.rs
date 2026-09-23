@@ -1,8 +1,8 @@
 // このファイルは辺インスタンスごとの具象参照struct (`{辺名}Ref`) を組み立
-// てる。配線フィールドは `pub(super)` にし、役割アクセサ・積み荷アクセサは
-// `pub` + 意味カードにする。役割・端点の対応は `具体辺形状` から直接読み、
-// schemaの辺形状と突き合わせ直さない。辺値型の参照は
-// `{schema名}::{種別}Edge` に修飾する。
+// てる。配線フィールドは非公開にし (`node_ref.rs`冒頭コメント参照)、
+// 役割アクセサ・積み荷アクセサは `pub` + 意味カードにする。役割・端点の
+// 対応は `具体辺形状` から直接読み、schemaの辺形状と突き合わせ直さない。
+// 辺値型の参照は `{schema名}::{種別}Edge` に修飾する。
 
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
@@ -37,9 +37,9 @@ fn 一辺分を組み立てる(意味モデル: &意味モデル, 辺: &具体�
         #型doc
         #[derive(Clone, Copy)]
         pub struct #参照名<'a> {
-            pub(super) #entity: &'a #型参照<'a>,
-            pub(super) #nodes: &'a Nodes,
-            pub(super) #edges: &'a Edges<'a>,
+            #entity: &'a #型参照<'a>,
+            #nodes: &'a Nodes,
+            #edges: &'a Edges<'a>,
         }
         impl<'a> #参照名<'a> {
             #役割アクセサ列

@@ -95,6 +95,14 @@ pub(crate) fn ノードを組み立てる() -> 開発チーム::Nodes {
     開発チーム::construct::nodes!(部署 { 名前: "開発部".into() })
 }
 
+// `construct::edges!`はmacro_rules!の既定のテキスト順スコープだけに閉じた
+// 値マクロを呼ぶため、instance宣言と同じスコープ (このファイル) でしか
+// 呼べない (`docs/static_graph.md`「制約」節)。`tests.rs`は別ファイルの
+// 別moduleなので直接は呼べず、この通常の関数を経由する。
+pub(crate) fn 辺を組み立てる(nodes: &開発チーム::Nodes) -> 開発チーム::Edges<'_> {
+    開発チーム::construct::edges!(nodes)
+}
+
 fn main() {
     let nodes = ノードを組み立てる();
     let edges = 開発チーム::construct::edges!(&nodes);

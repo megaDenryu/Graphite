@@ -11,7 +11,7 @@
 // そのまま使う設計 (`docs/static_graph.md` 「追跡の契約」) のため、
 // `graph 開発チーム;` の行を指す。`Nodes`・`Edges`型はconstruct macro
 // (`construct::nodes!`/`construct::edges!`) を実際に呼んで初めて参照される
-// ため (PR #45レビューA・D)、このテストのように呼ばない場合は
+// ため、このテストのように呼ばない場合は
 // `開発チーム::Nodes`・`開発チーム::Edges` へのE0433も、petgraphの同名
 // structへの無関係なimport提案も出ない。
 

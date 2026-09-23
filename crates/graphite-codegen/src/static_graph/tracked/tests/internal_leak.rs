@@ -37,7 +37,7 @@ fn 項目を検査する(item: &syn::Item) -> usize {
             if 公開か(&構造体.vis) {
                 // structが公開でも、非公開の個々のフィールドは外部から
                 // アクセスできないため検査対象に含めない (`Edges`の
-                // `__graphite_nodes`が実例、PR #45レビューC対策)。
+                // `__graphite_nodes`が実例)。
                 let 型文字列 = 構造体
                     .fields
                     .iter()

@@ -3,7 +3,7 @@
 // `Graph` の `node_refs`/`edge_refs` フィールドを対象にする。いずれも
 // 利用者のDSLに同名のトークンが無いため、由来は
 // `名前の由来::GraphiteLanguage` になる。構築の入口
-// (`construct::nodes!`/`construct::edges!`、PR #45レビューA・D) は
+// (`construct::nodes!`/`construct::edges!`) は
 // `naming::construct_fixed_vocabulary` が別に持つ (instance固有の実行時
 // 個体列を意味カードへ組み込む関心事がここと異なるため)。
 
@@ -78,9 +78,9 @@ pub(crate) fn グラフ型名(意味モデル: &意味モデル) -> 追跡付き
     )
 }
 
-// `Graph::new`。issue #41 当初は`Nodes`/`Edges`/`NodeRefs`/`EdgeRefs`の
-// `new`も対象だったが、PR #45レビューAでそれらはC分類の内部専用構築子へ
-// 降格したため、現在は`Graph`専用である。
+// `Graph::new`。`Nodes`/`Edges`/`NodeRefs`/`EdgeRefs`の`new`はC分類の
+// 内部専用構築子 (`naming::internal_names::内部構築子名`) であり、
+// `Graph::new`だけが公開契約として残る。
 pub(crate) fn 構築メソッド名(意味モデル: &意味モデル) -> 追跡付きの名前 {
     固定語彙の名前を作る(
         固定語彙::GraphNew,

@@ -1,5 +1,5 @@
 //! このmoduleは、静的グラフの「その場展開」に残す部分 (issue #41 §3・
-//! §5.4、PR #45レビューF) を持つ。schema/instanceの指紋照合・macro_rules!
+//! §5.4) を持つ。schema/instanceの指紋照合・macro_rules!
 //! 転送は `static_graph::mod`/`internal` (既存) が担い、ここは生成
 //! ファイルへ写さない2つだけを持つ:
 //! (1) instanceの値の式をまとめて返すマクロ (`value_supply`。値ありの

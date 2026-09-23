@@ -1,13 +1,13 @@
 // このファイルは Graphite が生成したため手編集しないこと。
-// 生成元: src/main.rs:168
+// 生成元: src/main.rs:176
 // 再生成: パッケージのディレクトリで cargo graphite generate を実行してください (Graphite リポジトリ自身の開発では cargo xtask generate)
 
 #[allow(unused_imports)]
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_STATIC_INSTANCE_FINGERPRINT: [u64; 4] = [
-    152911567854151706u64, 12413984387990356299u64, 12325192603284851712u64,
-    8724032973953650716u64,
+    5591389354904065411u64, 15121035826099727884u64, 15124233642140430541u64,
+    14258419586645995993u64,
 ];
 /// Graphite 静的グラフの個体実体の所有者 `Nodes` (Graphite の固定語彙)。
 ///
@@ -20,6 +20,9 @@ pub struct Nodes {
 }
 impl Nodes {
     #[doc(hidden)]
+    #[deprecated(
+        note = "Graphite の内部構築子である。construct::nodes!/construct::edges! を使うこと"
+    )]
     pub(crate) fn __graphite_internal_new(花子: 社員, 総務部: 部署) -> Self {
         Self { 花子, 総務部 }
     }
@@ -35,6 +38,9 @@ pub struct Edges<'a> {
 }
 impl<'a> Edges<'a> {
     #[doc(hidden)]
+    #[deprecated(
+        note = "Graphite の内部構築子である。construct::nodes!/construct::edges! を使うこと"
+    )]
     pub(crate) fn __graphite_internal_new(nodes: &'a Nodes) -> Self {
         Self {
             __graphite_nodes: nodes,
@@ -54,9 +60,9 @@ impl<'a> Edges<'a> {
 /// 宣言: `src/main.rs` の `node 花子: 社員 = ..`
 #[derive(Clone, Copy)]
 pub struct 花子Ref<'a> {
-    pub(super) entity: &'a 社員,
-    pub(super) nodes: &'a Nodes,
-    pub(super) edges: &'a Edges<'a>,
+    entity: &'a 社員,
+    nodes: &'a Nodes,
+    edges: &'a Edges<'a>,
 }
 impl<'a> 花子Ref<'a> {
     /// Graphite 静的グラフの具体個体参照から実体を取り出す `entity` (Graphite の固定語彙)。
@@ -96,9 +102,9 @@ impl<'a> 花子Ref<'a> {
 /// 宣言: `src/main.rs` の `node 総務部: 部署 = ..`
 #[derive(Clone, Copy)]
 pub struct 総務部Ref<'a> {
-    pub(super) entity: &'a 部署,
-    pub(super) nodes: &'a Nodes,
-    pub(super) edges: &'a Edges<'a>,
+    entity: &'a 部署,
+    nodes: &'a Nodes,
+    edges: &'a Edges<'a>,
 }
 impl<'a> 総務部Ref<'a> {
     /// Graphite 静的グラフの具体個体参照から実体を取り出す `entity` (Graphite の固定語彙)。
@@ -140,9 +146,9 @@ impl<'a> 総務部Ref<'a> {
 /// 関係する schema 宣言: `src/main.rs` の `edge 所属 = (member: 社員) -> (team: 部署) where each member: 1`
 #[derive(Clone, Copy)]
 pub struct 花子の所属Ref<'a> {
-    pub(super) entity: &'a 組織::所属Edge<'a>,
-    pub(super) nodes: &'a Nodes,
-    pub(super) edges: &'a Edges<'a>,
+    entity: &'a 組織::所属Edge<'a>,
+    nodes: &'a Nodes,
+    edges: &'a Edges<'a>,
 }
 impl<'a> 花子の所属Ref<'a> {
     /// Graphite 静的グラフの端点の役割アクセサ。
@@ -296,7 +302,9 @@ pub mod construct {
     macro_rules! nodes {
         () => {
             { let (花子, 総務部,) = __graphite_values_経理チーム!();
-            経理チーム::Nodes::__graphite_internal_new(花子, 総務部) }
+            #[allow(deprecated)] let __graphite_nodes =
+            経理チーム::Nodes::__graphite_internal_new(花子, 総務部);
+            __graphite_nodes }
         };
     }
     pub(crate) use nodes;
@@ -311,8 +319,9 @@ pub mod construct {
     /// 関係する instance 宣言: `src/main.rs` の `graph 経理チーム`
     macro_rules! edges {
         ($nodes:expr) => {
-            { let () = __graphite_payloads_経理チーム!();
-            経理チーム::Edges::__graphite_internal_new($nodes,) }
+            { let () = __graphite_payloads_経理チーム!(); #[allow(deprecated)] let
+            __graphite_edges = 経理チーム::Edges::__graphite_internal_new($nodes,);
+            __graphite_edges }
         };
     }
     pub(crate) use edges;

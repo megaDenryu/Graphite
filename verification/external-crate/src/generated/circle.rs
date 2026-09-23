@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_STATIC_INSTANCE_FINGERPRINT: [u64; 4] = [
-    5998135064605533141u64, 1126243004312796196u64, 7621457012386393987u64,
-    17236514055510456855u64,
+    8724010185372794112u64, 3870681999277302027u64, 6944244433017773086u64,
+    17745014741785197554u64,
 ];
 /// Graphite 静的グラフの個体実体の所有者 `Nodes` (Graphite の固定語彙)。
 ///
@@ -20,6 +20,9 @@ pub struct Nodes {
 }
 impl Nodes {
     #[doc(hidden)]
+    #[deprecated(
+        note = "Graphite の内部構築子である。construct::nodes!/construct::edges! を使うこと"
+    )]
     pub(crate) fn __graphite_internal_new(本: Book, 読者: Reader) -> Self {
         Self { 本, 読者 }
     }
@@ -35,6 +38,9 @@ pub struct Edges<'a> {
 }
 impl<'a> Edges<'a> {
     #[doc(hidden)]
+    #[deprecated(
+        note = "Graphite の内部構築子である。construct::nodes!/construct::edges! を使うこと"
+    )]
     pub(crate) fn __graphite_internal_new(nodes: &'a Nodes) -> Self {
         Self {
             __graphite_nodes: nodes,
@@ -54,9 +60,9 @@ impl<'a> Edges<'a> {
 /// 宣言: `src/lib.rs` の `node 本: Book = ..`
 #[derive(Clone, Copy)]
 pub struct 本Ref<'a> {
-    pub(super) entity: &'a Book,
-    pub(super) nodes: &'a Nodes,
-    pub(super) edges: &'a Edges<'a>,
+    entity: &'a Book,
+    nodes: &'a Nodes,
+    edges: &'a Edges<'a>,
 }
 impl<'a> 本Ref<'a> {
     /// Graphite 静的グラフの具体個体参照から実体を取り出す `entity` (Graphite の固定語彙)。
@@ -96,9 +102,9 @@ impl<'a> 本Ref<'a> {
 /// 宣言: `src/lib.rs` の `node 読者: Reader = ..`
 #[derive(Clone, Copy)]
 pub struct 読者Ref<'a> {
-    pub(super) entity: &'a Reader,
-    pub(super) nodes: &'a Nodes,
-    pub(super) edges: &'a Edges<'a>,
+    entity: &'a Reader,
+    nodes: &'a Nodes,
+    edges: &'a Edges<'a>,
 }
 impl<'a> 読者Ref<'a> {
     /// Graphite 静的グラフの具体個体参照から実体を取り出す `entity` (Graphite の固定語彙)。
@@ -140,9 +146,9 @@ impl<'a> 読者Ref<'a> {
 /// 関係する schema 宣言: `src/lib.rs` の `edge Assigned = (book: Book) -> (reader: Reader) where each book: 1`
 #[derive(Clone, Copy)]
 pub struct 割り当てRef<'a> {
-    pub(super) entity: &'a ReadingCircle::AssignedEdge<'a>,
-    pub(super) nodes: &'a Nodes,
-    pub(super) edges: &'a Edges<'a>,
+    entity: &'a ReadingCircle::AssignedEdge<'a>,
+    nodes: &'a Nodes,
+    edges: &'a Edges<'a>,
 }
 impl<'a> 割り当てRef<'a> {
     /// Graphite 静的グラフの端点の役割アクセサ。
@@ -295,8 +301,9 @@ pub mod construct {
     /// 関係する instance 宣言: `src/lib.rs` の `graph Circle`
     macro_rules! nodes {
         () => {
-            { let (本, 読者,) = __graphite_values_Circle!();
-            Circle::Nodes::__graphite_internal_new(本, 読者) }
+            { let (本, 読者,) = __graphite_values_Circle!(); #[allow(deprecated)] let
+            __graphite_nodes = Circle::Nodes::__graphite_internal_new(本, 読者);
+            __graphite_nodes }
         };
     }
     pub(crate) use nodes;
@@ -311,8 +318,9 @@ pub mod construct {
     /// 関係する instance 宣言: `src/lib.rs` の `graph Circle`
     macro_rules! edges {
         ($nodes:expr) => {
-            { let () = __graphite_payloads_Circle!();
-            Circle::Edges::__graphite_internal_new($nodes,) }
+            { let () = __graphite_payloads_Circle!(); #[allow(deprecated)] let
+            __graphite_edges = Circle::Edges::__graphite_internal_new($nodes,);
+            __graphite_edges }
         };
     }
     pub(crate) use edges;
