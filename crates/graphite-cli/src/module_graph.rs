@@ -52,11 +52,16 @@ pub(crate) fn srcのCargoターゲット表を求める(
 }
 
 // 1つの根から`mod`宣言 (`#[path]`込み) をBFSで辿り、到達した全ファイルの
-// 絶対パス集合を返す。インラインの`mod 名前 { .. }`は新しいファイルを持た
-// ないが、その中の`mod 内側;`を解決する基準ディレクトリ (`mod_dir`) を
-// 1段深くする。`#[path]`は仕様上「宣言が書かれている物理ファイル自身の
-// ディレクトリ」から解決する (`mod_dir`とは別、inline mod化しても遡って
-// 物理ファイルの位置を使う)。そのため物理ファイルのパスも一緒に運ぶ。
+// 絶対パス集合を返す。`#[path]`の基準ディレクトリは、その宣言が少なくとも
+// 1段のインライン`mod 名前 { .. }`の中に書かれているかどうかで変わる
+// (Rust reference「The path attribute」)。インラインmodの中でなければ、
+// 宣言が書かれている物理ファイル自身のディレクトリを基準にする。インライン
+// modの中であれば、`mod_dir` (各段のインラインmod名を積み重ねた仮想の
+// ディレクトリ) を基準にする。`path属性の基準`はこの2つのどちらかを指し、
+// 物理ファイルの先頭では物理ディレクトリに、インラインmodへ入るたびに
+// その時点の`mod_dir`に切り替わる。この規則は
+// `crates/graphite-cli/src/module_graph/tests/mod_resolution.rs`の
+// `インラインmodの中の path属性はmod名を積み重ねた位置を基準にする`で固定する。
 fn 到達ファイルを辿る(root: &Path, 基準: &Path) -> Result<HashSet<PathBuf>, Box<dyn Error>> {
     let mut 到達済み = HashSet::new();
     let mut 未処理 = VecDeque::new();
@@ -77,7 +82,7 @@ fn 到達ファイルを辿る(root: &Path, 基準: &Path) -> Result<HashSet<Pat
 fn mod宣言を辿る(
     items: &[Item],
     mod_dir: &Path,
-    物理ディレクトリ: &Path,
+    path属性の基準: &Path,
     未処理: &mut VecDeque<(PathBuf, PathBuf)>,
 ) -> Result<(), Box<dyn Error>> {
     for item in items {
@@ -87,14 +92,16 @@ fn mod宣言を辿る(
         match &宣言.content {
             Some((_, 内側の項目)) => {
                 let 内側の基準 = match &path_attr {
-                    Some(相対) => 物理ディレクトリ.join(相対),
+                    Some(相対) => path属性の基準.join(相対),
                     None => mod_dir.join(&名前),
                 };
-                mod宣言を辿る(内側の項目, &内側の基準, 物理ディレクトリ, 未処理)?;
+                // インラインmodへ入るので、これより内側の`#[path]`は
+                // `path属性の基準`ではなく`内側の基準` (mod_dir由来) を使う。
+                mod宣言を辿る(内側の項目, &内側の基準, &内側の基準, 未処理)?;
             }
             None => {
                 let (子ファイル, 子の基準) =
-                    子ファイルを解決する(mod_dir, 物理ディレクトリ, &名前, path_attr.as_deref())?;
+                    子ファイルを解決する(mod_dir, path属性の基準, &名前, path_attr.as_deref())?;
                 未処理.push_back((子ファイル, 子の基準));
             }
         }

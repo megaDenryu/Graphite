@@ -10,17 +10,18 @@ use syn::{Attribute, Expr, Lit, Meta};
 
 // `mod名;`が指す子ファイルの絶対パスと、その子ファイルが自分の`mod`を解決する
 // ときの基準ディレクトリ (`mod_dir`) を返す。`path_attr`は`#[path = "..."]`が
-// あればその文字列。Rustの仕様では`#[path]`は`mod_dir`ではなく「宣言が書かれ
-// ている物理ファイル自身のディレクトリ」(`物理ディレクトリ`) から解決する
-// (`module_graph`の`mod宣言を辿る`参照)。
+// あればその文字列。`path属性の基準`は呼び出し元 (`module_graph`の
+// `mod宣言を辿る`) が渡す、この宣言が置かれた位置に応じた基準ディレクトリ
+// (インラインmodの外なら物理ファイル自身のディレクトリ、中ならmod_dir) で
+// ある。
 pub(super) fn 子ファイルを解決する(
     mod_dir: &Path,
-    物理ディレクトリ: &Path,
+    path属性の基準: &Path,
     名前: &str,
     path_attr: Option<&str>,
 ) -> Result<(PathBuf, PathBuf), Box<dyn Error>> {
     if let Some(相対) = path_attr {
-        let ファイル = 物理ディレクトリ.join(相対);
+        let ファイル = path属性の基準.join(相対);
         if !ファイル.is_file() {
             return Err(format!(
                 "{}: `#[path = \"{相対}\"]` の参照先ファイルがありません",
