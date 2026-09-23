@@ -32,6 +32,22 @@ graphite::dynamic_graph_schema! {
 
 生成moduleの読み込みは、schema宣言と同じファイルへ置く。宣言の直前と直後のどちらでもよい。`include!`の相対パスは宣言元ファイルの位置を基準に解決する。これは`mod foo;`のファイル探索 (module の入れ子に応じて探索先が変わる) とは基準が異なり、`include!`はファイル位置基準でmoduleの入れ子に影響されない (入れ子moduleの中へ`include!`を移しても基準は変わらない。実例は`crates/graphite/tests/graph_cross_module.rs`参照)。`#[path]`属性で基準を移動させることはしない。
 
+## 宣言の種類
+
+追跡可能な宣言は3種類あり、生成の入口はこの3つをまとめて1回の走査で扱う。
+
+1. **動的グラフのschema** (`dynamic_graph_schema!`)。1宣言につき生成ファイル1件。
+2. **静的グラフのschema** (`static_graph_schema!`)。1宣言につき生成ファイル1件 (種別ごとの辺値 `pub struct {種別}Edge<'a>` を持つ)。
+3. **静的グラフのinstance** (schema名そのものを名前にしたマクロ、例: `Org! { .. }`)。1宣言につき生成ファイル1件。`Nodes`・`Edges`・`{個体名}Ref`・`{辺名}Ref`・`{graph名}` を持つ。
+
+静的グラフのschema・instanceも`generated = "..."`と生成moduleの配線を動的グラフと同じ形で書く (`docs/static_graph.md`「2層マクロの使い方」参照)。生成の探索は2段階を踏む: パッケージ内の全ファイルを1回ずつ構文解析して集めた `static_graph_schema!` の呼び出しから静的schema名簿を作り (schema名の重複はここでエラーにする)、名簿の名前と一致する残りのマクロ呼び出しをinstanceとみなして解決する。名簿に無い名前で始まるのに`generated = "...";`から始まる呼び出しは「schemaが見つからない」エラーにする。
+
+instanceの生成ファイルは、instanceの値の式 (ノードの初期値・積み荷の値) を含まない。値の式は宣言元ファイルのその場展開に残るため、値だけを書き換えた編集では再生成が要らない (指紋は構造 (名前・型・値の有無・端点・積み荷の有無) だけで決まる)。
+
+Rustとして解析できないファイルは、走査から黙って除外せず違反にする (`generate`/`generate --check` を止める)。対象外にするのは`target`・`generated`・`ui`の各ディレクトリだけである。
+
+`generate`/`generate --check`はどちらも、読んだ宣言の内訳と件数を1行で表示する: `dynamic schema N件、static schema N件、static instance N件、生成 M件 (解析したファイル K件)`。
+
 ## 生成コマンド
 
 生成の入口は2つある。外部crate向けの`cargo graphite generate`と、Graphite自身の開発用の`cargo xtask generate`である。

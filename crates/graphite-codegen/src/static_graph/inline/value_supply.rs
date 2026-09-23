@@ -4,7 +4,7 @@
 // その場展開側 (段階3で配線する `inline` の出力) がこの関数自体を定義する。
 // これにより式のトークンは利用者のspanのまま利用者のスコープで型検査され、
 // 生成ファイルの指紋は値の編集に左右されない。名前自体は `naming::internal_names`
-// が作る (issue #41 是正13、`naming/` の外で名前を作らない)。
+// が作る (`naming/` の外で名前を作らない)。
 
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -71,7 +71,7 @@ mod tests {
             edge 太郎の所属 = 所属(太郎 -[任命記録 { 任命日: 2020 }]-> 開発部);
         })
         .unwrap();
-        意味モデル::組み立てる(&schema, &instance)
+        crate::static_graph::internal::検証してから意味モデルを組み立てる(schema, instance)
     }
 
     #[test]

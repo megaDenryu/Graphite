@@ -5,8 +5,8 @@
 //
 // 内部生成名 (issue #41 のC分類) は利用者トークンのspanを持たず、追跡情報
 // も持たない。公開の追跡経路 (`追跡付きの名前`) へは混ざらない
-// (`inline::value_supply`・`inline::token_anchor` の内部専用の名前として
-// 使う)。
+// (`inline::value_supply`・`inline::token_type_reference` の内部専用の
+// 名前として使う)。
 
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::ToTokens;
@@ -43,8 +43,8 @@ impl ToTokens for 追跡付きの名前 {
     }
 }
 
-// `inline::value_supply` の供給関数名・`inline::token_anchor` の錨関数名が
-// 使う (`naming::internal_names` 参照)。
+// `inline::value_supply` の供給関数名・`inline::token_type_reference` の
+// 型参照関数名が使う (`naming::internal_names` 参照)。
 pub(crate) struct 内部生成名 {
     ident: Ident,
 }

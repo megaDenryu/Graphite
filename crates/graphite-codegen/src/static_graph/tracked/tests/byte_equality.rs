@@ -18,24 +18,24 @@ fn schema本文は同じ入力からバイト単位で一致する() {
     assert_eq!(本文, 二回目.render_module_source(&site).unwrap());
     // 固定値は生成物の意図しない変化を検出するための錨である
     // (`crate::tests::同じ入力の生成結果はバイト単位で一致する` と同じ方針)。
-    assert_eq!(fnv1a(本文.as_bytes(), 0xcbf29ce484222325), 16191512458073150360);
+    assert_eq!(fnv1a(本文.as_bytes(), 0xcbf29ce484222325), 3817827616307333065);
 }
 
 #[test]
 fn instance本文は同じschema参照からバイト単位で一致する() {
     let schema = parse_tracked_static_schema(schema入力()).unwrap();
-    let 一回目 = parse_tracked_static_instance(schema.型入力(), instance入力()).unwrap();
-    let 二回目 = parse_tracked_static_instance(schema.型入力(), instance入力()).unwrap();
+    let 一回目 = parse_tracked_static_instance(&schema, instance入力()).unwrap();
+    let 二回目 = parse_tracked_static_instance(&schema, instance入力()).unwrap();
     let site = DeclarationSite::new("src/main.rs".to_string(), 12);
-    let 本文 = 一回目.render_module_source(&site).unwrap();
-    assert_eq!(本文, 二回目.render_module_source(&site).unwrap());
-    assert_eq!(fnv1a(本文.as_bytes(), 0xcbf29ce484222325), 296792964046328351);
+    let 本文 = 一回目.render_module_source(&site, &site).unwrap();
+    assert_eq!(本文, 二回目.render_module_source(&site, &site).unwrap());
+    assert_eq!(fnv1a(本文.as_bytes(), 0xcbf29ce484222325), 499457837096650130);
 }
 
 #[test]
 fn schemaを変えるとinstanceの指紋も変わる() {
     let schema甲 = parse_tracked_static_schema(schema入力()).unwrap();
-    let 甲 = parse_tracked_static_instance(schema甲.型入力(), instance入力()).unwrap();
+    let 甲 = parse_tracked_static_instance(&schema甲, instance入力()).unwrap();
 
     let schema乙 = parse_tracked_static_schema(quote! {
         generated = "generated/組織.rs";
@@ -47,22 +47,22 @@ fn schemaを変えるとinstanceの指紋も変わる() {
         }
     })
     .unwrap();
-    let 乙 = parse_tracked_static_instance(schema乙.型入力(), instance入力()).unwrap();
+    let 乙 = parse_tracked_static_instance(&schema乙, instance入力()).unwrap();
 
     assert_ne!(甲.fingerprint(), 乙.fingerprint());
 }
 
-// issue #41 是正3: `node` 宣言の値の式の種類 (struct式か関数呼び出しか) を
-// 変えても、構造 (名前・型・値の有無) が同じなら本文はバイト単位で一致する。
+// `node` 宣言の値の式の種類 (struct式か関数呼び出しか) を変えても、構造
+// (名前・型・値の有無) が同じなら本文はバイト単位で一致する。
 // 一致しないと、値だけを書き換えた編集で `cargo graphite generate --check`
 // が再生成を要求してしまう。
 #[test]
 fn 値の式の種類を変えても本文はバイト単位で一致する() {
     let schema = parse_tracked_static_schema(schema入力()).unwrap();
-    let struct式版 = parse_tracked_static_instance(schema.型入力(), instance入力()).unwrap();
+    let struct式版 = parse_tracked_static_instance(&schema, instance入力()).unwrap();
 
     let 関数呼び出し版 = parse_tracked_static_instance(
-        schema.型入力(),
+        &schema,
         quote! {
             generated = "generated/開発チーム.rs";
             graph 開発チーム;
@@ -78,8 +78,8 @@ fn 値の式の種類を変えても本文はバイト単位で一致する() {
 
     let site = DeclarationSite::new("src/main.rs".to_string(), 12);
     assert_eq!(
-        struct式版.render_module_source(&site).unwrap(),
-        関数呼び出し版.render_module_source(&site).unwrap()
+        struct式版.render_module_source(&site, &site).unwrap(),
+        関数呼び出し版.render_module_source(&site, &site).unwrap()
     );
     assert_eq!(struct式版.fingerprint(), 関数呼び出し版.fingerprint());
 }

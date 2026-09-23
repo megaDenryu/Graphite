@@ -7,11 +7,16 @@
 //
 // static_graph_schema! が生成する macro_rules! は通常のmacro_rules!と同じテキスト
 // 順の制約を持つ: `static_graph_schema! { schema 組織 { .. } }` より後ろでしか
-// `組織! { .. }` を呼べない (詳細は `docs/static_graph.md` を参照)。
+// `組織! { .. }` を呼べない (詳細は `docs/static_graph.md` を参照)。schema・
+// instanceは動的グラフと同じ生成ファイル・指紋照合の方式で公開APIを追跡する
+// (issue #41)。公開APIは `generated/組織.rs`・`generated/開発チーム.rs`・
+// `generated/経理チーム.rs` にあり、`mod 組織`・`mod 開発チーム`・
+// `mod 経理チーム` がそれぞれを読み込む。
 //
 // 実行場所: このディレクトリ (examples/static-org) で
 //   cargo run
 //   cargo test
+//   cargo graphite generate --check  (生成ファイルが最新であることの確認)
 
 mod domain;
 #[cfg(test)]
@@ -22,7 +27,14 @@ use graphite::static_graph_schema;
 
 // ---------------- schema宣言 ----------------
 
+#[allow(non_snake_case, dead_code, private_interfaces)]
+#[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
+mod 組織 {
+    include!("generated/組織.rs");
+}
+
 static_graph_schema! {
+    generated = "generated/組織.rs";
     schema 組織 {
         node 社員;
         node 部署;
@@ -39,8 +51,15 @@ static_graph_schema! {
 // (`Nodes::new` への位置引数) を示す。main() とテストの両方から呼ぶため、
 // 構築を ノードを組み立てる() へ切り出す。
 
+#[allow(non_snake_case, dead_code, private_interfaces)]
+#[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
+mod 開発チーム {
+    include!("generated/開発チーム.rs");
+}
+
 #[rustfmt::skip]
 組織! {
+    generated = "generated/開発チーム.rs";
     graph 開発チーム;
     node 太郎 = 社員 { 名前: "太郎".into() };
     node 次郎 = 社員 { 名前: "次郎".into() };
@@ -54,11 +73,11 @@ static_graph_schema! {
     edge 太郎と一郎の同僚 = 同僚(太郎 -[経緯記録 { 経緯: "同期入社".into() }]- 一郎);
 }
 
-// `{個体名}Ref` は具象ローカルstructなので、利用側はマクロの外から自由に
-// メソッドを生やせる (docs/static_graph.md 「生成される名前の公開契約」
-// 参照)。あだ名() は 太郎Ref のチェーンの末尾へ通常のメソッドと同じ形で
-// 継ぎ足せることを示す。
-impl<'a> 太郎Ref<'a> {
+// `{個体名}Ref` は生成ファイル内の `pub` structなので、利用側はマクロの外
+// から自由にメソッドを生やせる (docs/static_graph.md 「生成される名前の
+// 公開契約」参照)。あだ名() は 太郎Ref のチェーンの末尾へ通常のメソッドと
+// 同じ形で継ぎ足せることを示す。
+impl<'a> 開発チーム::太郎Ref<'a> {
     pub(crate) fn あだ名(&self) -> String {
         format!("{}くん", self.entity().名前)
     }
@@ -66,14 +85,14 @@ impl<'a> 太郎Ref<'a> {
 
 // 値なし宣言 (`node 開発部: 部署;`) の実体は実行時にここで供給する。main()
 // とテストの両方から呼ぶ。
-pub(crate) fn ノードを組み立てる() -> Nodes {
-    Nodes::new(部署 { 名前: "開発部".into() })
+pub(crate) fn ノードを組み立てる() -> 開発チーム::Nodes {
+    開発チーム::Nodes::new(部署 { 名前: "開発部".into() })
 }
 
 fn main() {
     let nodes = ノードを組み立てる();
-    let edges = Edges::new(&nodes);
-    let g = 開発チーム::new(&nodes, &edges);
+    let edges = 開発チーム::Edges::new(&nodes);
+    let g = 開発チーム::Graph::new(&nodes, &edges);
 
     let 太郎の参照 = g.node_refs.太郎;
     println!("太郎の上司: {}", 太郎の参照.太郎の上司().superior().entity().名前());
@@ -122,24 +141,28 @@ fn main() {
     // 確認後は追加した行を削除してある。
 }
 
-// 同一schemaから `組織!` を2回目に呼んでも、辺値struct群 (`{種別}Edge`) が
-// 重複定義エラーにならないことを示す。辺値struct群は `static_graph_schema!` 側
-// (schema単位、1回だけ展開) へ移してあるため、`組織!` 呼び出しの回数に
-// 依らない。一方 `Nodes`/`Edges`/`NodeRefs`/`EdgeRefs` は `組織!` 呼び出し
-// ごと (instance単位) に固定名で生成されるため、同一スコープで2回展開する
-// と重複定義になる。関数の本体は独立したアイテムスコープを持つため、この
-// 関数の中へ2つ目の呼び出しを閉じ込めて衝突を避ける。
-fn 経理チームの花子の所属先を求める() -> String {
-    #[rustfmt::skip]
-    組織! {
-        graph 経理チーム;
-        node 花子 = 社員 { 名前: "花子".into() };
-        node 総務部 = 部署 { 名前: "総務部".into() };
-        edge 花子の所属 = 所属(花子 -> 総務部);
-    }
+// 同一schemaから `組織!` を2回目に宣言しても、生成物が衝突しないことを示す。
+// `Nodes`/`Edges`/`NodeRefs`/`EdgeRefs`/`Graph` は instance ごとの生成
+// module (`mod 開発チーム`・`mod 経理チーム`) の中にあるため、同じschemaから
+// 複数のinstanceを宣言してもmodule名が違えば衝突しない。
+#[allow(non_snake_case, dead_code, private_interfaces)]
+#[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
+mod 経理チーム {
+    include!("generated/経理チーム.rs");
+}
 
-    let nodes = Nodes::new();
-    let edges = Edges::new(&nodes);
-    let g = 経理チーム::new(&nodes, &edges);
+#[rustfmt::skip]
+組織! {
+    generated = "generated/経理チーム.rs";
+    graph 経理チーム;
+    node 花子 = 社員 { 名前: "花子".into() };
+    node 総務部 = 部署 { 名前: "総務部".into() };
+    edge 花子の所属 = 所属(花子 -> 総務部);
+}
+
+fn 経理チームの花子の所属先を求める() -> String {
+    let nodes = 経理チーム::Nodes::new();
+    let edges = 経理チーム::Edges::new(&nodes);
+    let g = 経理チーム::Graph::new(&nodes, &edges);
     g.node_refs.花子.花子の所属().team().entity().名前().to_string()
 }

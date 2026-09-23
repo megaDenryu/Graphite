@@ -39,7 +39,7 @@ use crate::schema::codegen::宣言元ファイルの綴り;
 use crate::tracked_input::TrackedInput;
 
 pub use declaration_site::DeclarationSite;
-pub use fingerprint_check::{動的schema指紋定数名, 動的schema対象文言, 指紋照合コードを生成する};
+pub use fingerprint_check::{動的schema指紋定数名, 動的schema対象文言, 再生成の案内, 指紋照合コードを生成する};
 pub use generated_path::validate_generated_relative_path;
 pub use static_graph::{
     expand_static_graph_internal, parse_and_expand_static_graph_schema,
@@ -175,7 +175,7 @@ mod tests {
         assert_eq!(rendered, second.render_module_source(&site).unwrap());
         assert_eq!(
             fnv1a(rendered.as_bytes(), 0xcbf29ce484222325),
-            3363410558753014467
+            6027119228497751420
         );
     }
 

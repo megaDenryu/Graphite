@@ -1,6 +1,6 @@
 // 生成名の由来。issue #41 が要求する「由来追跡」の材料であり、公開生成物の
 // 分類 (A: 利用者語彙由来 / B: Graphiteの固定語彙) はここから導く
-// (フィールドとして別に持たない)。span はF12の錨に使う元トークンの位置
+// (フィールドとして別に持たない)。span はF12の着地点に使う元トークンの位置
 // (`Span::call_site()` ではなく利用者が書いたトークンの位置) を返す。
 
 use proc_macro2::{Ident, Span};
@@ -23,13 +23,13 @@ pub(crate) enum 名前の由来 {
 }
 
 impl 名前の由来 {
-    // F12の錨・診断のspanに使う。GraphiteLanguage (固定語彙) は利用者が
+    // F12の着地点・診断のspanに使う。GraphiteLanguage (固定語彙) は利用者が
     // 書いたトークンを持たないため呼び出し側のspan (`Span::call_site()`)
     // を返す。SchemaRole は端点の役割アクセサ自身のトークン (`役割`) を返す
     // (種別名ではない。役割アクセサが指すのは役割そのものであり、種別は
-    // 「関係する schema 宣言」段落で別途示す。issue #41 是正14)。DSL
-    // トークンの錨の精密化 (`inline/token_anchor.rs`) へ配線するまでは
-    // 単体試験だけが呼ぶ。
+    // 「関係する schema 宣言」段落で別途示す)。DSLトークンの型参照・値供給
+    // 関数の実際のspanは `naming::reference_paths`・`naming::internal_names`
+    // が具体辺・個体のトークンから直接作るため、この関数は単体試験だけが呼ぶ。
     #[allow(dead_code)]
     pub(crate) fn span(&self) -> Span {
         match self {

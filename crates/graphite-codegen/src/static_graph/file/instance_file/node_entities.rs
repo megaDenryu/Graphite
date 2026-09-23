@@ -1,13 +1,12 @@
 // このファイルは `Nodes` (個体の実体を唯一持つ生成物) の本体を組み立てる。
 // 値ありの個体は、初期化式を供給関数呼び出し (`inline::value_supply`、
 // issue #41 §3) に置き換え、式そのものは生成ファイルへ写さない。値なしの
-// 個体は宣言順の位置引数として `new` に加える (`internal/codegen/node_entities.rs`
-// と同じ実行時供給)。
+// 個体は宣言順の位置引数として `new` に加える (実行時供給)。
 
 use proc_macro2::TokenStream;
 use quote::quote;
 
-use crate::schema::codegen::宣言元ファイルの綴り;
+use crate::static_graph::declaration_sites::宣言元の対;
 use crate::static_graph::naming::{
     個体供給関数名, 個体実体所有者型名, 個体実体所有者構築メソッド名, nodesフィールドの追跡情報を作る,
 };
@@ -15,7 +14,7 @@ use crate::static_graph::semantic::意味モデル;
 
 use super::super::doc_render::doc属性を組み立てる;
 
-pub(super) fn nodes本体を組み立てる(意味モデル: &意味モデル, 宣言元: &宣言元ファイルの綴り) -> TokenStream {
+pub(super) fn nodes本体を組み立てる(意味モデル: &意味モデル, 宣言元: &宣言元の対) -> TokenStream {
     let 型名 = 個体実体所有者型名(意味モデル);
     let 型doc = doc属性を組み立てる(型名.追跡());
     // §5.2 例4で書式を固定した意味カード (`naming::tests::card4_fixed_vocabulary`)。

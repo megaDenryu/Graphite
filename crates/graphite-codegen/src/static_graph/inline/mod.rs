@@ -4,20 +4,14 @@
 //! 写さない2つだけを持つ:
 //! (1) instanceの値の式の供給関数 (`value_supply`、値をそのまま返すだけの
 //! 内部専用関数。生成ファイルはこれを呼ぶだけで式を写さない)
-//! (2) DSLトークンの錨 (`token_anchor`、読むだけの型参照でF12を助ける)。
-//!
-//! 段階2ではこの2つを組み立てる関数を用意し単体試験で確かめるところまでで、
-//! 実際のマクロ展開への配線は段階3で行う
-//! (`static_graph_schema!`・`__static_graph_impl` の公開の振る舞いは
-//! まだ変えない)。
+//! (2) DSLトークンの型参照 (`token_type_reference`、読むだけの型参照で
+//! F12を助ける)。
 
-mod token_anchor;
+mod token_type_reference;
 mod value_supply;
 
 // `file::instance_file` が生成ファイル側の呼び出しに使う供給関数の名前は
 // `naming::internal_names` (`個体供給関数名`・`積み荷供給関数名`) から直接
-// 読む (issue #41 是正13、`inline/` は名前を作らない)。`錨を組み立てる`・
-// `個体供給関数を組み立てる`・`積み荷供給関数を組み立てる` (供給関数の定義
-// 自体を組み立てる関数) は、その場展開の出力へ配線されていない間、各
-// ファイル内の単体試験だけが呼ぶ (モジュール冒頭のdoc参照)。呼び出し元が
-// 無いため、この module からは再exportしない。
+// 読む (`inline/` は名前を作らない)。
+pub(super) use token_type_reference::dslトークンの型参照を組み立てる;
+pub(super) use value_supply::{個体供給関数を組み立てる, 積み荷供給関数を組み立てる};

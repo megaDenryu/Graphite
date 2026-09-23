@@ -1,9 +1,9 @@
 // 辺種別 (schemaの `edge` 宣言1件の意味モデル)。schema::input::辺宣言 を
 // そのまま持つのではなく、この層独自の型として持つ。向き・役割の解決は
 // `具体辺` (concrete_edge.rs) が構築時に1回だけ行い、`file::instance_file`・
-// `internal::codegen` の辺の配線・ロールアクセサはそこで解決済みの役割を
-// 読むだけで、schema::input::辺形状 を突き合わせ直さない (issue #41
-// 是正15、static_graph/mod.rs の層図参照)。schemaの構造そのものを組み立てる
+// `file` の辺の配線・ロールアクセサはそこで解決済みの役割を
+// 読むだけで、schema::input::辺形状 を突き合わせ直さない
+// (static_graph/mod.rs の層図参照)。schemaの構造そのものを組み立てる
 // `file::schema_file` は、この型が包む `形状()` を引き続き読む (schemaだけ
 // から決まる生成物であり、instanceとの突き合わせを行わないため境界の対象
 // 外)。

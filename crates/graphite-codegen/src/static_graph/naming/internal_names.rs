@@ -1,7 +1,6 @@
-// instance の値供給関数・DSLトークンの錨関数の内部生成名 (issue #41 §3・
-// §5.4)。いずれもC分類 (`内部生成名`) であり利用者トークンのspanを持たない。
-// `naming/` の外で名前を作らない規則 (mod.rs 冒頭) を `inline/` にも及ぼす
-// (issue #41 是正13)。
+// instance の値供給関数・DSLトークンの型参照関数の内部生成名 (§3・§5.4)。
+// いずれもC分類 (`内部生成名`) であり利用者トークンのspanを持たない。
+// `naming/` の外で名前を作らない規則 (mod.rs 冒頭) を `inline/` にも及ぼす。
 
 use proc_macro2::Ident;
 
@@ -17,7 +16,7 @@ pub(crate) fn 積み荷供給関数名(辺名: &Ident) -> 内部生成名 {
     内部生成名::new(&format!("__graphite_payload_{辺名}"))
 }
 
-// DSLトークンの錨 (`const _: () = { .. };` の中の、呼ばれない関数) の名前。
-pub(crate) fn 錨関数名() -> 内部生成名 {
-    内部生成名::new("__graphite_dsl_token_anchor")
+// DSLトークンの型参照 (`const _: () = { .. };` の中の、呼ばれない関数) の名前。
+pub(crate) fn 型参照関数名() -> 内部生成名 {
+    内部生成名::new("__graphite_dsl_token_type_reference")
 }

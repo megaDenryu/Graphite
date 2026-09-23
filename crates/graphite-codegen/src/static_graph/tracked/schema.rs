@@ -21,6 +21,7 @@ use crate::static_graph::schema::input::静的グラフ型入力;
 
 pub struct TrackedStaticSchema {
     generated_path: LitStr,
+    schema_tokens: TokenStream,
     型入力: 静的グラフ型入力,
     fingerprint: [u64; 4],
 }
@@ -42,9 +43,15 @@ impl TrackedStaticSchema {
     // `parse_tracked_static_instance` へ渡す。cliの2段階解決 (静的schema名簿
     // からinstanceを見つける、issue #41 §2) が公開マクロの探索へ配線されて
     // いない間は、単体試験だけが呼ぶ。
-    #[allow(dead_code)]
     pub(crate) fn 型入力(&self) -> &静的グラフ型入力 {
         &self.型入力
+    }
+
+    // macro_rules! 転送がschemaの生トークンをそのまま `__static_graph_impl!`
+    // へ焼き込むために要る (issue #41 段階3)。構造化した `型入力` へ一度
+    // 再構成すると元のspanの保存が保証できないため、生トークンを別途持つ。
+    pub(crate) fn schema_tokens(&self) -> TokenStream {
+        self.schema_tokens.clone()
     }
 
     pub fn render_module_source(&self, site: &DeclarationSite) -> syn::Result<String> {
@@ -60,6 +67,7 @@ pub fn parse_tracked_static_schema(input: TokenStream) -> Result<TrackedStaticSc
     if let Err(reason) = validate_generated_relative_path(&tracked.generated_path.value()) {
         return Err(vec![syn::Error::new_spanned(&tracked.generated_path, reason)]);
     }
+    let schema_tokens = tracked.schema_tokens.clone();
     let 型入力: 静的グラフ型入力 =
         syn::parse2(tracked.schema_tokens.clone()).map_err(|error| vec![error])?;
     型入力.検証する().map_err(|error| vec![error])?;
@@ -68,5 +76,5 @@ pub fn parse_tracked_static_schema(input: TokenStream) -> Result<TrackedStaticSc
     let 整形済み本文 = 指紋の材料になる整形済み本文(&body).map_err(|error| vec![error])?;
     let fingerprint = fingerprint(&tracked.generated_path.value(), &整形済み本文);
 
-    Ok(TrackedStaticSchema { generated_path: tracked.generated_path, 型入力, fingerprint })
+    Ok(TrackedStaticSchema { generated_path: tracked.generated_path, schema_tokens, 型入力, fingerprint })
 }

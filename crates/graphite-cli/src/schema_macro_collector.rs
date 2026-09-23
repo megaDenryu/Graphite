@@ -1,5 +1,7 @@
-//! 構文木を辿って `dynamic_graph_schema!` の呼び出しと、旧名 `graph_schema!`
-//! の呼び出しを拾う走査。
+//! 構文木を辿って、ファイル中の全マクロ呼び出し (名前・入力トークン・
+//! 宣言行) を集める走査。分類 (`dynamic_graph_schema!`・旧名
+//! `graph_schema!`・`static_graph_schema!`・それ以外の静的instance候補) は
+//! 呼び出し側 (`static_resolution`・`schema_source_file`) が行う。
 
 #[cfg(test)]
 mod tests;
@@ -8,44 +10,34 @@ use proc_macro2::TokenStream;
 use syn::spanned::Spanned;
 use syn::visit::{self, Visit};
 
-// 追跡形式の `dynamic_graph_schema!` 呼び出しと、その宣言行。
-pub(crate) struct SchemaInvocation {
+// ファイル中の1マクロ呼び出し。`name` はパスの最後の識別子、`tokens` は
+// `!` に続く波括弧/丸括弧/角括弧の中身、`line` は宣言行。
+pub(crate) struct MacroCall {
+    pub(crate) name: String,
     pub(crate) tokens: TokenStream,
     pub(crate) line: usize,
 }
 
-// 走査1回分の結果。旧名の呼び出しは生成の対象にせず、宣言行だけを持ち帰る
-// (呼び出し側が改名を促すエラーへ変換する。issue #40)。
-#[derive(Default)]
-pub(crate) struct CollectedSchemaMacros {
-    pub(crate) invocations: Vec<SchemaInvocation>,
-    pub(crate) legacy_invocations: Vec<usize>,
-}
-
-// ファイル1件から `dynamic_graph_schema!`/旧名 `graph_schema!` の呼び出しを集める。
-pub(crate) fn collect_schema_macros(file: &syn::File) -> CollectedSchemaMacros {
-    let mut collector = SchemaMacroCollector::default();
+// ファイル1件に含まれる全マクロ呼び出しを、出現順で集める。
+pub(crate) fn collect_macro_calls(file: &syn::File) -> Vec<MacroCall> {
+    let mut collector = MacroCallCollector::default();
     collector.visit_file(file);
-    collector.collected
+    collector.calls
 }
 
 #[derive(Default)]
-struct SchemaMacroCollector {
-    collected: CollectedSchemaMacros,
+struct MacroCallCollector {
+    calls: Vec<MacroCall>,
 }
 
-impl<'ast> Visit<'ast> for SchemaMacroCollector {
+impl<'ast> Visit<'ast> for MacroCallCollector {
     fn visit_macro(&mut self, node: &'ast syn::Macro) {
-        let last = node.path.segments.last();
-        if last.is_some_and(|s| s.ident == "dynamic_graph_schema") {
-            self.collected.invocations.push(SchemaInvocation {
+        if let Some(last) = node.path.segments.last() {
+            self.calls.push(MacroCall {
+                name: last.ident.to_string(),
                 tokens: node.tokens.clone(),
                 line: node.span().start().line,
             });
-        } else if last.is_some_and(|s| s.ident == "graph_schema") {
-            self.collected
-                .legacy_invocations
-                .push(node.span().start().line);
         }
         visit::visit_macro(self, node);
     }

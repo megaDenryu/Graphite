@@ -15,7 +15,7 @@ fn 意味カード3_役割アクセサ() {
     let 意味モデル = 開発チームの意味モデルを作る();
     let 開発部 = 意味モデル.個体列().iter().find(|個体| 個体.名前() == "開発部").unwrap();
     let 太郎の所属 = 意味モデル.具体辺列().iter().find(|辺| 辺.名前() == "太郎の所属").unwrap();
-    let 役割 = 太郎の所属.個体の役割(開発部.名前()).unwrap();
+    let 役割 = *太郎の所属.個体の役割一覧(開発部.名前()).first().unwrap();
     let 追跡 = 役割アクセサの追跡情報を作る(太郎の所属, 役割, 開発部, &src_main());
     assert!(matches!(
         追跡.由来(),
@@ -41,7 +41,11 @@ fn 意味カード3_役割アクセサ() {
 // 自己ループ辺 (始点と終点が同じ個体) の第一・第二役割アクセサが、
 // それぞれ渡された役割で正しく区別されることを確かめる。呼び出し元が
 // 役割を明示的に渡さず個体名から引き直すと、両方が「最初に一致した役割」
-// (第一役割) に化けてしまう (issue #41 是正5)。
+// (第一役割) に化けてしまう。本番の生成経路 (`file::instance_file::
+// instance本体を組み立てる`) まで通し、生成本文に両方の役割アクセサの
+// doc本文が現れることを確かめる (card_names単体の呼び出しだけでは、生成の
+// 配線 (`edge_ref::一アクセサを組み立てる` が役割ごとに1回ずつ呼ぶこと) を
+// 検査しない)。
 #[test]
 fn 意味カード3_自己ループ辺の役割アクセサは第一役割と第二役割で異なる() {
     let schema: 静的グラフ型入力 = syn::parse2(quote! {
@@ -57,15 +61,17 @@ fn 意味カード3_自己ループ辺の役割アクセサは第一役割と第
         edge 自己 = 上司(太郎 -> 太郎);
     })
     .unwrap();
-    let 意味モデル: 意味モデル = 意味モデル::組み立てる(&schema, &instance);
+    let 意味モデル: 意味モデル =
+        crate::static_graph::internal::検証してから意味モデルを組み立てる(schema, instance);
     let 太郎 = 意味モデル.個体列().iter().find(|個体| 個体.名前() == "太郎").unwrap();
     let 自己 = 意味モデル.具体辺列().iter().find(|辺| 辺.名前() == "自己").unwrap();
 
+    // 役割アクセサのカード単体 (`役割アクセサの追跡情報を作る` は呼び出し元
+    // が区別済みの役割を渡す契約であり、その契約自体はここで確かめる)。
     let 第一役割 = proc_macro2::Ident::new("subordinate", proc_macro2::Span::call_site());
     let 第二役割 = proc_macro2::Ident::new("superior", proc_macro2::Span::call_site());
     let 第一追跡 = 役割アクセサの追跡情報を作る(自己, &第一役割, 太郎, &src_main());
     let 第二追跡 = 役割アクセサの追跡情報を作る(自己, &第二役割, 太郎, &src_main());
-
     assert!(matches!(
         第一追跡.由来(),
         名前の由来::SchemaRole { 役割, .. } if 役割 == "subordinate"
@@ -76,4 +82,17 @@ fn 意味カード3_自己ループ辺の役割アクセサは第一役割と第
     ));
     assert!(第一追跡.意味カード().contains("役割: `subordinate: 社員`"));
     assert!(第二追跡.意味カード().contains("役割: `superior: 社員`"));
+
+    // 本番の生成経路: instanceファイル本文に両方の役割アクセサ (`subordinate()`・
+    // `superior()`) のdocが並ぶこと。
+    let 本文 = crate::static_graph::file::instance本体を組み立てる(&意味モデル, &src_main())
+        .to_string();
+    assert!(本文.contains("役割: `subordinate: 社員`"), "本文: {本文}");
+    assert!(本文.contains("役割: `superior: 社員`"), "本文: {本文}");
+
+    // 太郎は自己ループ辺の両方の役割を同時に持つため、`太郎Ref.自己()` の
+    // 「この個体の役割」は両方の役割名を示す (card_names.rs)。doc属性は
+    // 文字列リテラル1個として展開されるため、`TokenStream::to_string()` でも
+    // 中身の空白・記号はここで書いた形のまま保たれる。
+    assert!(本文.contains("この個体の役割: `subordinate`・`superior`"), "本文: {本文}");
 }

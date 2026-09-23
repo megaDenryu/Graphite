@@ -13,3 +13,6 @@ path = "src/main.rs"
 graphite-codegen = { path = "../graphite-codegen", version = "0.1.0" }
 proc-macro2 = { workspace = true }
 syn = { workspace = true }
+
+[dev-dependencies]
+quote = { workspace = true }

@@ -36,14 +36,16 @@ pub(crate) fn 生成ファイルの本文(
     //
     // 注意: 案内する再生成コマンドは、どの入口から生成しても同じ文言にする。
     // 入口ごとに書き分けると、`cargo graphite generate` が書いたファイルを
-    // `cargo xtask generate --check` が古いと判定する (逆も同じ)。
+    // `cargo xtask generate --check` が古いと判定する (逆も同じ)。文言の
+    // 正本は `crate::fingerprint_check::再生成の案内` の1箇所だけであり、
+    // コンパイル時panic・`generate --check` の警告文もここから作る。
     let site = site.display();
     Ok(format!(
         "// このファイルは Graphite が生成したため手編集しないこと。\n\
          // 生成元: {site}\n\
-         // 再生成: パッケージのディレクトリで `cargo graphite generate` を実行する\n\
-         //         (Graphite リポジトリ自身の開発では `cargo xtask generate`)。\n\n\
-         {formatted}"
+         // 再生成: {}\n\n\
+         {formatted}",
+        crate::fingerprint_check::再生成の案内()
     ))
 }
 

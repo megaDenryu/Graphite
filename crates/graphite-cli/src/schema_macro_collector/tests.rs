@@ -5,25 +5,28 @@ fn parse(source: &str) -> syn::File {
 }
 
 #[test]
-fn 現行名の呼び出しを1件集める() {
+fn マクロ呼び出しを名前とトークンと行番号で集める() {
     let file = parse("graphite::dynamic_graph_schema! { schema X { node Person; } }");
-    let collected = collect_schema_macros(&file);
-    assert_eq!(collected.invocations.len(), 1);
-    assert!(collected.legacy_invocations.is_empty());
+    let calls = collect_macro_calls(&file);
+    assert_eq!(calls.len(), 1);
+    assert_eq!(calls[0].name, "dynamic_graph_schema");
+    assert_eq!(calls[0].line, 1);
 }
 
 #[test]
-fn 旧名の呼び出しは宣言行だけを持ち帰る() {
-    let file = parse("graphite::graph_schema! { schema X { node Person; } }");
-    let collected = collect_schema_macros(&file);
-    assert!(collected.invocations.is_empty());
-    assert_eq!(collected.legacy_invocations, vec![1]);
+fn 種類の異なる複数のマクロ呼び出しを出現順に集める() {
+    let file = parse(
+        "graphite::static_graph_schema! { schema X { node Person; } }\n\
+         println!(\"hello\");",
+    );
+    let calls = collect_macro_calls(&file);
+    assert_eq!(calls.len(), 2);
+    assert_eq!(calls[0].name, "static_graph_schema");
+    assert_eq!(calls[1].name, "println");
 }
 
 #[test]
-fn 無関係なマクロは無視する() {
-    let file = parse("println!(\"hello\");");
-    let collected = collect_schema_macros(&file);
-    assert!(collected.invocations.is_empty());
-    assert!(collected.legacy_invocations.is_empty());
+fn 呼び出しが無ければ空を返す() {
+    let file = parse("fn main() {}");
+    assert!(collect_macro_calls(&file).is_empty());
 }

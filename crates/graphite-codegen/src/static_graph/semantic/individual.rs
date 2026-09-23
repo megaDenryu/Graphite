@@ -1,6 +1,6 @@
 // 個体 (instanceの `node` 宣言1件の意味モデル)。名前・実体型・初期化式を
 // 持つ。式が無い (`node 名前: 型;`) 場合は実行時供給であり、`Nodes::new` の
-// 引数として渡される (internal/codegen/node_entities.rs)。
+// 引数として渡される (`file/instance_file/node_entities.rs`)。
 
 use proc_macro2::Ident;
 use syn::Expr;
@@ -38,7 +38,7 @@ impl 個体 {
     // 依存させない: 値ありは常に `node 名前: 型 = ..` に畳み、値なしだけ
     // `node 名前: 型` にする。式の種類 (struct式かどうか) で書式を変えると、
     // 意味カードの本文だけが値の書き換えで変わり `cargo graphite generate
-    // --check` が値の編集ごとに再生成を要求してしまう (issue #41 是正3)。
+    // --check` が値の編集ごとに再生成を要求してしまう。
     // 宣言元ファイルの行番号は含めない。
     pub(crate) fn 宣言の形(&self) -> String {
         match &self.値 {

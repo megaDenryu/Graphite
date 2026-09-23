@@ -1,4 +1,4 @@
-// 設計書 §6 の4 (issue #41 是正6で対象を広げる): 生成本文を syn で読み戻し、
+// 設計書 §6 の4 (対象を広げた): 生成本文を syn で読み戻し、
 // `__` で始まる識別子を持つ全項目 (トップレベルの struct・fn・const に加え、
 // impl 内のメソッド・関連定数) が「非公開であるか #[doc(hidden)] が付いて
 // いるか」を確かめ、公開項目の型・シグネチャのテキストに内部生成識別子
@@ -11,13 +11,13 @@ use super::{instance入力, schema入力};
 #[test]
 fn c分類の識別子は公開項目の型へ漏れない() {
     let schema = parse_tracked_static_schema(schema入力()).unwrap();
-    let instance = parse_tracked_static_instance(schema.型入力(), instance入力()).unwrap();
+    let instance = parse_tracked_static_instance(&schema, instance入力()).unwrap();
     let site = crate::declaration_site::DeclarationSite::new("src/main.rs".to_string(), 1);
 
     let mut 検査した項目数 = 0;
     for 本文 in [
         schema.render_module_source(&site).unwrap(),
-        instance.render_module_source(&site).unwrap(),
+        instance.render_module_source(&site, &site).unwrap(),
     ] {
         let file: syn::File = syn::parse_str(&本文).expect("生成本文はRustとして解析できる");
         for item in &file.items {
@@ -95,7 +95,7 @@ fn doc_hiddenが付いているか(属性列: &[syn::Attribute]) -> bool {
 }
 
 // 名前が `__` で始まる項目だけを対象に、非公開か `#[doc(hidden)]` かを
-// 確かめる (issue #41 是正6)。
+// 確かめる。
 fn 名前を確かめる(名前: &syn::Ident, 可視性: &syn::Visibility, 属性列: &[syn::Attribute]) {
     let 名前文字列 = 名前.to_string();
     if !名前文字列.starts_with("__") {

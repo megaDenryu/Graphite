@@ -1,17 +1,17 @@
 //! 指紋照合のコンパイル時コードを組み立てる。「再生成の案内」の文言を
 //! ここへ1つだけ置き、動的グラフ (`dynamic_graph_schema!`)・静的グラフの
-//! schema・静的グラフのinstanceの3つが同じ文言・同じ組み立て関数を使う
-//! (issue #41 段階2)。生成ファイル先頭の案内コメント
-//! (`crate::generated_source`) はこの文言とは別に持つ (先に生成した
-//! ファイルを再生成の対象へ広げないための現状維持、issue #41 段階2の
-//! スコープ外)。
+//! schema・静的グラフのinstanceの3つのコンパイル時panic文言と、
+//! `crate::generated_source` (生成ファイル先頭の案内コメント)・
+//! `graphite-cli` の `generate --check` の警告文が、全て同じこの1つの関数
+//! から文言を作る (再生成の案内の正本はここ1箇所だけ)。
 
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote_spanned;
 
-// 全ての生成ファイルの再生成コマンド案内で共有する文言。
-const 再生成の案内: &str =
-    "パッケージのディレクトリで cargo graphite generate を実行してください (Graphite リポジトリ自身の開発では cargo xtask generate)";
+// 全ての生成ファイルの再生成コマンド案内で共有する文言の正本。
+pub fn 再生成の案内() -> &'static str {
+    "パッケージのディレクトリで cargo graphite generate を実行してください (Graphite リポジトリ自身の開発では cargo xtask generate)"
+}
 
 // 以下の3つの関数は、生成ファイルへ埋め込む指紋定数の名前
 // (`crate::generated_source::生成ファイルの本文` へ渡す) を返す。動的グラフ
@@ -31,18 +31,25 @@ pub fn 静的instance指紋定数名() -> Ident {
     Ident::new("__GRAPHITE_STATIC_INSTANCE_FINGERPRINT", Span::call_site())
 }
 
-// 指紋照合の警告文に書く対象名。動的グラフのschemaの1種類だけを今のところ
-// ここへ置く (静的グラフのschema/instanceは、macroの公開の振る舞いをまだ
-// 生成ファイル照合へ切り替えていないため対象名を持たない。issue #41 段階3の
-// 仕事)。`graphite-macros` はこの文字列を直書きしない (issue #41 是正16)。
+// 指紋照合の警告文に書く対象名。`graphite-macros` はこの文字列を直書きしない。
 pub fn 動的schema対象文言() -> &'static str {
     "Graphite schema"
+}
+
+// 静的グラフのschema・instanceの対象文言は、schema名・instance名 (グラフ名) を
+// 埋め込むため呼び出しのたびに組み立てる。
+pub fn 静的schema対象文言(schema名: &Ident) -> String {
+    format!("Graphite 静的グラフの schema `{schema名}`")
+}
+
+pub fn 静的instance対象文言(instance名: &Ident) -> String {
+    format!("Graphite 静的グラフの instance `{instance名}`")
 }
 
 // 生成ファイルが古いときの警告文
 // (「{対象} の生成ファイルが古いため、{再生成の案内}」)。
 fn 古い生成ファイルの警告文(対象: &str) -> String {
-    format!("{対象} の生成ファイルが古いため、{再生成の案内}")
+    format!("{対象} の生成ファイルが古いため、{}", 再生成の案内())
 }
 
 // 指紋照合のコンパイル時コード (`const _: () = { .. };`) を組み立てる。
@@ -107,5 +114,20 @@ mod tests {
             Span::call_site(),
         );
         assert!(コード.to_string().contains("Graphite 静的グラフの schema"));
+    }
+
+    #[test]
+    fn 静的schema対象文言はschema名をバッククォートで囲む() {
+        let schema名 = Ident::new("組織", Span::call_site());
+        assert_eq!(静的schema対象文言(&schema名), "Graphite 静的グラフの schema `組織`");
+    }
+
+    #[test]
+    fn 静的instance対象文言はグラフ名をバッククォートで囲む() {
+        let instance名 = Ident::new("開発チーム", Span::call_site());
+        assert_eq!(
+            静的instance対象文言(&instance名),
+            "Graphite 静的グラフの instance `開発チーム`"
+        );
     }
 }

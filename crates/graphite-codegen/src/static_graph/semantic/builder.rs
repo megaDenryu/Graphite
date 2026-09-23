@@ -1,6 +1,6 @@
 // 意味モデルの組み立て。schemaとinstanceの相互検証 (`internal::validate`)
 // が通った後にだけ呼ぶ。種別名→辺種別、端点名→個体の解決はここで1回だけ
-// 行い、internal/codegen 側の再引き当て (`.expect(..)`) を無くす。
+// 行い、`file` 側の再引き当て (`.expect(..)`) を無くす。
 
 use crate::static_graph::literal::input::{
     ノード宣言 as instanceノード宣言, 辺中身, 辺形状 as instance辺形状, 辺宣言 as instance辺宣言,
@@ -43,9 +43,8 @@ fn 具体辺を作る(辺: &instance辺宣言, 辺種別列: &[辺種別], 個�
             .clone()
     };
     // 向きに応じた役割名は、この関数だけがschemaと突き合わせて解決する
-    // (唯一の解決点)。以降 (file/・internal/codegen) は `具体辺形状` が
-    // 既に持つ役割を読むだけで、schemaの辺形状へ再度突き合わせない
-    // (issue #41 是正15)。
+    // (唯一の解決点)。以降 (`file/`) は `具体辺形状` が既に持つ役割を読むだけ
+    // で、schemaの辺形状へ再度突き合わせない。
     let 形状 = match (&辺.形状, 種別.形状()) {
         (instance辺形状::有向 { 始点, 終点, 中身 }, 型形状::有向 { 始点役割, 終点役割, .. }) => {
             具体辺形状::有向 {

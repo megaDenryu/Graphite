@@ -21,8 +21,23 @@ Rustの `static`/`'static` (静的な記憶域・生存期間) とは無関係�
 `macro_rules!`** を生成する。利用側はこの生成された `macro_rules!` へ
 個体宣言を渡して具体グラフを組み立てる。
 
+schema・instanceは共に `generated = "..."` を持ち、動的グラフ
+(`dynamic_graph_schema!`) と同じ生成ファイル・指紋照合の方式で公開APIを
+追跡する (issue #41)。宣言と同じファイルへ、生成先を読み込む
+`mod <名前> { include!("generated/<名前>.rs"); }` を置く (配線の書式は
+`docs/code_generation.md` を参照)。公開の `Nodes`・`Edges`・
+`{個体名}Ref`・`{辺名}Ref`・`{graph名}` はすべてこの生成ファイルの中にあり、
+schema・instanceマクロのその場展開には現れない。
+
 ```rust
+#[allow(non_snake_case, dead_code, private_interfaces)]
+#[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
+mod 組織 {
+    include!("generated/組織.rs");
+}
+
 graphite::static_graph_schema! {
+    generated = "generated/組織.rs";
     schema 組織 {
         node 社員;
         node 部署;
@@ -30,13 +45,26 @@ graphite::static_graph_schema! {
     }
 }
 
+#[allow(non_snake_case, dead_code, private_interfaces)]
+#[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
+mod 開発チーム {
+    include!("generated/開発チーム.rs");
+}
+
 組織! {
+    generated = "generated/開発チーム.rs";
     graph 開発チーム;
     node 太郎 = 社員 { 名前: "太郎".into() };
     node 開発部: 部署;
     edge 太郎の所属 = 所属(太郎 -> 開発部);
 }
 ```
+
+生成ファイルは `cargo graphite generate` (Graphiteリポジトリ自身の開発では
+`cargo xtask generate`) で作る・更新する。生成の探索は2段階を踏む:
+パッケージ内の全ファイルを1回ずつ見て静的schema名簿を作り (schema名の重複は
+ここで検出する)、次に名簿の名前と一致するinstance宣言を解決する
+(`docs/code_generation.md` 「宣言と配線」参照)。
 
 `静的グラフ型!`/`静的グラフ!` という2マクロ構成 (issue #24 段階1) は
 実装途中で全廃された。理由は、2つの proc マクロが互いの展開結果を見えない
@@ -96,7 +124,7 @@ schema名がそのままマクロ名になるため、instance宣言はschema名
 }
 ```
 
-`node` は3形態を受理する (`examples/static-org/src/main.rs:45-48`):
+`node` は3形態を受理する (`examples/static-org/src/main.rs:64-67`):
 
 1. `名前 = 型 { .. };` — 構造体リテラル。実体型はリテラルのパスから読む
 2. `名前: 型 = 式;` — 型を明示すれば右辺は構造体リテラルに限らない任意の式で
@@ -110,8 +138,11 @@ schema名がそのままマクロ名になるため、instance宣言はschema名
 ## 生成される名前の公開契約
 
 `<schema名>!` が展開時に生成する名前のうち、次は安定した公開名として
-利用者が依存してよい。生成物は全部具象のローカル struct (タグ・trait・
+利用者が依存してよい。生成物は全部具象の struct (タグ・trait・
 `PhantomData`・仕組みへの依存なし) であり、孤児規則 (E0116) に落ちない。
+実体は生成ファイル (`generated/<instance名>.rs`) の中にあり、宣言と同じ
+ファイルに置いた `mod <instance名> { include!(..); }` を通して参照する
+(`{graph名}::Nodes` のようにmodule越しの修飾パスで使う)。
 
 | 生成されるもの | 名前 | 備考 |
 |---|---|---|
@@ -123,10 +154,11 @@ schema名がそのままマクロ名になるため、instance宣言はschema名
 | 種別ごとの辺値 struct | `{種別名}Edge` | 役割名・積み荷フィールドをそのまま持つ |
 | 辺参照のロールアクセサ | 役割名そのまま | 有向・無向を問わず、schema宣言の役割名がそのままアクセサ名になる (`所属(member: 社員) -> (team: 部署)` なら `.member()`/`.team()`、`友人 = (甲: 社員) -- (乙: 社員)` なら `.甲()`/`.乙()`)。無向辺専用の固定名は存在しない |
 
-**`{個体名}Ref` は具象ローカル struct なので、利用者はマクロの外から後付けで
-自由にメソッドを生やせる。** `impl<'a> 太郎Ref<'a> { fn あだ名(&self) -> String { .. } }`
-のように書け、生成されたチェーンの末尾へ通常のメソッドと同じ形で継ぎ足せる
-(`examples/static-org/src/main.rs:61-65`)。
+**`{個体名}Ref` は生成ファイルの中の具象 `pub` struct なので、利用者は
+マクロの外から後付けで自由にメソッドを生やせる。**
+`impl<'a> 開発チーム::太郎Ref<'a> { fn あだ名(&self) -> String { .. } }`
+のように、module越しの修飾パスで書け、生成されたチェーンの末尾へ通常の
+メソッドと同じ形で継ぎ足せる (`examples/static-org/src/main.rs`)。
 
 これらの名前は英語である。マクロ名 (`static_graph_schema!`) と生成される固定名
 だけを英語化した方針 (issue #24 段階2、オーナー承認済み) であり、
@@ -152,7 +184,7 @@ schema名がそのままマクロ名になるため、instance宣言はschema名
 通っている前提で、両者を突き合わせないと検出できない誤りを見る
 (`crates/graphite-codegen/src/static_graph/internal/validate/`)。全て通常の
 `compile_error!` (instance側の該当トークンを指す) として展開時に検出する。
-`examples/static-org/src/main.rs:96-122` に実測コメントがある。
+`examples/static-org/src/main.rs:115-141` に実測コメントがある。
 
 | 検査 | 誤りの例 | 実測した文言 |
 |---|---|---|
@@ -184,18 +216,23 @@ schemaとinstance両方の生トークンを束ねて `#[doc(hidden)]` の内部
 しか `<名前>! { .. }` を呼べない** (同じファイル内で `static_graph_schema!` の
 呼び出しを先に書く必要がある)。
 
-この機構はインライン展開のまま完結する。`dynamic_graph_schema!` のようなファイル
-生成トラッキングには参加しないため、`cargo graphite generate`/
-`cargo xtask generate` の対象にならない (`flow!` と同じ位置づけ)。
+その場展開に残るのは、schema側が指紋照合・node型アンカー・
+`macro_rules! {schema名}`、instance側が相互検証の診断・指紋照合・値の供給
+関数・DSLトークンの型参照だけである。公開生成物 (`Nodes`・`Edges`・
+`{個体名}Ref`・`{辺名}Ref`・`{graph名}` 等) はすべて生成ファイルの中にあり、
+`cargo graphite generate`/`cargo xtask generate` の対象になる (issue #41)。
 
 ## 実装の配置
 
-- 構文解析・検証・コード生成: `crates/graphite-codegen/src/static_graph/`
-  (`schema`/`literal`/`internal` の3層構成。`schema` はschema宣言だけから
-  決まる生成物、`literal` はinstance宣言の構文解析、`internal` は両者の
-  相互検証とコード生成)
+- 構文解析・検証・意味モデル・生成: `crates/graphite-codegen/src/static_graph/`
+  (`schema`/`literal` は構文解析、`internal` は相互検証、`semantic` は
+  意味モデル、`trace`/`naming` は追跡情報と生成名、`file` は生成ファイル
+  本文、`inline` はその場展開に残す部分、`tracked` は追跡対象の
+  schema/instance宣言、`schema_entry`/`instance_entry` はマクロ展開の入口)
 - proc マクロ入口: `crates/graphite-macros/src/lib.rs` の `static_graph_schema`/
   `__static_graph_impl`
+- 生成ファイルの探索・書き込み・差分検査: `crates/graphite-cli/src/static_resolution/`
+  (静的schema名簿と2段階の解決、`docs/code_generation.md` 参照)
 - 公開: `crates/graphite/src/lib.rs` から re-export
 
 移設元の設計記録 (2マクロ構成からの転換の経緯、IDE対応、実測ログ) は

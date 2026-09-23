@@ -33,7 +33,7 @@ pub(crate) enum 固定語彙 {
     Graph,
     // `naming::fixed_vocabulary::固定語彙の宣言表示` が内側の所有者を読み、
     // 意味カードの「固定語彙:」段落に `Edges::new` のような所有者付きの
-    // 表示を作る (issue #41 是正10)。
+    // 表示を作る。
     構築する(固定語彙の所有者),
     Entity,
     NodeRefsフィールド,

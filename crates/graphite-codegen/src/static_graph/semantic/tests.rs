@@ -6,8 +6,6 @@ use quote::quote;
 use crate::static_graph::literal::input::静的グラフ入力;
 use crate::static_graph::schema::input::静的グラフ型入力;
 
-use super::意味モデル;
-
 #[test]
 fn schemaの辺種別列とinstanceの具体辺列を解決する() {
     let schema: 静的グラフ型入力 = syn::parse2(quote! {
@@ -26,7 +24,8 @@ fn schemaの辺種別列とinstanceの具体辺列を解決する() {
     })
     .unwrap();
 
-    let 意味モデル = 意味モデル::組み立てる(&schema, &instance);
+    let 意味モデル =
+        crate::static_graph::internal::検証してから意味モデルを組み立てる(schema, instance);
 
     assert_eq!(意味モデル.グラフ名().to_string(), "開発チーム");
     assert_eq!(意味モデル.個体列().len(), 2);
@@ -37,7 +36,9 @@ fn schemaの辺種別列とinstanceの具体辺列を解決する() {
     let 太郎の所属 = &意味モデル.具体辺列()[0];
     assert_eq!(太郎の所属.種別().名前().to_string(), "所属");
     assert!(太郎の所属.端点に含むか(太郎.名前()));
-    assert_eq!(太郎の所属.個体の役割(太郎.名前()).unwrap().to_string(), "member");
+    let 役割一覧: Vec<String> =
+        太郎の所属.個体の役割一覧(太郎.名前()).iter().map(ToString::to_string).collect();
+    assert_eq!(役割一覧, vec!["member".to_string()]);
 
     let 端点になっている辺: Vec<_> =
         意味モデル.この個体が端点になっている具体辺列(太郎.名前()).collect();

@@ -1,6 +1,6 @@
 //! 静的グラフの意味モデル (issue #41 段階1)。schemaとinstanceの構文木
 //! (`schema::input`・`literal::input`) から、名前解決を1回で済ませた
-//! 「個体」「辺種別」「具体辺」を組み立てる。internal/codegen はここで
+//! 「個体」「辺種別」「具体辺」を組み立てる。`file` はここで
 //! 解決済みの参照だけを読み、種別名・端点名の再引き当て
 //! (`.expect(..)` を各所で繰り返すこと) を行わない。
 //!
@@ -21,7 +21,6 @@ pub(crate) use individual::個体;
 
 use proc_macro2::Ident;
 
-use crate::static_graph::literal::input::静的グラフ入力;
 use crate::static_graph::schema::input::静的グラフ型入力;
 
 // schema単体 (instanceを持たない) からschemaの辺種別列だけを組み立てる。
@@ -41,9 +40,16 @@ pub(crate) struct 意味モデル {
 }
 
 impl 意味モデル {
-    // 唯一の組み立て口。中身の解決は builder.rs が持つ。
-    pub(crate) fn 組み立てる(schema: &静的グラフ型入力, instance: &静的グラフ入力) -> Self {
-        builder::意味モデルを組み立てる(schema, instance)
+    // 唯一の組み立て口。schemaとinstanceを直接受け取らず、相互検証を通った
+    // `検証済み静的グラフ内部入力` だけを受け取る。この型は
+    // `静的グラフ内部入力::検証する` (`internal::validate::相互検証する` を含む)
+    // を経由しないと得られないため、未検証の構文木から意味モデルを組み立てる
+    // 経路が構造的に無くなる (端点解決の `.expect(..)` は検証済みである前提
+    // に依存するため、これが要る)。中身の解決は builder.rs が持つ。
+    pub(crate) fn 組み立てる(
+        検証済み: &crate::static_graph::internal::検証済み静的グラフ内部入力,
+    ) -> Self {
+        builder::意味モデルを組み立てる(検証済み.schema(), 検証済み.instance())
     }
 
     pub(crate) fn グラフ名(&self) -> &Ident {
@@ -51,8 +57,8 @@ impl 意味モデル {
     }
 
     // instanceが由来するschemaのmodule名 (`組織`)。instanceファイルの本文
-    // やDSLトークンの錨が、schema module越しの修飾パス (`組織::所属Edge`)
-    // を組み立てるために使う (issue #41 是正2)。
+    // やDSLトークンの型参照が、schema module越しの修飾パス (`組織::所属Edge`)
+    // を組み立てるために使う。
     pub(crate) fn schema名(&self) -> &Ident {
         &self.schema名
     }
