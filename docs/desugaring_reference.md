@@ -205,8 +205,8 @@ moduleは利用者が書いた `pub mod Commerce { include!(...); }` そのも�
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    279498376343989012u64, 14420603153860903487u64, 9436782982891772118u64,
-    6728272147696429882u64,
+    12915499301625855134u64, 11205147218086213387u64, 12208822815129686076u64,
+    4098736115415589360u64,
 ];
 ```
 
@@ -330,7 +330,7 @@ pub fn person(&mut self, id: PersonId, value: super::Person) -> &mut Self {
 **6. 完成済みGraphの内部保存**
 
 `Graph` は種別ごとに1つのキー付き要素表を持つ
-(`crates/graphite/tests/generated/edge_roles_commerce.rs:298`)。
+(`crates/graphite/tests/generated/edge_roles_commerce.rs:297`)。
 
 ```rust
 __graphite_node_person: graphite::KeyedTable<PersonId, super::Person>,
@@ -488,12 +488,11 @@ Graphiteは積み荷型を生成せず、参照するだけである。
 
 **3. 公開生成物**
 
-辺種別ごとに、構築用の辺値型を1つ生成する。積み荷のある辺値型は `PartialEq` を導出
-しない (その導出が積み荷の型へトレイトを要求しないためである。参照: `docs/schema_v4.md` §3.1.2)
-(`crates/graphite/tests/generated/edge_roles_commerce.rs:52-95`)。
+辺種別ごとに、構築用の辺値型を1つ生成する。積み荷のある辺値型は `Clone` と `PartialEq` を
+導出しない (生成コードが導出すると積み荷の型へトレイトを要求することになるためである。参照: `docs/schema_v4.md` §3.1.2)
+(`crates/graphite/tests/generated/edge_roles_commerce.rs:53-95`)。
 
 ```rust
-#[derive(Clone)]
 pub struct Purchase {
     pub buyer: PersonId,
     pub product: ProductId,
@@ -707,7 +706,7 @@ edge ExactlyOne = (src: NodeA) -[weight: Weight]-> (dst: NodeB) where each dst: 
 | `each <役割名>: 0..1` | `Option<{Kind}Ref<'graph>>` | `graphite::OptionalRoleIndex<P>` |
 | 上記以外 (`N..M`・`N..*`・制約なし) | `impl Iterator<Item = {Kind}Ref<'graph>> + 'graph` | `graphite::MultipleRoleIndex<P>` |
 
-多重度違反のvariantも生成する (`crates/graphite/tests/generated/edge_roles_commerce.rs:165-178`)。
+多重度違反のvariantも生成する (`crates/graphite/tests/generated/edge_roles_commerce.rs:164-177`)。
 
 ```rust
 /// このエッジ種別の `each` 制約違反 (出次数)。
@@ -742,7 +741,7 @@ variant名は辺種別名と役割名から機械的に導出する
 **6. 完成済みGraphの内部保存**
 
 `Graph` の役割索引フィールドの型が多重度で決まる
-(`crates/graphite/tests/generated/role_query_rev_query.rs:446, 475, 486`)。
+(`crates/graphite/tests/generated/role_query_rev_query.rs:444, 473, 484`)。
 
 ```rust
     unconstrained_to_index: graphite::MultipleRoleIndex<__UnconstrainedInternalPosition>,
@@ -786,7 +785,7 @@ edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) wh
 
 **3. 公開生成物**
 
-違反variantを1つ追加する (`crates/graphite/tests/generated/edge_roles_commerce.rs:179-186`)。
+違反variantを1つ追加する (`crates/graphite/tests/generated/edge_roles_commerce.rs:178-185`)。
 
 ```rust
 /// このエッジ種別の `unique pair` 違反 (同じ始点・終点の対に
@@ -890,12 +889,11 @@ impl graphite::UndirectedEdgeLiteral<PersonId, ()> for Friends {
 (`crates/graphite/src/unordered_pair.rs:20-40`)。したがって
 `Friends::new(alice, bob) == Friends::new(bob, alice)` である。
 
-積み荷ありの無向辺は積み荷を公開フィールドに持ち、`PartialEq` を導出しない
-(その導出が積み荷の型へトレイトを要求しないためである。参照: `docs/schema_v4.md` §3.1.2)
-(`crates/graphite/tests/generated/undirected_edges_social.rs:78-109`)。
+積み荷ありの無向辺は積み荷を公開フィールドに持ち、`Clone` と `PartialEq` を導出しない
+(生成コードが導出すると積み荷の型へトレイトを要求することになるためである。参照: `docs/schema_v4.md` §3.1.2)
+(`crates/graphite/tests/generated/undirected_edges_social.rs:79-109`)。
 
 ```rust
-#[derive(Clone)]
 pub struct Wire {
     endpoints: graphite::UnorderedPair<PersonId>,
     pub cable: Cable,
@@ -917,7 +915,7 @@ impl Wire {
 ```
 
 違反variantは端点の位置を区別しない
-(`crates/graphite/tests/generated/undirected_edges_social.rs:140-155`)。
+(`crates/graphite/tests/generated/undirected_edges_social.rs:139-154`)。
 
 ```rust
 /// このエッジが未知の端点キーを参照している (無向のため位置の
@@ -1512,7 +1510,7 @@ schemaに無いKind名を書いた場合も、脱糖後の `__graphite_b.{label}
 ```
 
 `insert_named` が呼ぶ `insert_named_with_binding` が、束縛名の文字列から既定IDを
-作る (`crates/graphite/tests/generated/edge_roles_commerce.rs:815-827`)。
+作る (`crates/graphite/tests/generated/edge_roles_commerce.rs:814-826`)。
 
 ```rust
 impl CommerceDefaultId for super::Person {
@@ -1755,7 +1753,7 @@ impl graphite::NamedGraphElement<Graph> for __PersonNamedPosition {
 **5. 構築時の処理**
 
 名前付き位置は、その種別の `Builder` 内部の `Vec` へ追加する直前の長さを記録する
-(`crates/graphite/tests/generated/edge_roles_commerce.rs:779-794`)。
+(`crates/graphite/tests/generated/edge_roles_commerce.rs:778-793`)。
 
 ```rust
     fn insert_named_with_id(
@@ -2282,7 +2280,7 @@ pub fn purchase_payload_mut(&mut self, id: &PurchaseId) -> Option<&mut Transacti
 
 `Violation` enum。ノードのキー重複、辺のキー重複、未知の端点、`each` 違反、
 `unique pair` 違反の5種類のvariantを持つ
-(`crates/graphite/tests/generated/edge_roles_commerce.rs:142-186`。`Subscription` 側の同型のvariantは省く)。
+(`crates/graphite/tests/generated/edge_roles_commerce.rs:141-185`。`Subscription` 側の同型のvariantは省く)。
 
 ```rust
 #[allow(clippy::enum_variant_names)]
@@ -2452,7 +2450,7 @@ impl graphite::FreezableBuilder for Builder {
 **3. 公開生成物**
 
 `Graph` のdocコメントがこの契約を書いている
-(`crates/graphite/tests/generated/edge_roles_commerce.rs:293-297`)。
+(`crates/graphite/tests/generated/edge_roles_commerce.rs:292-296`)。
 
 ```rust
 /// 凍結済み図式グラフ。構築後の構造は不変で、ノード値と辺の積み荷だけを

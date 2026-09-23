@@ -1,5 +1,5 @@
 // このファイルは Graphite が生成したため手編集しないこと。
-// 生成元: src/lib.rs:45
+// 生成元: src/lib.rs:51
 // 再生成: パッケージのディレクトリで `cargo graphite generate` を実行する
 //         (Graphite リポジトリ自身の開発では `cargo xtask generate`)。
 
@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    7995294669879697240u64, 1355294979892900969u64, 11676781284929445418u64,
-    15240749454779480126u64,
+    17859171397937757316u64, 2940897665047427503u64, 9535901190109765450u64,
+    1641172104710641726u64,
 ];
 /// `Book` ノードの公開ID。
 ///
@@ -25,12 +25,19 @@ pub struct ReaderId(pub String);
 /// 宣言: `src/lib.rs` の `edge Borrowed = (book: Book) -[loan: Loan]-> (reader: Reader) where each book: 0..1`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BorrowedId(pub String);
+/// `Recommended` 辺の公開ID。
+///
+/// 宣言: `src/lib.rs` の `edge Recommended = Reader -[note: Impression]- Reader`
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct RecommendedId(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct __BookInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct __ReaderInternalPosition(graphite::TablePosition);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct __BorrowedInternalPosition(graphite::TablePosition);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct __RecommendedInternalPosition(graphite::TablePosition);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __BookNamedPosition(__BookInternalPosition, u64);
@@ -40,10 +47,12 @@ pub struct __ReaderNamedPosition(__ReaderInternalPosition, u64);
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct __BorrowedNamedPosition(__BorrowedInternalPosition, u64);
+#[doc(hidden)]
+#[derive(Clone, Copy)]
+pub struct __RecommendedNamedPosition(__RecommendedInternalPosition, u64);
 /// 構築時に組み立てる `Borrowed` 辺の値。
 ///
 /// 宣言: `src/lib.rs` の `edge Borrowed = (book: Book) -[loan: Loan]-> (reader: Reader) where each book: 0..1`
-#[derive(Clone)]
 pub struct Borrowed {
     /// この辺の始点ノードの公開ID。
     pub book: BookId,
@@ -80,11 +89,57 @@ impl std::fmt::Debug for Borrowed {
         f.write_str(stringify!(Borrowed))
     }
 }
+/// 構築時に組み立てる `Recommended` 辺の値。
+///
+/// 宣言: `src/lib.rs` の `edge Recommended = Reader -[note: Impression]- Reader`
+pub struct Recommended {
+    endpoints: graphite::UnorderedPair<ReaderId>,
+    /// この辺が運ぶ積み荷。
+    pub note: Impression,
+}
+impl Recommended {
+    /// 両端の公開IDと積み荷から構築用の辺値を作る。両端の順序は保たない。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Recommended = Reader -[note: Impression]- Reader`
+    pub fn new(a: ReaderId, b: ReaderId, payload: Impression) -> Self {
+        Self {
+            endpoints: graphite::UnorderedPair::new(a, b),
+            note: payload,
+        }
+    }
+    /// この辺値の両端の公開IDを順序なし対として借用する。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Recommended = Reader -[note: Impression]- Reader`
+    pub fn endpoints(&self) -> (&ReaderId, &ReaderId) {
+        self.endpoints.endpoints()
+    }
+    /// この辺値が運ぶ積み荷を借用する。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Recommended = Reader -[note: Impression]- Reader`
+    pub fn payload(&self) -> &Impression {
+        &self.note
+    }
+}
+impl graphite::UndirectedEdgeLiteral<ReaderId, Impression> for Recommended {
+    fn from_graph_literal(a: ReaderId, b: ReaderId, payload: Impression) -> Self {
+        Self::new(a, b, payload)
+    }
+}
+impl std::fmt::Debug for Recommended {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(stringify!(Recommended))
+    }
+}
 #[allow(dead_code)]
 struct __BorrowedRecord {
     book: __BookInternalPosition,
     reader: __ReaderInternalPosition,
     loan: Loan,
+}
+#[allow(dead_code)]
+struct __RecommendedRecord {
+    endpoints: graphite::UnorderedPair<__ReaderInternalPosition>,
+    note: Impression,
 }
 /// 凍結時の図式適合検査が見つけた違反。
 ///
@@ -118,6 +173,16 @@ pub enum Violation {
         source: BookId,
         /// この辺種別で、この始点から実際に出ている辺の本数。
         count: usize,
+    },
+    /// このエッジ種別のキーが重複している。
+    RecommendedDuplicateKey(RecommendedId),
+    /// このエッジが未知の端点キーを参照している (無向のため位置の
+    /// 区別は無い)。
+    RecommendedUnknownEndpoint {
+        /// 未知のキーを参照した辺の公開ID。
+        edge: RecommendedId,
+        /// この辺が端点として参照した、対応するノードが存在しないキー。
+        endpoint: ReaderId,
     },
 }
 impl std::fmt::Display for Violation {
@@ -153,6 +218,16 @@ impl std::fmt::Display for Violation {
                     "Borrowed", "Book", source, "0..1", count
                 )
             }
+            Violation::RecommendedDuplicateKey(id) => {
+                write!(f, "{}のキーが重複しています: {:?}", "Recommended", id)
+            }
+            Violation::RecommendedUnknownEndpoint { edge, endpoint } => {
+                write!(
+                    f,
+                    "未知のキー {:?} が {} として見つかりません (辺 `{}` {:?} の{})",
+                    endpoint, "Reader", "Recommended", edge, "端点"
+                )
+            }
         }
     }
 }
@@ -179,6 +254,14 @@ pub struct Graph {
     __graphite_borrowed_by_pair: std::collections::HashMap<
         (__BookInternalPosition, __ReaderInternalPosition),
         Vec<__BorrowedInternalPosition>,
+    >,
+    recommended: graphite::KeyedTable<RecommendedId, __RecommendedRecord>,
+    /// 位置0キー -> このキーから (有向: 出る / 無向: 接続する) エッジ
+    /// キーの一覧 (凍結時に構築)。
+    recommended_index: graphite::MultipleRoleIndex<__RecommendedInternalPosition>,
+    __graphite_recommended_by_pair: std::collections::HashMap<
+        graphite::UnorderedPair<__ReaderInternalPosition>,
+        Vec<__RecommendedInternalPosition>,
     >,
     /// この `Graph` を生んだ構築の構築印。凍結元の `Builder` から
     /// そのまま引き継ぐ。名前付き位置がこの `Graph` の生成元と一致
@@ -320,6 +403,58 @@ impl Graph {
     pub fn borrowed_len(&self) -> usize {
         self.borrowed.len()
     }
+    /// 公開IDから完成済みグラフ上の辺個体を平均 O(1) で引く。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Recommended = Reader -[note: Impression]- Reader`
+    pub fn recommended_by_id<'graph>(
+        &'graph self,
+        id: &RecommendedId,
+    ) -> Option<RecommendedRef<'graph>> {
+        Some(RecommendedRef {
+            graph: self,
+            internal_position: __RecommendedInternalPosition(
+                self.recommended.position(id)?,
+            ),
+        })
+    }
+    /// 辺の構造を保ったまま積み荷だけを可変借用する。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Recommended = Reader -[note: Impression]- Reader`
+    pub fn recommended_payload_mut(
+        &mut self,
+        id: &RecommendedId,
+    ) -> Option<&mut Impression> {
+        self.recommended
+            .get_mut(id)
+            .map(|record: &mut __RecommendedRecord| &mut record.note)
+    }
+    /// この種別の辺の公開IDを挿入順に走査する。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Recommended = Reader -[note: Impression]- Reader`
+    pub fn recommended_ids<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = &'graph RecommendedId> {
+        self.recommended.ids()
+    }
+    /// この種別の辺個体を挿入順に走査する。追加確保はしない。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Recommended = Reader -[note: Impression]- Reader`
+    pub fn recommended_iter<'graph>(
+        &'graph self,
+    ) -> impl Iterator<Item = RecommendedRef<'graph>> + 'graph {
+        self.recommended
+            .positions()
+            .map(move |position| RecommendedRef {
+                graph: self,
+                internal_position: __RecommendedInternalPosition(position),
+            })
+    }
+    /// この種別の辺の件数を返す。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Recommended = Reader -[note: Impression]- Reader`
+    pub fn recommended_len(&self) -> usize {
+        self.recommended.len()
+    }
     /// builder をクロージャに貸し出し、戻ったら凍結して図式適合
     /// (端点種別・where 制約) を一括検査する。最初の1件の違反で
     /// `Err` になる (複数の違反を全件見たい場合は
@@ -448,6 +583,72 @@ impl<'graph> std::fmt::Debug for BorrowedRef<'graph> {
             .finish_non_exhaustive()
     }
 }
+/// 完成済みグラフ上の無向辺個体。
+///
+/// 宣言: `src/lib.rs` の `edge Recommended = Reader -[note: Impression]- Reader`
+#[derive(Clone, Copy)]
+pub struct RecommendedRef<'graph> {
+    graph: &'graph Graph,
+    internal_position: __RecommendedInternalPosition,
+}
+impl<'graph> RecommendedRef<'graph> {
+    fn record(self) -> &'graph __RecommendedRecord {
+        self.graph
+            .recommended
+            .get_at(self.internal_position.0)
+            .expect(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            )
+            .1
+    }
+    /// この辺個体の公開IDを借用する。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Recommended = Reader -[note: Impression]- Reader`
+    pub fn id(self) -> &'graph RecommendedId {
+        self.graph
+            .recommended
+            .get_at(self.internal_position.0)
+            .expect(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            )
+            .0
+    }
+    /// この辺個体の両端を順序なし対として返す。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Recommended = Reader -[note: Impression]- Reader`
+    pub fn endpoints(self) -> (ReaderRef<'graph>, ReaderRef<'graph>) {
+        let (first, second) = self.record().endpoints.endpoints();
+        (
+            ReaderRef {
+                graph: self.graph,
+                internal_position: __ReaderInternalPosition(first.0),
+            },
+            ReaderRef {
+                graph: self.graph,
+                internal_position: __ReaderInternalPosition(second.0),
+            },
+        )
+    }
+    /// この辺個体が運ぶ積み荷を役割名で借用する。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Recommended = Reader -[note: Impression]- Reader`
+    pub fn note(self) -> &'graph Impression {
+        &self.record().note
+    }
+    /// この辺個体が運ぶ積み荷を、役割名によらない固定名で借用する。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Recommended = Reader -[note: Impression]- Reader`
+    pub fn payload(self) -> &'graph Impression {
+        &self.record().note
+    }
+}
+impl<'graph> std::fmt::Debug for RecommendedRef<'graph> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct(stringify!(RecommendedRef))
+            .field("id", &self.id())
+            .finish_non_exhaustive()
+    }
+}
 /// 凍結前のグラフを組み立てる `Builder`。凍結 (`freeze()`) までは where
 /// 制約検査を一切行わない。
 ///
@@ -456,6 +657,7 @@ pub struct Builder {
     __graphite_node_book: Vec<(BookId, super::Book)>,
     __graphite_node_reader: Vec<(ReaderId, super::Reader)>,
     borrowed: Vec<(BorrowedId, Borrowed)>,
+    recommended: Vec<(RecommendedId, Recommended)>,
     /// この構築を識別する構築印。`Builder::new()` が発行し、この
     /// `Builder` から挿入する全ての名前付き位置と、凍結成功後の
     /// `Graph` へ同じ値を刻む。
@@ -774,6 +976,74 @@ impl<'graph> ReaderRef<'graph> {
                 internal_position,
             })
     }
+    /// 接続辺を O(1) で参照し、追加確保なしで挿入順に走査する。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Recommended = Reader -[note: Impression]- Reader`
+    pub fn recommended_incident(
+        self,
+    ) -> impl Iterator<Item = RecommendedRef<'graph>> + 'graph {
+        let positions = self.graph.recommended_index.get(self.internal_position.0);
+        positions
+            .iter()
+            .copied()
+            .map(move |internal_position| RecommendedRef {
+                graph: self.graph,
+                internal_position,
+            })
+    }
+    /// 順序なし端点対を平均 O(1)、追加確保なしで検索する。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Recommended = Reader -[note: Impression]- Reader`
+    pub fn recommended_try_between(
+        self,
+        other: ReaderRef<'graph>,
+    ) -> Result<
+        impl Iterator<Item = RecommendedRef<'graph>> + 'graph,
+        graphite::GraphMismatch,
+    > {
+        if self.graph.__graphite_construction_stamp
+            != other.graph.__graphite_construction_stamp
+        {
+            return Err(graphite::GraphMismatch);
+        }
+        let positions = self
+            .graph
+            .__graphite_recommended_by_pair
+            .get(
+                &graphite::UnorderedPair::new(
+                    self.internal_position,
+                    other.internal_position,
+                ),
+            )
+            .map(Vec::as_slice)
+            .unwrap_or(&[]);
+        Ok(
+            positions
+                .iter()
+                .copied()
+                .map(move |internal_position| RecommendedRef {
+                    graph: self.graph,
+                    internal_position,
+                }),
+        )
+    }
+    /// # Panics
+    /// 2つの参照が異なる `Graph` から得られた場合にパニックする。
+    /// パニックを避けたい場合は対の [`Self::recommended_try_between`] を使う。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Recommended = Reader -[note: Impression]- Reader`
+    pub fn recommended_between(
+        self,
+        other: ReaderRef<'graph>,
+    ) -> impl Iterator<Item = RecommendedRef<'graph>> + 'graph {
+        self.recommended_try_between(other)
+            .unwrap_or_else(|error| {
+                panic!(
+                    "{}::{}: {error}", stringify!(ReaderRef),
+                    stringify!(recommended_between)
+                )
+            })
+    }
 }
 impl<'graph> std::ops::Deref for ReaderRef<'graph> {
     type Target = super::Reader;
@@ -851,12 +1121,66 @@ impl LibraryDefaultId for Borrowed {
     }
 }
 impl LibraryEdge for Borrowed {}
+impl LibraryInsertable for Recommended {
+    type Id = RecommendedId;
+    type NamedPosition = __RecommendedNamedPosition;
+    fn insert_named_with_id(
+        self,
+        b: &mut Builder,
+        id: Self::Id,
+        _permit: &graphite::NamedInsertPermit,
+    ) -> (Self::Id, Self::NamedPosition) {
+        let named_position = __RecommendedNamedPosition(
+            __RecommendedInternalPosition(
+                graphite::TablePosition::from_index(b.recommended.len()),
+            ),
+            b.__graphite_construction_stamp,
+        );
+        let returned_id = id.clone();
+        b.recommended(id, self);
+        (returned_id, named_position)
+    }
+    fn insert_with_id(self, b: &mut Builder, id: Self::Id) -> Self::Id {
+        let returned_id = id.clone();
+        b.recommended(id, self);
+        returned_id
+    }
+}
+impl graphite::NamedGraphElement<Graph> for __RecommendedNamedPosition {
+    type Reference<'graph> = RecommendedRef<'graph>;
+    fn bind<'graph>(&self, graph: &'graph Graph) -> Self::Reference<'graph> {
+        if graph.__graphite_construction_stamp != self.1 {
+            panic!(
+                "名前付き位置が生成元と異なる Graph へ bind されました。名前付き位置は生成元の graph! が返したグラフでのみ有効です"
+            );
+        }
+        RecommendedRef {
+            graph,
+            internal_position: self.0,
+        }
+    }
+}
+impl LibraryDefaultId for Recommended {
+    fn insert_named_with_binding(
+        self,
+        b: &mut Builder,
+        binding: String,
+        permit: &graphite::NamedInsertPermit,
+    ) -> (Self::Id, Self::NamedPosition) {
+        LibraryInsertable::insert_named_with_id(self, b, RecommendedId(binding), permit)
+    }
+    fn insert_with_binding(self, b: &mut Builder, binding: String) -> Self::Id {
+        LibraryInsertable::insert_with_id(self, b, RecommendedId(binding))
+    }
+}
+impl LibraryEdge for Recommended {}
 impl Builder {
     fn new() -> Self {
         Self {
             __graphite_node_book: Vec::new(),
             __graphite_node_reader: Vec::new(),
             borrowed: Vec::new(),
+            recommended: Vec::new(),
             __graphite_construction_stamp: graphite::次の構築印を発行する(),
         }
     }
@@ -879,6 +1203,13 @@ impl Builder {
     /// 宣言: `src/lib.rs` の `edge Borrowed = (book: Book) -[loan: Loan]-> (reader: Reader) where each book: 0..1`
     pub fn borrowed(&mut self, id: BorrowedId, value: Borrowed) -> &mut Self {
         self.borrowed.push((id, value));
+        self
+    }
+    /// この種別の辺を公開IDと辺値の組で追加する。検査は凍結時に行う。
+    ///
+    /// 宣言: `src/lib.rs` の `edge Recommended = Reader -[note: Impression]- Reader`
+    pub fn recommended(&mut self, id: RecommendedId, value: Recommended) -> &mut Self {
+        self.recommended.push((id, value));
         self
     }
     /// 型名付きメソッド (`b.#accessor(id, value)` 群、上記
@@ -1100,6 +1431,77 @@ impl Builder {
                     });
             }
         }
+        let mut __graphite_recommended: graphite::KeyedTable<_, _> = graphite::KeyedTable::new();
+        let mut __seen_edge_ids = std::collections::HashSet::new();
+        let mut recommended_index: std::collections::HashMap<_, Vec<_>> = std::collections::HashMap::new();
+        let mut __graphite_recommended_by_pair: std::collections::HashMap<
+            graphite::UnorderedPair<__ReaderInternalPosition>,
+            Vec<__RecommendedInternalPosition>,
+        > = std::collections::HashMap::new();
+        for (id, value) in self.recommended {
+            if !__seen_edge_ids.insert(id.clone()) {
+                __violations.push(Violation::RecommendedDuplicateKey(id));
+                continue;
+            }
+            let Recommended { endpoints, note } = value;
+            let (p0, p1) = endpoints.endpoints();
+            let p0 = p0.clone();
+            let p1 = p1.clone();
+            let first_position = __graphite_node_reader
+                .position(&p0)
+                .map(__ReaderInternalPosition);
+            let second_position = __graphite_node_reader
+                .position(&p1)
+                .map(__ReaderInternalPosition);
+            if first_position.is_none() {
+                __violations
+                    .push(Violation::RecommendedUnknownEndpoint {
+                        edge: id.clone(),
+                        endpoint: p0.clone(),
+                    });
+            }
+            if p1 != p0 && second_position.is_none() {
+                __violations
+                    .push(Violation::RecommendedUnknownEndpoint {
+                        edge: id.clone(),
+                        endpoint: p1.clone(),
+                    });
+            }
+            if let (Some(first_position), Some(second_position)) = (
+                first_position,
+                second_position,
+            ) {
+                let internal_edge_position = __RecommendedInternalPosition(
+                    graphite::TablePosition::from_index(__graphite_recommended.len()),
+                );
+                __graphite_recommended_by_pair
+                    .entry(graphite::UnorderedPair::new(first_position, second_position))
+                    .or_default()
+                    .push(internal_edge_position);
+                recommended_index
+                    .entry(first_position)
+                    .or_default()
+                    .push(internal_edge_position);
+                if second_position != first_position {
+                    recommended_index
+                        .entry(second_position)
+                        .or_default()
+                        .push(internal_edge_position);
+                }
+                let inserted = __graphite_recommended
+                    .insert(
+                        id,
+                        __RecommendedRecord {
+                            endpoints: graphite::UnorderedPair::new(
+                                first_position,
+                                second_position,
+                            ),
+                            note,
+                        },
+                    );
+                debug_assert!(inserted, "重複辺IDは挿入前に除外済み");
+            }
+        }
         if !__violations.is_empty() {
             return Err(__violations);
         }
@@ -1123,13 +1525,26 @@ impl Builder {
                 })
                 .collect(),
         );
+        let recommended_index = graphite::MultipleRoleIndex::from_buckets(
+            __graphite_node_reader
+                .positions()
+                .map(|position| {
+                    recommended_index
+                        .remove(&__ReaderInternalPosition(position))
+                        .unwrap_or_default()
+                })
+                .collect(),
+        );
         Ok(Graph {
             __graphite_node_book,
             __graphite_node_reader,
             borrowed: __graphite_borrowed,
+            recommended: __graphite_recommended,
             borrowed_from_index,
             borrowed_to_index,
             __graphite_borrowed_by_pair,
+            recommended_index,
+            __graphite_recommended_by_pair,
             __graphite_construction_stamp,
         })
     }

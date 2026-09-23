@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    7635694370916389579u64, 6656697353344177350u64, 8982200291651717437u64,
-    16977618858203458337u64,
+    3785719739635830799u64, 9532437634699643128u64, 1859732802879328509u64,
+    237341979525439873u64,
 ];
 /// `人物` ノードの公開ID。
 ///
@@ -53,7 +53,6 @@ pub struct __友人NamedPosition(__友人InternalPosition, u64);
 /// 構築時に組み立てる `購入` 辺の値。
 ///
 /// 宣言: `tests/graph_refs.rs` の `edge 購入 = (購入者: 人物) -[取引: 取引情報]-> (対象商品: 商品) where unique pair`
-#[derive(Clone)]
 pub struct 購入 {
     /// この辺の始点ノードの公開ID。
     pub 購入者: 人物Id,

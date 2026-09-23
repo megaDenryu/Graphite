@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    9306021729419354056u64, 4323952802809638381u64, 678543775809915918u64,
-    8568746868192757978u64,
+    18205409171062927074u64, 3718431881666737283u64, 9069693066087302160u64,
+    17332421476122528284u64,
 ];
 /// `Person` ノードの公開ID。
 ///
@@ -114,7 +114,6 @@ impl std::fmt::Debug for BelongsTo {
 /// 構築時に組み立てる `Boss` 辺の値。
 ///
 /// 宣言: `src/main.rs` の `edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1`
-#[derive(Clone)]
 pub struct Boss {
     /// この辺の始点ノードの公開ID。
     pub subordinate: PersonId,
@@ -188,7 +187,6 @@ impl std::fmt::Debug for Reports {
 /// 構築時に組み立てる `ReviewedBy` 辺の値。
 ///
 /// 宣言: `src/main.rs` の `edge ReviewedBy = (reviewee: Person) -[review: ReviewEdge]-> (reviewer: Person)`
-#[derive(Clone)]
 pub struct ReviewedBy {
     /// この辺の始点ノードの公開ID。
     pub reviewee: PersonId,

@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    13638630986767300708u64, 3418315020260111059u64, 11472843084462031630u64,
-    4777271716684390210u64,
+    16013047914643490192u64, 10432979776496950771u64, 7961302453929473826u64,
+    14192726349224897334u64,
 ];
 /// `OrderState` ノードの公開ID。
 ///
@@ -198,7 +198,6 @@ impl std::fmt::Debug for Deliver {
 /// 構築時に組み立てる `Cancel` 辺の値。
 ///
 /// 宣言: `src/schema.rs` の `edge Cancel = (before: OrderState) -[cancellation: CancelEdge]-> (after: OrderState) where each before: 0..1`
-#[derive(Clone)]
 pub struct Cancel {
     /// この辺の始点ノードの公開ID。
     pub before: OrderStateId,
@@ -242,7 +241,6 @@ impl std::fmt::Debug for Cancel {
 /// 構築時に組み立てる `Refund` 辺の値。
 ///
 /// 宣言: `src/schema.rs` の `edge Refund = (before: OrderState) -[refund: RefundEdge]-> (after: OrderState) where each before: 0..1`
-#[derive(Clone)]
 pub struct Refund {
     /// この辺の始点ノードの公開ID。
     pub before: OrderStateId,

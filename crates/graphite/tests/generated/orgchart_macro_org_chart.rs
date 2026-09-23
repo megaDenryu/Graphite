@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    2236443785454523246u64, 14695594506649629681u64, 1607231395936647964u64,
-    3852714602859353608u64,
+    4007966473764014254u64, 3780664326141556203u64, 13836150246136371456u64,
+    2170104503845331756u64,
 ];
 /// `Employee` ノードの公開ID。
 ///
@@ -107,7 +107,6 @@ impl std::fmt::Debug for BelongsTo {
 /// 構築時に組み立てる `Boss` 辺の値。
 ///
 /// 宣言: `tests/orgchart_macro.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
-#[derive(Clone)]
 pub struct Boss {
     /// この辺の始点ノードの公開ID。
     pub subordinate: EmployeeId,

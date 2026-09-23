@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    6832160084134973150u64, 9563886519145323629u64, 9540419647134504668u64,
-    17877339924026764008u64,
+    1291174686737951902u64, 9003208429607694951u64, 5909228486761345120u64,
+    384723375791785164u64,
 ];
 /// `Scene` ノードの公開ID。
 ///
@@ -53,7 +53,6 @@ pub struct __FinaleNamedPosition(__FinaleInternalPosition, u64);
 /// 構築時に組み立てる `Choice` 辺の値。
 ///
 /// 宣言: `src/schema.rs` の `edge Choice = (scene: Scene) -[choice: ChoiceEdge]-> (next: Scene)`
-#[derive(Clone)]
 pub struct Choice {
     /// この辺の始点ノードの公開ID。
     pub scene: SceneId,

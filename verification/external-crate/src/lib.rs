@@ -9,10 +9,12 @@
 //! 検査は `cargo xtask check-external` が行う。生成し直すときは、このディレクトリで
 //! `cargo graphite generate` を実行する。
 
-// 以下の3つの型は、生成コードが要求するトレイト (`docs/schema_v4.md` §3.1.2) だけを
-// 導出する。ノード値型は何も導出せず、積み荷型は `Clone` だけを導出する。この検証用
-// パッケージのビルドが、生成コードが利用者の型へそれ以上のトレイトを要求しないことを
-// 機械で確かめる。このパッケージは導出を足すと保証が消えるため足さない (issue #27)。
+// 以下の4つの型は、生成コードが要求するトレイト (`docs/schema_v4.md` §3.1.2) を
+// 何も導出しない。ノード値型も積み荷型も、生成コードが要求する固有のトレイトを
+// 持たない。`Impression` は無向辺 `Recommended` の積み荷であり、無向の
+// 積み荷ありの辺値型にも同じ見張りを掛ける。この検証用パッケージのビルドが、
+// 生成コードが利用者の型へトレイトを要求しないことを機械で確かめる。この
+// パッケージは導出を足すと保証が消えるため足さない (issue #27, #35)。
 
 // ノード型: 蔵書。
 pub struct Book {
@@ -25,9 +27,13 @@ pub struct Reader {
 }
 
 // `Borrowed` 辺が1本ごとに運ぶ積み荷。
-#[derive(Clone)]
 pub struct Loan {
     pub day: u32,
+}
+
+// `Recommended` (無向辺) が1本ごとに運ぶ積み荷。
+pub struct Impression {
+    pub text: String,
 }
 
 #[allow(non_snake_case, dead_code, private_interfaces)]
@@ -49,6 +55,7 @@ graphite::graph_schema! {
         node Reader;
 
         edge Borrowed = (book: Book) -[loan: Loan]-> (reader: Reader) where each book: 0..1;
+        edge Recommended = Reader -[note: Impression]- Reader;
     }
 }
 
@@ -61,7 +68,9 @@ pub fn 貸出中の蔵書を1件持つ図書グラフを組み立てる() -> Lib
     graphite::graph!(Library {
         本 = Book { title: "型で守るグラフ".to_string() },
         利用者 = Reader { name: "検証".to_string() },
+        感想相手 = Reader { name: "検証2".to_string() },
         貸出 = Borrowed(本 -[Loan { day: 1 }]-> 利用者),
+        推薦 = Recommended(利用者 -[Impression { text: "面白い".to_string() }]- 感想相手),
     })
     .expect("多重度を満たすグラフは構築に成功する")
     .into_graph()
@@ -113,6 +122,14 @@ mod tests {
         let 貸出 = graph.borrowed_iter().next().expect("辺が1本ある");
         assert_eq!(貸出.loan().day, 1);
         assert_eq!(貸出.reader().name, "検証");
+    }
+
+    #[test]
+    fn 外部crateから生成した無向の積み荷ありの辺の公開apiを呼べる() {
+        let graph = 貸出中の蔵書を1件持つ図書グラフを組み立てる();
+        assert_eq!(graph.recommended_len(), 1);
+        let 推薦 = graph.recommended_iter().next().expect("無向辺が1本ある");
+        assert_eq!(推薦.note().text, "面白い");
     }
 
     #[test]

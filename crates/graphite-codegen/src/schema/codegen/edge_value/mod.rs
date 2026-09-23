@@ -48,15 +48,15 @@ pub(crate) fn gen_edge_value_structs(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream>
 
 // 辺値型へ付ける導出属性を生成する。
 //
-// 利用者定義の積み荷へトレイトを要求しない契約を守るため、`PartialEq` を導出するのは
-// 積み荷のない辺に限る。積み荷のある辺で導出すると、積み荷の型が `PartialEq` の実装を
-// 強いられる (issue #27)。端点の公開ID型は表のキーとして `Eq + Hash` を既に要求して
-// いるため、端点だけで構成される辺値の等値比較は利用者へ新しい要求を課さない。
-// 生成コードが `Debug` を導出せず手書きしているのも同じ契約による (`debug_implementation.rs`)。
+// 生成器は、Graphite自身の意味論・実装が必要としないトレイトを利用者定義型へ
+// 要求しない。積み荷のある辺で生成器が `Clone` を導出すると、積み荷の型へ複製
+// 可能性を要求することになるため、`Clone` と `PartialEq` は積み荷の無い辺に
+// 限って導出する。`Debug` を手書きしているのも同じ契約による
+// (`debug_implementation.rs`)。参照: `docs/schema_v4.md` §3.1.2
 fn gen_edge_value_derives(e: &EdgeInfo<'_>) -> TokenStream {
     if e.payload().is_none() {
         quote! { #[derive(Clone, PartialEq)] }
     } else {
-        quote! { #[derive(Clone)] }
+        quote! {}
     }
 }

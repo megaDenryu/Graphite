@@ -273,12 +273,9 @@ graphite = { git = "https://github.com/megaDenryu/Graphite" }
 ```rust
 // ノード型・積み荷型は普通の Rust struct として宣言する。
 // graph_schema! はこれらの型を生成せず、参照するだけ。
-// 生成コードが Ref 型へ Clone / PartialEq を要求するため、ここでも derive する。
-#[derive(Debug, Clone, PartialEq)]
+// 生成コードは値を複製も比較も表示もしないため、利用者は何も derive しなくてよい。
 pub struct Book { pub title: String }
-#[derive(Debug, Clone, PartialEq)]
 pub struct Reader { pub name: String }
-#[derive(Debug, Clone, PartialEq)]
 pub struct Loan { pub day: u32 }
 
 #[allow(non_snake_case, dead_code, private_interfaces)]

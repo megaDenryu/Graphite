@@ -7,8 +7,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    13275782315176068315u64, 1282226142621759062u64, 11700526868775304361u64,
-    744406826113804093u64,
+    4899365507042717713u64, 6323256029017298582u64, 6258937763692668323u64,
+    5112787648029960311u64,
 ];
 /// `人物` ノードの公開ID。
 ///
@@ -33,7 +33,6 @@ pub struct __関係NamedPosition(__関係InternalPosition, u64);
 /// 構築時に組み立てる `関係` 辺の値。
 ///
 /// 宣言: `tests/schema_namespace.rs` の `edge 関係 = (始点: 人物) -[明細: 取引情報]-> (終点: 人物)`
-#[derive(Clone)]
 pub struct 関係 {
     /// この辺の始点ノードの公開ID。
     pub 始点: 人物Id,
