@@ -7,6 +7,7 @@ name = "hello-graph"
 version = "0.1.0"
 edition = "2021"
 description = "Graphite の graph_schema!/graph! の意味論を最小構成で確認する入門用example"
+publish = false
 
 [dependencies]
 graphite = { path = "../../crates/graphite" }

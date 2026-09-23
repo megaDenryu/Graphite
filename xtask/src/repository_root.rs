@@ -59,13 +59,7 @@ impl RepositoryRoot {
     pub fn generation_packages(&self) -> Result<Vec<RepositoryPackage>, Box<dyn Error>> {
         let mut packages = Vec::new();
         for area in ["crates", "examples"] {
-            for directory in subdirectories(&self.path, &self.path.join(area))? {
-                if !directory.join("Cargo.toml").is_file() {
-                    continue;
-                }
-                let spelling = self.relative_display(&directory);
-                packages.push(RepositoryPackage::new(spelling, PackageRoot::at(directory)?));
-            }
+            packages.extend(self.packages_under(area)?);
         }
         if packages.is_empty() {
             return Err(format!(
@@ -73,6 +67,42 @@ impl RepositoryRoot {
                 self.path.display()
             )
             .into());
+        }
+        Ok(packages)
+    }
+
+    // doc コメント検査が対象にする全パッケージ (issue #32)。
+    //
+    // この関数は、生成の対象になる `crates/*`・`examples/*`
+    // (`generation_packages`) に、xtask 自身と検証用パッケージ (`verification/*`
+    // のうち Cargo.toml を持つディレクトリ全部) を加える。この関数は、
+    // `verification` も `crates`・`examples` と同じくディレクトリ列挙にする
+    // ことで、2件目以降の検証用パッケージが増えても取りこぼさない。内部領域
+    // かどうかの判定は `PackageManifestFacts` が各パッケージの Cargo.toml から
+    // 読み取り、この関数は対象の列挙だけを行う。
+    pub(crate) fn doc_comment_packages(&self) -> Result<Vec<RepositoryPackage>, Box<dyn Error>> {
+        let mut packages = self.generation_packages()?;
+        let xtask_directory = self.path.join("xtask");
+        packages.push(RepositoryPackage::new(
+            self.relative_display(&xtask_directory),
+            PackageRoot::at(xtask_directory)?,
+        ));
+        packages.extend(self.packages_under("verification")?);
+        Ok(packages)
+    }
+
+    // この関数は、指定した領域の直下のディレクトリのうち、Cargo.toml を持つ
+    // ものだけをパッケージとして綴り順で列挙する。この関数は、
+    // `generation_packages`・`doc_comment_packages` が共有する、ディレクトリ
+    // 列挙の唯一の実装である。
+    fn packages_under(&self, area: &str) -> Result<Vec<RepositoryPackage>, Box<dyn Error>> {
+        let mut packages = Vec::new();
+        for directory in subdirectories(&self.path, &self.path.join(area))? {
+            if !directory.join("Cargo.toml").is_file() {
+                continue;
+            }
+            let spelling = self.relative_display(&directory);
+            packages.push(RepositoryPackage::new(spelling, PackageRoot::at(directory)?));
         }
         Ok(packages)
     }

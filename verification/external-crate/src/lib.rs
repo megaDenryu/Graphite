@@ -14,17 +14,17 @@
 // パッケージのビルドが、生成コードが利用者の型へそれ以上のトレイトを要求しないことを
 // 機械で確かめる。このパッケージは導出を足すと保証が消えるため足さない (issue #27)。
 
-/// ノード型: 蔵書。
+// ノード型: 蔵書。
 pub struct Book {
     pub title: String,
 }
 
-/// ノード型: 利用者。
+// ノード型: 利用者。
 pub struct Reader {
     pub name: String,
 }
 
-/// `Borrowed` 辺が1本ごとに運ぶ積み荷。
+// `Borrowed` 辺が1本ごとに運ぶ積み荷。
 #[derive(Clone)]
 pub struct Loan {
     pub day: u32,
@@ -52,11 +52,11 @@ graphite::graph_schema! {
     }
 }
 
-/// 貸出中の蔵書を1件だけ持つグラフを組み立てる。
-///
-/// 生成物を `include!` するだけでは、公開APIが生えていない不整合をこの crate の
-/// ビルドが見逃す。組み立てから読み出しまで通すことで、生成した型・辺の役割
-/// アクセサ・多重度検査が外部 crate でも働くことを確かめる。
+// 貸出中の蔵書を1件だけ持つグラフを組み立てる。
+//
+// 生成物を `include!` するだけでは、公開APIが生えていない不整合をこの crate の
+// ビルドが見逃す。組み立てから読み出しまで通すことで、生成した型・辺の役割
+// アクセサ・多重度検査が外部 crate でも働くことを確かめる。
 pub fn 貸出中の蔵書を1件持つ図書グラフを組み立てる() -> Library::Graph {
     graphite::graph!(Library {
         本 = Book { title: "型で守るグラフ".to_string() },
@@ -90,9 +90,9 @@ ReadingCircle! {
     edge 割り当て = Assigned(本 -> 読者);
 }
 
-/// `static_schema!` で組み立てた読書会グラフの割り当て (どの本を誰が読むか)
-/// を返す。`graph_schema!`/`graph!` と異なり、個体・辺の集合自体がコンパイル
-/// 時に固定されているため `freeze()` を呼ばない。
+// `static_schema!` で組み立てた読書会グラフの割り当て (どの本を誰が読むか)
+// を返す。`graph_schema!`/`graph!` と異なり、個体・辺の集合自体がコンパイル
+// 時に固定されているため `freeze()` を呼ばない。
 pub fn 読書会グラフの割り当てを求める() -> (String, String) {
     let nodes = Nodes::new();
     let edges = Edges::new(&nodes);

@@ -7,6 +7,7 @@ name = "dialogue-engine"
 version = "0.1.0"
 edition = "2021"
 description = "Graphite の graph_schema!/graph! を使った分岐ノベルゲームエンジンの実践example"
+publish = false
 
 [dependencies]
 graphite = { path = "../../crates/graphite" }

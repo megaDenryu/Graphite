@@ -7,6 +7,7 @@ name = "state-machine"
 version = "0.1.0"
 edition = "2021"
 description = "Graphite (graph_schema!/graph!) でステートマシン地獄 (bool フラグ / enum+match 散在) を倒す実証example"
+publish = false
 
 [dependencies]
 graphite = { path = "../../crates/graphite" }

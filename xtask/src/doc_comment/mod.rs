@@ -6,9 +6,15 @@
 
 mod attribute_facts;
 mod generated_inspection;
+mod internal_area_derivation;
 mod internal_inspection;
 mod item_facts;
+mod orphan_inspection;
+mod package_manifest;
 mod public_item_visitor;
+mod public_package_report;
+#[cfg(test)]
+mod temporary_repository;
 
 use std::collections::BTreeMap;
 use std::error::Error;
@@ -19,15 +25,8 @@ use crate::repository_root::RepositoryRoot;
 use crate::rust_source::RustSource;
 use generated_inspection::GeneratedAreaReport;
 use internal_inspection::InternalAreaReport;
-
-// 撤去の対象になる内部領域。`graphite` と生成コードだけが公開面である。
-const INTERNAL_AREAS: [&str; 5] = [
-    "crates/graphite-codegen",
-    "crates/graphite-cli",
-    "crates/graphite-macros",
-    "xtask",
-    "examples",
-];
+use orphan_inspection::OrphanSourceReport;
+use public_package_report::PublicPackageReport;
 
 // 生成ファイルを探す起点。この下でディレクトリ名が `generated` の場所を公開面とみなす。
 const GENERATED_SEARCH_ROOTS: [&str; 3] = ["crates", "examples", "verification"];
@@ -45,12 +44,18 @@ impl<'a> DocCommentInspection<'a> {
     }
 
     pub(crate) fn run(&self) -> Result<(), Box<dyn Error>> {
-        let internal = self.internal_reports()?;
+        let classification = internal_area_derivation::classify_packages(self.root)?;
+        let internal = self.internal_reports(classification.internal_areas())?;
+        let public = PublicPackageReport::new(classification.public_areas(), internal.len());
         let generated = self.generated_reports()?;
+        let orphan_sources = self.search_root_sources()?;
+        let orphans = OrphanSourceReport::inspect(orphan_sources, &classification.known_areas());
+
         let mut text = String::from("内部領域 (項目の `///` が1件も無いこと):\n");
         for report in &internal {
             text.push_str(&report.render());
         }
+        text.push_str(&public.render());
         let _ = writeln!(
             text,
             "生成コードの公開面 (非 #[doc(hidden)] な公開項目に doc があること):"
@@ -58,38 +63,53 @@ impl<'a> DocCommentInspection<'a> {
         for report in &generated {
             text.push_str(&report.render());
         }
+        text.push_str(&orphans.render());
         print!("{text}");
+
         if internal.iter().all(InternalAreaReport::is_clean)
             && generated.iter().all(GeneratedAreaReport::is_clean)
+            && orphans.is_clean()
         {
             return Ok(());
         }
         Err("doc コメントの検査に違反があります(上の一覧を参照してください)".into())
     }
 
-    fn internal_reports(&self) -> Result<Vec<InternalAreaReport>, Box<dyn Error>> {
+    fn internal_reports(
+        &self,
+        areas: &[InspectedArea],
+    ) -> Result<Vec<InternalAreaReport>, Box<dyn Error>> {
         let mut reports = Vec::new();
-        for spelling in INTERNAL_AREAS {
-            let mut sources = self.root.rust_source_files(&InspectedArea::at(spelling))?;
+        for area in areas {
+            let mut sources = self.root.rust_source_files(area)?;
             sources.retain(|source| generated_area_of(source.spelling()).is_none());
-            reports.push(InternalAreaReport::inspect(spelling.to_string(), sources));
+            let spelling = area.spelling().to_string();
+            reports.push(InternalAreaReport::inspect(spelling, sources));
         }
         Ok(reports)
     }
 
     fn generated_reports(&self) -> Result<Vec<GeneratedAreaReport>, Box<dyn Error>> {
         let mut grouped: BTreeMap<String, Vec<RustSource>> = BTreeMap::new();
-        for spelling in GENERATED_SEARCH_ROOTS {
-            for source in self.root.rust_source_files(&InspectedArea::at(spelling))? {
-                if let Some(area) = generated_area_of(source.spelling()) {
-                    grouped.entry(area).or_default().push(source);
-                }
+        for source in self.search_root_sources()? {
+            if let Some(area) = generated_area_of(source.spelling()) {
+                grouped.entry(area).or_default().push(source);
             }
         }
         Ok(grouped
             .into_iter()
             .map(|(spelling, sources)| GeneratedAreaReport::inspect(spelling, sources))
             .collect())
+    }
+
+    // この関数は `crates`・`examples`・`verification` 配下の Rust ソースを
+    // 集める。`generated_reports` と `orphan` 検出の両方がこの結果を使う。
+    fn search_root_sources(&self) -> Result<Vec<RustSource>, Box<dyn Error>> {
+        let mut sources = Vec::new();
+        for spelling in GENERATED_SEARCH_ROOTS {
+            sources.extend(self.root.rust_source_files(&InspectedArea::at(spelling))?);
+        }
+        Ok(sources)
     }
 }
 

@@ -77,11 +77,29 @@ impl PackageRoot {
     pub fn directory(&self) -> &Path {
         &self.path
     }
+
+    // このパッケージの Cargo.toml のパス。
+    //
+    // `manifest_path_of` が綴りの組み立てをこの1箇所へ閉じる。この型の構築時の
+    // 検査 (`ensure_package_manifest`) と、Cargo.toml の内容を読みたい
+    // 呼び出し元 (xtask の `PackageManifestFacts` 等) の両方がここへ委譲する。
+    pub fn manifest_path(&self) -> PathBuf {
+        manifest_path_of(&self.path)
+    }
+}
+
+// この関数は、パッケージディレクトリから Cargo.toml のパスを組み立てる。
+//
+// `PackageRoot::at` は `Self` を構築する前にこのパスを読むため、この関数は
+// `Self` に無いままでも呼べる自由関数として存在する。構築後は
+// `PackageRoot::manifest_path` がこの関数へ委譲する。
+fn manifest_path_of(package_directory: &Path) -> PathBuf {
+    package_directory.join("Cargo.toml")
 }
 
 // `[package]` を持つ `Cargo.toml` がある場所だけをパッケージルートとして通す。
 fn ensure_package_manifest(path: &Path) -> Result<(), Box<dyn Error>> {
-    let manifest_path = path.join("Cargo.toml");
+    let manifest_path = manifest_path_of(path);
     let Ok(text) = fs::read_to_string(&manifest_path) else {
         return Err(format!("Cargo.toml を読めません: {}", manifest_path.display()).into());
     };

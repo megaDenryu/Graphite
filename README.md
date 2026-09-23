@@ -215,10 +215,16 @@ schema を変えて生成し忘れると、指紋が合わず通常の `cargo bu
 
 ## 導入方法
 
-crates.io へは未公開です。`crates/graphite/Cargo.toml` に `license` フィールドが無く、
-`cargo publish` の要求を満たさないためです。そのため、いずれの使い方でもこの
-リポジトリを clone するか Git 依存で参照します。ライセンスの状態は下記の
-「ライセンス」に書いてあるので、使う前に読んでください。
+crates.io へは未公開です。理由は2つあります。1つ目は、`crates/graphite/Cargo.toml`
+に `license` フィールドが無く、`cargo publish` の要求を満たさないことです。2つ目は、
+`graphite` が依存する `graphite-macros` の依存先である `graphite-codegen` に、
+オーナーが `publish = false` を置いていることです (issue #32 のオーナー裁定。
+`graphite-codegen`・`graphite-cli` は現時点で利用者が直接依存する公開crateでは
+なく、Graphite内部の実装基盤として扱う方針)。この状態が続く限り、開発者が
+`license` を足しても `graphite` を crates.io へ公開できません。そのため、
+いずれの使い方でもこのリポジトリを clone
+するか Git 依存で参照します。ライセンスの状態は下記の「ライセンス」に書いてあるので、
+使う前に読んでください。
 
 ### schema を使わない場合
 

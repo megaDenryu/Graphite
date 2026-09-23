@@ -17,6 +17,10 @@ petgraph = "0.6"
 syn = { version = "2", features = ["full", "visit"] }
 quote = "1"
 proc-macro2 = { version = "1", features = ["span-locations"] }
+# xtask が Cargo.toml から内部領域 (publish・proc-macro) を読み取るために使う
+# (issue #32)。xtask は手書きの行走査ではなく構文解析で読み、`publish = false`
+# の書き方の揺れ (コメント併記・空白の有無) を取りこぼさない。
+toml = "1"
 # examples/ 配下は独立したCargo.lockを持ち、生成ファイルの指紋は
 # prettyplease の整形結果をハッシュするため、版がずれると
 # `cargo xtask generate` を実行しても直らない指紋エラーになる (詳細:
