@@ -1,6 +1,6 @@
 // instance宣言の入力DSLの構文木。
 //
-//   graph <グラフ名>;
+//   graph <グラフ名>[ in fn];
 //   (node <名前> = <型> { <フィールド式, ...> };)*
 //   (node <名前>: <型> = <式>;)*
 //   (node <名前>: <型>;)*
@@ -20,6 +20,18 @@
 // `<schema名>! { graph <名前>; .. }` と書く)、この構文木を組み立てる時点で
 // どのschemaかは既に確定しているため。
 //
+// `graph <名前> in fn;` の `in fn` は、instance を関数の中 (文の位置) に
+// 置いたことを示す印である。値の式の名前解決は instance 宣言の位置へ固定
+// するが、Rust の `macro_rules!` は自分がどちらの位置で呼ばれたかを構文
+// だけからは知れない (実測は `docs/static_graph.md`「値の式の名前解決」
+// 節参照)。値の式が関数のローカル変数を捕捉できるのは `let` で束縛した
+// クロージャだけであり、`let` は文の位置でしか書けない。そのため `in fn`
+// を印にして、値の式をクロージャで束縛するコード (`inline/value_supply.rs`)
+// を選ぶ。印を省いた `graph <名前>;` は項目の位置 (モジュール直下) 用で
+// あり、値の式は捕捉しない関数として固定する (ローカルは存在しないため
+// 捕捉の必要が無い)。`in fn` を項目の位置で書くと、生成される `let` が
+// 文の位置以外では構文エラーになるため、位置の取り違えは検出できる。
+//
 // node/edgeの各1件の宣言のパース (3形態の判別を含む) は input_item.rs、
 // 辺の右辺 `(...)` の中身 (無payload/payload/無向) の判別は input_edge_body.rs
 // が担う。ここは骨格の構造体定義とトップレベル (graph宣言 + node/edge宣言の
@@ -38,11 +50,24 @@ syn::custom_keyword!(graph);
 syn::custom_keyword!(node);
 syn::custom_keyword!(edge);
 
+// instance宣言がRustの構文上どちらの位置に置かれたかを表す、排他的な2状態。
+// `graph <名前>;`が項目の位置、`graph <名前> in fn;`が関数の中の位置になる。
+// 値の式の名前解決を宣言位置へ固定するコード生成
+// (`inline::value_binding::値束縛を組み立てる`) が、この値を見て
+// クロージャ束縛か捕捉しない関数かを選ぶ (`docs/static_graph.md`
+// 「値の式の名前解決」節)。
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum 宣言位置 {
+    項目位置,
+    関数内位置,
+}
+
 // Clone は `static_graph::tracked::instance` が、相互検証用の
 // `静的グラフ内部入力` へ複製して渡すために要る (issue #41 段階2)。
 #[derive(Clone)]
 pub struct 静的グラフ入力 {
     pub グラフ名: Ident,
+    pub 位置: 宣言位置,
     pub ノード宣言達: Vec<ノード宣言>,
     pub 辺宣言達: Vec<辺宣言>,
 }
@@ -83,6 +108,13 @@ impl Parse for 静的グラフ入力 {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         input.parse::<graph>()?;
         let グラフ名 = input.parse()?;
+        let 位置 = if input.peek(Token![in]) {
+            input.parse::<Token![in]>()?;
+            input.parse::<Token![fn]>()?;
+            宣言位置::関数内位置
+        } else {
+            宣言位置::項目位置
+        };
         input.parse::<Token![;]>()?;
 
         let mut ノード宣言達 = Vec::new();
@@ -96,6 +128,6 @@ impl Parse for 静的グラフ入力 {
                 return Err(input.error("`node` または `edge` の宣言が必要です"));
             }
         }
-        Ok(静的グラフ入力 { グラフ名, ノード宣言達, 辺宣言達 })
+        Ok(静的グラフ入力 { グラフ名, 位置, ノード宣言達, 辺宣言達 })
     }
 }

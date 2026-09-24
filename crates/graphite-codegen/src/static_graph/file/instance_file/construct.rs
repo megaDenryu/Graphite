@@ -1,15 +1,19 @@
 // このファイルは `construct` module (利用者が辿れる構築の唯一の入口) の
 // 本体を組み立てる。`construct::nodes!`/`construct::edges!` は、instance
-// 展開が呼び出し位置に置く値マクロ
+// の宣言位置 (`__static_graph_impl!`がその場展開する位置) に置かれた値マクロ
 // (`__graphite_values_{グラフ名}!`/`__graphite_payloads_{グラフ名}!`、
 // `inline::value_supply`) を無修飾の名前で呼んで値ありの個体・積み荷を
 // 計算し、内部構築子 (`{グラフ名}::Nodes::__graphite_internal_new`/
 // `{グラフ名}::Edges::__graphite_internal_new`、
-// `node_entities.rs`/`edge_entities.rs`) へ渡す。
+// `node_entities.rs`/`edge_entities.rs`) へ渡す。値マクロ自身の本体は、
+// 宣言位置に置いた個々の値の束縛マクロ (`inline::value_binding`) を呼ぶ
+// だけであり、instance宣言の値の式が`construct::nodes!`の呼び出し位置の
+// 名前解決に晒されることはない (`docs/static_graph.md`「値の式の名前
+// 解決」節)。
 //
-// どちらの参照も、`super::`や`$crate::`のような固定深度・固定起点の修飾を
-// 使わない。`macro_rules!`はマクロ名・項目パスのどちらも呼び出し位置
-// (`construct::nodes!`/`construct::edges!`が実際に展開される場所) を
+// 内部構築子への参照は、`super::`や`$crate::`のような固定深度・固定起点の
+// 修飾を使わない。`macro_rules!`はマクロ名・項目パスのどちらも呼び出し
+// 位置 (`construct::nodes!`/`construct::edges!`が実際に展開される場所) を
 // 起点に解決するため (実測で確認済み)、`super::Nodes`は「呼び出し位置から
 // 見てsuperの数が合わない」エラーになり、`$crate::#グラフ名::Nodes`は
 // instanceの`mod`が関数の中にあると解決できない。`#グラフ名::Nodes`
@@ -20,10 +24,8 @@
 // 値マクロは意図的に`pub(crate) use`を付けない (`inline::value_supply`の
 // 冒頭コメント参照)。そのため`construct::nodes!`/`construct::edges!`を
 // 呼んでよいのは、instance宣言と同じテキスト順スコープ (同じmodule、または
-// instanceを置いた同じ関数の中) だけである。同じファイルの中でinstanceの
-// 後ろに書いたインラインの子module (`mod x { .. }`) からは、macro_rules!の
-// テキスト順スコープにより値マクロが見えてしまう残る穴がある
-// (`docs/static_graph.md`「制約」節)。
+// instanceを置いた同じ関数の中) だけである (`docs/static_graph.md`
+// 「制約」節)。
 //
 // 内部構築子は`#[deprecated]`を持つ (`node_entities.rs`冒頭コメント参照)。
 // この2つのマクロは自分自身の呼び出しを`#[allow(deprecated)]`で許すが、

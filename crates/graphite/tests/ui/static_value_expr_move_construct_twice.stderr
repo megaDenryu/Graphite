@@ -1,0 +1,36 @@
+error[E0382]: use of moved value
+  --> tests/ui/static_value_expr_move_construct_twice.rs:24:1
+   |
+24 | / graphite::static_graph_schema! {
+25 | |     generated = "generated/static_value_expr_move_construct_twice_move二回組織.rs";
+26 | |     schema move二回組織 {
+27 | |         node 社員;
+...  |
+31 | | }
+   | | ^
+   | | |
+   | |_value moved due to this call
+   |   value used here after move
+...
+53 |       let _2回目 = move二回チーム::construct::nodes!();
+   |                    ----------------------------------- in this macro invocation
+   |
+note: closure cannot be invoked more than once because it moves the variable `名前` out of its environment
+  --> tests/ui/static_value_expr_move_construct_twice.rs:46:24
+   |
+46 |         node 太郎 = 社員 { 名前 };
+   |                            ^^^^
+note: this value implements `FnOnce`, which causes it to be moved when called
+  --> tests/ui/static_value_expr_move_construct_twice.rs:24:1
+   |
+24 | / graphite::static_graph_schema! {
+25 | |     generated = "generated/static_value_expr_move_construct_twice_move二回組織.rs";
+26 | |     schema move二回組織 {
+27 | |         node 社員;
+...  |
+31 | | }
+   | |_^
+...
+51 |       let _1回目 = move二回チーム::construct::nodes!();
+   |                    ----------------------------------- in this macro invocation
+   = note: this error originates in the macro `__graphite_bind_太郎_move二回チーム` which comes from the expansion of the macro `move二回チーム::construct::nodes` (in Nightly builds, run with -Z macro-backtrace for more info)

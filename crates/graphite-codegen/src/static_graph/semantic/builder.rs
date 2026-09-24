@@ -19,6 +19,7 @@ pub(super) fn 意味モデルを組み立てる(schema: &静的グラフ型入�
     意味モデル {
         グラフ名: instance.グラフ名.clone(),
         schema名: schema.schema名.clone(),
+        宣言位置: instance.位置,
         個体列,
         辺種別列,
         具体辺列,

@@ -12,6 +12,7 @@
 //! F12を助ける)。
 
 mod token_type_reference;
+mod value_binding;
 mod value_supply;
 #[cfg(test)]
 mod tests;

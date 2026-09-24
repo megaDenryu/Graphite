@@ -51,7 +51,9 @@ pub(crate) use fixed_vocabulary::{
     辺参照メソッド名, 辺参照集合型名, グラフ型名,
 };
 pub(crate) use fingerprint_anchor::指紋照合パスの起点;
-pub(crate) use internal_names::{型参照関数名, 個体値マクロ名, 内部構築子名, 積み荷値マクロ名};
+pub(crate) use internal_names::{
+    型参照関数名, 個体値マクロ名, 値キャプチャ変数名, 値関数名, 値束縛マクロ名, 内部構築子名, 積み荷値マクロ名,
+};
 pub(crate) use reference_paths::{個体参照パス, 辺値参照パス, 辺参照パス};
 pub(crate) use type_names::{個体参照型名, 辺値型名, 辺参照型名};
 pub(crate) use wiring_names::{edges変数名, entityフィールド名, nodes変数名};

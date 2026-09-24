@@ -234,8 +234,11 @@ pub fn graph(input: TokenStream) -> TokenStream {
 /// 置く (moduleへ付ける属性は`docs/code_generation.md`が定める2行で固定する)。この
 /// `mod`の置き場所はinstance宣言 (`Organization! { .. }`) の置き場所と無関係であり、
 /// 利用者が`mod`だけを最上位に置いてinstance宣言を関数の中に置いても警告は出ない
-/// (instance展開がimplを一切使わず、値の橋渡しを呼び出し位置の`macro_rules!`だけで
-/// 行うため)。
+/// (instance展開がimplを一切使わず、値の橋渡しを宣言位置の`fn`/`let`+`macro_rules!`
+/// だけで行うため)。値ありの個体・積み荷の式は、instance宣言を書いた位置のRust式
+/// として意味が決まる。instanceが関数の中にあり値の式が関数のローカル変数・引数・
+/// ジェネリックの型引数を参照する場合は `graph <名前> in fn;` と書く
+/// (`docs/static_graph.md`「値の式の名前解決」節)。
 /// schemaとinstanceを別ファイルに分けるとき、利用者はinstance側のファイルへ
 /// `use organization::Organization;` のようにschema moduleを`use`し、さらに
 /// schema側の`mod`宣言に`#[macro_use]`を付けてinstance側の`mod`宣言より前に置く

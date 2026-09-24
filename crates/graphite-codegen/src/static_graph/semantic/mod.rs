@@ -21,6 +21,7 @@ pub(crate) use individual::個体;
 
 use proc_macro2::Ident;
 
+use crate::static_graph::literal::input::宣言位置;
 use crate::static_graph::schema::input::静的グラフ型入力;
 
 // schema単体 (instanceを持たない) からschemaの辺種別列だけを組み立てる。
@@ -34,6 +35,7 @@ pub(crate) fn 辺種別列をschemaから組み立てる(schema: &静的グラ�
 pub(crate) struct 意味モデル {
     グラフ名: Ident,
     schema名: Ident,
+    宣言位置: 宣言位置,
     個体列: Vec<個体>,
     辺種別列: Vec<辺種別>,
     具体辺列: Vec<具体辺>,
@@ -61,6 +63,15 @@ impl 意味モデル {
     // を組み立てるために使う。
     pub(crate) fn schema名(&self) -> &Ident {
         &self.schema名
+    }
+
+    // instance宣言がRustの構文上どちらの位置に置かれたか (`graph <名前>;`
+    // なら項目の位置、`graph <名前> in fn;`なら関数の中の位置)。値の式の
+    // 名前解決を宣言位置へ固定するコード生成 (`inline::value_binding`) が、
+    // let束縛のクロージャ (関数内位置) か捕捉しない関数 (項目位置) かを
+    // 選ぶために読む (`docs/static_graph.md`「値の式の名前解決」節)。
+    pub(crate) fn 宣言位置(&self) -> 宣言位置 {
+        self.宣言位置
     }
 
     pub(crate) fn 個体列(&self) -> &[個体] {
