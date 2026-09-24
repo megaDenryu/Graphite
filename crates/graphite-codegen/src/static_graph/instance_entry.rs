@@ -14,6 +14,7 @@ use quote::quote;
 use syn::parse::{Parse, ParseStream};
 
 use crate::fingerprint_check::{指紋照合コードを生成する, 静的instance対象文言, 静的instance指紋定数名};
+use crate::generated_path::生成先パス;
 
 use super::naming::指紋照合パスの起点;
 use super::{inline, instance展開用に解析する, schema};
@@ -64,9 +65,10 @@ pub fn expand_static_graph_internal(input: TokenStream) -> TokenStream {
     // 値マクロ (`__graphite_values_*`/`__graphite_payloads_*`) はC分類の
     // 内部生成名でありdocを持たない。公開契約 (`construct!`) の意味カードは
     // `file::instance_file::construct` が生成ファイル側で組み立てる。
-    let generated_path = tracked.generated_path().value();
-    let 個体値マクロ = inline::個体値マクロを組み立てる(意味モデル, &generated_path);
-    let 積み荷値マクロ = inline::積み荷値マクロを組み立てる(意味モデル, &generated_path);
+    let generated_path文字列 = tracked.generated_path().value();
+    let generated_path = 生成先パス::new(&generated_path文字列);
+    let 個体値マクロ = inline::個体値マクロを組み立てる(意味モデル, generated_path);
+    let 積み荷値マクロ = inline::積み荷値マクロを組み立てる(意味モデル, generated_path);
 
     quote! {
         #指紋照合

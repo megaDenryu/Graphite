@@ -16,6 +16,7 @@ mod ref_collections;
 use proc_macro2::TokenStream;
 use quote::quote;
 
+use crate::generated_path::生成先パス;
 use crate::static_graph::declaration_sites::宣言元の対;
 use crate::static_graph::semantic::意味モデル;
 
@@ -29,7 +30,7 @@ pub(super) const 内部構築子の非推奨NOTE: &str = "Graphite の内部構�
 pub(crate) fn instance本体を組み立てる(
     意味モデル: &意味モデル,
     宣言元: &宣言元の対,
-    generated_path: &str,
+    generated_path: 生成先パス<'_>,
 ) -> TokenStream {
     let 個体参照列 = node_ref::個体参照列を組み立てる(意味モデル, 宣言元);
     let 辺インスタンス参照列 = edge_ref::辺インスタンス参照列を組み立てる(意味モデル, 宣言元);

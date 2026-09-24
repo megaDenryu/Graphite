@@ -12,6 +12,7 @@ use std::error::Error;
 
 use graphite_codegen::DeclarationSite;
 
+use super::instance_duplication::静的instance重複検査器;
 use super::schema_registry::静的schema名簿;
 use super::FileMacros;
 use crate::generation_plan::GenerationPlan;
@@ -26,6 +27,7 @@ pub(crate) fn instanceを解決する(
     plan: &mut GenerationPlan,
 ) -> Result<usize, Box<dyn Error>> {
     let mut 件数 = 0;
+    let mut 重複検査器 = 静的instance重複検査器::default();
     for file in files {
         for call in &file.calls {
             if 候補として扱わない名前か(&call.name) {
@@ -53,10 +55,15 @@ pub(crate) fn instanceを解決する(
             };
             let instance = graphite_codegen::parse_tracked_static_instance(schema, call.tokens.clone())
                 .map_err(|errors| file.source.format_errors(tree, errors))?;
-            let target = file
-                .source
-                .generated_target(tree, &instance.generated_path().value())?;
+            let generated_path文字列 = instance.generated_path().value();
             let site = DeclarationSite::new(file.display_path.clone(), call.line);
+            重複検査器.検査する(
+                &file.target,
+                &instance.instance_name().to_string(),
+                &generated_path文字列,
+                &site,
+            )?;
+            let target = file.source.generated_target(tree, &generated_path文字列)?;
             let content = instance
                 .render_module_source(&site, schema_site)
                 .map_err(|error| file.source.format_errors(tree, vec![error]))?;

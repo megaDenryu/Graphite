@@ -4,8 +4,11 @@
 // (`file::instance_file::construct`) が無修飾の名前でこのマクロを呼び、
 // 内部構築子 (`{グラフ名}::Graph::__graphite_internal_new`) へ渡す。式は
 // 生成ファイルへ一切写さない。マクロ名は`グラフ名`と`generated`文字列から
-// 計算する印を含むため、別moduleが同じグラフ名を選んでも衝突しない
-// (`naming::internal_names::個体値マクロ名`参照)。
+// 計算する印を含むため、別moduleが同じグラフ名を選んでも`generated`文字列が
+// 違えば衝突しない (`naming::internal_names::個体値マクロ名`参照)。同じ
+// グラフ名で同じ`generated`文字列を持つinstanceが存在しないことは、
+// この展開自体では検査できず、生成器 (`static_resolution::
+// instance_duplication`) が保証する (`docs/static_graph.md`「制約」節)。
 //
 // 本体は個々の値を1件ずつ計算する束縛マクロ (`value_binding::値束縛を組み立てる`)
 // を呼ぶだけであり、式そのものはここには現れない。名前解決を宣言位置へ
@@ -16,13 +19,14 @@ use proc_macro2::{Ident, TokenStream};
 use quote::quote;
 
 use super::value_binding::値束縛を組み立てる;
+use crate::generated_path::生成先パス;
 use crate::static_graph::naming::{個体値マクロ名, 積み荷値マクロ名, 値束縛マクロ名};
 use crate::static_graph::semantic::{個体, 具体辺, 意味モデル};
 
 // 値ありの個体すべての式を宣言順のタプルで返すマクロ定義。値ありの個体が
 // 1件も無ければ空タプルを返す。`generated_path`はinstanceの
 // `generated = "..."`文字列そのもの (呼び出し側 `instance_entry.rs`が持つ)。
-pub(crate) fn 個体値マクロを組み立てる(意味モデル: &意味モデル, generated_path: &str) -> TokenStream {
+pub(crate) fn 個体値マクロを組み立てる(意味モデル: &意味モデル, generated_path: 生成先パス<'_>) -> TokenStream {
     let 値あり個体列: Vec<&個体> =
         意味モデル.個体列().iter().filter(|個体| !個体.値なし宣言か()).collect();
     let 束縛定義列: Vec<TokenStream> = 値あり個体列
@@ -50,7 +54,7 @@ pub(crate) fn 個体値マクロを組み立てる(意味モデル: &意味モ�
 }
 
 // 積み荷ありの具体辺すべての式を宣言順のタプルで返すマクロ定義。
-pub(crate) fn 積み荷値マクロを組み立てる(意味モデル: &意味モデル, generated_path: &str) -> TokenStream {
+pub(crate) fn 積み荷値マクロを組み立てる(意味モデル: &意味モデル, generated_path: 生成先パス<'_>) -> TokenStream {
     let 積み荷あり辺列: Vec<&具体辺> =
         意味モデル.具体辺列().iter().filter(|辺| 辺.積み荷式().is_some()).collect();
     let 束縛定義列: Vec<TokenStream> = 積み荷あり辺列

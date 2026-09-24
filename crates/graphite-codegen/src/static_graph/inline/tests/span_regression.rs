@@ -1,6 +1,7 @@
 use proc_macro2::{LineColumn, TokenStream, TokenTree};
 use syn::spanned::Spanned;
 
+use crate::generated_path::生成先パス;
 use crate::static_graph::inline::token_type_reference::dslトークンの型参照を組み立てる;
 use crate::static_graph::inline::value_supply::個体値マクロを組み立てる;
 use crate::static_graph::literal::input::静的グラフ入力;
@@ -91,7 +92,7 @@ fn 個体値マクロは値の式トークンの実際の行と桁を保つ() {
     assert_ne!(元span始点, LineColumn { line: 1, column: 0 });
     assert_eq!(元span始点.line, 2);
 
-    let マクロ本体 = 個体値マクロを組み立てる(&意味モデル, "generated/開発チーム.rs");
+    let マクロ本体 = 個体値マクロを組み立てる(&意味モデル, 生成先パス::new("generated/開発チーム.rs"));
     let 式先頭ident = 最初に一致するidentを探す(&マクロ本体, "社員").expect("値の式の社員が居るはず");
     assert_eq!(
         式先頭ident.span().start(),

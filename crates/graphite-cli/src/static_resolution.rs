@@ -10,6 +10,7 @@
 //! 書かれていないかを別に検査する。
 
 mod embedded_detection;
+mod instance_duplication;
 mod instance_resolution;
 mod schema_registry;
 #[cfg(test)]

@@ -15,7 +15,7 @@ use syn::LitStr;
 use crate::declaration_site::DeclarationSite;
 use crate::fingerprint::fingerprint;
 use crate::fingerprint_check::静的instance指紋定数名;
-use crate::generated_path::validate_generated_relative_path;
+use crate::generated_path::{validate_generated_relative_path, 生成先パス};
 use crate::generated_source::{指紋の材料になる整形済み本文, 生成ファイルの本文};
 use crate::schema::codegen::宣言元ファイルの綴り;
 use crate::tracked_input::TrackedInput;
@@ -68,7 +68,8 @@ impl TrackedStaticInstance {
                 schema_site.宣言ファイルの綴り().to_string(),
             ),
         );
-        let body = instance本体を組み立てる(&self.意味モデル, &宣言元, &self.generated_path.value());
+        let generated_path文字列 = self.generated_path.value();
+        let body = instance本体を組み立てる(&self.意味モデル, &宣言元, 生成先パス::new(&generated_path文字列));
         生成ファイルの本文(&body, self.fingerprint, site, &静的instance指紋定数名())
     }
 }
@@ -107,9 +108,10 @@ pub(crate) fn instance展開用に解析する(
     let 意味モデル = 検証済み.意味モデルを組み立てる();
 
     let 宣言元不明の対 = 宣言元の対::new(宣言元ファイルの綴り::分かっていない, 宣言元ファイルの綴り::分かっていない);
-    let body = instance本体を組み立てる(&意味モデル, &宣言元不明の対, &tracked.generated_path.value());
+    let generated_path文字列 = tracked.generated_path.value();
+    let body = instance本体を組み立てる(&意味モデル, &宣言元不明の対, 生成先パス::new(&generated_path文字列));
     let 整形済み本文 = 指紋の材料になる整形済み本文(&body).map_err(|error| vec![error])?;
-    let fingerprint = fingerprint(&tracked.generated_path.value(), &整形済み本文);
+    let fingerprint = fingerprint(&generated_path文字列, &整形済み本文);
 
     Ok(TrackedStaticInstance { generated_path: tracked.generated_path, 意味モデル, fingerprint })
 }

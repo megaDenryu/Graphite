@@ -7,6 +7,35 @@
 use std::ffi::OsStr;
 use std::path::{Component, Path};
 
+use crate::fingerprint::fnv1a;
+
+// instanceの `generated = "..."` 文字列を保持する役割の型。
+//
+// 静的グラフのinstance展開 (`static_graph::inline::value_supply`) とCLIの
+// 生成 (`static_graph::file::instance_file::construct`) は、この文字列
+// だけから値マクロの名前に混ぜる印を独立に計算する
+// (`instance印を計算する`が両者で同じ値になることを保証する)。この印が
+// instance全体で実際に一意であることまではこの型単体では保証しない。
+// 同じCargo targetの中で同じグラフ名・同じ`generated`文字列を持つ
+// instanceが無いことは、パッケージ全体を走査する生成器 (`graphite-cli`の
+// `static_resolution::instance_duplication`) が生成時に拒否して保証する
+// (`docs/static_graph.md`「制約」節)。
+#[derive(Clone, Copy)]
+pub(crate) struct 生成先パス<'a>(&'a str);
+
+impl<'a> 生成先パス<'a> {
+    pub(crate) fn new(value: &'a str) -> Self {
+        Self(value)
+    }
+
+    // instanceの値マクロ名 (`__graphite_values_{グラフ名}_{印}!`等) に混ぜる
+    // 短い印を計算する。この文字列だけから決まるため、instance展開とCLIの
+    // 生成が独立に呼んでも同じ値になる (`naming::internal_names`参照)。
+    pub(crate) fn instance印を計算する(&self) -> String {
+        format!("{:016x}", fnv1a(self.0.as_bytes(), 0xcbf29ce484222325))
+    }
+}
+
 // 生成先の相対パスが `generated/<名前>.rs` の形式を満たすかを検査する。
 //
 // 満たさなければ、そのまま利用者へ見せてよい理由の文を返す。絶対パスや

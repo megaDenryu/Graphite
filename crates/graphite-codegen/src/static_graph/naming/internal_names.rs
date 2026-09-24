@@ -5,34 +5,24 @@
 
 use proc_macro2::Ident;
 
-use crate::fingerprint::fnv1a;
+use crate::generated_path::生成先パス;
 
 use super::tracked_name::内部生成名;
 
-// instanceの`generated = "..."`文字列から計算する、instanceごとに一意な
-// 短い印。CLI生成 (`file::instance_file::construct`) とinstance展開
-// (`inline::value_supply`) の両方が同じ文字列から独立に計算するため、
-// 同じinstanceなら常に同じ値になる。値マクロの名前へ混ぜることで、
-// 同じグラフ名を持つ別instanceの値マクロと名前が衝突しないようにする
-// (`docs/static_graph.md`「制約」節)。`generated`文字列はinstanceごとに
-// 書き込み先が違うため一意であり、グラフ名だけでは複数moduleが同じ
-// グラフ名を選んだ場合に区別できない。
-fn instance印(generated_path: &str) -> String {
-    format!("{:016x}", fnv1a(generated_path.as_bytes(), 0xcbf29ce484222325))
-}
-
 // instanceの宣言位置に置く、値ありの個体・積み荷すべての式を宣言順の
 // タプルで返すマクロの名前。グラフ名と`instance印`の両方を含むため、
-// 同じスコープに複数のinstanceを置いても、複数moduleが同じグラフ名を
-// 選んでも衝突しない (`docs/static_graph.md`「制約」節)。本体は
-// 個々の値を1件ずつ計算する束縛マクロ (`値束縛マクロ名`) を呼ぶだけであり、
-// 式そのものはここには無い (`inline/value_supply.rs`)。
-pub(crate) fn 個体値マクロ名(グラフ名: &Ident, generated_path: &str) -> 内部生成名 {
-    内部生成名::new(&format!("__graphite_values_{グラフ名}_{}", instance印(generated_path)))
+// 同じスコープに複数のinstanceを置いても、別モジュールが同じグラフ名を
+// 選んでも衝突しない (`docs/static_graph.md`「制約」節)。この印がinstance
+// ごとに実際に一意であることは、生成器が同じCargo target内の重複を
+// 拒否して保証する (`生成先パス`冒頭コメント参照)。本体は個々の値を1件ずつ
+// 計算する束縛マクロ (`値束縛マクロ名`) を呼ぶだけであり、式そのものは
+// ここには無い (`inline/value_supply.rs`)。
+pub(crate) fn 個体値マクロ名(グラフ名: &Ident, generated_path: 生成先パス<'_>) -> 内部生成名 {
+    内部生成名::new(&format!("__graphite_values_{グラフ名}_{}", generated_path.instance印を計算する()))
 }
 
-pub(crate) fn 積み荷値マクロ名(グラフ名: &Ident, generated_path: &str) -> 内部生成名 {
-    内部生成名::new(&format!("__graphite_payloads_{グラフ名}_{}", instance印(generated_path)))
+pub(crate) fn 積み荷値マクロ名(グラフ名: &Ident, generated_path: 生成先パス<'_>) -> 内部生成名 {
+    内部生成名::new(&format!("__graphite_payloads_{グラフ名}_{}", generated_path.instance印を計算する()))
 }
 
 // 個体1件・積み荷1件ごとの値を計算する束縛マクロの名前。instanceの宣言位置

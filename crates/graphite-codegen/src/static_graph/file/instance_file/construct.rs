@@ -10,12 +10,18 @@
 // instance宣言の値の式が`construct!`の呼び出し位置の名前解決に晒される
 // ことはない (`docs/static_graph.md`「値の式の名前解決」節)。値マクロの
 // 名前に含む`instance印`(`naming::internal_names::個体値マクロ名`参照) は、
-// この`construct本体を組み立てる`が受け取る`generated_path`と、instance
-// 展開 (`instance_entry.rs`) が受け取る同じ`generated_path`から、両者が
-// 独立に同じ値を計算する。これにより、別moduleの2つのinstanceが同じ
-// グラフ名を選んでも、`construct!`が呼び出し位置から見える別instanceの
-// 値マクロ・`Graph`を無言で使うことはなく、名前が解決できずコンパイル
-// エラーになる (`docs/static_graph.md`「制約」節)。
+// この`construct本体を組み立てる`とinstance展開 (`instance_entry.rs`) の
+// 両者が、同じ`generated_path`から独立に同じ印を計算する
+// (`crate::generated_path::生成先パス::instance印を計算する`)。この印が
+// グラフ名ごとに実際に一意であることまではこの計算自体は保証しない。
+// パッケージ全体を走査する生成器 (`graphite-cli`の
+// `static_resolution::instance_duplication`) が、同じCargo target内で
+// 同じグラフ名・同じ`generated`文字列の組を重複として拒否することで
+// 一意性を保証する (`docs/static_graph.md`「制約」節)。この保証がある
+// 前提では、別moduleの2つのinstanceが同じグラフ名を選んでも、
+// `construct!`が呼び出し位置から見える別instanceの値マクロ・`Graph`を
+// エラーにせず取り違えて使うことはなく、名前が解決できずコンパイル
+// エラーになる。
 //
 // 内部構築子への参照は、`super::`や`$crate::`のような固定深度・固定起点の
 // 修飾を使わない。`macro_rules!`はマクロ名・項目パスのどちらも呼び出し
@@ -40,6 +46,7 @@
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
 
+use crate::generated_path::生成先パス;
 use crate::static_graph::declaration_sites::宣言元の対;
 use crate::static_graph::naming::{個体値マクロ名, 内部構築子名, 構築マクロ名, 積み荷値マクロ名};
 use crate::static_graph::semantic::意味モデル;
@@ -49,7 +56,7 @@ use crate::static_graph::doc_render::doc属性を組み立てる;
 pub(super) fn construct本体を組み立てる(
     意味モデル: &意味モデル,
     宣言元: &宣言元の対,
-    generated_path: &str,
+    generated_path: 生成先パス<'_>,
 ) -> TokenStream {
     let マクロ名 = 構築マクロ名(意味モデル, 宣言元);
     let doc = doc属性を組み立てる(マクロ名.追跡());
