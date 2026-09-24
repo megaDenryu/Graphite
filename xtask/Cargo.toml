@@ -7,4 +7,5 @@ publish = false
 [dependencies]
 graphite-cli = { path = "../crates/graphite-cli" }
 syn = { workspace = true }
+toml = { workspace = true }
 

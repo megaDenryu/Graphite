@@ -31,7 +31,7 @@ pub mod 世界 {
 }
 
 #[rustfmt::skip]
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "generated/graph_refs_世界.rs";
     schema 世界 {
         node 人物;

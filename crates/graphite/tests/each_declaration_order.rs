@@ -23,7 +23,7 @@ mod traversal;
 #[path = "each_declaration_order/each_violation.rs"]
 mod each_violation;
 
-/// ノード型。`graph_schema!` はこの型を生成せず参照するだけ。
+/// ノード型。`dynamic_graph_schema!` はこの型を生成せず参照するだけ。
 #[derive(Debug, Clone, PartialEq)]
 pub struct Author {
     pub name: String,
@@ -49,7 +49,7 @@ pub mod DeclarationOrder {
 }
 
 #[rustfmt::skip]
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "generated/each_declaration_order_declaration_order.rs";
     schema DeclarationOrder {
         node Author;

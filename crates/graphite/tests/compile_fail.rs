@@ -1,4 +1,4 @@
-//! `graph_schema!`/`graph!` の入力エラーがきちんとコンパイルエラーとして
+//! `dynamic_graph_schema!`/`graph!` の入力エラーがきちんとコンパイルエラーとして
 //! 報告されることを確認する trybuild テスト。
 //!
 //! 実行: `cargo test --test compile_fail`

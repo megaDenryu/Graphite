@@ -1,0 +1,9 @@
+error[E0451]: fields `太郎` and `開発部` of struct `開発チーム::Graph` are private
+  --> tests/ui/static_graph_struct_literal_rejected.rs:54:9
+   |
+53 |     let _迂回 = 開発チーム::Graph {
+   |                 ----------------- in this type
+54 |         太郎: 社員 { 名前: "差し替え".into() },
+   |         ^^^^ private field
+55 |         開発部: 部署 { 名前: "差し替え".into() },
+   |         ^^^^^^ private field

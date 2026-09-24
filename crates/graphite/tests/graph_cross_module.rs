@@ -1,5 +1,5 @@
 //! v3 (`docs/history/graph_literal_v3.md` §4): ハンドシェイクマクロ全廃により、
-//! `graph_schema!` と `graph!` の同一ファイル制約 (旧 G5、
+//! `dynamic_graph_schema!` と `graph!` の同一ファイル制約 (旧 G5、
 //! `docs/development/ide_support_spec.md` 参照) が構造的に消滅したことを示すテスト。
 //! v4 でも同様に、`graph!` が参照するのは (a) スキーマ struct の `create`
 //! メソッド、(b) builder の総称 `insert`/`add`、(c) 各ノード型が impl する
@@ -37,7 +37,7 @@ mod schema {
     }
 
     #[rustfmt::skip]
-    graphite::graph_schema! {
+    graphite::dynamic_graph_schema! {
         generated = "generated/graph_cross_module_cross_module_org.rs";
         schema CrossModuleOrg {
             node Employee(id: EmployeeId);

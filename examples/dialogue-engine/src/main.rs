@@ -1,4 +1,4 @@
-//! dialogue-engine — Graphite の `graph_schema!`/`graph!` で分岐シナリオを
+//! dialogue-engine — Graphite の `dynamic_graph_schema!`/`graph!` で分岐シナリオを
 //! 記述し、プレイ・検証・可視化する CLI。
 //!
 //! サブコマンド:

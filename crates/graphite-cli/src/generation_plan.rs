@@ -105,7 +105,8 @@ impl GenerationPlan {
                 .collect::<Vec<_>>()
                 .join("\n");
             sections.push(format!(
-                "生成ファイルが古いか存在しません。パッケージのディレクトリで `cargo graphite generate` を実行してください (Graphite リポジトリ自身の開発では `cargo xtask generate`):\n{paths}"
+                "生成ファイルが古いか存在しません。{}:\n{paths}",
+                graphite_codegen::再生成の案内()
             ));
         }
 

@@ -3,7 +3,7 @@ struct KnowsId(u64);
 
 struct Person;
 
-graphite::__graph_schema_inline_for_test! {
+graphite::__dynamic_graph_schema_inline_for_test! {
     schema Collision {
         node Person(id: KnowsId);
         edge Knows = (knower: Person) -> (known: Person);

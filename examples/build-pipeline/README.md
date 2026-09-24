@@ -9,10 +9,10 @@ CI/タスクランナーが内部で持っているような実行計画ツー�
 現実の Rust プロジェクトのビルドを模した、20タスク・23アーティファクトから
 なる多段パイプライン (`fetch -> codegen -> build -> test / lint -> doc ->
 package -> deploy`) を `pipeline.txt` (簡易行形式) として同梱している。これを
-実行時にパースし、`graphite::graph_schema!` で宣言したグラフスキーマへ
+実行時にパースし、`graphite::dynamic_graph_schema!` で宣言したグラフスキーマへ
 組み立てたうえで、以下を行う CLI ツール。
 
-- **validate**: 図式適合 (`graph_schema!` が保証する形の正しさ) に加えて、
+- **validate**: 図式適合 (`dynamic_graph_schema!` が保証する形の正しさ) に加えて、
   「誰も produce しない artifact を consume している (孤児成果物)」「同じ
   artifact を2つのタスクが produce している (競合)」「タスク依存が循環して
   いる」というドメイン固有の妥当性検査を行う
@@ -29,7 +29,7 @@ package -> deploy`) を `pipeline.txt` (簡易行形式) として同梱して�
 pub struct Task { pub name: String, pub cmd: String, pub secs: u32 }
 pub struct Artifact { pub path: String }
 
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     schema BuildPipeline {
         node Task;
         node Artifact;
@@ -50,7 +50,7 @@ graphite::graph_schema! {
 
 | ファイル | 役割 |
 |---|---|
-| `src/schema.rs` | `graph_schema!` によるスキーマ宣言 + `graph!` リテラルのショーケース (固定の小さなパイプライン) |
+| `src/schema.rs` | `dynamic_graph_schema!` によるスキーマ宣言 + `graph!` リテラルのショーケース (固定の小さなパイプライン) |
 | `src/parser.rs` | `pipeline.txt` の行の種別判定 |
 | `src/parser/parsed_pipeline.rs` | パース結果の型 (`ParsedTask`/`ParsedEdge`/`ParsedPipeline`) |
 | `src/parser/parse_error.rs` | 行番号付きのパースエラー |

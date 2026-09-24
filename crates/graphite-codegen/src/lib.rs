@@ -18,6 +18,7 @@
 
 mod declaration_site;
 mod fingerprint;
+mod fingerprint_check;
 mod generated_path;
 mod generated_source;
 pub mod naming;
@@ -38,8 +39,13 @@ use crate::schema::codegen::宣言元ファイルの綴り;
 use crate::tracked_input::TrackedInput;
 
 pub use declaration_site::DeclarationSite;
+pub use fingerprint_check::{動的schema指紋定数名, 動的schema対象文言, 再生成の案内, 指紋照合コードを生成する};
 pub use generated_path::validate_generated_relative_path;
-pub use static_graph::{expand_static_graph_internal, parse_and_expand_static_schema};
+pub use static_graph::{
+    expand_static_graph_internal, parse_and_expand_static_graph_schema,
+    parse_tracked_static_instance, parse_tracked_static_schema, TrackedStaticInstance,
+    TrackedStaticSchema,
+};
 
 // 追跡対象の schema 宣言を検証し、意味モデルまで確定させたもの。
 //
@@ -77,11 +83,11 @@ impl TrackedSchema {
             site.宣言ファイルの綴り().to_string(),
         );
         let body = schema::codegen::generate_module_body(&self.スキーマ定義, &宣言元の綴り);
-        生成ファイルの本文(&body, self.fingerprint, site)
+        生成ファイルの本文(&body, self.fingerprint, site, &動的schema指紋定数名())
     }
 }
 
-// 追跡形式の `graph_schema!` 入力を解析・検証する。
+// 追跡形式の `dynamic_graph_schema!` 入力を解析・検証する。
 pub fn parse_tracked_schema(input: TokenStream) -> Result<TrackedSchema, Vec<syn::Error>> {
     let tracked = syn::parse2::<TrackedInput>(input).map_err(|error| vec![error])?;
     if let Err(reason) = validate_generated_relative_path(&tracked.generated_path.value()) {
@@ -99,7 +105,7 @@ pub fn parse_tracked_schema(input: TokenStream) -> Result<TrackedSchema, Vec<syn
             &検証済み構文,
         );
     // 指紋の材料には宣言元への参照を入れない。指紋を計算するのは
-    // `graph_schema!` であり、マクロは自分が書かれたファイルのパッケージ相対の
+    // `dynamic_graph_schema!` であり、マクロは自分が書かれたファイルのパッケージ相対の
     // 綴りを知らないためである (`schema::codegen::declaration_doc` 参照)。
     let 生成コード = schema::codegen::generate_module_body(
         &スキーマ定義,
@@ -169,7 +175,7 @@ mod tests {
         assert_eq!(rendered, second.render_module_source(&site).unwrap());
         assert_eq!(
             fnv1a(rendered.as_bytes(), 0xcbf29ce484222325),
-            3363410558753014467
+            6027119228497751420
         );
     }
 
@@ -229,7 +235,7 @@ mod tests {
             .unwrap();
         assert!(甲.contains("`src/甲.rs`") && 乙.contains("`src/乙.rs`"));
         // 宣言元を書かない行が全て一致することは、埋め込む指紋が宣言元に
-        // 左右されないことを含む。指紋を計算する `graph_schema!` は自分の
+        // 左右されないことを含む。指紋を計算する `dynamic_graph_schema!` は自分の
         // ファイルのパッケージ相対の綴りを知らないため、指紋が宣言元に
         // 左右されると生成ファイルの指紋と一致しなくなる。
         let 宣言元を書かない行 = |本文: &str, 綴り: &str| {

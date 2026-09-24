@@ -17,7 +17,7 @@
 
 #![deny(unused_variables)]
 
-/// ノード型。`graph_schema!` はこの型を生成せず参照するだけ
+/// ノード型。`dynamic_graph_schema!` はこの型を生成せず参照するだけ
 /// (`docs/history/edge_syntax_v2.md`)。
 #[derive(Debug, Clone, PartialEq)]
 pub struct Widget {
@@ -36,7 +36,7 @@ pub mod WidgetGraph {
 }
 
 #[rustfmt::skip]
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "generated/orphan_node_no_warning_widget_graph.rs";
     schema WidgetGraph {
         node Widget;

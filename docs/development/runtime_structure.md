@@ -11,7 +11,7 @@
 1. **汎用 `Graph<N, E, K>`** (`graph/`) — 水準1の同種グラフ。`has_cycle`・
    `topological_sort`・`topological_levels`・`critical_path_by`・`reachable_from`・
    `path`・`map_nodes`・`filter_nodes`・`from_edges` を提供する。図式グラフ
-   (`graph_schema!`) から射影して汎用アルゴリズムを使う経路と、計算グラフの構造検証の
+   (`dynamic_graph_schema!`) から射影して汎用アルゴリズムを使う経路と、計算グラフの構造検証の
    両方がこれを使う。`Graph` の `Debug` 表示は内部構造に追随して変わり、安定契約では
    ない。確保回数の不変主張は `Graph::build` に限る (`map_nodes`/`reachable_from` は
    定数項+1、`filter_nodes` は -24 の差があるが、漸近計算量はいずれも不変)。
@@ -22,7 +22,7 @@
    想定利用者だった `examples/reactive-cells` は `ComputeGraph` を使わず、汎用 `Graph`
    の上に自前の `Engine` を実装している)。ライブラリとして公開しているAPIであり、
    `flow!` とも図式グラフとも別概念なので残す。
-3. **schema生成コード向けの実行時契約** (`schema_runtime/`) — `graph_schema!`/`graph!`
+3. **schema生成コード向けの実行時契約** (`schema_runtime/`) — `dynamic_graph_schema!`/`graph!`
    が生成したコードだけが名指しする内部契約。役割索引・辺リテラル・名前付き構築・
    構築印の採番・`GraphMismatch` から成る。
 4. **キー付き要素表 `KeyedTable<K, V>`** (`keyed_table.rs`) と

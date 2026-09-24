@@ -37,7 +37,7 @@ use crate::schema::semantic::ノードの探索計画;
 // 公開IDからの検索と種別全体への操作 (`{node}_by_id`/`{node}_ids`/
 // `{node}_iter`/`{node}_len`/`{node}_value_mut`) は、個体と索引を所有する
 // `Graph` のメソッドとして `gen_schema_impl` が生成する。ノード型
-// (`Person` 等) はユーザーが `graph_schema!` の外で宣言する型であり複数
+// (`Person` 等) はユーザーが `dynamic_graph_schema!` の外で宣言する型であり複数
 // schema 間で共有されうるため、ユーザー struct への固有 impl は追加しない。
 // schema module 内にノード名の空 struct (読み取り用マーカー) も置かない
 // (issue #9: `Graph` を外から引数で渡す型名前空間を作らない)。

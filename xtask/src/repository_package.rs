@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use graphite_cli::{GenerationTree, PackageRoot};
 
 // リポジトリの中にある、生成の対象になる1つの cargo パッケージ。
@@ -27,5 +29,14 @@ impl RepositoryPackage {
     // 生成の中核へ渡す走査対象。抽出・計画・検査は `graphite-cli` が行う。
     pub fn generation_tree(&self) -> &GenerationTree {
         self.root.generation_tree()
+    }
+
+    // このパッケージの Cargo.toml のパス。
+    //
+    // この関数は `PackageRoot::manifest_path` へ委譲し、綴りの組み立てを1箇所に
+    // 保つ。doc コメント検査は、この口を使って各パッケージの Cargo.toml を読む
+    // (`PackageManifestFacts::read`)。
+    pub fn manifest_path(&self) -> PathBuf {
+        self.root.manifest_path()
     }
 }

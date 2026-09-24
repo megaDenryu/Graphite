@@ -1,14 +1,13 @@
 // このファイルは Graphite が生成したため手編集しないこと。
 // 生成元: src/schema.rs:69
-// 再生成: パッケージのディレクトリで `cargo graphite generate` を実行する
-//         (Graphite リポジトリ自身の開発では `cargo xtask generate`)。
+// 再生成: パッケージのディレクトリで cargo graphite generate を実行してください (Graphite リポジトリ自身の開発では cargo xtask generate)
 
 #[allow(unused_imports)]
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    16155278325822233485u64, 8770040524302456164u64, 15480931573127063451u64,
-    16791421337221761607u64,
+    17834843500664217133u64, 5334703367658066428u64, 6992445074040669819u64,
+    8654184912210419623u64,
 ];
 /// `Employee` ノードの公開ID。
 ///
@@ -117,7 +116,6 @@ impl std::fmt::Debug for BelongsTo {
 /// 構築時に組み立てる `Boss` 辺の値。
 ///
 /// 宣言: `src/schema.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
-#[derive(Clone)]
 pub struct Boss {
     /// この辺の始点ノードの公開ID。
     pub subordinate: EmployeeId,
@@ -157,7 +155,6 @@ impl std::fmt::Debug for Boss {
 /// 構築時に組み立てる `Assigned` 辺の値。
 ///
 /// 宣言: `src/schema.rs` の `edge Assigned = (employee: Employee) -[assignment: AssignedEdge]-> (project: Project)`
-#[derive(Clone)]
 pub struct Assigned {
     /// この辺の始点ノードの公開ID。
     pub employee: EmployeeId,

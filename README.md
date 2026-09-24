@@ -4,10 +4,25 @@
 所有権に乗せる proc-macro DSL とランタイムです。DSL は普通の Rust のコードへ脱糖され、
 生成物は追跡できる通常の Rust ファイルとして残ります。
 
-図式グラフとは、`graph_schema!` でノード種別・役割名つきの辺・多重度の制約を宣言し、
-その宣言に沿う形だけを型で受け付けるグラフのことです。
+図式グラフとは、`dynamic_graph_schema!` または `static_graph_schema!` でノード種別・
+役割名つきの辺・多重度の制約を宣言し、その宣言に沿う形だけを型で受け付けるグラフの
+ことです。
 
 > **実験的プロジェクトです (v0)。API は予告なく変わります。**
+
+> **命名変更 (issue #40)**: 旧 `graph_schema!` は `dynamic_graph_schema!` へ、
+> 旧 `static_schema!` は `static_graph_schema!` へ改名しました。互換のための
+> 別名は用意していません。旧名のまま残すと、`graphite` に `graph_schema` が
+> 無いためコンパイルエラー (E0433) になります。`cargo graphite generate` は
+> 改名を案内するエラーを出すので、宣言の名前を新名へ置換してください。改名の
+> 前後で指紋は変わらないため、生成ファイルの作り直しは不要です。
+
+> **生成ファイルの案内コメント変更 (issue #41)**: 動的グラフの生成ファイルの
+> 先頭に書く案内コメントの書式が変わりました。既存の外部crateが持つ生成
+> ファイルは、このバージョンの `cargo graphite generate --check` で古いと
+> 判定されます。`cargo graphite generate` を1回実行して生成ファイルを
+> 更新してください (schemaの宣言内容自体を変えていなければ指紋は一致する
+> ため、宣言側の変更は不要です)。
 
 自作言語 Vertex のグラフ機能の設計検討から派生した独立した Rust プロジェクトです
 (Vertex 言語処理系のコードには一切依存しません)。v1 から v4.2 までの設計過程を
@@ -23,12 +38,15 @@
   マクロは宣言を検証したうえで、生成ファイルとの指紋 (schema の宣言内容から計算する
   ハッシュ値。宣言と生成ファイルが対応しているかをコンパイル時に照合する) の一致を
   検査します。
-- **完成したグラフを凍結して読みます。** `graph.alice()` や
+- **完成したグラフを凍結して読みます (`dynamic_graph_schema!`)。** `graph.alice()` や
   `person.belongs_to_as_member()` のように、関係を型のついたメソッドで辿ります。
   戻り値の型は宣言した多重度が決めるため、「1本に定まる」「無いかもしれない」
-  「複数ある」が呼び出し側の型に現れます。
-- **制約の違反は構築時に `Result` で返ります。** 完成後のグラフには制約を満たした
-  状態だけが存在します。
+  「複数ある」が呼び出し側の型に現れます。静的グラフ (`static_graph_schema!`) には
+  凍結が無く、利用者は `g.node_refs().太郎()` のようにメソッドで直接個体参照を
+  取り出します。
+- **制約の違反は、動的グラフ (`dynamic_graph_schema!`) では構築時に `Result` で
+  返ります。** 完成後のグラフには制約を満たした状態だけが存在します。静的グラフ
+  (`static_graph_schema!`) では、同じ違反がコンパイルエラーになります。
 
 「ある値をグラフの要素として書くべきか、普通の構造体のフィールドとして書くべきか」の
 判断基準は `docs/modeling_guide.md` にあります。
@@ -39,22 +57,29 @@ Graphite には意図的に別の概念が同居しています。用途から�
 
 | やりたいこと | 使うもの | 何をするものか |
 |---|---|---|
-| ドメイン固有の型付きグラフ構造を宣言したい | `graph_schema!` | ノード種別・辺種別・役割名・制約を型付きで宣言する。実体は `cargo graphite generate` が書き出す通常の Rust ファイルで、マクロは宣言の検証と指紋の照合を行う |
-| そのschemaの具体的な Graph 値を作りたい | `graph!` / 生成された `Builder` | 静的な項と実行時データの両方からグラフを構築し、凍結時に制約を検査する |
-| 同種ノードの汎用グラフアルゴリズムを使いたい | `Graph<N, E, K>` | ノード型が1種類の汎用不変グラフ。`has_cycle` / `topological_sort` / `topological_levels` / `critical_path_by` / `reachable_from` / `path` を持つ。マクロを使わない |
+| ドメイン固有の型付きグラフ構造を宣言し、個体集合を実行時に構築したい | `dynamic_graph_schema!` | ノード種別・辺種別・役割名・制約を型付きで宣言する。実体は `cargo graphite generate` が書き出す通常の Rust ファイルで、マクロは宣言の検証と指紋の照合を行う |
+| そのschemaの具体的な Graph 値を作りたい (個体集合を実行時に構築する `dynamic_graph_schema!` 向け) | `graph!` / 生成された `Builder` | 静的な項と実行時データの両方からグラフを構築し、凍結時に制約を検査する |
+| ドメイン固有の型付きグラフ構造を宣言し、個体集合・トポロジーをソースコードの時点で固定したい | `static_graph_schema!` | このマクロは、ノード種別・辺種別・役割名・多重度の制約を型付きで宣言し、個体・辺の集合そのものをコンパイル時に固定する。多重度・対一意の制約違反はコンパイルエラーになる。schema名がそのまま、個体を並べるinstance宣言用の `macro_rules!` の名前になる。実体は生成ファイルで、`dynamic_graph_schema!` と同じ生成ファイル・指紋照合の方式を使う |
+| そのschemaの具体的な Graph 値を作りたい (個体集合をコンパイル時に固定する `static_graph_schema!` 向け) | `<schema名>!` (schema宣言が生成する、instance宣言用の `macro_rules!`) | 個体・辺を並べたinstance宣言を1操作で実体化する。利用者は、生成ファイルが持つ構築の唯一の入口 `{instance名}::construct!(..)` を呼び、値なし宣言 (`node <名前>: <型>;`) の個体だけを実行時の値として渡すと、完成した `Graph` が1回で返る。値ありの個体・積み荷はinstance宣言の式からのみ供給され、この入口を介さずに差し替える経路は用意していない (内部の構築子は`#[deprecated]`を付けた`pub(crate)`であり、直接呼ぶと警告になる)。多重度・対一意の検査はコンパイル時に行う (詳細: `docs/static_graph.md`) |
 | 値を独立した関数へ順に流したい | `flow!` | Graph の値を作らない即時実行の糖衣。`x -[f]-> y` は `let y = (f)(x);` へ脱糖するだけ |
+| 同種ノードの汎用グラフアルゴリズムを使いたい | `Graph<N, E, K>` | ノード型が1種類の汎用不変グラフ。`has_cycle` / `topological_sort` / `topological_levels` / `critical_path_by` / `reachable_from` / `path` を持つ。マクロを使わない |
 | 計算の依存を実行時の値として保持し、遅延評価・差分再計算したい | `ComputeGraph<V>` | 依存関係をランタイムの値として持ち、必要になった分だけ計算し、変わった入力の影響が及ぶ範囲だけを再計算する |
 
-読み分けの要点は4つです。
+読み分けの要点は5つです。
 
-1. `graph_schema!` / `graph!` の schema は静的に型付けされますが、内容は静的な項だけ
+1. `dynamic_graph_schema!` / `graph!` の schema は静的に型付けされますが、内容は静的な項だけ
    でなく `Builder` ・ `extend` ・ `..式` により実行時データからも構築できます。完成
    した後、トポロジーは凍結されます。
-2. `flow!` は Graph を保存しません。`ComputeGraph` は Graph を実行時の値として
+2. `dynamic`/`static` という名前は、**そのschemaから作られるグラフの個体集合・
+   トポロジーが実行時に構築できるか、宣言時に確定するか**を表します
+   (schema自体の型定義はどちらも通常どおりコンパイル時に静的です)。この命名は
+   Rustの `static`/`'static` (静的な記憶域・生存期間) とは無関係な、別の語彙
+   です。詳細は `docs/static_graph.md` にあります。
+3. `flow!` は Graph を保存しません。`ComputeGraph` は Graph を実行時の値として
    保存します。
-3. `Graph<N, E, K>` と図式グラフは別のAPIです。図式グラフから汎用アルゴリズムへ
+4. `Graph<N, E, K>` と図式グラフは別のAPIです。図式グラフから汎用アルゴリズムへ
    渡したいときは `Graph::<(), (), K>::from_edges(nodes, edges)` で構造だけを射影します。
-4. `ComputeGraph` はライブラリとして公開していますが、**このリポジトリの中に利用例が
+5. `ComputeGraph` はライブラリとして公開していますが、**このリポジトリの中に利用例が
    ありません** (2026-08-26 時点)。動く使い方は `crates/graphite/src/compute/mod.rs` の
    doctest と `crates/graphite/tests/compute_graph_*.rs` にあります。
    `examples/reactive-cells` は `ComputeGraph` を使わず、汎用 `Graph` の上に独自の
@@ -67,12 +92,12 @@ Graphite には意図的に別の概念が同居しています。用途から�
 
 ```rust
 // ノード型・積み荷型は普通の Rust struct として宣言する。
-// graph_schema! はこれらの型を生成せず、参照するだけ。
+// dynamic_graph_schema! はこれらの型を生成せず、参照するだけ。
 pub struct Person { pub name: String }
 pub struct Team { pub name: String }
 pub struct BossEdge { pub since: i32 }
 
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "generated/main_org.rs";
     schema Org {
         node Person;
@@ -128,7 +153,26 @@ schema を変えて生成し忘れると、指紋が合わず通常の `cargo bu
 いるのか、何ができて何ができないのかを、実際のコンパイルエラー付きで1つずつ確認
 できます。
 
+個体・辺の集合自体をソースコードの時点で固定したいとき、利用者は上のクイックスタートの
+`dynamic_graph_schema!`/`graph!` ではなく `static_graph_schema!` を使います。構文は
+`dynamic_graph_schema!` とほぼ同じですが、利用者は、個体を並べるinstance宣言を、schema名
+そのものをマクロ名にした `macro_rules!` で書きます
+(`組織! { generated = "generated/開発チーム.rs"; graph 開発チーム; .. }`)。schema宣言が
+課す多重度と対一意 (端点の組が重複しないことを求める制約) の違反は、`freeze()` の実行時
+検査ではなく、このinstance宣言に対するコンパイルエラーとして検出されます。
+
+schema・instanceは共に `generated = "..."` を持ち、`dynamic_graph_schema!` と同じ生成
+ファイル・指紋照合の方式で公開APIを追跡します。生成ファイルを読み込む
+`mod <名前> { include!(..); }` の置き場所はinstance宣言と無関係であり、利用者がinstance
+宣言を関数の中に置いても警告は出ません。定義ジャンプ (F12) は生成ファイルの中の定義へ着地し、
+追跡の契約の詳細は `docs/static_graph.md` 「追跡の契約」節にあります。動く完全な例は
+`examples/static-org` にあります。
+
 ## 主要な概念
+
+以下は `dynamic_graph_schema!` の概念です。静的グラフ (`static_graph_schema!`) には
+ID・凍結・`Violation` が無く、個体はソースコードの時点で確定した実体をそのまま持ちます。
+制約違反はコンパイルエラーになります。詳細は `docs/static_graph.md` にあります。
 
 - **ノードの値は普通の Rust の型です。** Graphite は値型を生成せず、宣言に書かれた
   型を参照するだけです。`Clone` ・ `Debug` ・ `PartialEq` などを要求しません。
@@ -167,17 +211,18 @@ schema を変えて生成し忘れると、指紋が合わず通常の `cargo bu
   と `Approval::PersonId` は別の型になります。IDを共有したい場合は両方で
   `node Person(id: PersonId);` と明示します。
 
-完全な構文・脱糖の対応・計算量は README へ複製しません。正本は
-`docs/desugaring_reference.md` です。
+完全な構文・脱糖の対応・計算量は README へ複製しません。動的グラフと `flow!` の正本は
+`docs/desugaring_reference.md`、静的グラフの正本は `docs/static_graph.md` です。
 
 ## 実践例
 
-`examples/` 配下に、`graphite` だけに依存する、他から独立したクレートを7本置いています。
+`examples/` 配下に、`graphite` だけに依存する、他から独立したクレートを8本置いています。
 それぞれ独立したワークスペースなので、`cd` して `cargo run` します。
 
 - 最初に読む → `examples/hello-graph`
 - ビルド依存の DAG とクリティカルパス → `examples/build-pipeline`
-- 型付きドメインのグラフ → `examples/org-analyzer` ・ `examples/dialogue-engine`
+- 型付きドメインのグラフ (個体集合を実行時に構築) → `examples/org-analyzer` ・ `examples/dialogue-engine`
+- 型付きドメインのグラフ (個体集合をコンパイル時に固定) → `examples/static-org`
 - 状態遷移 → `examples/state-machine`
 - 依存の再計算 → `examples/reactive-cells`
 - 波に分けた並列実行 → `examples/async-dag`
@@ -202,7 +247,8 @@ schema を変えて生成し忘れると、指紋が合わず通常の `cargo bu
 
 | 知りたいこと | 読む文書 |
 |---|---|
-| 構文・生成型・公開API・計算量の正本 | `docs/desugaring_reference.md` |
+| 構文・生成型・公開API・計算量の正本 (`dynamic_graph_schema!`/`graph!`/`flow!`) | `docs/desugaring_reference.md` |
+| 個体集合をコンパイル時に固定する静的グラフの構文・生成契約の正本 (`static_graph_schema!`) | `docs/static_graph.md` |
 | schema 宣言の構文と制約 | `docs/schema_v4.md` |
 | 何をノード・辺として置くかの判断 | `docs/modeling_guide.md` |
 | 端点の役割名と無向辺 | `docs/edge_endpoints_v4_1.md` |
@@ -215,10 +261,16 @@ schema を変えて生成し忘れると、指紋が合わず通常の `cargo bu
 
 ## 導入方法
 
-crates.io へは未公開です。`crates/graphite/Cargo.toml` に `license` フィールドが無く、
-`cargo publish` の要求を満たさないためです。そのため、いずれの使い方でもこの
-リポジトリを clone するか Git 依存で参照します。ライセンスの状態は下記の
-「ライセンス」に書いてあるので、使う前に読んでください。
+crates.io へは未公開です。理由は2つあります。1つ目は、`crates/graphite/Cargo.toml`
+に `license` フィールドが無く、`cargo publish` の要求を満たさないことです。2つ目は、
+`graphite` が依存する `graphite-macros` の依存先である `graphite-codegen` に、
+オーナーが `publish = false` を置いていることです (issue #32 のオーナー裁定。
+`graphite-codegen`・`graphite-cli` は現時点で利用者が直接依存する公開crateでは
+なく、Graphite内部の実装基盤として扱う方針)。この状態が続く限り、開発者が
+`license` を足しても `graphite` を crates.io へ公開できません。そのため、
+いずれの使い方でもこのリポジトリを clone
+するか Git 依存で参照します。ライセンスの状態は下記の「ライセンス」に書いてあるので、
+使う前に読んでください。
 
 ### schema を使わない場合
 
@@ -232,9 +284,11 @@ graphite = { git = "https://github.com/megaDenryu/Graphite" }
 
 ### schema を使う場合
 
-`graph_schema!` は実装を展開せず、生成された通常の Rust ファイルとの指紋の一致を
-検査します。そのため、生成器 (`cargo graphite` コマンドを提供する `graphite-cli`) を
-1つ入れる必要があります。0 から最初のビルドが通るまでを、次の4段階で通します。
+`dynamic_graph_schema!` は実装を展開せず、生成された通常の Rust ファイルとの指紋の一致を
+検査します。`static_graph_schema!` も同じ生成器を使います。そのため、生成器
+(`cargo graphite` コマンドを提供する `graphite-cli`) を1つ入れる必要があります。0 から
+最初のビルドが通るまでを、次の4段階で通します (以下は `dynamic_graph_schema!` の手順で、
+`static_graph_schema!` も同じ4段階です)。
 
 **1. 生成器をインストールします。** clone してから `cargo install --path` する
 方法と、clone せずに1コマンドで入れる方法のどちらでもかまいません。任意の
@@ -259,20 +313,17 @@ cargo install --git https://github.com/megaDenryu/Graphite graphite-cli
 graphite = { git = "https://github.com/megaDenryu/Graphite" }
 ```
 
-**3. ノード値型・生成モジュールの `include!` ・`graph_schema!` 宣言の3点を
+**3. ノード値型・生成モジュールの `include!` ・`dynamic_graph_schema!` 宣言の3点を
 `src/lib.rs` へ貼ります。** 次のコードはそのまま貼れば動く自己完結の例で、
 出典は `verification/external-crate/src/lib.rs` の実物 (Book / Reader / Borrowed)
 です。
 
 ```rust
 // ノード型・積み荷型は普通の Rust struct として宣言する。
-// graph_schema! はこれらの型を生成せず、参照するだけ。
-// 生成コードが Ref 型へ Clone / PartialEq を要求するため、ここでも derive する。
-#[derive(Debug, Clone, PartialEq)]
+// dynamic_graph_schema! はこれらの型を生成せず、参照するだけ。
+// 生成コードは値を複製も比較も表示もしないため、利用者は何も derive しなくてよい。
 pub struct Book { pub title: String }
-#[derive(Debug, Clone, PartialEq)]
 pub struct Reader { pub name: String }
-#[derive(Debug, Clone, PartialEq)]
 pub struct Loan { pub day: u32 }
 
 #[allow(non_snake_case, dead_code, private_interfaces)]
@@ -282,7 +333,7 @@ pub mod Library {
 }
 
 #[rustfmt::skip]
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "generated/library.rs";
     schema Library {
         node Book;

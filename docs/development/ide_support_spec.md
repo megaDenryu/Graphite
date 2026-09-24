@@ -2,7 +2,7 @@
 
 > **Development document** — 索引: `docs/README.md`
 
-Graphite の DSL (`graph_schema!` / `graph!`) を書くとき、VSCode 上で参照ジャンプ・
+Graphite の DSL (`dynamic_graph_schema!` / `graph!`) を書くとき、VSCode 上で参照ジャンプ・
 型追跡・rename などが「普通の Rust コードと同じように」機能することを目標とする。
 
 計測方法: vscode-lsp-mcp 経由で rust-analyzer の definition/references プロバイダを
@@ -39,7 +39,7 @@ Graphite の DSL (`graph_schema!` / `graph!`) を書くとき、VSCode 上で参
 | `graph!` エッジ内ノードキー → 定義 | ✅ 精密 (ノード宣言の `tanaka` トークンに着地) |
 | `graph!` ノードキー → 参照検索 | ✅ 宣言 + 全エッジ内出現を検出 (計3件を確認) |
 | `graph!` ノードキー → hover | ✅ トークン範囲で応答 (ローカル変数 `EmployeeId` として) |
-| examples/* の解析 | ✅ `Scene`/`SceneId` 等がワークスペースシンボルとして引ける。graph_schema! 内トークンへのスパンも機能 |
+| examples/* の解析 | ✅ `Scene`/`SceneId` 等がワークスペースシンボルとして引ける。dynamic_graph_schema! 内トークンへのスパンも機能 |
 | rename | ⚠️ VSCode UI (F2) での rename は機能する。schema エッジラベルの rename は派生名 (`{label}_pairs`、アクセサ、builder メソッド) の**参照側までカスケードする**が、**大文字小文字変換を挟む派生名には追従しない** (下記「rename カスケードの境界条件」) |
 
 ### rename カスケードの境界条件 (2026-07-14 実測、コミット `1c7d76d` 後に再確認)
@@ -300,6 +300,89 @@ NodeRef・EdgeRefのメソッド、役割アクセサ、`Graph`の種別API
 この手順は rustc の定義スパン表示による確認であり、rust-analyzer 実機での F12
 (go to definition) の再計測ではない。
 
+## 1.16 静的グラフの受理マトリクス (issue #41 段階5、2026-09-23。instance展開のimpl撤去に伴い2026-09-24に再測定。PR #45レビューA・C・D・Fの構築境界の刷新に伴いさらに再測定。PR #45検収の指摘1〜3・7の是正 (コミット`bb551a4`) に伴いさらに再測定。`Graph`・`NodeRefs`・`EdgeRefs`のフィールド非公開化に伴いさらに再測定。構築の唯一の入口`construct!`への統合に伴いさらに再測定。値マクロへのinstance印付与・`{種別}Edge`概要文修正に伴いさらに再測定)
+
+静的グラフ (`static_graph_schema!`/instance) の公開生成APIも動的グラフと同じ生成ファイル方式へ移した (issue #41 段階1〜4)。
+本節は、issue #41 の「検証」節が定めるチェックリスト (A分類9項目・B分類8項目の計17項目。A分類の9項目には、instanceの辺種別からschemaへの追跡1項目を含む) を、rust-analyzer実機で実測した記録である。
+
+**計測方法**: この節の実測を行ったセッションは、vscode-lsp-mcpの`go_to_definition`で`examples/static-org/src/main.rs` (rust-analyzer.linkedProjectsに登録済み) の各識別子からF12を実行し、着地した生成ファイル (`examples/static-org/src/generated/*.rs`) の位置をReadで確認した。
+このセッションは、GitHub issue #41 のコメント「rust-analyzer 実機の実測と、実装方式の決定」が記録した制約と同じく、中継の道具がGraphite以外の型 (`String`等) でも中身を空で返す制約のため、hoverを実機で測れなかった (この制約は本節が本文書で初めて記録するものであり、§1.13・§1.15はF12のみを扱いhoverには触れていない)。
+その代わりに、このセッションは、F12の着地先に付いた doc コメント (意味カード) をReadで読み、その内容をhoverの代替として記録した (rust-analyzerはこの doc コメントをそのままhoverへ表示するため、内容としては等価である)。
+このセッションは、計測前後で`get_diagnostics`が0件であることを確認し、rust-analyzerが最新のソースを読み込んでいることを確かめた。
+
+**2026-09-24の再測定 (PR #45)**: PR #45のレビューが、値ありの個体・積み荷を`Nodes::new`/`Edges::new`から差し替えられる穴 (レビューA)・別の`Nodes`から作った`Edges`を組み合わせられる穴 (レビューC)・組み立て関数が利用者の名前空間へ漏れる問題 (レビューD)・値の式からローカル変数を参照できない問題 (レビューF) を指摘し、構築境界を全面的に刷新した。旧・組み立て関数 (`{グラフ名}の個体を組み立てる`・`{グラフ名}の辺を組み立てる`、その場展開の出力でinstance宣言そのものへ着地していたA分類2項目) は廃止し、代わりに生成ファイルの中に構築の入口 (`construct::nodes!`・`construct::edges!`、固定語彙のB分類) を置いた。`Nodes::new`/`Edges::new`はC分類の内部専用構築子 (`__graphite_internal_new`) へ降格し、公開契約から外れた。`examples/static-org/src/main.rs`の該当箇所を新しいAPI (`開発チーム::construct::nodes!(..)`・`開発チーム::construct::edges!(&nodes)`・`開発チーム::Graph::new(&edges)`) へ書き換えたうえで、下表の`construct::nodes!`・`construct::edges!`・`Nodes`・`Edges`・`Graph::new`の5行を`go_to_definition`で再実測した (`get_diagnostics`で警告0件を確認済み)。他の行は、DSL宣言・生成ファイルの構造そのものは変わっていないため番号だけを機械的に補正した。
+
+**2026-09-24の再測定 (コミット`bb551a4`、PR #45検収の指摘1〜3・7の是正後)**: 上記の再測定の後、PR #45検収の指摘2 (内部構築子`__graphite_internal_new`への`#[deprecated]`付与。可視性だけでは「呼べるのは`construct::nodes!`だけ」を強制できないための追加の柵)・指摘3 ({個体名}Ref・{辺名}Refの配線フィールド`entity`/`nodes`/`edges`を`pub(super)`から非公開へ変更。親moduleから構造体リテラルで別の`Nodes`を混ぜた不整合な参照を組み立てられた穴を閉じた) がコミット`bb551a4`で入った。指摘1 (値マクロから`pub(crate) use`を外し、呼び出し位置と同じテキスト順スコープへ閉じた) は本節が計測する識別子の着地先そのものは変えない。同コミットは`examples/static-org/src/main.rs`に関数`辺を組み立てる`を新設し、95行目の直後へ8行を挿入したため、96行目以降の行番号は旧測定からすべて+8だけ後ろへずれた。このセッションは、下表のA分類9項目・B分類10項目の計19項目全てについて、main.rsと生成ファイルの現在の識別子出現位置を実測し直し (`find_symbol`によるシンボル名検索ではなく、行内の実際の出現位置を数え上げてから`go_to_definition`で着地先を実測する方法)、`get_diagnostics`で警告0件・エラー0件を確認した (唯一出る警告は本コミットで新設した`辺を組み立てる`関数がmain()から呼ばれないことによる`dead_code`であり、`tests.rs`からは呼ばれているので実装上の欠陥ではなく、本節の計測結果にも影響しない)。19項目は全て着地に成功し、測れなかった行は無い。
+
+**2026-09-24の再測定 (`Graph`・`NodeRefs`・`EdgeRefs`のフィールド非公開化後)**: PR #45最終検収は、`Graph`・`NodeRefs`・`EdgeRefs`のフィールドが`pub`のままなので、2つのグラフの部品を構造体リテラルで混ぜた不整合な`Graph`を組み立てられる穴を指摘した。この是正で、3つの型のフィールドをすべて非公開にし、読み出しを`Graph::node_refs()`/`Graph::edge_refs()`、`NodeRefs`/`EdgeRefs`が個体名・辺名をそのまま名前にして持つ読み出し専用メソッド (`g.node_refs().太郎()`のように呼ぶ) へ変えた。main.rsの呼び出し側 (`g.node_refs.太郎`のようなフィールドアクセスの箇所全て) も新しいメソッド呼び出しの形へ書き換えたが、この書き換えは既存の行を書き換えただけで行の増減が無いため、main.rs側の行番号はこのセッションでは動いていない。動いたのは生成ファイル側の`NodeRefs`・`EdgeRefs`・`Graph`・`construct`の各定義位置であり (フィールドの`pub`+doc除去とメソッド本体の追加が相殺し合わず全体として増加した)、下表の`g.node_refs.太郎`・`g.edge_refs.太郎の所属`・`NodeRefs`・`EdgeRefs`・`Graph::new`・`node_refs`・`edge_refs`・`construct::nodes!`・`construct::edges!`の9行を`go_to_definition`で再実測した (`get_diagnostics`で警告0件・エラー0件を確認済み)。他の10行 (太郎Ref・太郎の所属Ref・role/payloadアクセサ・所属Edge・instance辺種別・Nodes・Edges・entity) は、この是正で本文が変わっていない生成ファイルの先頭寄りの範囲 (指紋定数を除く) にあるため、`git diff`で無変更を確認したうえで番号を据え置いた。
+
+### A分類 (利用者語彙から派生した識別子)
+
+F12起点の列は、main.rsに識別子が直接出現する行が無い3項目 (`太郎の所属Ref`・`NodeRefs`・`EdgeRefs`) では、生成ファイル自身の中で識別子が実際に使われている行 (`find_symbol`によるシンボル名検索ではなく、`go_to_definition`が使う定義プロバイダを通した実測) を起点にしている (旧`所属Edge`行は`instance辺種別`所属`→schema`行へ統合したため、この一覧から外れた)。
+生成ファイルも通常のRustソースであり、rust-analyzerはmain.rsの利用箇所と同じ仕組みで定義ジャンプを解決するため、これは正当なF12実測である。
+
+| 識別子 | F12起点 | F12の着地先 | 意味カードの要約 | 合否 |
+|---|---|---|---|---|
+| `太郎Ref` | `impl<'a> 開発チーム::太郎Ref<'a>`の型 (main.rs:83、再実測: 2026-09-24 construct!統合) | `generated/開発チーム.rs`の`struct 太郎Ref<'a>`定義 (11〜21行目、0始まり) | 「Graphite 静的グラフの具体個体参照。graph: 開発チーム / 個体: 太郎 / 実体型: 社員」+ 宣言: `node 太郎: 社員 = ..` | 合格 |
+| `太郎の所属Ref` | `pub fn 太郎の所属(&self) -> 太郎の所属Ref<'a>`の戻り値型 (`generated/開発チーム.rs:44`、再実測: 2026-09-24 construct!統合) | `generated/開発チーム.rs`の`struct 太郎の所属Ref<'a>`定義 (299〜311行目、0始まり) | 「具体辺参照。graph/具体辺/辺種別」+ 宣言: `edge 太郎の所属 = 所属(太郎 -> 開発部)` + 関係する schema 宣言: `edge 所属 = (member: 社員) -> (team: 部署) where each member: 1` | 合格 |
+| `g.node_refs().太郎()` | `g.node_refs().太郎()` の `太郎` (main.rs:106、再実測: 2026-09-24 construct!統合) | `generated/開発チーム.rs`の`impl<'a> NodeRefs<'a>`の`太郎`メソッド (600〜608行目、0始まり) | 「個体参照メソッド。NodeRefsがこのメソッドでこの個体の具体参照を返す」+ 宣言: `node 太郎: 社員 = ..` | 合格 |
+| `g.edge_refs().太郎の所属()` | `g.edge_refs().太郎の所属()` の `太郎の所属` (main.rs:111、再実測: 2026-09-24 construct!統合) | `generated/開発チーム.rs`の`impl<'a> EdgeRefs<'a>`の`太郎の所属`メソッド (646〜656行目、0始まり) | 「辺参照メソッド。EdgeRefsがこのメソッドでこの具体辺の具体参照を返す」+ 宣言: `edge 太郎の所属 = 所属(太郎 -> 開発部)` | 合格 |
+| `太郎の参照.太郎の所属()` | `.太郎の所属(` (main.rs:110、再実測: 2026-09-24 construct!統合) | `impl<'a> 太郎Ref<'a>`の`太郎の所属`メソッド (31〜47行目、0始まり) | 「具体辺参照を返す。個体/具体辺/辺種別/この個体の役割/戻り値」+ 宣言: instance edge + 関係する schema 宣言: schema edge | 合格 |
+| `.member()`/`.team()` | `.team(` (main.rs:110)・`.member(` (main.rs:111) の両方を実測 (再実測: 2026-09-24 construct!統合) | `impl<'a> 太郎の所属Ref<'a>`の`team`メソッド (328〜342行目、0始まり)・`member`メソッド (313〜327行目、0始まり) | 「端点の役割アクセサ。辺種別/役割/具体辺/具体端点/戻り値/検証制約」+ 宣言: schema edge + 関係する instance 宣言: instance edge (両メソッドとも同型) | 合格 |
+| payload accessor (`.任命()`) | `.任命(` (main.rs:108、再実測: 2026-09-24 construct!統合) | `impl<'a> 太郎の上司Ref<'a>`の`任命`メソッド (478〜489行目、0始まり) | 「積み荷アクセサ。辺種別/積み荷/具体辺」+ 宣言: schema edge + 関係する instance 宣言: instance edge | 合格 |
+| instance辺種別`所属`→schema (兼`所属Edge`) | `edge 太郎の所属 = 所属(太郎 -> 開発部);` の中間の`所属` (main.rs:71、変更なし) | `generated/組織.rs`の`struct 所属Edge<'a>`定義 (11〜19行目、0始まり。DSLトークンの錨、`docs/static_graph.md`「追跡の契約」) | 「辺種別を表す型アンカー。端点の役割の形を示す (どのinstanceもこの型を構築しない)。辺種別: 所属」+ 宣言: `edge 所属 = (member: 社員) -> (team: 部署) where each member: 1` | 合格 (旧`所属Edge`行が単独で持っていた起点`entity: &'a 組織::所属Edge<'a>`は、辺の実体が端点参照を持たなくなり生成ファイルから消えたため、この1行へ統合した。概要文は、`所属Edge`がどのinstanceからも構築されない型アンカーであることを明示する形へ改めた) |
+
+### B分類 (Graphiteが定義する固定語彙)
+
+構築の入口が単一の`construct!`へ統合されたため (旧: `construct::nodes!`/`construct::edges!`の2項目)、個体実体・積み荷の所有者が独立型を持たなくなったため (旧: `Nodes`/`Edges`の2項目)、`Graph`を構築する固定語彙が単一のマクロになったため (旧: `new (Graph::new)`の1項目) の3つの理由により、B分類は10項目から7項目へ減った。代わりに、main.rsへ新しく直接出現するようになった`Graph`型そのもの (`グラフを組み立てる() -> 開発チーム::Graph`の戻り値型注釈) を新規の1項目として加えた。
+
+| 識別子 | F12起点 | F12の着地先 | 意味カードの要約 | 合否 |
+|---|---|---|---|---|
+| `construct!` | `開発チーム::construct!(` の呼び出し (main.rs:100、再実測: 2026-09-24 construct!統合) | `generated/開発チーム.rs`の`macro_rules! construct`定義 (765〜783行目、0始まり。doc付きの項目全体。instance印を値マクロ名へ混ぜる是正でマクロ本体が1行伸びたため783行目へ+1) | 「`Graph`を実体化するマクロ`construct`。graph: 開発チーム / 実行時に渡す個体 (宣言順): `開発部: 部署` / 戻り値: Graph」+ 固定語彙: `construct!` + 関係する instance 宣言: `graph 開発チーム` | 合格 |
+| `Graph` (型) | `-> 開発チーム::Graph`の戻り値型注釈中の`Graph` (main.rs:99、新規測定: 2026-09-24 construct!統合) | `generated/開発チーム.rs`の`struct Graph`定義 (713〜725行目、0始まり。個体・積み荷を直接持つがフィールドは非公開) | 「具体グラフ本体 `Graph` (Graphiteの固定語彙)」+ 固定語彙: `Graph` | 合格 |
+| `NodeRefs` | `pub fn node_refs(&self) -> NodeRefs<'_>`の戻り値型 (`generated/開発チーム.rs:754`、再実測: 2026-09-24 construct!統合) | `generated/開発チーム.rs`の`struct NodeRefs<'a>`定義 (591〜598行目、0始まり) | 「個体参照の集まり `NodeRefs` (Graphiteの固定語彙)」+ 固定語彙: `NodeRefs` | 合格 |
+| `EdgeRefs` | `pub fn edge_refs(&self) -> EdgeRefs<'_>`の戻り値型 (`generated/開発チーム.rs:762`、再実測: 2026-09-24 construct!統合) | `generated/開発チーム.rs`の`struct EdgeRefs<'a>`定義 (637〜644行目、0始まり) | 「辺参照の集まり `EdgeRefs` (Graphiteの固定語彙)」+ 固定語彙: `EdgeRefs` | 合格 |
+| `entity` | `.entity()` (main.rs:107、再実測: 2026-09-24 construct!統合) | `impl<'a> 次郎Ref<'a>`の`entity`メソッド (112〜119行目、0始まり) | 「具体個体参照から実体を取り出す `entity` (Graphiteの固定語彙)」+ 固定語彙: `entity` | 合格 |
+| `node_refs` | `g.node_refs()` の`node_refs` (main.rs:106、再実測: 2026-09-24 construct!統合) | `impl Graph`の`node_refs`メソッド (748〜755行目、0始まり) | 「`Graph`が個体参照の集まりを返すメソッド `node_refs` (Graphiteの固定語彙)」+ 固定語彙: `node_refs` | 合格 |
+| `edge_refs` | `g.edge_refs()` の`edge_refs` (main.rs:111、再実測: 2026-09-24 construct!統合) | `impl Graph`の`edge_refs`メソッド (756〜763行目、0始まり) | 「`Graph`が辺参照の集まりを返すメソッド `edge_refs` (Graphiteの固定語彙)」+ 固定語彙: `edge_refs` | 合格 |
+
+### 結果
+
+A分類8項目 (instance辺種別からschemaへの追跡と`所属Edge`を1行へ統合した項目を含む)・B分類7項目 (`construct!`への統合で新設した1項目、`Graph`型そのものの新規測定1項目を含む) の合計15項目すべてが合格した。
+このセッションは、issue #41本文が2026-09-23付のコメントで記録した先行実測 (生成ファイル化前、B分類8項目全滅・A分類の一部も生成塊全体への着地) と比べ、段階1〜4の生成ファイル化によってB分類が0/8→8/8へ改善したことを確認した。
+2026-09-24のPR #45再測定で、旧・組み立て関数2項目 (A分類、instance宣言そのものへ着地していた) を廃止し、代わりに構築の入口`construct::nodes!`・`construct::edges!`をB分類の固定語彙として生成ファイルへ置いた。この2項目は他のB分類と同じく生成ファイルへ着地するため、「その場展開の出力は例外」という以前の注記は解消した (`docs/static_graph.md`「追跡の契約」参照)。
+2026-09-24のコミット`bb551a4`(PR #45検収の指摘1〜3・7の是正) 後の再測定でも19項目全てが合格を維持した。この是正は`{個体名}Ref`・`{辺名}Ref`の配線フィールド (`entity`/`nodes`/`edges`) を`pub(super)`から非公開へ変え、内部構築子`__graphite_internal_new`へ`#[deprecated]`を付けたが、いずれも公開契約 (A分類・B分類の識別子そのもの) には触れていないため、着地先の識別子・意味カードの内容は変わらない。変わったのは`examples/static-org/src/main.rs`に関数`辺を組み立てる`が新設されたことによる行番号のずれ (96行目以降が旧測定から+8) と、それに伴い書き直した生成ファイル側の行範囲だけである。測れなかった行は無い。
+
+`Graph`・`NodeRefs`・`EdgeRefs`のフィールド非公開化後の再測定でも19項目全てが合格を維持した。この是正は`g.node_refs.太郎`のようなフィールドアクセスを`g.node_refs().太郎()`のようなメソッド呼び出しへ変え (公開契約の名前自体は`node_refs`/`edge_refs`/個体名/辺名のまま変わらない)、`NodeRefs`・`EdgeRefs`・`Graph`のフィールドを非公開にした。生成ファイルの中の`NodeRefs`・`EdgeRefs`・`Graph`・`construct`の各定義がこの変更の影響を受けて位置を変えたため、この4識別子に関わる9行を再実測した。測れなかった行は無い。
+
+構築の唯一の入口`construct!`への統合後の再測定では、A分類8項目・B分類7項目の合計15項目すべてが合格した。個体実体・積み荷の所有者(`Nodes`/`Edges`)が消えたことに伴い、B分類から`construct::nodes!`・`construct::edges!`・`Nodes`・`Edges`・`new (Graph::new)`の5項目が消え、統合後の`construct!`1項目と新規測定の`Graph`型1項目に置き換わった (10項目→7項目、差引3項目減)。A分類は、`所属Edge`が単独で持っていた起点 (`Edges`構造体のフィールド型参照) が辺の実体から端点参照が消えたことで丸ごと無くなったため、`所属Edge`行を`instance辺種別`所属`→schema`行へ統合した (9項目→8項目、差引1項目減。着地先`generated/組織.rs`の`所属Edge`定義、11〜19行目自体は無変更)。他のA分類7項目は、main.rsの行数減少に伴う行番号のずれと、`Graph`構造体を直接参照する形へ変わった生成ファイル側の内部構造の変化を反映して、全項目を`go_to_definition`で実測し直した。測れなかった行は無い。
+
+**2026-09-24の再測定 (構築の唯一の入口`construct!`への統合、オーナーの追加レビュー対応):** オーナーは、`construct::nodes!`→`construct::edges!(&nodes)`→`Graph::new(&edges)`という3段階の公開構築APIを、生成コード内部の構築手順の漏れ出しと見なし、「静的グラフを実体化する」1操作の単一の入口への統合を求めた。この対応で、個体実体・積み荷の所有者 (`Nodes`/`Edges`) を独立型として持つのをやめ、`Graph`自身の非公開フィールドへ統合した (辺の実体はもう端点個体への参照を保持せず、各具体辺の端点はinstance宣言の時点で確定した個体名を使って`{辺名}Ref`のロールアクセサが`Graph`から直接読む。これにより`Graph`が個体・積み荷を直接所有しても自己参照にならない)。構築の入口は`{instance名}::construct!(..)`という単一のマクロへ統合し、`Nodes`・`Edges`という名前・型は公開契約からもソースコードからも消えた。
+この統合により、`examples/static-org/src/main.rs`の呼び出し側 (`ノードを組み立てる`・`辺を組み立てる`の2関数と3行の組み立て) は`グラフを組み立てる`という1関数・1行 (`開発チーム::construct!(部署 { .. })`) へ書き換わり、ファイル全体の行数が減った。これに伴い、A分類・B分類のうちmain.rsの行番号に依存する項目は軒並みずれ、B分類は`construct::nodes!`/`construct::edges!`の2項目が`construct!`の1項目へ、`Nodes`/`Edges`/`new (Graph::new)`の3項目が`Graph`(型そのもの)の1項目へ、それぞれ統合・置換された。このセッションは、下表のA分類8項目・B分類7項目の計15項目全てについて、`get_diagnostics`で警告0件・エラー0件を確認したうえで、main.rsと生成ファイルの現在の識別子出現位置を`go_to_definition`で実測し直した。15項目は全て着地に成功し、測れなかった行は無い。
+
+**2026-09-24の再測定 (PR #45検収の指摘1・3是正):** 検収は2点を指摘した。(1) 値マクロの名前がグラフ名だけに由来するため、別moduleが同じグラフ名のinstanceを作ると、`construct!`が呼び出し位置から見える別instanceの値マクロ・`Graph`を無言ですり替える穴があった。この是正は、値マクロの名前 (`__graphite_values_{グラフ名}!`・`__graphite_payloads_{グラフ名}!`) へ、`generated = "..."`文字列から計算する`instance印`を追加した (`__graphite_values_{グラフ名}_{instance印}!`)。(2) `{種別}Edge`の概要文が「辺値。端点への参照を保持する」と書いており、どのinstanceも構築しない型アンカーである実態と食い違っていた。この是正は概要文を「辺種別を表す型アンカー。端点の役割の形を示す (どのinstanceもこの型を構築しない)」へ改めた。このセッションは、`vscode-lsp-mcp`への接続を試みたが`ws://127.0.0.1:16598`への接続が拒否され、`go_to_definition`による実測ができなかった。`instance印`の付与は`construct!`定義 (765〜783行目、0始まり) の本体が1行伸びる変化だけを`generated/開発チーム.rs`に与え (それより前の行は無変更)、`所属Edge`等の概要文変更は`generated/組織.rs`側の該当doc行を1行対1行で置き換えるだけで行数を変えないため、`git diff`によるテキスト差分の直接確認で行番号への影響が無い (または`construct!`行だけ+1) ことを確かめ、上表の該当行を手動で補正した。`go_to_definition`による実測は次にLSPへ接続できるセッションへ持ち越す。
+
+「実装追跡」(issue #41本文の3つの追跡のうち3つ目) は生成ファイルそのものが
+正式経路であり、上表のF12の着地先がそのまま実装追跡を兼ねる。`cargo expand`は
+その場展開に残る部分 (指紋照合・DSLトークンの型参照・値マクロ) を読むための
+補助である (`docs/static_graph.md`「実装追跡の正式経路」参照)。
+
+### hoverの`宣言:`段落規則への追記
+
+§1.15で定めた「宣言: `<宣言元ファイルのパッケージ相対の綴り>` の `<宣言の形>`」
+の段落規則を、静的グラフ向けに2つ拡張する (`crate::static_graph::trace`が
+組み立てる意味カード、書式は`docs/static_graph.md`「追跡の契約」参照)。
+
+- **固定語彙の生成物**は「宣言:」段落を持たず、代わりに「固定語彙: `<名前>`
+  (`docs/static_graph.md` 「生成される名前の公開契約」)」という1行を持つ
+  (由来がGraphite言語仕様自体であり、特定の利用者トークンを偽の宣言元として
+  示さないため。issue #41本文「B. Graphiteが定義する固定語彙」参照)。
+- **schemaとinstanceの両方に由来する生成物**(role/payloadアクセサ・具体辺参照
+  等) は、「宣言:」に加えて「関係する schema 宣言: `<...>`」または「関係する
+  instance 宣言: `<...>`」の段落を持つ。1つのspanでは表現できない、2つの宣言
+  から合成された意味を説明するためである (issue #41本文「hover/docは合成され
+  た意味を説明する」節)。
+
 ## 2. 仕様項目
 
 ### G1: `graph!` ノードキーの let 束縛化 (実装対象)
@@ -398,7 +481,7 @@ speculative expansion する方式) も、仮識別子入りの入力をパー�
 
 方針: **宣言単位の回復型パーサ** に変える。
 
-- `graph_schema!`: `schema { .. }` ボディを宣言 (node/edge) 単位で読み、壊れた
+- `dynamic_graph_schema!`: `schema { .. }` ボディを宣言 (node/edge) 単位で読み、壊れた
   宣言はその宣言のスパンで `compile_error!` を蓄積しつつ次の宣言境界
   (`;` / ブロック終端) までスキップする。パースできた宣言だけで通常のコード
   生成を行い、`compile_error!` 群を併記する。
@@ -414,16 +497,16 @@ speculative expansion する方式) も、仮識別子入りの入力をパー�
   診断が出ない」ことを実測する。
 
 **2026-08-26 更新 (schemaの回復展開の担当替え)**: schemaの公開APIを通常の
-Rustファイルへ生成する形へ移したため、`graph_schema!` 自体はコードを展開せず、
+Rustファイルへ生成する形へ移したため、`dynamic_graph_schema!` 自体はコードを展開せず、
 検証と指紋照合だけを行う。壊れた宣言があれば蓄積した診断を全件返し、生成は
 行わない。編集途中でも利用側が生き続ける性質は、生成ファイルが前回の生成内容の
 まま残ることで保たれる。宣言単位の回復展開そのものは
 `graphite_codegen::expand_inline_for_test` に残り、`#[doc(hidden)]` の
-`graphite::__graph_schema_inline_for_test!` を通じて `tests/ui/*.rs` の
+`graphite::__dynamic_graph_schema_inline_for_test!` を通じて `tests/ui/*.rs` の
 compile-fail テストが検査する。この入口は診断テスト専用であり、利用者向けの
 経路ではない。`graph!` 側の回復は変更していない。
 
-### G5: `graph!` ↔ `graph_schema!` 同一ファイル制約 (v3 で解消済み)
+### G5: `graph!` ↔ `dynamic_graph_schema!` 同一ファイル制約 (v3 で解消済み)
 
 **2026-07-14/15 更新: `docs/history/graph_literal_v3.md` の実装により、この制約自体が
 構造的に消滅した。** 以下は制約が存在していた当時 (構文 v0〜v2) の記録として
@@ -452,7 +535,7 @@ compile-fail テストが検査する。この入口は診断テスト専用で�
 付きの親切な診断は失うが、これは意図した trade-off (ユーザー決定) である。
 
 副産物として、ハンドシェイクマクロが担っていたテキストスコープ依存が消える
-ため、**`graph_schema!` と `graph!` はもはや同一ファイルである必要がない**。
+ため、**`dynamic_graph_schema!` と `graph!` はもはや同一ファイルである必要がない**。
 `graph!` が参照するのは (1) スキーマ struct の `create`、(2) builder の総称
 `insert`、(3) builder の型名付きエッジメソッド (`b.{label}(..)`) という
 普通の Rust の型・メソッドだけになったため、別モジュールから `use` すれば

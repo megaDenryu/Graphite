@@ -1,6 +1,6 @@
 //! §3 クックブック — 生成される公開APIの全列挙。
 //!
-//! `graph_schema!` が `schema Org { .. }` から生成する公開API を、
+//! `dynamic_graph_schema!` が `schema Org { .. }` から生成する公開API を、
 //! 1関数=1つの「やりたいこと」に分けて全部並べています。
 //! カテゴリ順: 構築 → ノードを読む → エッジを辿る → 一覧する →
 //! 検証エラーを受ける。このファイルはその**呼び出し順**を持ち、実演そのものは
@@ -40,7 +40,7 @@ mod violation_reception;
 use crate::Org;
 
 pub fn section3() {
-    println!("=== §3 クックブック: graph_schema!/graph! が生成する公開APIの全列挙 ===\n");
+    println!("=== §3 クックブック: dynamic_graph_schema!/graph! が生成する公開APIの全列挙 ===\n");
 
     // --- 構築 (3通りの書き方) ---
     println!("--- 構築 ---");

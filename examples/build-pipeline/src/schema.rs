@@ -12,17 +12,17 @@
 //! 無いという意味)。
 //!
 //! v3 (`docs/history/graph_literal_v3.md` §4) でハンドシェイクマクロを全廃したため
-//! `graph_schema!` と `graph!` を同一ファイルに置く必要は無くなったが、
+//! `dynamic_graph_schema!` と `graph!` を同一ファイルに置く必要は無くなったが、
 //! テスト用の固定サンプルを組み立てる `graphリテラルで小さな固定パイプライン
 //! を組み立てられる` は型定義に近い方が読みやすいためこのファイルに
 //! 同居させている。
 
-// ノードキー。`graph_schema!` はこれも生成せず参照するだけ
+// ノードキー。`dynamic_graph_schema!` はこれも生成せず参照するだけ
 // (`docs/node_id_v4_2.md`)。
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TaskId(pub String);
 
-// ノード型。`graph_schema!` はこの型を生成せず参照するだけ。
+// ノード型。`dynamic_graph_schema!` はこの型を生成せず参照するだけ。
 #[derive(Debug, Clone, PartialEq)]
 pub struct Task {
     pub name: String,
@@ -52,7 +52,7 @@ pub mod BuildPipeline {
 }
 
 #[rustfmt::skip]
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "generated/schema_build_pipeline.rs";
     schema BuildPipeline {
         node Task(id: TaskId);

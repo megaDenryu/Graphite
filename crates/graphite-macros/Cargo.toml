@@ -2,7 +2,7 @@
 name = "graphite-macros"
 version = "0.1.0"
 edition = "2021"
-description = "graphite のための proc-macro (graph_schema!, graph! など)。単独では使わず graphite 経由で利用する"
+description = "graphite のための proc-macro (dynamic_graph_schema!, graph! など)。単独では使わず graphite 経由で利用する"
 
 [lib]
 proc-macro = true

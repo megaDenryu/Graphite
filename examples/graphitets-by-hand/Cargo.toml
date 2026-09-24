@@ -7,12 +7,13 @@ name = "graphitets-by-hand"
 version = "0.1.0"
 edition = "2021"
 description = "GraphiteTS (issue #23) の設計を、マクロ無しの通常の Rust 1ファイルで写す練習用example"
+publish = false
 
 [dependencies]
 # 依存ゼロ。graphite クレートにも依存しない。
 # TS 版 (GraphiteTS) が拡張構文なしの素の TypeScript だけで書いたのと同じ条件にするため、
 # 素の Rust だけで書く。
 #
-# 静的グラフ (issue #24) のマクロは graphite::static_schema! として本体へ
+# 静的グラフ (issue #24) のマクロは graphite::static_graph_schema! として本体へ
 # 統合済みであり (examples/static-org 参照)、この crate は手書き検証の記録
 # として凍結されているため、macro crateへの依存は無い。

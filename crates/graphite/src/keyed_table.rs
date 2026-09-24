@@ -1,7 +1,7 @@
 //! `KeyedTable<K, V>` は、ノード表・辺表で共有するランタイム機構を提供する。
 //!
 //! `docs/schema_v4.md` §0/§3.1 の決定「基盤は多重グラフであり、辺もノードと
-//! 同様にキーによる同一性を持つ」により、`graph_schema!` が生成するノード表
+//! 同様にキーによる同一性を持つ」により、`dynamic_graph_schema!` が生成するノード表
 //! (`{Node}Id -> {Node}`) と辺表 (`{Kind}Id -> {Kind}`) はどちらも「型付き
 //! ID → 値」の単純な写像であり、走査・検索の語彙
 //! (`get`/`ids`/`iter`/`len`/`is_empty`) を共有する。
@@ -13,7 +13,7 @@ use std::collections::HashMap;
 use std::hash::Hash;
 
 /// `KeyedTable` 内の挿入順の位置。その表の構造を変更しない間だけ安定し、
-/// その表の中でだけ意味を持つ。`graph_schema!` の生成コードが凍結済みグラフの
+/// その表の中でだけ意味を持つ。`dynamic_graph_schema!` の生成コードが凍結済みグラフの
 /// 薄い参照値を構築するために使う。役割索引 ([`crate::MultipleRoleIndex`] 等)
 /// もこの型で位置を受け取り、同じドメイン概念を1つの型に揃える。
 ///
@@ -25,7 +25,7 @@ use std::hash::Hash;
 ///
 /// フィールドは private。構築口は [`Self::from_index`] の1つに絞り、生値へ
 /// 戻す口も [`Self::index`] の1つに絞る。構築口が `pub` (`#[doc(hidden)]` 付き)
-/// なのは、生成コードが `graph_schema!` を展開した利用者クレート側にあり
+/// なのは、生成コードが `dynamic_graph_schema!` を展開した利用者クレート側にあり
 /// `graphite` クレートの外から呼ぶため (`pub(crate)` では届かない)。利用者
 /// からは `#[doc(hidden)]` で隠す。
 #[doc(hidden)]
@@ -51,11 +51,11 @@ impl TablePosition {
 /// `HashMap<K, usize>`」の組。
 ///
 /// **順序保証 (仕様):** [`Self::ids`]/[`Self::iter`] は挿入順 (`insert` を
-/// 呼んだ順) で走査する。`graph_schema!` が生成する `{Kind}::of`/`iter` 等は
+/// 呼んだ順) で走査する。`dynamic_graph_schema!` が生成する `{Kind}::of`/`iter` 等は
 /// この保証の上に「格納順を保持する」と約束している。
 /// `get`/`contains_key` は `HashMap<K, usize>` 経由の O(1) のまま。
 ///
-/// `graph_schema!` の生成コードが使う想定であり、利用者がこれを直接構築する
+/// `dynamic_graph_schema!` の生成コードが使う想定であり、利用者がこれを直接構築する
 /// ことは想定しない (schema struct の生成フィールド型として使われる)。
 #[derive(Debug, Clone)]
 pub struct KeyedTable<K, V> {
@@ -110,7 +110,7 @@ where
         self.entries.get(idx).map(|(_, v)| v)
     }
 
-    /// キーから挿入順の内部位置を求める。`graph_schema!` の生成コードが
+    /// キーから挿入順の内部位置を求める。`dynamic_graph_schema!` の生成コードが
     /// 凍結済みグラフの薄い参照値を構築するために使う。
     #[doc(hidden)]
     pub fn position(&self, key: &K) -> Option<TablePosition> {

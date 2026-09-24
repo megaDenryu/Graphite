@@ -17,10 +17,9 @@ Vertex の `x -[f]-> y` (../Bullet/docs/dataflow_design.md)。動機は `x |> f 
 
 ```rust
 graphite::flow! {
-    input -[parse]-> parsed,
-    parsed -[validate]-> valid,          // fan-out: parsed を
-    parsed -[stats]-> report,            //   2 本の矢印に流す
-    (valid, report) -[merge]-> out,      // fan-in: タプル始点
+    input -[parse]-> parsed -[validate]-> valid,
+                     parsed -[stats]-> report,      // fan-out: parsed から2本の矢印に流す
+    (valid, report) -[merge]-> out,                 // fan-in: タプル始点
 };
 println!("{}", out.summary);             // 束縛は flow! の後で普通に見える
 ```
@@ -54,7 +53,7 @@ println!("{}", out.summary);             // 束縛は flow! の後で普通に�
 ## 実装ノート
 
 - graphite-macros に `flow` proc マクロを追加、graphite から re-export
-  (graph!/graph_schema! と同じ構成)
+  (graph!/dynamic_graph_schema! と同じ構成)
 - スパン: 束縛名・関数式・始点式は全てユーザートークン素通し (G3)。
   f への定義ジャンプ・束縛名の hover 型表示が機能すること (実装後に実測)
 - エラー回復: 項単位 (G4 と同じ方針)。壊れた項は compile_error! 蓄積 + 残りを生成
@@ -63,6 +62,53 @@ println!("{}", out.summary);             // 束縛は flow! の後で普通に�
   trybuild (重複束縛名・壊れた項の回復)
 - 教材: hello-graph に「§5 flow! — 関数の辺」を追加 (graph! との対比:
   データの辺は宣言、関数の辺は実行。決定3 の統一 reading を 1 段落で)
+
+## 推奨する書き方 (issue #40)
+
+本書は、複数の矢印文が同じ始点から分岐する (fan-out する) とき、単なる文の列
+として左詰めするより、**分岐元の束縛名を縦に揃える**書き方を推奨する。
+
+```rust
+graphite::flow! {
+    a -[f]-> b -[g]-> c,
+             b -[h]-> d -[i]-> e,
+}
+```
+
+この形では `b` から出る2本の矢印が図として読める。次はより大きい例である。
+
+```rust
+graphite::flow! {
+    input -[parse]-> parsed -[validate]-> valid,
+                     parsed -[stats]-> report,
+                                       report -[format]-> text,
+    (valid, report) -[merge]-> output,
+}
+```
+
+規約:
+
+- 直列 (fan-out・fan-in を含まない一続きの矢印) は可能な限り1本のチェーンで
+  書く (`x -[f]-> y -[g]-> z`)
+- 分岐は、分岐元の束縛名が縦に揃うように後続の行をインデントする
+- fan-in はタプル始点として `(a, b) -[f]-> c` と書く
+- インデントは構文上の意味を持たない、可読性のためだけの表記規約である
+- 機械検査は必須にしない。安価に実装でき誤検知なしで「明らかに崩れた配置」
+  だけ検出できる場合に限り、lint / xtask 化を検討してよい
+
+### rustfmt との相互作用 (実測)
+
+矢印記法 `-[関数式]->` は `-`・`[`・ident・`]`・`->` の並びである (`->` は
+1つのトークンとして字句解析される)。rustfmt は波括弧 `{ }` で囲んだマクロ
+呼び出しの中身を整形しない (丸括弧の呼び出し `foo!(1   +   2)` は整形される)。
+Graphite は rustfmt 1.8.0 でこの挙動を実測し、`flow!` の呼び出し本体
+(改行・インデント・行末コメントを含む) が `#[rustfmt::skip]` の有無に
+関わらず一切書き換えられないことを確認した (この文書の縦揃え記法を含む)。
+
+ただし、この挙動は rustfmt の実装詳細であり将来のバージョンで変わり得る。
+本リポジトリは、安全側の慣習として全ての `flow!` 呼び出しに
+`#[rustfmt::skip]` を付けており (`crates/graphite/tests/flow.rs`・
+`examples/hello-graph/src/flow_demo.rs` 等)、この慣習を維持する。
 
 ## 設計決定の記録
 

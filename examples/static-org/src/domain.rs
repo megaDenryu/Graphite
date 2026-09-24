@@ -1,6 +1,6 @@
-//! `static_schema!` の外で宣言する実体型 (issue #24)。ノード型・積み荷型は
-//! 普通の struct であり、`static_schema!` はこれらを直接参照するだけで
-//! 生成しない (`graph_schema!` と同じ方針)。
+//! `static_graph_schema!` の外で宣言する実体型 (issue #24)。ノード型・積み荷型は
+//! 普通の struct であり、`static_graph_schema!` はこれらを直接参照するだけで
+//! 生成しない (`dynamic_graph_schema!` と同じ方針)。
 
 pub(crate) trait 名前持ち {
     fn 名前(&self) -> &str;

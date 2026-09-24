@@ -7,67 +7,62 @@ use super::*;
 
 #[test]
 fn 役割アクセサで複数段辿れる() {
-    let nodes = ノードを組み立てる();
-    let edges = Edges::new(&nodes);
-    let g = 開発チーム::new(&nodes, &edges);
-    assert_eq!(g.node_refs.太郎.太郎の上司().superior().次郎の所属().team().entity().名前(), "開発部");
+    let g = グラフを組み立てる();
+    assert_eq!(g.node_refs().太郎().太郎の上司().superior().次郎の所属().team().entity().名前(), "開発部");
 }
 
 #[test]
 fn 有向辺の積み荷へ役割名のアクセサでアクセスできる() {
-    let nodes = ノードを組み立てる();
-    let edges = Edges::new(&nodes);
-    let g = 開発チーム::new(&nodes, &edges);
-    assert_eq!(g.edge_refs.太郎の上司.任命().任命日, 2020);
+    let g = グラフを組み立てる();
+    assert_eq!(g.edge_refs().太郎の上司().任命().任命日, 2020);
 }
 
 #[test]
 fn 無向辺の積み荷へ役割名のアクセサでアクセスできる() {
-    let nodes = ノードを組み立てる();
-    let edges = Edges::new(&nodes);
-    let g = 開発チーム::new(&nodes, &edges);
-    assert_eq!(g.edge_refs.太郎と一郎の同僚.経緯().経緯, "同期入社");
+    let g = グラフを組み立てる();
+    assert_eq!(g.edge_refs().太郎と一郎の同僚().経緯().経緯, "同期入社");
 }
 
 #[test]
 fn 無向辺は宣言した役割名のアクセサで両端を返す() {
-    let nodes = ノードを組み立てる();
-    let edges = Edges::new(&nodes);
-    let g = 開発チーム::new(&nodes, &edges);
-    assert_eq!(g.edge_refs.太郎と次郎.甲().entity().名前(), "太郎");
-    assert_eq!(g.edge_refs.太郎と次郎.乙().entity().名前(), "次郎");
+    let g = グラフを組み立てる();
+    assert_eq!(g.edge_refs().太郎と次郎().甲().entity().名前(), "太郎");
+    assert_eq!(g.edge_refs().太郎と次郎().乙().entity().名前(), "次郎");
 }
 
 #[test]
 fn 辿った先は宣言された実体と同一インスタンスである() {
-    let nodes = ノードを組み立てる();
-    let edges = Edges::new(&nodes);
-    let g = 開発チーム::new(&nodes, &edges);
-    assert!(std::ptr::eq(g.node_refs.太郎.太郎の上司().superior().entity, &nodes.次郎));
-    assert!(std::ptr::eq(g.edge_refs.太郎の上司.subordinate().entity, g.node_refs.太郎.entity));
+    let g = グラフを組み立てる();
+    // `Graph`のフィールドは非公開なので、`&g.次郎`ではなく`NodeRefs`経由の
+    // 実体参照と比べる。`{個体名}Ref`/`{辺名}Ref`の配線フィールドも非公開
+    // なので、`entity()`メソッド経由で読む。
+    assert!(std::ptr::eq(g.node_refs().太郎().太郎の上司().superior().entity(), g.node_refs().次郎().entity()));
+    assert!(std::ptr::eq(g.edge_refs().太郎の上司().subordinate().entity(), g.node_refs().太郎().entity()));
 }
 
 #[test]
 fn ノード参照が返す辺参照は辺参照達のものと同じ実体を指す() {
-    let nodes = ノードを組み立てる();
-    let edges = Edges::new(&nodes);
-    let g = 開発チーム::new(&nodes, &edges);
-    assert!(std::ptr::eq(g.node_refs.太郎.太郎の所属().entity, g.edge_refs.太郎の所属.entity));
+    let g = グラフを組み立てる();
+    // `{辺名}Ref`の配線フィールドは非公開なので、公開されている積み荷
+    // アクセサ`任命()`が返す`&'a 任命記録`のポインタ同一性で、同じ辺の
+    // 実体を指していることを確かめる (`太郎の所属`は積み荷を持たないため
+    // `太郎の上司`で検査する)。
+    assert!(std::ptr::eq(g.node_refs().太郎().太郎の上司().任命(), g.edge_refs().太郎の上司().任命()));
 }
 
 #[test]
 fn 個体参照へ後付けしたメソッドをチェーンの末尾で呼べる() {
-    let nodes = ノードを組み立てる();
-    let edges = Edges::new(&nodes);
-    let g = 開発チーム::new(&nodes, &edges);
-    assert_eq!(g.node_refs.太郎.あだ名(), "太郎くん");
+    let g = グラフを組み立てる();
+    assert_eq!(g.node_refs().太郎().あだ名(), "太郎くん");
 }
 
-// 同一schemaから `組織!` を2回目に呼んでも (経理チームの花子の所属先を求める 内で
-// 2度目の 組織! 展開が起きる)、辺値struct群が重複定義エラーにならないことの
-// 実証。ビルドが通ること自体が主な実証であり、このassertは辿りが正しく
-// 動くことも合わせて確認する。
+// このテストは、同一schemaから `組織!` を2回目に宣言しても (`経理チーム` が
+// 2度目の組織!展開)、生成moduleが違うため衝突しないことを実証する。ビルドが
+// 通ること自体が主な実証であり、このassertは辿りが正しく動くことも合わせて
+// 確認する。`経理チームの所属先を求める` は、値なし宣言の花子へ
+// `construct!` の引数で実行時の値を渡して構築できることも合わせて示す。
 #[test]
 fn 同一schemaから2つ目のグラフを宣言してもコンパイルと辿りが両方動く() {
-    assert_eq!(経理チームの花子の所属先を求める(), "総務部");
+    assert_eq!(経理チームの所属先を求める("花子"), "総務部");
+    assert_eq!(経理チームの所属先を求める("次郎"), "総務部");
 }

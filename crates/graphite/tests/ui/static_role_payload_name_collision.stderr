@@ -1,0 +1,5 @@
+error: 名前の衝突: 辺 `上司` の積み荷役割 `subordinate` が端点の役割名と同じです。生成される辺値構造体のフィールドとアクセサが衝突します
+  --> tests/ui/static_role_payload_name_collision.rs:12:39
+   |
+12 |         edge 上司 = (subordinate: 社員) -[subordinate: 任命記録]-> (superior: 社員);
+   |                                           ^^^^^^^^^^^

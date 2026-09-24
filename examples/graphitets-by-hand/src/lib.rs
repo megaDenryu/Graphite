@@ -3,7 +3,7 @@
 // 具体 (個体依存部) はこのクレートを使う各 bin 側に書く
 // (src/bin/static_graph.rs が手書きの到達点)。マクロ版
 // (静的グラフ!/静的グラフ型!、issue #24 段階1〜2で確立) は
-// graphite::static_schema! として本体へ統合済みであり (examples/static-org
+// graphite::static_graph_schema! として本体へ統合済みであり (examples/static-org
 // 参照)、この crate からは削除した。マクロが生成するコードはこの仕組みへ
 // 依存しない全部具象のコードのため、この仕組みは static_graph.rs だけが
 // 使う (issue #24 段階2)。

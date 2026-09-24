@@ -24,7 +24,7 @@ pub mod 診断 {
 }
 
 #[rustfmt::skip]
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "generated/unknown_endpoint_diagnostics_診断.rs";
     schema 診断 {
         node 生成キーの地点;

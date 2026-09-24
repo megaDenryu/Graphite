@@ -57,7 +57,7 @@ pub mod OrderFsm {
 }
 
 #[rustfmt::skip]
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "generated/schema_order_fsm.rs";
     schema OrderFsm {
         node OrderState;

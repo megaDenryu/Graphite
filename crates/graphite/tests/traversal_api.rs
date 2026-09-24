@@ -30,7 +30,7 @@ pub mod Traversal {
 }
 
 #[rustfmt::skip]
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "generated/traversal_api_traversal.rs";
     schema Traversal {
         node Person;

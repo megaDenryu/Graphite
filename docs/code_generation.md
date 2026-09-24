@@ -18,7 +18,7 @@ pub mod Org {
 }
 
 #[rustfmt::skip]
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "generated/org.rs";
     schema Org {
         node Person;
@@ -26,11 +26,31 @@ graphite::graph_schema! {
 }
 ```
 
-指紋とは、schemaの内容と生成先パスから決定的に導かれる固定長の数値列であり、生成ファイルが最新かを判定する目印である (計算方法の詳細は後述「陳腐化の検出」参照)。`graph_schema!`はschemaを解析・検証し、生成ファイルに埋め込まれた指紋との一致だけをコンパイル時に検査する。schema moduleの型や実装は生成しない。`Org::Graph`、`Org::Builder`、ID型、NodeRef、EdgeRef、役割アクセサ、探索API、公開trait実装は、`generated/org.rs`だけに存在する。
+指紋とは、schemaの内容と生成先パスから決定的に導かれる固定長の数値列であり、生成ファイルが最新かを判定する目印である (計算方法の詳細は後述「陳腐化の検出」参照)。`dynamic_graph_schema!`はschemaを解析・検証し、生成ファイルに埋め込まれた指紋との一致だけをコンパイル時に検査する。schema moduleの型や実装は生成しない。`Org::Graph`、`Org::Builder`、ID型、NodeRef、EdgeRef、役割アクセサ、探索API、公開trait実装は、`generated/org.rs`だけに存在する。
 
 生成moduleへ付ける属性は上の2行で固定する。`non_snake_case`はschema名をそのままmodule名にするため、`dead_code`は利用側が使わない生成物を許すために要る。`private_interfaces`は、Graphite内部の型ではなく、利用者が非公開で宣言した値型 (辺の積み荷型など) が生成コードの公開API (公開フィールド・公開メソッドの引数と戻り値) に現れるために要る。schemaはノード値型・辺属性型の可視性を検査しないため、利用者が`pub`を付け忘れた値型がこの形で公開APIに漏れることがある (例: `crates/graphite/tests/edge_roles.rs`の`TransactionInfo`)。clippy側の4件は、機械が書いたコードを人手のコードと同じ書き味で判定しないための指定である (省略できる生存期間、「`from`で始まる名前なのに`self`を消費する」という命名規約に反した書き方、Copy型に対する`clone`、書式文字列へ渡す型名リテラル)。この4件を許さないと、schemaの内容によっては利用者のビルドに警告が出る。
 
 生成moduleの読み込みは、schema宣言と同じファイルへ置く。宣言の直前と直後のどちらでもよい。`include!`の相対パスは宣言元ファイルの位置を基準に解決する。これは`mod foo;`のファイル探索 (module の入れ子に応じて探索先が変わる) とは基準が異なり、`include!`はファイル位置基準でmoduleの入れ子に影響されない (入れ子moduleの中へ`include!`を移しても基準は変わらない。実例は`crates/graphite/tests/graph_cross_module.rs`参照)。`#[path]`属性で基準を移動させることはしない。
+
+## 宣言の種類
+
+追跡可能な宣言は3種類あり、生成の入口はこの3つをまとめて1回の走査で扱う。
+
+1. **動的グラフのschema** (`dynamic_graph_schema!`)。1宣言につき生成ファイル1件。
+2. **静的グラフのschema** (`static_graph_schema!`)。1宣言につき生成ファイル1件 (種別ごとの辺値 `pub struct {種別}Edge<'a>` を持つ)。
+3. **静的グラフのinstance** (schema名そのものを名前にしたマクロ、例: `Org! { .. }`)。1宣言につき生成ファイル1件。`{個体名}Ref`・`{辺名}Ref`・`NodeRefs`・`EdgeRefs`・グラフ本体の型 `Graph`・実体化する唯一の入口 `construct!` を持つ (個体実体・積み荷の所有者は独立型を持たず`Graph`自身のフィールドへ統合してある)。利用者はこの`Graph`を、instance宣言と同じ名前のmoduleを介した修飾パス (`{instance名}::Graph`) で参照する。
+
+利用者は、静的グラフのschema・instanceも`generated = "..."`と生成moduleの配線を動的グラフと同じ形で書く (`docs/static_graph.md`「2層マクロの使い方」参照)。生成器は、生成の探索を2段階で行う: パッケージ内の全ファイルを1回ずつ構文解析して集めた `static_graph_schema!` の呼び出しから静的schema名簿を作り、名簿の名前と一致する残りのマクロ呼び出しをinstanceとみなして解決する。名簿の単位はパッケージ全体ではなくCargo target (`src/`配下はまとめて1つ、`tests/`配下はファイルの最初の1階層ごとに1つ) であり、schema名の重複検出とinstanceの照合はどちらも同じtargetの中だけで行う (裁定の理由は`docs/static_graph.md`「制約」節を参照)。生成器は、名簿に無い名前で始まるのに`generated = "...";`から始まる呼び出しを「schemaが見つからない」エラーにする。
+
+instanceの生成ファイルは、instanceの値の式 (ノードの初期値・積み荷の値) を含まない。値の式は宣言元ファイルのその場展開に残るため、値だけを書き換えた編集では再生成が要らない (指紋は構造 (名前・型・値の有無・端点・積み荷の有無) だけで決まる)。
+
+生成器は、Rustとして解析できないファイルを走査から黙って除外せず違反にする (`generate`/`generate --check` を止める)。生成器が走査の対象外にするのは`target`・`generated`・`ui`の各ディレクトリだけである。
+
+`src/`配下のファイルは、`mod`宣言 (`#[path]`込み) を`lib.rs`・`main.rs`・`bin/*.rs`の各根から辿れることを前提にする。辿れないファイル (孤立ファイル) は、`generated = "...";`から始まる呼び出し (`dynamic_graph_schema!`・`static_graph_schema!`・instance宣言のいずれか) を1件でも含む場合にだけ違反にする。含まない場合 (例: `include!`で読み込むだけの純粋なデータ・補助関数のファイル) は対象外にし、Cargo targetの判定を要求しない。**この判定は検査していない範囲を持つ**: 呼び出しのトークン列が`generated = "...";`から始まるかどうかだけを見る近似であり、`generated`フィールドの書き忘れのように、この形にすら整っていない壊れたschema・instance宣言は、この検査では検出できないことがある (その場合は生成された`macro_rules!`が見つからず、通常の`cargo build`がコンパイルエラーとして検出する)。判定は`crates/graphite-cli/src/module_graph/orphan_check.rs`が行う。
+
+この「instanceとみなして解決する」検査には及ばない範囲が3つある。(1) 生成器は、`quote!`・`quote_spanned!`・`parse_quote!`という呼び出し自身を対象外にする (これらはトークン列を組み立てて返すマクロであり、その呼び出し自身は文位置に直接書くinstance宣言ではなくデータであるため)。この対象外は「instanceの解決」に限った話であり、`埋め込まれたinstanceを検査する` (`docs/static_graph.md`「制約」節の「instanceを他のマクロの入力の中に書いてはならない」参照) には及ばない。この検査は呼び出しの名前を問わず全呼び出しのトークン列を再帰的に走査するため、`quote! { 組織! { .. } }`のように登録済みschema名が`quote!`の中に書かれていても、埋め込みエラーとして検出する。(2) 生成器は、名簿に無い名前で始まり、かつ`generated = "...";`から始まらない呼び出しを対象外にする。schema名の綴り誤りと`generated`の書き忘れが同時に起きた宣言は、生成器のこの検査では検出できない (この場合は生成された`macro_rules!`が見つからず、通常の`cargo build`がコンパイルエラーとして検出する)。(3) 走査は各パッケージ直下の`src`・`tests`だけを対象にし、パッケージが個別に持てる`examples/`・`benches/`ディレクトリ (Cargoの規約による、`cargo run --example`・`cargo bench`向けのディレクトリ) は走査しない。
+
+`generate`/`generate --check`はどちらも、読んだ宣言の内訳と件数を1行で表示する: `dynamic schema N件、static schema N件、static instance N件、生成 M件 (解析したファイル K件)`。
 
 ## 生成コマンド
 
@@ -79,11 +99,11 @@ cargo xtask generate --check
 
 ## 陳腐化の検出
 
-`graphite-codegen`は検証済みschemaから決定的な指紋を作り、生成moduleへ埋め込む。指紋の実体はFNV-1a (64bit) を4種の初期値でそれぞれ計算した`[u64; 4]`であり、暗号強度のハッシュではなく偶発的な取り違え (schemaの位置移動・生成器の変更を含む) を検出するための目印である。`graph_schema!`も同じ純粋層から指紋を得てconst評価で比較する。schemaの意味を変更して生成し忘れた場合、通常の`cargo build`がコンパイルエラーになるため、古い公開APIが黙って残らない。
+`graphite-codegen`は検証済みschemaから決定的な指紋を作り、生成moduleへ埋め込む。指紋の実体はFNV-1a (64bit) を4種の初期値でそれぞれ計算した`[u64; 4]`であり、暗号強度のハッシュではなく偶発的な取り違え (schemaの位置移動・生成器の変更を含む) を検出するための目印である。`dynamic_graph_schema!`も同じ純粋層から指紋を得てconst評価で比較する。schemaの意味を変更して生成し忘れた場合、通常の`cargo build`がコンパイルエラーになるため、古い公開APIが黙って残らない。
 
 `cargo xtask generate --check`は生成本文全体をバイト単位で比較する。schemaの位置移動、生成器の変更、コメントに記録する元DSL位置の変化も検出する。
 
-宣言元ファイルの綴りは指紋の材料に入れない。生成物の doc へ書く宣言元への参照 (`docs/desugaring_reference.md` §26.6) とファイル先頭の案内コメントは、どちらも宣言元ファイルの綴りを含むが、指紋を計算する`graph_schema!`は自分が書かれたファイルのパッケージ相対の綴りを知らない。綴りを指紋へ効かせると、生成ファイルの指紋とマクロが計算する指紋が一致しなくなる。宣言元ファイルを移動したときの綴りのずれは`generate --check`のバイト比較が検出する。
+宣言元ファイルの綴りは指紋の材料に入れない。生成物の doc へ書く宣言元への参照 (`docs/desugaring_reference.md` §26.6) とファイル先頭の案内コメントは、どちらも宣言元ファイルの綴りを含むが、指紋を計算する`dynamic_graph_schema!`は自分が書かれたファイルのパッケージ相対の綴りを知らない。綴りを指紋へ効かせると、生成ファイルの指紋とマクロが計算する指紋が一致しなくなる。宣言元ファイルを移動したときの綴りのずれは`generate --check`のバイト比較が検出する。
 
 ## 関連文書
 

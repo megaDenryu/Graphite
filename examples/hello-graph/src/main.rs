@@ -1,4 +1,4 @@
-//! hello-graph — Graphite (`graph_schema!`/`graph!`) の意味論を確認する
+//! hello-graph — Graphite (`dynamic_graph_schema!`/`graph!`) の意味論を確認する
 //! 入門用example。
 //!
 //! **これは教材です。** アプリとしての面白さは無く、「1個ずつ意味論を
@@ -8,13 +8,13 @@
 //!
 //! 節ごとにファイルを分けています:
 //! - §1 ノード型・エッジ属性型の宣言 (普通の struct) — このファイル
-//! - §2 `graph_schema!` によるスキーマ宣言 (v4: `edge Kind = ...;` は
+//! - §2 `dynamic_graph_schema!` によるスキーマ宣言 (v4: `edge Kind = ...;` は
 //!   新しい nominal 型の定義、`where` は制約) — このファイル
 //! - §2.5 脱糖の実像 — 全要素キー・`KeyedTable` 格納・辺は名前付きフィールドの構造体
 //!   として第一級、という v4 の実装を実測して解説する — このファイル
 //! - §4 「できないこと」— コンパイルエラーになる例と、実際のエラー引用 — このファイル
 //!   (§2 の宣言そのものが弾く書き方を並べているため、宣言と同じファイルに置く)
-//! - §3 クックブック — `graph_schema!`/`graph!` が生成する公開APIの全列挙 — `cookbook.rs`
+//! - §3 クックブック — `dynamic_graph_schema!`/`graph!` が生成する公開APIの全列挙 — `cookbook.rs`
 //!   とその配下 (構築・ノードを読む・エッジを辿る・一覧する・検証エラーを受ける)
 //! - §5 `flow!` — 関数の辺 (`graph!` の宣言される辺との対比) — `flow_demo.rs`
 //!
@@ -26,7 +26,7 @@
 // §1 型宣言 — ノード型・エッジ属性型は普通の Rust struct
 // ============================================================
 //
-// `graph_schema!` はこれらの型を**生成せず、参照するだけ**です
+// `dynamic_graph_schema!` はこれらの型を**生成せず、参照するだけ**です
 // (`docs/schema_v4.md` §1)。derive・可視性・追加のメソッドは全部ふつうの
 // Rust の話であり、Graphite 固有のルールはありません。
 
@@ -111,7 +111,7 @@ pub mod Org {
 }
 
 #[rustfmt::skip]
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "generated/main_org.rs";
     schema Org {
         node Person;
@@ -149,7 +149,7 @@ fn main() {
 //
 // v3 までは「エッジは HashMap のエントリ」でしたが、v4 では
 // **辺そのものが、ノードと同じ資格を持つ第一級の要素**になりました。
-// `graph_schema!` は `Boss` エッジ宣言から、`§1` で宣言した `PersonId` と
+// `dynamic_graph_schema!` は `Boss` エッジ宣言から、`§1` で宣言した `PersonId` と
 // 全く同じ形の newtype キーを生成します:
 //
 // ```rust
@@ -196,7 +196,7 @@ fn main() {
 // ## 2. 辺は名前付きフィールドの構造体として実在する
 //
 // `edge Boss = (subordinate: Person) -[appointment: BossEdge]-> (superior: Person) where each subordinate: 0..1;` から
-// `graph_schema!` が生成する実際の型は次の通りです
+// `dynamic_graph_schema!` が生成する実際の型は次の通りです
 // (`graphite_codegen::schema::codegen::edge_value::gen_edge_value_structs`):
 //
 // ```rust
@@ -272,7 +272,7 @@ fn main() {
 //
 // `Org::Graph` の各フィールド (`boss` 等) は非公開の内部ストレージであり、
 // 格納値は構築用の `Boss` 値そのものではなく非公開レコード型
-// `KeyedTable<BossId, __BossRecord>` です (§2.5 参照)。`graph_schema!` は
+// `KeyedTable<BossId, __BossRecord>` です (§2.5 参照)。`dynamic_graph_schema!` は
 // schema の中身全体を `pub mod Org { .. }` へ生成するため
 // (`crates/graphite-codegen/src/schema/codegen/mod.rs` の `generate` 参照)、この
 // ファイルの `fn section4_2` はマクロ呼び出しと同じソースファイルにあっても

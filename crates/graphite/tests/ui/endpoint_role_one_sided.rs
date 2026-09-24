@@ -8,7 +8,7 @@ pub struct Employee {
 }
 
 fn main() {
-    graphite::__graph_schema_inline_for_test! {
+    graphite::__dynamic_graph_schema_inline_for_test! {
         schema Broken {
             node Employee;
 

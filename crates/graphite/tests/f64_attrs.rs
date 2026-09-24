@@ -1,7 +1,7 @@
 //! ノードフィールド・エッジ属性に `f64` のような `Eq` を実装できない型を
 //! 使えることを確認する。
 //!
-//! v2 以降、ノード型・エッジ属性型はどちらもユーザーが `graph_schema!` の
+//! v2 以降、ノード型・エッジ属性型はどちらもユーザーが `dynamic_graph_schema!` の
 //! 外で宣言する普通の struct であり、マクロは一切 derive を強制しない
 //! (README「エッジ属性型に対する trait 要求」節参照)。そのため「`f64` を
 //! 含む型に `Eq` を付けられない」という問題は、単に `Eq` を derive しない
@@ -34,7 +34,7 @@ pub mod Measurement {
 }
 
 #[rustfmt::skip]
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "generated/f64_attrs_measurement.rs";
     schema Measurement {
         node Sensor;

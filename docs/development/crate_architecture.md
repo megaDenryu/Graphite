@@ -28,7 +28,7 @@ Graphite ではさらに2つの分割を加えている。マクロが生成す�
 内容が一致することは `graphite-codegen` を共有することで保証し、ファイルの
 読み書きは `graphite-cli` とその利用者 (`xtask`) だけが行う。
 
-利用者は `graphite` だけに依存する。マクロは `graphite::graph_schema!` /
+利用者は `graphite` だけに依存する。マクロは `graphite::dynamic_graph_schema!` /
 `graphite::graph!` / `graphite::flow!` として re-export されたものを使い、
 `graphite-macros` へ直接依存させることはしない。
 
@@ -62,11 +62,14 @@ generate` と、外部 crate 向けの `cargo graphite generate` である。こ
 ## クレートの責務
 
 - `graphite-codegen` は schema の構文解析、意味検査、指紋計算、Rustコード生成を
-  行う純粋層である。ファイルの読み書きは行わない。
+  行う純粋層である。ファイルの読み書きは行わない。静的グラフ
+  (`static_graph_schema!`/instance) の意味モデル・追跡情報・生成ファイル本文・
+  その場展開は `static_graph/` にある (`docs/static_graph.md`「実装の配置」参照)。
 - `graphite-macros` はコンパイル時の schema 検査と指紋照合、および `graph!` と
   `flow!` の展開を行う。
 - `graphite-cli` は宣言元の探索、生成先の検査、生成ファイルの読み書きと差分検査を
   行い、`cargo graphite generate [--check]` のバイナリ (`cargo-graphite`) を提供する。
+  静的グラフのschema・instanceの2段階の解決 (`static_resolution/`) もここにある。
 - `xtask` は Graphite リポジトリ自身の開発用入口である。`crates/*` と `examples/*`
   の全パッケージを順に `graphite-cli` へ渡し、加えて文書参照・リポジトリ内Rust
   ソース参照の実在と行数範囲・索引の検査 (`cargo xtask check-docs`)、外部 crate

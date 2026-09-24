@@ -1,14 +1,13 @@
 // このファイルは Graphite が生成したため手編集しないこと。
 // 生成元: tests/edge_roles.rs:37
-// 再生成: パッケージのディレクトリで `cargo graphite generate` を実行する
-//         (Graphite リポジトリ自身の開発では `cargo xtask generate`)。
+// 再生成: パッケージのディレクトリで cargo graphite generate を実行してください (Graphite リポジトリ自身の開発では cargo xtask generate)
 
 #[allow(unused_imports)]
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    279498376343989012u64, 14420603153860903487u64, 9436782982891772118u64,
-    6728272147696429882u64,
+    12915499301625855134u64, 11205147218086213387u64, 12208822815129686076u64,
+    4098736115415589360u64,
 ];
 /// `Person` ノードの公開ID。
 ///
@@ -53,7 +52,6 @@ pub struct __SubscriptionNamedPosition(__SubscriptionInternalPosition, u64);
 /// 構築時に組み立てる `Purchase` 辺の値。
 ///
 /// 宣言: `tests/edge_roles.rs` の `edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) where each buyer: 1..2, each product: 0..1, unique pair`
-#[derive(Clone)]
 pub struct Purchase {
     /// この辺の始点ノードの公開ID。
     pub buyer: PersonId,

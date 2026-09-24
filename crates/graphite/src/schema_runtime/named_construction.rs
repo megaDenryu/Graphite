@@ -22,7 +22,7 @@ pub struct NamedInsertPermit {
     _private: (),
 }
 
-/// `graph_schema!` が生成する builder が実装する、凍結操作の内部契約。
+/// `dynamic_graph_schema!` が生成する builder が実装する、凍結操作の内部契約。
 /// [`build_named_graph`] が `Graph`/`Violation` の具体型を知らずに `freeze()`
 /// を呼べるようにするためだけの橋渡しであり、利用者が直接実装することは
 /// 想定しない。

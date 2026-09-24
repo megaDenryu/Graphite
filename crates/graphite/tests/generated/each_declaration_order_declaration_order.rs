@@ -1,14 +1,13 @@
 // このファイルは Graphite が生成したため手編集しないこと。
 // 生成元: tests/each_declaration_order.rs:52
-// 再生成: パッケージのディレクトリで `cargo graphite generate` を実行する
-//         (Graphite リポジトリ自身の開発では `cargo xtask generate`)。
+// 再生成: パッケージのディレクトリで cargo graphite generate を実行してください (Graphite リポジトリ自身の開発では cargo xtask generate)
 
 #[allow(unused_imports)]
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    10684986046488196653u64, 1126173345116585150u64, 3974872349104772983u64,
-    15143050018079298267u64,
+    13931799164366306425u64, 3211192133502914272u64, 10366990758092770007u64,
+    852573736333127067u64,
 ];
 /// `Author` ノードの公開ID。
 ///
@@ -43,7 +42,6 @@ pub struct __WroteNamedPosition(__WroteInternalPosition, u64);
 /// 構築時に組み立てる `Wrote` 辺の値。
 ///
 /// 宣言: `tests/each_declaration_order.rs` の `edge Wrote = (writer: Author) -[byline: Byline]-> (article: Article) where each article: 1, each writer: 0..1`
-#[derive(Clone)]
 pub struct Wrote {
     /// この辺の始点ノードの公開ID。
     pub writer: AuthorId,

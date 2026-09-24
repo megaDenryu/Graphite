@@ -1,0 +1,28 @@
+error[E0401]: can't use generic parameters from outer item
+  --> tests/ui/static_value_expr_referencing_outer_type_param_is_rejected.rs:42:28
+   |
+24 | / graphite::static_graph_schema! {
+25 | |     generated = "generated/static_value_expr_referencing_outer_type_param_is_rejected_型引数参照組織.rs";
+26 | |     schema 型引数参照組織 {
+27 | |         node 社員;
+28 | |     }
+29 | | }
+   | |_- generic parameter used in this inner function
+...
+37 |   fn 関数の型引数を値の式が参照する<T: Default + ToString>() {
+   |                                     - type parameter from outer item
+...
+42 |           node 太郎 = 社員 { 名前: T::default().to_string() };
+   |                                    ^ use of generic parameter from outer item
+   |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
+help: try introducing a local generic parameter here
+   |
+29 | }<T>
+   |  +++
+
+error[E0425]: cannot find type `太郎Ref` in module `型引数参照チーム`
+  --> tests/ui/static_value_expr_referencing_outer_type_param_is_rejected.rs:42:14
+   |
+42 |         node 太郎 = 社員 { 名前: T::default().to_string() };
+   |              ^^^^ not found in `型引数参照チーム`

@@ -1,4 +1,4 @@
-//! 追跡形式の `graph_schema!` 入力の先頭行 (`generated = "..."`) と schema 本体を切り分ける。
+//! 追跡形式の `dynamic_graph_schema!` 入力の先頭行 (`generated = "..."`) と schema 本体を切り分ける。
 
 use proc_macro2::TokenStream;
 use syn::{Ident, LitStr, Token};

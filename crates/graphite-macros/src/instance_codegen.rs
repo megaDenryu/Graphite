@@ -14,7 +14,7 @@
 //!
 //! ノード項・エッジの積み荷の値はいずれもユーザーの式トークンをそのまま
 //! 埋め込むだけで、値の型はマクロが一切パースしない。ノード項は
-//! `graph_schema!` が生成した総称 `insert_named` メソッド (`graphite_codegen::
+//! `dynamic_graph_schema!` が生成した総称 `insert_named` メソッド (`graphite_codegen::
 //! schema::codegen::insertable_trait::marker_traits::gen_node_trait_and_impls`
 //! 参照) にキー文字列と値の式をそのまま渡し、
 //! `N::Id` の型推論を rustc に委ねる (許可証付き経路の詳細は

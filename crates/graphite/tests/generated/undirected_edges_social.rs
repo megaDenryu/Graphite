@@ -1,14 +1,13 @@
 // このファイルは Graphite が生成したため手編集しないこと。
 // 生成元: tests/undirected_edges.rs:35
-// 再生成: パッケージのディレクトリで `cargo graphite generate` を実行する
-//         (Graphite リポジトリ自身の開発では `cargo xtask generate`)。
+// 再生成: パッケージのディレクトリで cargo graphite generate を実行してください (Graphite リポジトリ自身の開発では cargo xtask generate)
 
 #[allow(unused_imports)]
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    4894759131759904026u64, 4569390261186559443u64, 5150959123302627384u64,
-    10438373038271008756u64,
+    11284398990898524296u64, 5019668452514739711u64, 6446161111152920378u64,
+    4078516052627306182u64,
 ];
 /// `Person` ノードの公開ID。
 ///
@@ -79,7 +78,6 @@ impl std::fmt::Debug for Friends {
 /// 構築時に組み立てる `Wire` 辺の値。
 ///
 /// 宣言: `tests/undirected_edges.rs` の `edge Wire = Person -[cable: Cable]- Person`
-#[derive(Clone)]
 pub struct Wire {
     endpoints: graphite::UnorderedPair<PersonId>,
     /// この辺が運ぶ積み荷。

@@ -1,6 +1,6 @@
 //! 再計算エンジン — 「グラフによる再定式化」の核心部分。
 //!
-//! [`Engine`] は不変な依存グラフ ([`crate::schema::Sheet`]、`graph_schema!`
+//! [`Engine`] は不変な依存グラフ ([`crate::schema::Sheet`]、`dynamic_graph_schema!`
 //! が生成した型) と、可変な「今の値」(`HashMap<CellId, f64>`) を分けて
 //! 持つ (`../Bullet/docs/graph_design_sketches.md` 決定2)。[`Engine::set_input`] が
 //! 1回呼ばれるたびに:

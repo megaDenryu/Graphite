@@ -1,14 +1,13 @@
 // このファイルは Graphite が生成したため手編集しないこと。
 // 生成元: tests/f64_attrs.rs:37
-// 再生成: パッケージのディレクトリで `cargo graphite generate` を実行する
-//         (Graphite リポジトリ自身の開発では `cargo xtask generate`)。
+// 再生成: パッケージのディレクトリで cargo graphite generate を実行してください (Graphite リポジトリ自身の開発では cargo xtask generate)
 
 #[allow(unused_imports)]
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    15939096809991844115u64, 17857744565030846402u64, 5187252885421274249u64,
-    4388840773717165933u64,
+    2871500391242505555u64, 12443055033049306636u64, 7924654921395984165u64,
+    8106776794356780089u64,
 ];
 /// `Sensor` ノードの公開ID。
 ///
@@ -43,7 +42,6 @@ pub struct __MeasuredNamedPosition(__MeasuredInternalPosition, u64);
 /// 構築時に組み立てる `Measured` 辺の値。
 ///
 /// 宣言: `tests/f64_attrs.rs` の `edge Measured = (sensor: Sensor) -[measurement: MeasuredEdge]-> (reading: Reading)`
-#[derive(Clone)]
 pub struct Measured {
     /// この辺の始点ノードの公開ID。
     pub sensor: SensorId,

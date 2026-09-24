@@ -1,9 +1,9 @@
-//! スキーマ宣言 (`graph_schema!`) と、そこで参照されるノード型・積み荷型。
+//! スキーマ宣言 (`dynamic_graph_schema!`) と、そこで参照されるノード型・積み荷型。
 //!
 //! `graph!` リテラルによるシナリオ本体は `story.rs` (本編) と
 //! `broken_story.rs` (検証テスト用) に、完成済みグラフへの導出クエリは
 //! `derived_query.rs` にある。v3 (`docs/history/graph_literal_v3.md` §4) で
-//! ハンドシェイクマクロを全廃したため、`graph_schema!` と `graph!` を同一
+//! ハンドシェイクマクロを全廃したため、`dynamic_graph_schema!` と `graph!` を同一
 //! ファイルに置く必要は無い (`graph!` が参照するのは通常の型・メソッドだけに
 //! なったため、別モジュールから `use` すれば足りる。実証は
 //! `crates/graphite/tests/graph_cross_module.rs`)。
@@ -18,7 +18,7 @@
 // edge Finale = (scene: Scene) -> (ending: Ending) where each scene: 0..1 — エンディングへの
 //               到達。各シーンにつき高々1つの結末。
 
-// ノード型。`graph_schema!` はこの型を生成せず参照するだけ。
+// ノード型。`dynamic_graph_schema!` はこの型を生成せず参照するだけ。
 #[derive(Debug, Clone, PartialEq)]
 pub struct Scene {
     pub speaker: String,
@@ -46,7 +46,7 @@ pub mod DialogueGraph {
 }
 
 #[rustfmt::skip]
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "generated/schema_dialogue_graph.rs";
     schema DialogueGraph {
         node Scene;

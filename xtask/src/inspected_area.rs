@@ -19,4 +19,14 @@ impl InspectedArea {
     pub(crate) fn spelling(&self) -> &str {
         &self.spelling
     }
+
+    // 指定した綴りが、この領域の綴りそのもの、またはその配下にあるか。
+    //
+    // この関数は、境界を `/` の有無で判定する。`crates/graphite-cli` は
+    // `crates/graphite-cli-extra` を含まない (前方一致だけでは区切りを誤る)。
+    pub(crate) fn contains_spelling(&self, spelling: &str) -> bool {
+        spelling
+            .strip_prefix(&self.spelling)
+            .is_some_and(|rest| rest.starts_with('/'))
+    }
 }

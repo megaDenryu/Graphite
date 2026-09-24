@@ -13,6 +13,7 @@ use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::cargo_target::{self, CargoTarget, SrcTargetCache};
 use crate::generated_target_path::GeneratedTargetPath;
 use crate::io_context::with_path_context;
 use crate::relative_display::relative_display;
@@ -31,6 +32,11 @@ use crate::schema_source_file::SchemaSourceFile;
 pub struct GenerationTree {
     base: PathBuf,
     scan_roots: Vec<PathBuf>,
+    // `src`配下のCargo target表のキャッシュ。`cargo_target`はファイルごとに
+    // 呼ばれるが、表自体はこの`GenerationTree`が生きている間で1回だけ組み
+    // 立てる (`cargo_target`のdoc参照。呼び直すとファイル数の2乗に比例する
+    // 読み取り・構文解析が発生する)。
+    src_target_cache: SrcTargetCache,
 }
 
 impl GenerationTree {
@@ -39,12 +45,18 @@ impl GenerationTree {
     // 前提: `scan_roots` は実在するディレクトリであり、`base` の配下にある。
     // 唯一の組み立て口である `PackageRoot` が列挙時に確かめる。
     pub(crate) fn new(base: PathBuf, scan_roots: Vec<PathBuf>) -> Self {
-        Self { base, scan_roots }
+        Self { base, scan_roots, src_target_cache: cargo_target::空のキャッシュ() }
     }
 
     // 基準ディレクトリからの相対パスを、環境によらない綴りで表示する。
     pub(crate) fn relative_display(&self, path: &Path) -> String {
         relative_display(&self.base, path)
+    }
+
+    // このファイルが属するCargo targetを求める (`cargo_target` 参照)。
+    // 静的グラフのschema名簿とinstanceの照合はこの単位で閉じる。
+    pub(crate) fn cargo_target(&self, path: &Path) -> Result<CargoTarget, Box<dyn Error>> {
+        cargo_target::ファイルの属するCargoターゲットを求める(&self.scan_roots, path, &self.src_target_cache)
     }
 
     // schema宣言を探す対象のRustファイルを、順序を固定して列挙する。

@@ -32,7 +32,7 @@ pub mod Social {
 }
 
 #[rustfmt::skip]
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "generated/undirected_edges_social.rs";
     schema Social {
         node Person;

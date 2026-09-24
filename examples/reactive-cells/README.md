@@ -1,6 +1,6 @@
 # reactive-cells
 
-Graphite (`graph_schema!`/`graph!`) が倒すべき敵その3 = **リアクティブ
+Graphite (`dynamic_graph_schema!`/`graph!`) が倒すべき敵その3 = **リアクティブ
 プログラミングのスパゲッティ**を、動くプログラムで実証するexample。
 題材はミニスプレッドシート (単価・数量・税率・割引率・配送料から
 小計・割引額・税額・調整額・合計を求める見積書) の依存グラフ。
@@ -95,7 +95,7 @@ impl NaiveCell {
 という**構造データ**として宣言する:
 
 ```rust
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     schema Sheet {
         node Cell;
 
@@ -199,7 +199,7 @@ adjustment`) を含む見積シートで `unit_price` を変更しても、
 | `src/antipattern/naive_cell.rs` | observer パターンの素朴なセル `NaiveCell` |
 | `src/antipattern/diamond_demo.rs` | ダイヤモンド依存のグリッチと登録順依存のデモ |
 | `src/antipattern/infinite_loop_demo.rs` | 循環購読が止まらないことのデモ |
-| `src/schema.rs` | `Cell`/`Formula` ノード型と `graph_schema!` 宣言 |
+| `src/schema.rs` | `Cell`/`Formula` ノード型と `dynamic_graph_schema!` 宣言 |
 | `src/fixtures.rs` | `graph!` リテラルによる具体的な依存グラフ (`default_sheet`/`cyclic_demo_sheet`) |
 | `src/engine.rs` | 再計算エンジン本体 (`Engine` 型・構築・`set_input` による伝播) |
 | `src/engine/dependency_projection.rs` | 3種の依存エッジを1つの汎用グラフへ射影する |

@@ -13,11 +13,22 @@
 // 推測判別はしない)。node は3形態を受理する:
 //   1. `名前 = 型 { .. };`   実体型はリテラルのパスから読む
 //   2. `名前: 型 = 式;`      型を明示すれば右辺は任意の式でよい
-//   3. `名前: 型;`           宣言のみ。実体値は `Nodes::new` へ実行時に渡す
+//   3. `名前: 型;`           宣言のみ。実体値は組み立て関数の引数として
+//                            実行時に渡す
 //
 // schema名を書かないのは、schema名がそのままマクロ名になり (利用側は
 // `<schema名>! { graph <名前>; .. }` と書く)、この構文木を組み立てる時点で
 // どのschemaかは既に確定しているため。
+//
+// instanceは、モジュール直下 (項目の位置) にも関数の中 (文の位置) にも
+// 同じ `graph <名前>;` の1形式だけで書く。生成器は、値の式を、どちらの
+// 位置でも宣言位置に置いた捕捉しない `fn` の本体として固定する
+// (`inline/value_binding.rs`)。`fn` は入れ子の項目としてブロックの中にも
+// 置けるRustの通常の性質を使うため、instanceの構文自体は置かれた位置を
+// 区別する必要が無い (詳細は `docs/static_graph.md`「値の式の名前解決」
+// 節)。値の式が関数のローカル変数・引数を参照すると、入れ子の `fn` は
+// 外側を捕捉できないため通常のRustのE0434になり、外側のジェネリックの
+// 型引数を参照すると通常のRustのE0401になる。
 //
 // node/edgeの各1件の宣言のパース (3形態の判別を含む) は input_item.rs、
 // 辺の右辺 `(...)` の中身 (無payload/payload/無向) の判別は input_edge_body.rs
@@ -37,41 +48,35 @@ syn::custom_keyword!(graph);
 syn::custom_keyword!(node);
 syn::custom_keyword!(edge);
 
+// Clone は `static_graph::tracked::instance` が、相互検証用の
+// `静的グラフ内部入力` へ複製して渡すために要る (issue #41 段階2)。
+#[derive(Clone)]
 pub struct 静的グラフ入力 {
     pub グラフ名: Ident,
     pub ノード宣言達: Vec<ノード宣言>,
     pub 辺宣言達: Vec<辺宣言>,
 }
 
+#[derive(Clone)]
 pub struct ノード宣言 {
     pub 名前: Ident,
     pub 実体型: Ident,
-    pub 値: Option<Expr>, // 値なし宣言 (`node 名前: 型;`) は None。実行時引数として `Nodes::new` へ渡す (node_entities.rs)
+    pub 値: Option<Expr>, // 値なし宣言 (`node 名前: 型;`) は None。実行時引数として組み立て関数へ渡す (inline/assembly.rs)
 }
 
+#[derive(Clone)]
 pub enum 辺中身 {
     無積み荷,
     積み荷あり(Expr),
 }
 
+#[derive(Clone)]
 pub enum 辺形状 {
     有向 { 始点: Ident, 終点: Ident, 中身: 辺中身 },
     無向 { 端点1: Ident, 端点2: Ident, 中身: 辺中身 },
 }
 
-impl 辺形状 {
-    pub(crate) fn 積み荷式(&self) -> Option<&Expr> {
-        let 中身 = match self {
-            辺形状::有向 { 中身, .. } => 中身,
-            辺形状::無向 { 中身, .. } => 中身,
-        };
-        match 中身 {
-            辺中身::無積み荷 => None,
-            辺中身::積み荷あり(式) => Some(式),
-        }
-    }
-}
-
+#[derive(Clone)]
 pub struct 辺宣言 {
     pub 名前: Ident,
     pub 種別: Ident,
@@ -81,15 +86,6 @@ pub struct 辺宣言 {
 impl 静的グラフ入力 {
     pub(crate) fn 個体の実体型(&self, 個体: &Ident) -> &Ident {
         &self.ノード宣言達.iter().find(|n| &n.名前 == 個体).expect("検証済みなので端点は必ず宣言されている").実体型
-    }
-}
-
-impl 辺宣言 {
-    pub(crate) fn 端点に含むか(&self, 個体名: &Ident) -> bool {
-        match &self.形状 {
-            辺形状::有向 { 始点, 終点, .. } => 始点 == 個体名 || 終点 == 個体名,
-            辺形状::無向 { 端点1, 端点2, .. } => 端点1 == 個体名 || 端点2 == 個体名,
-        }
     }
 }
 

@@ -10,7 +10,7 @@
 ID型を省略すると、schema module 内に型付き文字列IDを生成する。
 
 ```rust
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "generated/org.rs";
     schema Org {
         node Person;
@@ -42,7 +42,7 @@ pub struct EmployeeNumber(pub u64);
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct RelationNumber(pub u64);
 
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "generated/org.rs";
     schema Org {
         node Person(id: EmployeeNumber);

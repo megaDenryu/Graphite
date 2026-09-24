@@ -9,7 +9,7 @@ use super::keywords as kw;
 
 // `node Person;`
 //
-// `Person` はユーザーが `graph_schema!` の外で宣言した普通の struct への
+// `Person` はユーザーが `dynamic_graph_schema!` の外で宣言した普通の struct への
 // 参照であり、このマクロは生成しない。型名は単純 `Ident` のみを受け付ける
 // (エッジ端点の型名照合に文字列比較で使うため、`syn::Path` にすると
 // `crate::Person` と `Person` を同一視できず照合が破綻する。モジュール

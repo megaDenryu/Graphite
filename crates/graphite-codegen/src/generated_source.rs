@@ -2,21 +2,29 @@
 
 use proc_macro2::TokenStream;
 use quote::quote;
+use syn::Ident;
 
 use crate::declaration_site::DeclarationSite;
 
 // 生成ファイルへ書き出す本文を、先頭の案内コメントごと組み立てる。
+//
+// `fingerprint_const_name` は埋め込む指紋定数の名前である。動的グラフの
+// schema (`__GRAPHITE_SCHEMA_FINGERPRINT`) と、静的グラフのschema・
+// instance (`__GRAPHITE_STATIC_SCHEMA_FINGERPRINT`・
+// `__GRAPHITE_STATIC_INSTANCE_FINGERPRINT`) が同じこの関数を共有し、定数名
+// だけを呼び出し側が指定する (issue #41 段階2、`static_graph::tracked`)。
 pub(crate) fn 生成ファイルの本文(
     body: &TokenStream,
     fingerprint: [u64; 4],
     site: &DeclarationSite,
+    fingerprint_const_name: &Ident,
 ) -> syn::Result<String> {
     let generated: syn::File = syn::parse2(quote! {
         #[allow(unused_imports)]
         use super::*;
 
         #[doc(hidden)]
-        pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
+        pub(super) const #fingerprint_const_name: [u64; 4] = [
             #(#fingerprint),*
         ];
 
@@ -28,14 +36,16 @@ pub(crate) fn 生成ファイルの本文(
     //
     // 注意: 案内する再生成コマンドは、どの入口から生成しても同じ文言にする。
     // 入口ごとに書き分けると、`cargo graphite generate` が書いたファイルを
-    // `cargo xtask generate --check` が古いと判定する (逆も同じ)。
+    // `cargo xtask generate --check` が古いと判定する (逆も同じ)。文言の
+    // 正本は `crate::fingerprint_check::再生成の案内` の1箇所だけであり、
+    // コンパイル時panic・`generate --check` の警告文もここから作る。
     let site = site.display();
     Ok(format!(
         "// このファイルは Graphite が生成したため手編集しないこと。\n\
          // 生成元: {site}\n\
-         // 再生成: パッケージのディレクトリで `cargo graphite generate` を実行する\n\
-         //         (Graphite リポジトリ自身の開発では `cargo xtask generate`)。\n\n\
-         {formatted}"
+         // 再生成: {}\n\n\
+         {formatted}",
+        crate::fingerprint_check::再生成の案内()
     ))
 }
 

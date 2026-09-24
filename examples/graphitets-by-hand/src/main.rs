@@ -12,7 +12,7 @@
 //   TS: graph.edgesFrom(node, Boss) -> Boss | undefined (instanceof で絞る)
 //     → Rust: fn edges_from<E: EdgeKind>(...) の形。OrgEdge から &Boss を
 //       取り出す変換 (TryFrom や accessor) を辺の種類ごとに手書きする。
-//       ここが graph_schema! の消している定型文の本体
+//       ここが dynamic_graph_schema! の消している定型文の本体
 //   TS: TraversalResult<E> (条件型で E / E|undefined / readonly E[])
 //     → Rust: trait EdgeKind { type TraversalOut; } の関連型。
 //       ExactlyOne は E、ZeroOrOne は Option<E>、Many は Vec<E>

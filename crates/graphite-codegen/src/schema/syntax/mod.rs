@@ -1,4 +1,4 @@
-//! `graph_schema!` の入力 DSL のパースを担う。構文木を組み立てるだけで、
+//! `dynamic_graph_schema!` の入力 DSL のパースを担う。構文木を組み立てるだけで、
 //! ノード型の重複や未宣言参照といった意味検査は `schema::validate` で行う。
 //!
 //! 対応する文法 (v4、`docs/schema_v4.md` §1 参照):
@@ -8,7 +8,7 @@
 //! pub struct Team { pub name: String }
 //! pub struct BossEdge { pub since: i32 }
 //!
-//! graphite::graph_schema! {
+//! graphite::dynamic_graph_schema! {
 //!     schema Org {
 //!         node Person;
 //!         node Team(id: ExistingTeamId);
@@ -21,7 +21,7 @@
 //! }
 //! ```
 //!
-//! ノード型・エッジ属性型はいずれも `graph_schema!` の外でユーザーが普通の
+//! ノード型・エッジ属性型はいずれも `dynamic_graph_schema!` の外でユーザーが普通の
 //! struct として宣言したものを参照するだけで、このマクロは生成しない。
 //! `node Type;` と `edge Kind = ...;` は schema module 内にそれぞれ
 //! `TypeId(String)` と `KindId(String)` を生成する。既存ID型を使う場合は

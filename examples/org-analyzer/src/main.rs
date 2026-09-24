@@ -1,4 +1,4 @@
-//! org-analyzer — Graphite (`graph_schema!`) を使った組織分析ツール。
+//! org-analyzer — Graphite (`dynamic_graph_schema!`) を使った組織分析ツール。
 //!
 //! 人事データを「社員・部署・プロジェクトの3ノード + 4種の型付きエッジ」の
 //! グラフとして扱い、多重度制約 (全社員は必ず1部署) と構造検査を実演する

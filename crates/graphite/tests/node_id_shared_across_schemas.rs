@@ -11,7 +11,7 @@
 //!
 //! このファイルは1ファイル100行の原則の例外である (区分: 統合による超過)。
 //! このファイルは検証対象1つ (明示ID型の複数スキーマ共有) に対する2つのスキーマ
-//! とテスト関数の列を持つ。このファイルは2つの `graph_schema!` 宣言が同じ
+//! とテスト関数の列を持つ。このファイルは2つの `dynamic_graph_schema!` 宣言が同じ
 //! ID型を共有することを検証するため、このファイルの分割は、その共有の検証そ
 //! のものを不可能にする。超過を許す根拠の台帳は
 //! `docs/development/line_count_ledger.md` にある。
@@ -45,7 +45,7 @@ mod org_chart {
     }
 
     #[rustfmt::skip]
-    graphite::graph_schema! {
+    graphite::dynamic_graph_schema! {
         generated = "generated/node_id_shared_across_schemas_org_chart.rs";
         schema OrgChart {
             node Person(id: PersonId);
@@ -102,7 +102,7 @@ mod approval_flow {
     }
 
     #[rustfmt::skip]
-    graphite::graph_schema! {
+    graphite::dynamic_graph_schema! {
         generated = "generated/node_id_shared_across_schemas_approval_flow.rs";
         schema ApprovalFlow {
             node Person(id: PersonId);

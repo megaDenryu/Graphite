@@ -1,0 +1,12 @@
+error: no rules expected `社員`
+  --> tests/ui/static_construct_rejects_extra_argument.rs:54:32
+   |
+54 |     let _g = 開発チーム::construct!(社員 { 名前: "差し替え".into() });
+   |                                     ^^^^ no rules expected this token in macro call
+   |
+  ::: tests/ui/../generated/static_multi_module_開発チーム.rs
+   |
+   | macro_rules! construct {
+   | ---------------------- when calling this macro
+   |
+   = note: while trying to match end of macro

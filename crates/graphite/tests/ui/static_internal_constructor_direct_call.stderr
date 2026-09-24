@@ -1,0 +1,12 @@
+error: use of deprecated associated function `開発チーム::Graph::__graphite_internal_new`: Graphite の内部構築子である。construct! を使うこと
+  --> tests/ui/static_internal_constructor_direct_call.rs:52:31
+   |
+52 |     let _差し替え = 開発チーム::Graph::__graphite_internal_new(
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> tests/ui/static_internal_constructor_direct_call.rs:9:9
+   |
+ 9 | #![deny(warnings)]
+   |         ^^^^^^^^
+   = note: `#[deny(deprecated)]` implied by `#[deny(warnings)]`

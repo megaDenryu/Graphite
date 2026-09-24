@@ -1,7 +1,7 @@
 //! ビルドパイプライン・オーケストレータ CLI。
 //!
 //! `pipeline.txt` (簡易行形式) を読み込み、Task/Artifact の異種ノードと
-//! produces/consumes の型付きエッジからなるグラフ (`graphite::graph_schema!`
+//! produces/consumes の型付きエッジからなるグラフ (`graphite::dynamic_graph_schema!`
 //! 製) を組み立てて、検証・実行計画・クリティカルパス・可視化を行う。
 //!
 //! パイプライン: lexer 相当 (`parser`) -> グラフ構築 (`builder`) ->

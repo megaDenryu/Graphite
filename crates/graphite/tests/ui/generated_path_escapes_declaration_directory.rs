@@ -4,7 +4,7 @@
 
 struct Person;
 
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "../evil.rs";
     schema Evil {
         node Person;

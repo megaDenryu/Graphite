@@ -1,10 +1,10 @@
 # org-analyzer
 
-Graphite (`graphite::graph_schema!`) を使った、組織データ (人事グラフ) 分析
+Graphite (`graphite::dynamic_graph_schema!`) を使った、組織データ (人事グラフ) 分析
 CLI ツールの実用example。
 
 社員・部署・プロジェクトという3種類のノードと、それらを結ぶ4種類の型付き
-エッジを `graph_schema!` で宣言し、多重度制約 (「全社員は必ずちょうど1つの
+エッジを `dynamic_graph_schema!` で宣言し、多重度制約 (「全社員は必ずちょうど1つの
 部署に所属する」など) と、Graphite の「不変 + 再構築」パターンによる構造
 検査の実演を目的にしている。
 
@@ -17,7 +17,7 @@ pub struct Project { pub name: String, pub priority: u8 }
 pub struct BossEdge { pub since: i32 }
 pub struct AssignedEdge { pub role: String }
 
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     schema OrgChart {
         node Employee;
         node Department;
@@ -252,7 +252,7 @@ $ cargo run -q -- reorg D03
 ## Graphiteを使う意味
 
 自前で `HashMap<EmployeeId, Employee>` や `HashMap<DepartmentId, Vec<EmployeeId>>`
-を手で管理する実装と対比すると、`graph_schema!` が肩代わりしてくれる点は
+を手で管理する実装と対比すると、`dynamic_graph_schema!` が肩代わりしてくれる点は
 以下の通り具体的である。
 
 ### 1. `where each employee: 1` による「全社員は必ず1部署」保証
@@ -311,7 +311,7 @@ NodeRef自身のメソッドで辿る。操作語彙 (`NodeRef` の
 ```
 src/
   lib.rs      - モジュール公開 (mainとtestsの両方から使うためlib+bin構成)
-  schema.rs   - graph_schema! によるスキーマ定義
+  schema.rs   - dynamic_graph_schema! によるスキーマ定義
   dataset.rs  - LCGベースの決定的合成データ生成器 (異常注入モード含む)
     name_pool.rs        - 姓・名・部署名・プロジェクト名などの語彙表
     lcg.rs              - 線形合同法の擬似乱数生成器

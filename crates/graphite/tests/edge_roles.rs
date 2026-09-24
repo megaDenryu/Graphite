@@ -34,7 +34,7 @@ pub mod Commerce {
 }
 
 #[rustfmt::skip]
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "generated/edge_roles_commerce.rs";
     schema Commerce {
         node Person;
@@ -57,7 +57,7 @@ pub mod JapaneseRoles {
 }
 
 #[rustfmt::skip]
-graphite::graph_schema! {
+graphite::dynamic_graph_schema! {
     generated = "generated/edge_roles_japanese_roles.rs";
     schema JapaneseRoles {
         node Person;

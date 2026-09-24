@@ -1,5 +1,5 @@
 //! reactive-cells — 「リアクティブプログラミングのスパゲッティ」を
-//! Graphite (`graph_schema!`/`graph!`) で倒す実証example。
+//! Graphite (`dynamic_graph_schema!`/`graph!`) で倒す実証example。
 //!
 //! 詳しい経緯・設計判断は `README.md` を参照。このファイルは
 //! `README.md` の構成 (敵の紹介 → グラフによる再定式化 → 対応表) を

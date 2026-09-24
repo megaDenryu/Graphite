@@ -1,6 +1,6 @@
 # dialogue-engine
 
-Graphite の `graph_schema!`/`graph!` を使った、分岐ノベルゲームエンジンの
+Graphite の `dynamic_graph_schema!`/`graph!` を使った、分岐ノベルゲームエンジンの
 実践example。ビジュアルノベル (アドベンチャーゲーム) の分岐シナリオを
 グラフとして表現し、プレイ・構造検証・可視化する CLI アプリ。
 
@@ -206,7 +206,7 @@ PS> cargo run -- stats
 | `src/validate_command.rs` | `validate` サブコマンドの表示 |
 | `src/route_command.rs` | `route` サブコマンドの表示 |
 | `src/stats_command.rs` | `stats` サブコマンドの表示 |
-| `src/schema.rs` | `graph_schema!` 宣言と、そこで参照するノード型・積み荷型 |
+| `src/schema.rs` | `dynamic_graph_schema!` 宣言と、そこで参照するノード型・積み荷型 |
 | `src/story.rs` | 本編シナリオの `graph!` リテラル |
 | `src/broken_story.rs` | `validate` の検出能力を確かめるための壊れたシナリオ2本 |
 | `src/derived_query.rs` | 完成済みグラフへの導出クエリ (`scene_choices`/`scene_graph` 等) |
@@ -248,7 +248,7 @@ PS> cargo run -- stats
   同一対への複数選択肢は接尾辞で区別)。型ごとの命名規則を先に決めておかない
   と、この規模では衝突の特定・修正だけで疲弊する。
 - **選択肢の順序は挿入順で安定していることが実用上重要で、これは
-  `graph!`/`graph_schema!` が正式に保証する仕様である**
+  `graph!`/`dynamic_graph_schema!` が正式に保証する仕様である**
   (`docs/schema_v4.md` §3.2「順序保証 (仕様)」)。`g.choice_iter()`/`scene.choice_as_scene()`
   はどちらも `KeyedTable` (`crates/graphite/src/keyed_table.rs`) の挿入順
   保持構造 (Vec 本体 + HashMap 索引) 由来で、`graph!` に書いた順をそのまま

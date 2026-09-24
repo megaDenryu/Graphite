@@ -1,0 +1,43 @@
+error: cannot find macro `__graphite_values_衝突検査グラフ_b77ce2f422ea0c67` in this scope
+  --> tests/ui/../generated/static_same_graph_name_different_modules_m1.rs
+   |
+   |         { let (甲,) = __graphite_values_衝突検査グラフ_b77ce2f422ea0c67!(); let
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+  ::: tests/ui/static_construct_same_graph_name_different_module_rejected.rs:70:17
+   |
+70 |         let g = crate::m1::衝突検査グラフ::construct!();
+   |                 --------------------------------------- in this macro invocation
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+   = note: this error originates in the macro `crate::m1::衝突検査グラフ::construct` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: cannot find macro `__graphite_payloads_衝突検査グラフ_b77ce2f422ea0c67` in this scope
+  --> tests/ui/../generated/static_same_graph_name_different_modules_m1.rs
+   |
+   |         () = __graphite_payloads_衝突検査グラフ_b77ce2f422ea0c67!();
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+  ::: tests/ui/static_construct_same_graph_name_different_module_rejected.rs:70:17
+   |
+70 |         let g = crate::m1::衝突検査グラフ::construct!();
+   |                 --------------------------------------- in this macro invocation
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+   = note: this error originates in the macro `crate::m1::衝突検査グラフ::construct` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: unused macro definition: `construct`
+ --> tests/ui/../generated/static_same_graph_name_different_modules_m2.rs
+  |
+  | macro_rules! construct {
+  |              ^^^^^^^^^
+  |
+  = note: `#[warn(unused_macros)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `construct`
+ --> tests/ui/../generated/static_same_graph_name_different_modules_m2.rs
+  |
+  | pub(crate) use construct;
+  |                ^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
