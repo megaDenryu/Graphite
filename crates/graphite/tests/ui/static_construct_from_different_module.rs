@@ -1,13 +1,16 @@
 // 別moduleから構築が呼べないことを固定する回帰試験。2つの経路を検査する。
 // (1) `construct!`自体は`pub(crate) use`されたマクロなので別moduleからも
 // 呼び出せるが、その展開の内部で無修飾のまま参照する値マクロ
-// (`__graphite_values_{グラフ名}!`) の名前は呼び出し位置 (`mod 別`) を
-// 起点に解決されるため、instance宣言を持つ`mod 元`の外からは見えず解決に
-// 失敗する。(2) 値マクロ自身を`元::__graphite_values_開発チーム!`のように
-// 修飾パスで直接呼ぶ迂回も検査する。値マクロは意図的に`pub(crate) use`を
-// 持たない (`crates/graphite-codegen/src/static_graph/inline/value_supply.rs`)
-// ため、この迂回もコンパイルエラーになる。`pub(crate) use`を一時的に戻して
-// 実測すると、この迂回だけが成立するようになり (値の式の中の`社員`/`部署`が
+// (`__graphite_values_{グラフ名}_{instance印}!`) の名前は呼び出し位置
+// (`mod 別`) を起点に解決されるため、instance宣言を持つ`mod 元`の外からは
+// 見えず解決に失敗する。(2) 値マクロ自身を
+// `元::__graphite_values_開発チーム_{instance印}!`のように修飾パスで直接
+// 呼ぶ迂回も検査する (印は`generated = "generated/static_multi_module_開発チーム.rs"`
+// から計算する値であり、生成ファイル自身の呼び出しと一致させる)。値マクロは
+// 意図的に`pub(crate) use`を持たない
+// (`crates/graphite-codegen/src/static_graph/inline/value_supply.rs`) ため、
+// この迂回もコンパイルエラーになる。`pub(crate) use`を一時的に戻して実測
+// すると、この迂回だけが成立するようになり (値の式の中の`社員`/`部署`が
 // `mod 別`のスコープを起点に解決されて見つからないという別のエラーへ変わる
 // — instance宣言と無関係な別moduleに同名の型・関数があれば、値がすり替わる
 // 危険の実体)、値マクロを公開しないことが対策そのものであると確認できる。
@@ -60,7 +63,7 @@ mod 元 {
 mod 別 {
     pub fn 試す() {
         let _g = super::元::開発チーム::construct!();
-        let _v = super::元::__graphite_values_開発チーム!();
+        let _v = super::元::__graphite_values_開発チーム_74affc48978331c5!();
     }
 }
 

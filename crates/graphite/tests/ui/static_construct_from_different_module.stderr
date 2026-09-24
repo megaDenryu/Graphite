@@ -1,8 +1,8 @@
-error[E0433]: failed to resolve: could not find `__graphite_values_開発チーム` in `元`
-  --> tests/ui/static_construct_from_different_module.rs:63:28
+error[E0433]: failed to resolve: could not find `__graphite_values_開発チーム_74affc48978331c5` in `元`
+  --> tests/ui/static_construct_from_different_module.rs:66:28
    |
-63 |         let _v = super::元::__graphite_values_開発チーム!();
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ could not find `__graphite_values_開発チーム` in `元`
+66 |         let _v = super::元::__graphite_values_開発チーム_74affc48978331c5!();
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ could not find `__graphite_values_開発チーム_74affc48978331c5` in `元`
 
 error: cannot find macro `__graphite_values_開発チーム_74affc48978331c5` in this scope
   --> tests/ui/../generated/static_multi_module_開発チーム.rs
@@ -10,9 +10,9 @@ error: cannot find macro `__graphite_values_開発チーム_74affc48978331c5` in
    |         __graphite_values_開発チーム_74affc48978331c5!(); let () =
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-  ::: tests/ui/static_construct_from_different_module.rs:62:18
+  ::: tests/ui/static_construct_from_different_module.rs:65:18
    |
-62 |         let _g = super::元::開発チーム::construct!();
+65 |         let _g = super::元::開発チーム::construct!();
    |                  ----------------------------------- in this macro invocation
    |
    = help: have you added the `#[macro_use]` on the module/import?
@@ -24,9 +24,9 @@ error: cannot find macro `__graphite_payloads_開発チーム_74affc48978331c5` 
    |         __graphite_payloads_開発チーム_74affc48978331c5!(); #[allow(deprecated)] {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-  ::: tests/ui/static_construct_from_different_module.rs:62:18
+  ::: tests/ui/static_construct_from_different_module.rs:65:18
    |
-62 |         let _g = super::元::開発チーム::construct!();
+65 |         let _g = super::元::開発チーム::construct!();
    |                  ----------------------------------- in this macro invocation
    |
    = help: have you added the `#[macro_use]` on the module/import?
@@ -38,19 +38,19 @@ error[E0433]: failed to resolve: use of unresolved module or unlinked crate `開
    |         開発チーム::Graph::__graphite_internal_new(太郎, 開発部) } }
    |         ^^^^^^^^^^ use of unresolved module or unlinked crate `開発チーム`
    |
-  ::: tests/ui/static_construct_from_different_module.rs:62:18
+  ::: tests/ui/static_construct_from_different_module.rs:65:18
    |
-62 |         let _g = super::元::開発チーム::construct!();
+65 |         let _g = super::元::開発チーム::construct!();
    |                  ----------------------------------- in this macro invocation
    |
    = help: if you wanted to use a crate named `開発チーム`, use `cargo add 開発チーム` to add it to your `Cargo.toml`
    = note: this error originates in the macro `super::元::開発チーム::construct` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing one of these structs
-  --> tests/ui/static_construct_from_different_module.rs:61:5
+  --> tests/ui/static_construct_from_different_module.rs:64:5
    |
-61 +     use crate::元::開発チーム::Graph;
+64 +     use crate::元::開発チーム::Graph;
    |
-61 +     use graphite::Graph;
+64 +     use graphite::Graph;
    |
-61 +     use petgraph::Graph;
+64 +     use petgraph::Graph;
    |
