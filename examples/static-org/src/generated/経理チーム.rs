@@ -1,13 +1,13 @@
 // このファイルは Graphite が生成したため手編集しないこと。
-// 生成元: src/main.rs:175
+// 生成元: src/main.rs:174
 // 再生成: パッケージのディレクトリで cargo graphite generate を実行してください (Graphite リポジトリ自身の開発では cargo xtask generate)
 
 #[allow(unused_imports)]
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_STATIC_INSTANCE_FINGERPRINT: [u64; 4] = [
-    5049775539690795347u64, 9184388375303505454u64, 5923218017199156869u64,
-    629775046997494841u64,
+    1542891519632419054u64, 2288656863588021135u64, 5722673485417993868u64,
+    7766952263091336064u64,
 ];
 /// Graphite 静的グラフの具体個体参照。
 ///
@@ -15,7 +15,7 @@ pub(super) const __GRAPHITE_STATIC_INSTANCE_FINGERPRINT: [u64; 4] = [
 /// - 個体: `花子`
 /// - 実体型: `社員`
 ///
-/// 宣言: `src/main.rs` の `node 花子: 社員 = ..`
+/// 宣言: `src/main.rs` の `node 花子: 社員`
 #[derive(Clone, Copy)]
 pub struct 花子Ref<'a> {
     graph: &'a Graph,
@@ -144,7 +144,7 @@ impl<'a> NodeRefs<'a> {
     /// - graph: `経理チーム`
     /// - 個体: `花子`
     ///
-    /// 宣言: `src/main.rs` の `node 花子: 社員 = ..`
+    /// 宣言: `src/main.rs` の `node 花子: 社員`
     pub fn 花子(&self) -> 花子Ref<'a> {
         花子Ref { graph: self.graph }
     }
@@ -216,17 +216,18 @@ impl Graph {
 /// Graphite 静的グラフの `Graph` を実体化するマクロ `construct` (Graphite の固定語彙)。値ありの個体・積み荷はinstance宣言の式からこのマクロが計算し、値なしの個体だけを宣言順の引数で受け取る。
 ///
 /// - graph: `経理チーム`
+/// - 実行時に渡す個体 (宣言順): `花子: 社員`
 /// - 戻り値: `Graph`
 ///
 /// 固定語彙: `construct!` (`docs/static_graph.md` 「生成される名前の公開契約」)
 ///
 /// 関係する instance 宣言: `src/main.rs` の `graph 経理チーム`
 macro_rules! construct {
-    () => {
-        { let (花子, 総務部,) =
-        __graphite_values_経理チーム_8f63c12febf6d3da!(); let () =
-        __graphite_payloads_経理チーム_8f63c12febf6d3da!(); #[allow(deprecated)] {
-        経理チーム::Graph::__graphite_internal_new(花子, 総務部) } }
+    ($花子:expr) => {
+        { let (総務部,) = __graphite_values_経理チーム_8f63c12febf6d3da!(); let
+        () = __graphite_payloads_経理チーム_8f63c12febf6d3da!();
+        #[allow(deprecated)] { 経理チーム::Graph::__graphite_internal_new($花子,
+        総務部) } }
     };
 }
 pub(crate) use construct;

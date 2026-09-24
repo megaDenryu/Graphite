@@ -65,15 +65,14 @@ mod 複製検査関数内チーム {
     include!("generated/static_value_expr_not_duplicated_into_generated_file_複製検査関数内チーム.rs");
 }
 
-// `in fn`(関数の中の位置) のinstanceも同じ性質を持つことを確かめる。
-// 項目の位置 (上の`複製検査チーム`) はクロージャを使わない`fn`本体だが、
-// `in fn`は宣言位置で`let`束縛したクロージャを使う (`docs/static_graph.md`
-// 「値の式の名前解決」節) ため、値の式が生成ファイルへ写らないという性質を
-// 別に確かめる必要がある。
+// instanceを関数の中に置いた場合も同じ性質を持つことを確かめる。関数の中
+// でも項目の位置 (上の`複製検査チーム`) と同じ捕捉しない`fn`本体を使う
+// (`docs/static_graph.md`「値の式の名前解決」節) ため、コード生成の経路は
+// 同じだが、実際に関数の中に置いた配置でも成り立つことを別に確かめる。
 fn 複製検査関数内チームを構築する() -> 複製検査関数内チーム::Graph {
     複製検査組織! {
         generated = "generated/static_value_expr_not_duplicated_into_generated_file_複製検査関数内チーム.rs";
-        graph 複製検査関数内チーム in fn;
+        graph 複製検査関数内チーム;
         node 次郎 = 社員 { 名前: "この文字列__関数内目印__は生成ファイルへ複製されてはならない".to_string() };
         node 総務部 = 部署 { 名前: "総務部".into() };
         edge 次郎の所属 = 所属(次郎 -> 総務部);
@@ -82,11 +81,11 @@ fn 複製検査関数内チームを構築する() -> 複製検査関数内チ�
 }
 
 #[test]
-fn 関数内位置の値の式の目印は生成ファイルに現れない() {
+fn 関数の中に置いたinstanceの値の式の目印は生成ファイルに現れない() {
     let 生成ファイル本文 = include_str!("generated/static_value_expr_not_duplicated_into_generated_file_複製検査関数内チーム.rs");
     assert!(
         !生成ファイル本文.contains("関数内目印"),
-        "生成ファイルにin fnの値の式の目印が写っている (値の式を複製している):\n{生成ファイル本文}"
+        "生成ファイルに関数の中のinstanceの値の式の目印が写っている (値の式を複製している):\n{生成ファイル本文}"
     );
 }
 

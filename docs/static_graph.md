@@ -120,7 +120,7 @@ schema名がそのままマクロ名になるため、instance宣言はschema名
 ```text
 <schema名>! {
     generated = "<生成先への相対パス>";
-    graph <グラフ名>[ in fn];
+    graph <グラフ名>;
     (node <名前> = <型> { <フィールド式, ...> };)*
     (node <名前>: <型> = <式>;)*
     (node <名前>: <型>;)*
@@ -150,28 +150,34 @@ PR #45)。構築の呼び出し (`construct!`をどこから呼ぶか) は「い
 変えない。instance宣言の位置と構築の呼び出し位置に同じ名前の識別子が
 あっても、値の式は常にinstance宣言の位置の意味を保つ。
 
-この固定は、instanceが項目の位置 (モジュール直下) にあるか文の位置
-(関数の中) にあるかで異なるコード生成を選ぶことで実現する。`macro_rules!`
-はマクロ自身がどちらの位置で呼ばれたかを構文だけからは知れないため、
-`graph <名前> in fn;` の `in fn` を印にして利用者が選ぶ。
+この固定は、instanceがモジュール直下 (項目の位置) にあっても関数の中
+(文の位置) にあっても同じ1つのコード生成で実現する。値の式は常に、
+宣言位置に置いた**捕捉しない関数 (`fn`) の本体**として固定される。
+項目 (`fn`) はRustのブロックの中にも入れ子で置ける項目であり、その本体は
+常にその項目が書かれた位置の通常のスコープで名前解決される。これは
+instanceがモジュール直下にあるか関数の中にあるかによらず成り立つため、
+DSLの構文自体は位置を区別する印を持たない (「値ありの個体・積み荷の式が
+関数のローカル変数を参照できるとうれしいのではないか」という設計
+(issue #46、`let`束縛のクロージャで捕捉する形) を検討したが、オーナーの
+再レビューがこれを不採用と裁定した。ローカル捕捉は旧実装に無かった
+新機能であり、DSLへ印 (`in fn`) を足してまで導入する理由が無いという
+判断による)。
 
-- **`graph <名前>;`(既定、項目の位置)**: 値の式を、宣言位置に置いた
-  捕捉しない関数 (`fn`) の本体として固定する。項目 (fn) の本体は常に
-  その項目が書かれた位置の通常のスコープで名前解決されるため、`let`を
-  使わなくても宣言位置の意味を保てる。モジュール直下にはそもそも
-  ローカル変数が存在しないため、捕捉できないことは制約にならない。
-- **`graph <名前> in fn;`(関数の中の位置)**: 値の式を、宣言位置で`let`に
-  より束縛したクロージャとして固定する。クロージャは宣言位置のローカル
-  変数・引数・ジェネリックの型引数を、通常のRustのクロージャと同じように
-  捕捉する。`in fn`を項目の位置で書くと生成される`let`が構文エラーになる
-  ため、位置の取り違えは検出できる。
+**値の式が関数のローカル変数・引数・ジェネリックの型引数を参照すると、
+入れ子の`fn`は外側を捕捉できないため、通常のRustのE0434
+(``can't capture dynamic environment in a fn item; use the `||` closure
+form instead``) になる。** rustcのヘルプは「クロージャ形式を使う」と
+案内するが、Graphiteの値の式をクロージャに変えることはできない。対処は、
+その個体・積み荷を値なし宣言 (`node 名前: 型;`) にして、実体を
+`{instance名}::construct!(..)` の引数として実行時に渡すことである
+(compile-fail実測:
+`crates/graphite/tests/ui/static_value_expr_referencing_local_is_rejected.rs`)。
 
-どちらの形でも、構築の呼び出し位置 (`construct!`) からは、宣言
-位置に置いた束縛マクロ (`__graphite_bind_{名前}_{グラフ名}!`、C分類の
-内部生成名) を無修飾の名前で呼ぶだけであり、この束縛マクロの本体は
-「宣言位置の関数呼び出しの結果」または「宣言位置のクロージャの束縛名」
-を返すだけである。値の式そのもの (利用者が書いた任意のRust式) は束縛
-マクロの外へは出ないため、`construct!`を呼んだ位置に同じ名前の
+構築の呼び出し位置 (`construct!`) からは、宣言位置に置いた束縛マクロ
+(`__graphite_bind_{名前}_{グラフ名}!`、C分類の内部生成名) を無修飾の
+名前で呼ぶだけであり、この束縛マクロの本体は「宣言位置の関数呼び出しの
+結果」を返すだけである。値の式そのもの (利用者が書いた任意のRust式) は
+束縛マクロの外へは出ないため、`construct!`を呼んだ位置に同じ名前の
 別の項目があっても、その項目が値の式の名前解決に混ざることはない
 (実測: `crates/graphite-codegen/src/static_graph/inline/value_supply.rs`
 末尾の`tests`モジュール)。instanceの宣言と同じmodule内にある関数
@@ -190,33 +196,24 @@ instanceの宣言と同じテキスト順スコープに繋がらない場所 (�
 - instance宣言の位置と構築の呼び出し位置に同名の識別子があっても、
   instance宣言の位置の意味を保つ:
   `crates/graphite/tests/static_value_expr_resolves_at_declaration_site.rs`
-- 関数のローカル変数・引数・型引数を、instance宣言の位置から通常のRustの
-  式と同じ意味で参照できる (`in fn`):
-  `crates/graphite/tests/static_value_expr_captures_local.rs`・
-  `static_value_expr_captures_locals_in_fn.rs`
-- `in fn`の値の式がローカル変数を借りるだけ (`.clone()`等) なら、束縛した
-  クロージャは`move`を付けないため、instance宣言の後ろでも同じローカル
-  変数を使い続けられる:
-  `crates/graphite/tests/static_value_expr_borrows_local_leaves_it_usable.rs`。
-  ただし、このクロージャが借りている間 (`construct!`を呼んで最後に使うまで)
-  は、そのローカル変数を書き換えられない (通常のRustの借用規則どおり、
-  E0506になる)。
-- 値の式そのもの (利用者が書いたRust式) は生成ファイルへ複製されない:
+  (モジュール直下)・
+  `static_value_expr_in_fn_body_resolves_and_evaluates_once.rs`
+  (関数の中、同じブロックの入れ子の項目を宣言位置の意味で解決する側)
+- 値の式が関数のローカル変数・引数・型引数を参照するとE0434になる
+  (compile-fail):
+  `crates/graphite/tests/ui/static_value_expr_referencing_local_is_rejected.rs`
+- 値の式そのもの (利用者が書いたRust式) は生成ファイルへ複製されない
+  (モジュール直下・関数の中の両方):
   `crates/graphite/tests/static_value_expr_not_duplicated_into_generated_file.rs`
-- 値の式は1回だけ評価される (キャッシュされず、構築のたびに再評価される):
+- 値の式は`construct!`を呼ぶたびに1回だけ評価される (キャッシュされず、
+  構築のたびに再評価される):
   `crates/graphite/tests/static_individual_value_evaluated_once_per_assembly.rs`
-- `in fn`の値の式がローカル変数をmoveする場合、束縛したクロージャは
-  FnOnceにしかならないため構築は1回しかできない (通常のRustのmoveの
-  意味と一致する。Graphite独自の制限ではない):
-  `crates/graphite/tests/static_value_expr_move_constructs_once.rs`
-  (1回目は成功する側)・
-  `crates/graphite/tests/ui/static_value_expr_move_construct_twice.rs`
-  (2回目がコンパイルエラーになる側、compile-fail)
-- `non_local_definitions`を発生させない (`fn`・`let`・`macro_rules!`だけを
-  生成し`impl`を使わないため):
+  (モジュール直下)・
+  `static_value_expr_in_fn_body_resolves_and_evaluates_once.rs` (関数の中)
+- `non_local_definitions`を発生させない (`fn`・`macro_rules!`だけを生成し
+  `impl`を使わないため):
   `crates/graphite/tests/static_mod_outside_instance_inside_fn.rs`
-  (項目の位置)・`static_value_expr_captures_locals_in_fn.rs`
-  (`in fn`、`#![deny(warnings)]`)
+  (`#![deny(warnings)]`)
 
 ## 生成される名前の公開契約
 
@@ -375,7 +372,7 @@ A・Bのどちらも、F12は生成ファイルの中の人間が読める定義
   `libとmainが同名schemaを持っても衝突しない`。
 - **instanceを他のマクロの入力の中に書いてはならない。** `println!("{}", 組織! { .. })`のように、名簿の名前を他のマクロの引数の中へ埋め込む書き方は生成器がエラーにする (`docs/code_generation.md`参照)。利用者は、instanceを文の位置 (または関数の中の文の位置) に直接書く。
 - **生成moduleを読み込む`mod`の置き場所は、instance宣言の置き場所と無関係である。** instance展開はimplを一切使わず、値の橋渡しを宣言位置に生成する値マクロ (`__graphite_values_{グラフ名}_{instance印}!`・`__graphite_payloads_{グラフ名}_{instance印}!`) だけで行うため、利用者が`mod`を最上位に置いたままinstance宣言だけを関数の中に置いても`non_local_definitions`警告は出ない。`examples/static-org/src/main.rs`の`mod 経理チーム`(最上位)と`経理チームの花子の所属先を求める`関数(instance宣言はこの中)が、この配置の実例である。
-- **`construct!`を呼んでよいのは、instance宣言と同じテキスト順スコープ (同じmodule、またはinstanceを置いた同じ関数の中) だけである。** 束縛マクロ (`__graphite_bind_{名前}_{グラフ名}!`等) は意図的に`pub(crate) use`を持たず、`macro_rules!`の既定のテキスト順スコープだけに閉じる。別ファイル・別moduleから呼ぼうとすると束縛マクロの名前自体が解決できずコンパイルエラーになる (回帰試験: `crates/graphite/tests/ui/static_construct_from_different_module.rs`)。値の式の名前解決そのもの (instance宣言の位置へ固定する仕組み) は上の「値の式の名前解決」節を参照。instance宣言と同じmodule内 (instanceの後ろに書いた別の関数など) から呼ぶ場合は、値の式は宣言位置の意味を保ったまま構築できる (`in fn`の場合はクロージャの束縛名がmacro_rules!のローカル変数の衛生規則により保護される)。同じテキスト順スコープに繋がらない場所から呼ぼうとした場合は、束縛マクロの名前自体が見えず`cannot find macro`になる。
+- **`construct!`を呼んでよいのは、instance宣言と同じテキスト順スコープ (同じmodule、またはinstanceを置いた同じ関数の中) だけである。** 束縛マクロ (`__graphite_bind_{名前}_{グラフ名}!`等) は意図的に`pub(crate) use`を持たず、`macro_rules!`の既定のテキスト順スコープだけに閉じる。別ファイル・別moduleから呼ぼうとすると束縛マクロの名前自体が解決できずコンパイルエラーになる (回帰試験: `crates/graphite/tests/ui/static_construct_from_different_module.rs`)。値の式の名前解決そのもの (instance宣言の位置へ固定する仕組み) は上の「値の式の名前解決」節を参照。instance宣言と同じmodule内 (instanceの後ろに書いた別の関数など) から呼ぶ場合は、値の式は宣言位置の意味を保ったまま構築できる (束縛マクロが呼ぶ関数名はmacro_rules!のローカル変数の衛生規則により宣言位置の関数を指す)。同じテキスト順スコープに繋がらない場所から呼ぼうとした場合は、束縛マクロの名前自体が見えず`cannot find macro`になる。
 - **schemaとinstanceを別ファイルに分けるときは、instance側のファイルがschema moduleを`use`し、schema側の`mod`宣言に`#[macro_use]`を付けてinstance側の`mod`宣言より前に置く。** 例: instance側のファイルは`use crate::organization::組織;`のように、schemaを宣言したファイルのmoduleを`use`する。crateの入口ファイルは`#[macro_use] mod organization; mod dev_team;`のように、schema側の`mod`をinstance側の`mod`より前に置く (理由と実測は上の「2層マクロの使い方」節を参照)。
 - **同じスコープに、同名の値ありの個体・積み荷ありの辺を持つinstanceを複数置いてよい。** 値マクロの名前 (`__graphite_values_{グラフ名}_{instance印}!`等) はグラフ名を含むため、個体名・辺名が同じでもグラフ名が違えば衝突しない。回帰試験: `crates/graphite/tests/static_same_individual_name_multiple_instances.rs` (最上位)・`static_same_individual_name_inside_function.rs` (関数の中)。個体の値の式が`construct!`を呼ぶたびに1回だけ評価されることの回帰試験は `crates/graphite/tests/static_individual_value_evaluated_once_per_assembly.rs`。
 - **別moduleが同じグラフ名を選んでも、値マクロは衝突しない。** 値マクロの名前は`generated = "..."`文字列から計算する`instance印`を含むため、2つのmoduleが同じグラフ名のinstanceを作っても、`generated`文字列が違えば、それぞれの値マクロ・`construct!`の内部参照は別の名前になる。`construct!`を誤って別moduleの同名グラフへ向けて呼んでも、その別instanceの値マクロの名前は見えないため`cannot find macro`になり、エラーにせず取り違えて使うことはない。回帰試験: `crates/graphite/tests/static_same_graph_name_different_modules.rs` (同じ名前でも各moduleの中で完結した呼び出しは正しく動く側)・`crates/graphite/tests/ui/static_construct_same_graph_name_different_module_rejected.rs` (別moduleの同名グラフを誤って呼ぶとコンパイルエラーになる側、compile-fail)。
@@ -483,34 +480,6 @@ instance moduleの`mod`宣言そのものを書き忘れると (`crates/graphite
 **旧版の記録 (PR #45で解消):** issue #41当初の実装は、instance展開が呼び出し位置に組み立て関数 (`{グラフ名}の個体を組み立てる() -> {instance名}::Nodes`等) を生成していたため、この戻り値型の参照がE0433をさらに2件増やし、そのうち2件に`Nodes`・`Edges`という名前がpetgraphの複数の構造体名と一致することに由来する無関係なimport提案 (`use petgraph::graphmap::Nodes;`等) が付いていた。
 PR #45で構築の入口を生成ファイルの中 (`{instance名}::Graph`への参照は、生成ファイルの中の内部構築子呼び出しだけが持つ) へ移したことで、instance宣言だけでは`Graph`型を一切参照しなくなり、この診断は自然に消えた。個体実体・積み荷の所有者を独立型 (`Nodes`/`Edges`) へ分けない設計 (同PR、上の「生成される名前の公開契約」参照) へ移った後も、この性質は変わらない。
 利用者がこの2件のE0433に遭遇したら、`mod {instance名} { include!(..); }`宣言が無いことを疑うのが正しい対処である。
-
-### `in fn`の位置の取り違えの診断 (既知の制約)
-
-instanceが項目の位置 (モジュール直下) にあるか文の位置 (関数の中) にあるかは、
-利用者が`graph <名前> in fn;`の`in fn`で申告する (「値の式の名前解決」節
-参照)。この申告と実際の位置が食い違うと、次の2つの症状が出る。どちらも
-`in fn`という語を案内しない、Rust一般のエラーとして現れる。
-
-- **関数の中にあるのに`in fn`を書き忘れた場合**: 値の式が関数のローカル
-  変数・引数を参照していると、通常のRustのE0434
-  (``can't capture dynamic environment in a fn item; use the `||`
-  closure form instead``) になる。項目位置の値は捕捉しない`fn`として
-  固定するため (「値の式の名前解決」節参照)、関数のローカルを参照できない
-  ことが原因である。rustcのヘルプは「クロージャ形式を使う」としか言わず、
-  `in fn`という語を案内しない。対処は、instanceの1行目に`in fn`を足す
-  ことである。
-- **モジュール直下にあるのに`in fn`を書いた場合**: 生成される`let`文が
-  項目の位置に置かれ、構文として不正になるため、``macro expansion ignores
-  keyword `let` `` というエラーが、instanceを呼んだマクロ呼び出し全体を
-  指す形で出る。対処は、instanceの1行目から`in fn`を外すことである。
-
-生成器はどちらの食い違いも検出できない。`in fn`はマクロ自身が項目・文
-どちらの位置で呼ばれたかを構文だけからは知れないことを補うための、
-利用者からの唯一の申告であり、申告の真偽を確かめる独立した手がかりを
-生成器は持たない (値の式が実際にローカルを参照するかどうかは、Rustの
-名前解決・型検査を経なければ分からず、マクロ展開の時点では判定できない)。
-利用者がこの2つの症状に遭遇したら、上の対処 (`in fn`を足す・外す) を
-試すのが正しい判断である。
 
 ## macro_rules!転送の仕組みとテキスト順の制約
 

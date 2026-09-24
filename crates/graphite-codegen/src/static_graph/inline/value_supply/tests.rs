@@ -21,7 +21,7 @@ fn 意味モデルを作る(instance本文: TokenStream) -> 意味モデル {
 }
 
 #[test]
-fn 項目位置の個体値マクロは捕捉しない関数を経由し名前はグラフ名を含む() {
+fn 個体値マクロは捕捉しない関数を経由し名前はグラフ名を含む() {
     let 意味モデル = 意味モデルを作る(quote! {
         graph 開発チーム;
         node 太郎 = 社員 { 名前: "太郎".into() };
@@ -35,21 +35,7 @@ fn 項目位置の個体値マクロは捕捉しない関数を経由し名前�
     assert!(コード.contains(&マクロ名));
     assert!(コード.contains("fn __graphite_value_太郎_開発チーム"));
     assert!(!コード.contains("impl"), "implブロックを使わないこと (non_local_definitions対策)");
-    assert!(!コード.contains("let __graphite_captured"), "項目位置ではクロージャ束縛を使わないこと");
-}
-
-#[test]
-fn 関数内の個体値マクロはlet束縛したクロージャを経由する() {
-    let 意味モデル = 意味モデルを作る(quote! {
-        graph 開発チーム in fn;
-        node 太郎 = 社員 { 名前: "太郎".into() };
-        node 開発部 = 部署 { 名前: "開発部".into() };
-    });
-
-    let コード = 個体値マクロを組み立てる(&意味モデル, 生成先パス::new(生成パス文字列)).to_string();
-    assert!(コード.contains("let __graphite_captured_太郎_開発チーム"));
-    assert!(!コード.contains("move ||"), "宣言の後でもローカルを借りたまま使えるようmoveを付けないこと");
-    assert!(!コード.contains("fn __graphite_value_"), "関数内位置ではfnを使わないこと");
+    assert!(!コード.contains("let __graphite_captured"), "クロージャ束縛を使わないこと (issue #46の再設計で廃止)");
 }
 
 #[test]

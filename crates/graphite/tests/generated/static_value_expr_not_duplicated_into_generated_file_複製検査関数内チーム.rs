@@ -1,5 +1,5 @@
 // このファイルは Graphite が生成したため手編集しないこと。
-// 生成元: tests/static_value_expr_not_duplicated_into_generated_file.rs:74
+// 生成元: tests/static_value_expr_not_duplicated_into_generated_file.rs:73
 // 再生成: パッケージのディレクトリで cargo graphite generate を実行してください (Graphite リポジトリ自身の開発では cargo xtask generate)
 
 #[allow(unused_imports)]

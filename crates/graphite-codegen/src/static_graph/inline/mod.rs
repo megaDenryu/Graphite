@@ -4,9 +4,11 @@
 //! ファイルへ写さない2つだけを持つ:
 //! (1) instanceの値の式をまとめて返すマクロ (`value_supply`。値ありの
 //! 個体・積み荷それぞれの式を宣言順のタプルで返す `macro_rules!`。
-//! instanceの宣言位置に置くため、instanceを置いた関数のローカル変数・
-//! 引数・型引数を通常のRust式と同じように参照できる。生成ファイル側の
-//! `construct!` (`file::instance_file::construct`) がこのマクロを呼ぶ)
+//! instanceの宣言位置に置いた捕捉しない`fn`の本体として値の式を固定する
+//! ため、instanceを関数の中に置いても、値の式はその関数のローカル変数・
+//! 引数・型引数を参照できない (参照すると通常のRustのE0434になる)。
+//! 生成ファイル側の`construct!` (`file::instance_file::construct`) が
+//! このマクロを呼ぶ)
 //! (2) DSLトークンの型参照 (`token_type_reference`、読むだけの型参照で
 //! F12を助ける)。
 

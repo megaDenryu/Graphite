@@ -1,21 +1,21 @@
 // このファイルは Graphite が生成したため手編集しないこと。
-// 生成元: tests/static_value_expr_move_constructs_once.rs:40
+// 生成元: tests/static_value_expr_in_fn_body_resolves_and_evaluates_once.rs:59
 // 再生成: パッケージのディレクトリで cargo graphite generate を実行してください (Graphite リポジトリ自身の開発では cargo xtask generate)
 
 #[allow(unused_imports)]
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_STATIC_INSTANCE_FINGERPRINT: [u64; 4] = [
-    13803613588806687893u64, 13117745434980602318u64, 2953249923876830299u64,
-    11849602062178977111u64,
+    16564536264383822639u64, 3957070313009865840u64, 7149901927167341433u64,
+    15416223541206915405u64,
 ];
 /// Graphite 静的グラフの具体個体参照。
 ///
-/// - graph: `move二回チーム`
+/// - graph: `関数内解決チーム`
 /// - 個体: `太郎`
 /// - 実体型: `社員`
 ///
-/// 宣言: `tests/static_value_expr_move_constructs_once.rs` の `node 太郎: 社員 = ..`
+/// 宣言: `tests/static_value_expr_in_fn_body_resolves_and_evaluates_once.rs` の `node 太郎: 社員 = ..`
 #[derive(Clone, Copy)]
 pub struct 太郎Ref<'a> {
     graph: &'a Graph,
@@ -23,7 +23,7 @@ pub struct 太郎Ref<'a> {
 impl<'a> 太郎Ref<'a> {
     /// Graphite 静的グラフの具体個体参照から実体を取り出す `entity` (Graphite の固定語彙)。
     ///
-    /// - graph: `move二回チーム`
+    /// - graph: `関数内解決チーム`
     ///
     /// 固定語彙: `entity` (`docs/static_graph.md` 「生成される名前の公開契約」)
     pub fn entity(&self) -> &'a 社員 {
@@ -31,16 +31,16 @@ impl<'a> 太郎Ref<'a> {
     }
     /// Graphite 静的グラフの具体辺参照を返す。
     ///
-    /// - graph: `move二回チーム`
+    /// - graph: `関数内解決チーム`
     /// - 個体: `太郎`
     /// - 具体辺: `太郎の所属`
     /// - 辺種別: `所属`
     /// - この個体の役割: `member`
     /// - 戻り値: `太郎の所属Ref`
     ///
-    /// 宣言: `tests/static_value_expr_move_constructs_once.rs` の `edge 太郎の所属 = 所属(太郎 -> 開発部)`
+    /// 宣言: `tests/static_value_expr_in_fn_body_resolves_and_evaluates_once.rs` の `edge 太郎の所属 = 所属(太郎 -> 開発部)`
     ///
-    /// 関係する schema 宣言: `tests/static_value_expr_move_constructs_once.rs` の `edge 所属 = (member: 社員) -> (team: 部署) where each member: 1`
+    /// 関係する schema 宣言: `tests/static_value_expr_in_fn_body_resolves_and_evaluates_once.rs` の `edge 所属 = (member: 社員) -> (team: 部署) where each member: 1`
     pub fn 太郎の所属(&self) -> 太郎の所属Ref<'a> {
         太郎の所属Ref {
             graph: self.graph,
@@ -49,11 +49,11 @@ impl<'a> 太郎Ref<'a> {
 }
 /// Graphite 静的グラフの具体個体参照。
 ///
-/// - graph: `move二回チーム`
+/// - graph: `関数内解決チーム`
 /// - 個体: `開発部`
 /// - 実体型: `部署`
 ///
-/// 宣言: `tests/static_value_expr_move_constructs_once.rs` の `node 開発部: 部署 = ..`
+/// 宣言: `tests/static_value_expr_in_fn_body_resolves_and_evaluates_once.rs` の `node 開発部: 部署 = ..`
 #[derive(Clone, Copy)]
 pub struct 開発部Ref<'a> {
     graph: &'a Graph,
@@ -61,7 +61,7 @@ pub struct 開発部Ref<'a> {
 impl<'a> 開発部Ref<'a> {
     /// Graphite 静的グラフの具体個体参照から実体を取り出す `entity` (Graphite の固定語彙)。
     ///
-    /// - graph: `move二回チーム`
+    /// - graph: `関数内解決チーム`
     ///
     /// 固定語彙: `entity` (`docs/static_graph.md` 「生成される名前の公開契約」)
     pub fn entity(&self) -> &'a 部署 {
@@ -69,16 +69,16 @@ impl<'a> 開発部Ref<'a> {
     }
     /// Graphite 静的グラフの具体辺参照を返す。
     ///
-    /// - graph: `move二回チーム`
+    /// - graph: `関数内解決チーム`
     /// - 個体: `開発部`
     /// - 具体辺: `太郎の所属`
     /// - 辺種別: `所属`
     /// - この個体の役割: `team`
     /// - 戻り値: `太郎の所属Ref`
     ///
-    /// 宣言: `tests/static_value_expr_move_constructs_once.rs` の `edge 太郎の所属 = 所属(太郎 -> 開発部)`
+    /// 宣言: `tests/static_value_expr_in_fn_body_resolves_and_evaluates_once.rs` の `edge 太郎の所属 = 所属(太郎 -> 開発部)`
     ///
-    /// 関係する schema 宣言: `tests/static_value_expr_move_constructs_once.rs` の `edge 所属 = (member: 社員) -> (team: 部署) where each member: 1`
+    /// 関係する schema 宣言: `tests/static_value_expr_in_fn_body_resolves_and_evaluates_once.rs` の `edge 所属 = (member: 社員) -> (team: 部署) where each member: 1`
     pub fn 太郎の所属(&self) -> 太郎の所属Ref<'a> {
         太郎の所属Ref {
             graph: self.graph,
@@ -87,13 +87,13 @@ impl<'a> 開発部Ref<'a> {
 }
 /// Graphite 静的グラフの具体辺参照。
 ///
-/// - graph: `move二回チーム`
+/// - graph: `関数内解決チーム`
 /// - 具体辺: `太郎の所属`
 /// - 辺種別: `所属`
 ///
-/// 宣言: `tests/static_value_expr_move_constructs_once.rs` の `edge 太郎の所属 = 所属(太郎 -> 開発部)`
+/// 宣言: `tests/static_value_expr_in_fn_body_resolves_and_evaluates_once.rs` の `edge 太郎の所属 = 所属(太郎 -> 開発部)`
 ///
-/// 関係する schema 宣言: `tests/static_value_expr_move_constructs_once.rs` の `edge 所属 = (member: 社員) -> (team: 部署) where each member: 1`
+/// 関係する schema 宣言: `tests/static_value_expr_in_fn_body_resolves_and_evaluates_once.rs` の `edge 所属 = (member: 社員) -> (team: 部署) where each member: 1`
 #[derive(Clone, Copy)]
 pub struct 太郎の所属Ref<'a> {
     graph: &'a Graph,
@@ -108,9 +108,9 @@ impl<'a> 太郎の所属Ref<'a> {
     /// - 戻り値: `太郎Ref`
     /// - 検証制約: `each member: 1` (instance の辺の集合が満たすことを展開時に検査済み。戻り値の型は制約ではなく具体辺の宣言が決める)
     ///
-    /// 宣言: `tests/static_value_expr_move_constructs_once.rs` の `edge 所属 = (member: 社員) -> (team: 部署) where each member: 1`
+    /// 宣言: `tests/static_value_expr_in_fn_body_resolves_and_evaluates_once.rs` の `edge 所属 = (member: 社員) -> (team: 部署) where each member: 1`
     ///
-    /// 関係する instance 宣言: `tests/static_value_expr_move_constructs_once.rs` の `edge 太郎の所属 = 所属(太郎 -> 開発部)`
+    /// 関係する instance 宣言: `tests/static_value_expr_in_fn_body_resolves_and_evaluates_once.rs` の `edge 太郎の所属 = 所属(太郎 -> 開発部)`
     pub fn member(&self) -> 太郎Ref<'a> {
         太郎Ref { graph: self.graph }
     }
@@ -123,16 +123,16 @@ impl<'a> 太郎の所属Ref<'a> {
     /// - 戻り値: `開発部Ref`
     /// - 検証制約: `each member: 1` (instance の辺の集合が満たすことを展開時に検査済み。戻り値の型は制約ではなく具体辺の宣言が決める)
     ///
-    /// 宣言: `tests/static_value_expr_move_constructs_once.rs` の `edge 所属 = (member: 社員) -> (team: 部署) where each member: 1`
+    /// 宣言: `tests/static_value_expr_in_fn_body_resolves_and_evaluates_once.rs` の `edge 所属 = (member: 社員) -> (team: 部署) where each member: 1`
     ///
-    /// 関係する instance 宣言: `tests/static_value_expr_move_constructs_once.rs` の `edge 太郎の所属 = 所属(太郎 -> 開発部)`
+    /// 関係する instance 宣言: `tests/static_value_expr_in_fn_body_resolves_and_evaluates_once.rs` の `edge 太郎の所属 = 所属(太郎 -> 開発部)`
     pub fn team(&self) -> 開発部Ref<'a> {
         開発部Ref { graph: self.graph }
     }
 }
 /// Graphite 静的グラフの個体参照の集まり `NodeRefs` (Graphite の固定語彙)。
 ///
-/// - graph: `move二回チーム`
+/// - graph: `関数内解決チーム`
 ///
 /// 固定語彙: `NodeRefs` (`docs/static_graph.md` 「生成される名前の公開契約」)
 pub struct NodeRefs<'a> {
@@ -141,26 +141,26 @@ pub struct NodeRefs<'a> {
 impl<'a> NodeRefs<'a> {
     /// Graphite 静的グラフの個体参照メソッド。`NodeRefs` がこのメソッドでこの個体の具体参照を返す。
     ///
-    /// - graph: `move二回チーム`
+    /// - graph: `関数内解決チーム`
     /// - 個体: `太郎`
     ///
-    /// 宣言: `tests/static_value_expr_move_constructs_once.rs` の `node 太郎: 社員 = ..`
+    /// 宣言: `tests/static_value_expr_in_fn_body_resolves_and_evaluates_once.rs` の `node 太郎: 社員 = ..`
     pub fn 太郎(&self) -> 太郎Ref<'a> {
         太郎Ref { graph: self.graph }
     }
     /// Graphite 静的グラフの個体参照メソッド。`NodeRefs` がこのメソッドでこの個体の具体参照を返す。
     ///
-    /// - graph: `move二回チーム`
+    /// - graph: `関数内解決チーム`
     /// - 個体: `開発部`
     ///
-    /// 宣言: `tests/static_value_expr_move_constructs_once.rs` の `node 開発部: 部署 = ..`
+    /// 宣言: `tests/static_value_expr_in_fn_body_resolves_and_evaluates_once.rs` の `node 開発部: 部署 = ..`
     pub fn 開発部(&self) -> 開発部Ref<'a> {
         開発部Ref { graph: self.graph }
     }
 }
 /// Graphite 静的グラフの辺参照の集まり `EdgeRefs` (Graphite の固定語彙)。
 ///
-/// - graph: `move二回チーム`
+/// - graph: `関数内解決チーム`
 ///
 /// 固定語彙: `EdgeRefs` (`docs/static_graph.md` 「生成される名前の公開契約」)
 pub struct EdgeRefs<'a> {
@@ -169,10 +169,10 @@ pub struct EdgeRefs<'a> {
 impl<'a> EdgeRefs<'a> {
     /// Graphite 静的グラフの辺参照メソッド。`EdgeRefs` がこのメソッドでこの具体辺の具体参照を返す。
     ///
-    /// - graph: `move二回チーム`
+    /// - graph: `関数内解決チーム`
     /// - 具体辺: `太郎の所属`
     ///
-    /// 宣言: `tests/static_value_expr_move_constructs_once.rs` の `edge 太郎の所属 = 所属(太郎 -> 開発部)`
+    /// 宣言: `tests/static_value_expr_in_fn_body_resolves_and_evaluates_once.rs` の `edge 太郎の所属 = 所属(太郎 -> 開発部)`
     pub fn 太郎の所属(&self) -> 太郎の所属Ref<'a> {
         太郎の所属Ref {
             graph: self.graph,
@@ -181,7 +181,7 @@ impl<'a> EdgeRefs<'a> {
 }
 /// Graphite 静的グラフの具体グラフ本体 `Graph` (Graphite の固定語彙)。
 ///
-/// - graph: `move二回チーム`
+/// - graph: `関数内解決チーム`
 ///
 /// 固定語彙: `Graph` (`docs/static_graph.md` 「生成される名前の公開契約」)
 pub struct Graph {
@@ -198,7 +198,7 @@ impl Graph {
     }
     /// Graphite 静的グラフの `Graph` が個体参照の集まりを返すメソッド `node_refs` (Graphite の固定語彙)。
     ///
-    /// - graph: `move二回チーム`
+    /// - graph: `関数内解決チーム`
     ///
     /// 固定語彙: `node_refs` (`docs/static_graph.md` 「生成される名前の公開契約」)
     pub fn node_refs(&self) -> NodeRefs<'_> {
@@ -206,7 +206,7 @@ impl Graph {
     }
     /// Graphite 静的グラフの `Graph` が辺参照の集まりを返すメソッド `edge_refs` (Graphite の固定語彙)。
     ///
-    /// - graph: `move二回チーム`
+    /// - graph: `関数内解決チーム`
     ///
     /// 固定語彙: `edge_refs` (`docs/static_graph.md` 「生成される名前の公開契約」)
     pub fn edge_refs(&self) -> EdgeRefs<'_> {
@@ -215,18 +215,19 @@ impl Graph {
 }
 /// Graphite 静的グラフの `Graph` を実体化するマクロ `construct` (Graphite の固定語彙)。値ありの個体・積み荷はinstance宣言の式からこのマクロが計算し、値なしの個体だけを宣言順の引数で受け取る。
 ///
-/// - graph: `move二回チーム`
+/// - graph: `関数内解決チーム`
 /// - 戻り値: `Graph`
 ///
 /// 固定語彙: `construct!` (`docs/static_graph.md` 「生成される名前の公開契約」)
 ///
-/// 関係する instance 宣言: `tests/static_value_expr_move_constructs_once.rs` の `graph move二回チーム`
+/// 関係する instance 宣言: `tests/static_value_expr_in_fn_body_resolves_and_evaluates_once.rs` の `graph 関数内解決チーム`
 macro_rules! construct {
     () => {
         { let (太郎, 開発部,) =
-        __graphite_values_move二回チーム_9fe28489a4822cee!(); let () =
-        __graphite_payloads_move二回チーム_9fe28489a4822cee!(); #[allow(deprecated)]
-        { move二回チーム::Graph::__graphite_internal_new(太郎, 開発部) } }
+        __graphite_values_関数内解決チーム_5681732c864607d4!(); let () =
+        __graphite_payloads_関数内解決チーム_5681732c864607d4!();
+        #[allow(deprecated)] {
+        関数内解決チーム::Graph::__graphite_internal_new(太郎, 開発部) } }
     };
 }
 pub(crate) use construct;

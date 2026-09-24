@@ -16,14 +16,7 @@ pub(super) fn 意味モデルを組み立てる(schema: &静的グラフ型入�
     let 具体辺列: Vec<具体辺> =
         instance.辺宣言達.iter().map(|辺| 具体辺を作る(辺, &辺種別列, &個体列)).collect();
 
-    意味モデル {
-        グラフ名: instance.グラフ名.clone(),
-        schema名: schema.schema名.clone(),
-        宣言位置: instance.位置,
-        個体列,
-        辺種別列,
-        具体辺列,
-    }
+    意味モデル { グラフ名: instance.グラフ名.clone(), schema名: schema.schema名.clone(), 個体列, 辺種別列, 具体辺列 }
 }
 
 fn 個体を作る(宣言: &instanceノード宣言) -> 個体 {

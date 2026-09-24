@@ -153,33 +153,32 @@ fn main() {
 // この生成moduleは最上位 (関数の外) にあり、instance宣言
 // (`組織! { .. }`) は `経理チームの所属先を求める` の中にある。
 // instance展開はimplを一切使わず、個体・積み荷の値の橋渡しを宣言位置の
-// `fn`/`let`+`macro_rules!` だけで行うため、instance宣言が
+// `fn`+`macro_rules!` だけで行うため、instance宣言が
 // ユーザーの関数の中にあっても `non_local_definitions` は出ない
-// (`docs/static_graph.md` 「追跡の契約」参照)。
+// (`docs/static_graph.md` 「制約」節)。
 #[allow(non_snake_case, dead_code, private_interfaces)]
 #[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
 mod 経理チーム {
     include!("generated/経理チーム.rs");
 }
 
-// この関数は3つのことを示す。(1) 同一schemaから `組織!` を2回目に宣言しても
+// この関数は2つのことを示す。(1) 同一schemaから `組織!` を2回目に宣言しても
 // 生成物が衝突しない。(2) `mod 経理チーム` を最上位に置いたままinstance宣言
-// だけを関数の中に置ける (`non_local_definitions` 警告が出ない)。(3) `graph
-// 経理チーム in fn;` の `in fn` により、値の式が関数の引数 (`社員名`) を
-// 通常のRustの式と同じように参照できる (`docs/static_graph.md`「値の式の
-// 名前解決」節)。
+// だけを関数の中に置ける (`non_local_definitions` 警告が出ない)。値の式は
+// 宣言位置に置いた捕捉しない`fn`の本体として固定されるため、関数の引数
+// (`社員名`) は値の式から参照できない。そのため `花子` は値なし宣言
+// (`node 花子: 社員;`) にし、実体は `construct!` の引数として実行時に渡す
+// (`docs/static_graph.md`「値の式の名前解決」節)。
 fn 経理チームの所属先を求める(社員名: &str) -> String {
-    let 社員名 = 社員名.to_string();
-
     #[rustfmt::skip]
     組織! {
         generated = "generated/経理チーム.rs";
-        graph 経理チーム in fn;
-        node 花子 = 社員 { 名前: 社員名 };
+        graph 経理チーム;
+        node 花子: 社員;
         node 総務部 = 部署 { 名前: "総務部".into() };
         edge 花子の所属 = 所属(花子 -> 総務部);
     }
 
-    let g = 経理チーム::construct!();
+    let g = 経理チーム::construct!(社員 { 名前: 社員名.to_string() });
     g.node_refs().花子().花子の所属().team().entity().名前().to_string()
 }
