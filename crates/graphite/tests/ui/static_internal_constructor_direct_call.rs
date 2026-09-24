@@ -1,10 +1,10 @@
 // 内部構築子 (`__graphite_internal_new`) を利用者のコードから直接呼ぶと
 // `#[deprecated]`警告になり、`#![deny(warnings)]`の下ではエラーになる
 // ことを固定する回帰試験。`pub(crate)`はクレート内のどこからでも呼べて
-// しまうため、stable Rustの可視性だけでは「呼べるのは
-// `construct::nodes!`だけ」という主張を強制できない (`node_entities.rs`
-// 冒頭コメント参照)。schemaの宣言は`static_multi_module.rs`と同じ内容に
-// し、fingerprintが一致する既存の生成ファイルをそのまま`include!`する。
+// しまうため、stable Rustの可視性だけでは「呼べるのは`construct!`だけ」
+// という主張を強制できない (`graph_struct.rs`冒頭コメント参照)。schemaの
+// 宣言は`static_multi_module.rs`と同じ内容にし、fingerprintが一致する
+// 既存の生成ファイルをそのまま`include!`する。
 
 #![deny(warnings)]
 
@@ -48,9 +48,8 @@ mod 開発チーム {
 }
 
 fn main() {
-    let nodes = 開発チーム::construct::nodes!();
-    let _edges = 開発チーム::construct::edges!(&nodes);
-    let _差し替え = 開発チーム::Nodes::__graphite_internal_new(
+    let _g = 開発チーム::construct!();
+    let _差し替え = 開発チーム::Graph::__graphite_internal_new(
         社員 { 名前: "差し替え".into() },
         部署 { 名前: "差し替え".into() },
     );

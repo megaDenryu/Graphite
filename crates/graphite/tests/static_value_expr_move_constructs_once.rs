@@ -45,9 +45,7 @@ fn 一回だけ構築する() -> String {
         edge 太郎の所属 = 所属(太郎 -> 開発部);
     }
 
-    let nodes = move二回チーム::construct::nodes!();
-    let edges = move二回チーム::construct::edges!(&nodes);
-    let g = move二回チーム::Graph::new(&edges);
+    let g = move二回チーム::construct!();
     g.node_refs().太郎().entity().名前.clone()
 }
 

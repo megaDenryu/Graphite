@@ -1,0 +1,5 @@
+error[E0616]: field `太郎` of struct `開発チーム::Graph` is private
+  --> tests/ui/static_graph_individual_field_is_private.rs:50:15
+   |
+50 |     let _ = g.太郎;
+   |               ^^^^ private field

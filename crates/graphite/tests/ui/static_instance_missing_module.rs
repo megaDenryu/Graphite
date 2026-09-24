@@ -9,11 +9,9 @@
 // 2件目はDSLトークンの型参照が参照する `開発チーム::太郎Ref` 等。
 // instance自身のトークン (`graph 開発チーム;` のグラフ名トークン) のspanを
 // そのまま使う設計 (`docs/static_graph.md` 「追跡の契約」) のため、
-// `graph 開発チーム;` の行を指す。`Nodes`・`Edges`型はconstruct macro
-// (`construct::nodes!`/`construct::edges!`) を実際に呼んで初めて参照される
-// ため、このテストのように呼ばない場合は
-// `開発チーム::Nodes`・`開発チーム::Edges` へのE0433も、petgraphの同名
-// structへの無関係なimport提案も出ない。
+// `graph 開発チーム;` の行を指す。`Graph`型は構築マクロ (`construct!`) を
+// 実際に呼んで初めて参照されるため、このテストのように呼ばない場合は
+// `開発チーム::Graph` へのE0433は出ない。
 
 struct 社員;
 

@@ -87,8 +87,8 @@ impl 意味モデル {
         &self.具体辺列
     }
 
-    // instance宣言の形 (`graph 開発チーム`)。`naming::card_names` の
-    // `個体実体所有者構築メソッド名` が「関係する instance 宣言」段落に使う。
+    // instance宣言の形 (`graph 開発チーム`)。`naming::construct_fixed_vocabulary`
+    // の `構築マクロ名` が「関係する instance 宣言」段落に使う。
     pub(crate) fn グラフ宣言の形(&self) -> String {
         format!("graph {}", self.グラフ名)
     }

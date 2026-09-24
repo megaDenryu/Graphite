@@ -24,7 +24,7 @@ Rustの `static`/`'static` (静的な記憶域・生存期間) とは無関係�
 schema・instanceは共に `generated = "..."` を持ち、動的グラフ (`dynamic_graph_schema!`) と同じ生成ファイル・指紋照合の方式で公開APIを追跡する (issue #41)。
 利用者は、宣言と同じファイルへ、生成先を読み込む `mod <名前> { include!("generated/<名前>.rs"); }` を置く (配線の書式は `docs/code_generation.md` を参照)。
 この`mod`の置き場所はinstance宣言の置き場所と無関係である。instance展開はimplを一切使わず、値の橋渡しを宣言位置に生成する値マクロ (`__graphite_values_{グラフ名}!`・`__graphite_payloads_{グラフ名}!`。下の「生成される名前の公開契約」参照) だけで行うため、利用者が`mod`を最上位に置いたままinstance宣言を関数の中に置いても警告は出ない (実測は `crates/graphite/tests/static_mod_outside_instance_inside_fn.rs` を参照。`#![deny(warnings)]`で警告0件を固定している)。
-公開の `Nodes`・`Edges`・`{個体名}Ref`・`{辺名}Ref`・`Graph`・構築の入口 (`construct::nodes!`・`construct::edges!`) はすべてこの生成ファイルの中にあり、schema・instanceマクロのその場展開には現れない。その場展開に残るのは値マクロだけであり、instance宣言の値の式は**instance宣言を書いた位置のRust式として意味が決まる**(構築の呼び出し位置が式の意味を変えることはない。詳細は下の「値の式の名前解決」節)。値マクロは`pub(crate) use`を持たず、`macro_rules!`の既定のテキスト順スコープだけに閉じる。**構築 (`construct::nodes!`・`construct::edges!`の呼び出し) は、instance宣言と同じテキスト順スコープ (同じmodule、またはinstanceを置いた同じ関数の中) でしか行えない。** 別ファイル・別moduleから呼ぶと、値マクロの名前が解決できずコンパイルエラーになる (`crates/graphite/tests/ui/static_construct_from_different_module.rs`が実例)。
+公開の `{個体名}Ref`・`{辺名}Ref`・`NodeRefs`・`EdgeRefs`・`Graph`・構築の唯一の入口 (`construct!`) はすべてこの生成ファイルの中にあり、schema・instanceマクロのその場展開には現れない。その場展開に残るのは値マクロだけであり、instance宣言の値の式は**instance宣言を書いた位置のRust式として意味が決まる**(構築の呼び出し位置が式の意味を変えることはない。詳細は下の「値の式の名前解決」節)。値マクロは`pub(crate) use`を持たず、`macro_rules!`の既定のテキスト順スコープだけに閉じる。**構築 (`construct!`の呼び出し) は、instance宣言と同じテキスト順スコープ (同じmodule、またはinstanceを置いた同じ関数の中) でしか行えない。** 別ファイル・別moduleから呼ぶと、値マクロの名前が解決できずコンパイルエラーになる (`crates/graphite/tests/ui/static_construct_from_different_module.rs`が実例)。
 
 schemaとinstanceを別ファイルに分ける場合、利用者は2つの配線を行う。
 1つ目はschema moduleの`use`である。
@@ -136,8 +136,8 @@ schema名がそのままマクロ名になるため、instance宣言はschema名
 1. `名前 = 型 { .. };` — 構造体リテラル。実体型はリテラルのパスから読む
 2. `名前: 型 = 式;` — 型を明示すれば右辺は構造体リテラルに限らない任意の式で
    よい (関数呼び出し等)
-3. `名前: 型;` — 宣言のみ。実体値は、`{instance名}::construct::nodes!(..)`
-   (構築の入口、次節) の引数として実行時に渡す
+3. `名前: 型;` — 宣言のみ。実体値は、`{instance名}::construct!(..)`
+   (構築の唯一の入口、次節) の引数として実行時に渡す
 
 型注釈も構造体リテラルも無い場合は `` `node 名前: 型 = 式;` か
 `node 名前 = 型 { ... };` の形で書いてください `` という展開時エラーになる。
@@ -146,8 +146,7 @@ schema名がそのままマクロ名になるため、instance宣言はschema名
 
 値ありの個体・積み荷の式 (`node 名前 = 型 { .. };` 等の右辺) は、
 **instance宣言を書いた位置のRust式として意味が決まる**(オーナーの裁定、
-PR #45)。構築の呼び出し (`construct::nodes!`・`construct::edges!`をどこから
-呼ぶか) は「いつ構築するか」だけを決め、値の式が「何を参照するか」を
+PR #45)。構築の呼び出し (`construct!`をどこから呼ぶか) は「いつ構築するか」だけを決め、値の式が「何を参照するか」を
 変えない。instance宣言の位置と構築の呼び出し位置に同じ名前の識別子が
 あっても、値の式は常にinstance宣言の位置の意味を保つ。
 
@@ -167,16 +166,16 @@ PR #45)。構築の呼び出し (`construct::nodes!`・`construct::edges!`をど
   捕捉する。`in fn`を項目の位置で書くと生成される`let`が構文エラーになる
   ため、位置の取り違えは検出できる。
 
-どちらの形でも、構築の呼び出し位置 (`construct::nodes!`等) からは、宣言
+どちらの形でも、構築の呼び出し位置 (`construct!`) からは、宣言
 位置に置いた束縛マクロ (`__graphite_bind_{名前}_{グラフ名}!`、C分類の
 内部生成名) を無修飾の名前で呼ぶだけであり、この束縛マクロの本体は
 「宣言位置の関数呼び出しの結果」または「宣言位置のクロージャの束縛名」
 を返すだけである。値の式そのもの (利用者が書いた任意のRust式) は束縛
-マクロの外へは出ないため、`construct::nodes!`を呼んだ位置に同じ名前の
+マクロの外へは出ないため、`construct!`を呼んだ位置に同じ名前の
 別の項目があっても、その項目が値の式の名前解決に混ざることはない
 (実測: `crates/graphite-codegen/src/static_graph/inline/value_supply.rs`
 末尾の`tests`モジュール)。項目の位置でinstanceより内側の子module・関数
-から`construct::nodes!`を呼ぼうとした場合も、宣言位置の`fn`はその子
+から`construct!`を呼ぼうとした場合も、宣言位置の`fn`はその子
 module・関数からは (通常のRustの項目解決と同じく) 名前で見えないため
 `cannot find function`という通常のコンパイルエラーになる (旧実装が
 この経路で値をすり替えていた「残る穴」は、この設計変更で構造的に閉じた)。
@@ -212,7 +211,12 @@ module・関数からは (通常のRustの項目解決と同じく) 名前で見
 `PhantomData`・仕組みへの依存なし) であり、孤児規則 (E0116) に落ちない。
 実体は生成ファイル (`generated/<instance名>.rs`) の中にあり、宣言と同じ
 ファイルに置いた `mod <instance名> { include!(..); }` を通して参照する
-(`{instance名}::Nodes` のようにmodule越しの修飾パスで使う)。
+(`{instance名}::Graph` のようにmodule越しの修飾パスで使う)。
+
+構築は `{instance名}::construct!(..)` という1操作の単一の入口だけを持つ
+(PR #45)。個体実体・積み荷の所有者 (旧`Nodes`/`Edges`) は独立した公開型を
+持たず、`Graph`自身の非公開フィールドへ統合したため、利用者はこの2つの
+名前を名指しする必要が無い (下表参照)。
 
 分類は issue #41 が定める2種類である。
 **Aとは、利用者が書いたschema・instanceのトークンを直接または機械的に派生して作る名前のことである。** 生成物のdocは「宣言:」段落を持ち、その段落がDSLへの由来を文章で示す。
@@ -223,38 +227,36 @@ A・Bのどちらも、F12は生成ファイルの中の人間が読める定義
 
 | 生成されるもの | 名前 | 分類 | 修飾パスの例 | 備考 |
 |---|---|---|---|---|
-| 構築の入口をまとめるmodule | `construct` | B | `{instance名}::construct` | 利用者が辿れる構築の唯一の入口。中の2つのマクロだけを持つ |
-| 個体を構築するマクロ | `nodes` | B | `{instance名}::construct::nodes!(..)` | 値ありの個体はinstance宣言の式からこのマクロが計算し、値なし宣言 (`node 名前: 型;`) の個体だけを宣言順の位置引数に取る。`Nodes`を返す。値ありの個体をこのマクロを介さず差し替える公開経路は無い |
-| 辺を構築するマクロ | `edges` | B | `{instance名}::construct::edges!(&nodes)` | `&Nodes`を受け取り、積み荷ありの具体辺の値をすべてinstance宣言の式から計算する。`Edges<'_>`を返す。積み荷を実行時に差し替える引数は無い |
-| ノードの実体の唯一の所有者 | `Nodes` | B | `{instance名}::Nodes` | フィールドは非公開。個体の実体を読むには`Graph`構築後に`NodeRefs`経由で`entity()`を使う。内部構築子 (`__graphite_internal_new`、C分類) は`construct::nodes!`から呼ぶことを想定した橋渡しであり、直接の呼び出しを支援しない (下の「制約」節参照) |
-| 辺の実体の唯一の所有者 | `Edges<'a>` | B | `{instance名}::Edges` | フィールドは非公開。構築時に使った`&'a Nodes`を自分の中に保持しており、`Graph`はこの`Edges`だけを起点に構築する (由来の異なる`Nodes`と組み合わせられない)。内部構築子は`construct::edges!`から呼ぶことを想定した橋渡しであり、直接の呼び出しを支援しない |
-| グラフ本体 | `Graph` | B | `{instance名}::Graph` | `{instance名}::Graph::new(&edges)` で構築する。フィールドは非公開で、`node_refs()`/`edge_refs()`メソッドで読み出す。`edges`が保持する`&Nodes`を内部で使うため、`Nodes`を別途渡す引数は無い |
-| 個体参照の集まり | `NodeRefs<'a>` | B | `{instance名}::NodeRefs` | `Graph::node_refs()` が返す型 |
-| 辺参照の集まり | `EdgeRefs<'a>` | B | `{instance名}::EdgeRefs` | `Graph::edge_refs()` が返す型 |
-| `Graph`が個体参照・辺参照の集まりを返すメソッド | `node_refs`/`edge_refs` | B | `g.node_refs()`/`g.edge_refs()` | それぞれ `&NodeRefs`/`&EdgeRefs` を返す |
+| 静的グラフを実体化する唯一の入口 | `construct` | B | `{instance名}::construct!(..)` | 値ありの個体・積み荷はinstance宣言の式からこのマクロが計算し、値なし宣言 (`node 名前: 型;`) の個体だけを宣言順の位置引数に取る。完成した`Graph`を1回で返す。値ありの個体・積み荷をこの入口を介さず差し替える公開経路は無い |
+| グラフ本体 | `Graph` | B | `{instance名}::Graph` | `{instance名}::construct!(..)` だけが構築する。フィールドは個体・積み荷を直接持つが非公開であり、読み出しは`node_refs()`/`edge_refs()`メソッドを通す。個体実体・積み荷の所有者を独立した公開型 (旧`Nodes`/`Edges`) へ分けていないため、由来の異なる実体を組み合わせて不整合な`Graph`を作る公開経路が構造的に無い |
+| 個体参照の集まり | `NodeRefs<'a>` | B | `{instance名}::NodeRefs` | `Graph::node_refs()` が返す型。借用した`&'a Graph`だけを持つ |
+| 辺参照の集まり | `EdgeRefs<'a>` | B | `{instance名}::EdgeRefs` | `Graph::edge_refs()` が返す型。借用した`&'a Graph`だけを持つ |
+| `Graph`が個体参照・辺参照の集まりを返すメソッド | `node_refs`/`edge_refs` | B | `g.node_refs()`/`g.edge_refs()` | それぞれ `NodeRefs<'_>`/`EdgeRefs<'_>` を値で返す |
 | `NodeRefs`・`EdgeRefs`が持つ個体名・辺名のメソッド | 個体名/辺名そのまま | A | `g.node_refs().{個体名}()`・`g.edge_refs().{辺名}()` | 型 (`NodeRefs`等) はB分類の固定語彙だが、メソッド名は利用者が書いた個体名・辺名をそのまま使う。それぞれ`{個体名}Ref`/`{辺名}Ref`を値で返す |
-| 個体ごとの具象参照 | `{個体名}Ref` | A | `{instance名}::{個体名}Ref` | `g.node_refs().{個体名}()` からアクセスする |
+| 個体ごとの具象参照 | `{個体名}Ref` | A | `{instance名}::{個体名}Ref` | `g.node_refs().{個体名}()` からアクセスする。借用した`&'a Graph`だけを持ち、`entity()`は`&graph.{個体名}` (`Graph`が個体名をそのまま非公開フィールド名にする) を直接読む |
 | 具象参照から実体を取り出すメソッド | `entity()` | B | `{個体名}Ref::entity()` | `&実体型` を返す |
-| 辺インスタンスごとの具象参照 | `{辺名}Ref` | A | `{instance名}::{辺名}Ref` | `g.edge_refs().{辺名}()` からアクセスする |
+| 辺インスタンスごとの具象参照 | `{辺名}Ref` | A | `{instance名}::{辺名}Ref` | `g.edge_refs().{辺名}()` からアクセスする。借用した`&'a Graph`だけを持ち、役割アクセサ・積み荷アクセサは端点個体・積み荷の実体を`Graph`から直接読む (下の2行参照) |
 | 個体参照から具体辺参照を返すメソッド | 辺名そのまま | A | `{個体名}Ref::{辺名}()` | 個体が端点になっている具体辺ごとに、その辺名をメソッド名にして生える (`太郎Ref::太郎の所属() -> 太郎の所属Ref`)。端点でない具体辺のメソッドは生えない (「存在しない辿り」検査、下の「コンパイル時検査の一覧」参照) |
 | 種別ごとの辺値 struct | `{種別名}Edge` | A | `{schema名}::{種別名}Edge` | 役割名・積み荷フィールドをそのまま持つ。schemaファイルの中にあり、同じschemaから作った複数のinstanceで共有する |
-| 辺参照のロールアクセサ | 役割名そのまま | A | `{辺名}Ref::{役割名}()` | 有向・無向を問わず、schema宣言の役割名がそのままアクセサ名になる (`所属(member: 社員) -> (team: 部署)` なら `.member()`/`.team()`、`友人 = (甲: 社員) -- (乙: 社員)` なら `.甲()`/`.乙()`)。無向辺専用の固定名は存在しない |
-| 積み荷アクセサ | 積み荷の役割名そのまま | A | `{辺名}Ref::{積み荷役割名}()` | `&積み荷型` を返す |
+| 辺参照のロールアクセサ | 役割名そのまま | A | `{辺名}Ref::{役割名}()` | 有向・無向を問わず、schema宣言の役割名がそのままアクセサ名になる (`所属(member: 社員) -> (team: 部署)` なら `.member()`/`.team()`、`友人 = (甲: 社員) -- (乙: 社員)` なら `.甲()`/`.乙()`)。無向辺専用の固定名は存在しない。この具体辺の端点個体はinstance宣言の時点で確定しているため、戻り値は`{端点の個体名}Ref { graph: self.graph }`を直接組み立てる (辺の実体を経由しない) |
+| 積み荷アクセサ | 積み荷の役割名そのまま | A | `{辺名}Ref::{積み荷役割名}()` | `&積み荷型` を返す。`&graph.{辺名}` (`Graph`が具体辺名をそのまま非公開フィールド名にする) を直接読む |
 
 **`{個体名}Ref` は生成ファイルの中の具象 `pub` struct なので、利用者は
 マクロの外から後付けで自由にメソッドを生やせる。**
 `impl<'a> 開発チーム::太郎Ref<'a> { fn あだ名(&self) -> String { .. } }`
 のように、module越しの修飾パスで書け、生成されたチェーンの末尾へ通常の
 メソッドと同じ形で継ぎ足せる (`examples/static-org/src/main.rs`)。
-`{個体名}Ref`・`{辺名}Ref`の配線フィールド (`entity`/`nodes`/`edges`) は
-非公開であり、利用者は構造体リテラルで直接作れない。`Graph`・`NodeRefs`・
-`EdgeRefs`のフィールドも同じ理由で非公開であり、読み出しは
-`node_refs()`/`edge_refs()`、個体名・辺名のメソッドを通す。非公開にする
-前は、親moduleから構造体リテラルで別の`Nodes`を混ぜた不整合な参照や、
-2つのグラフの部品を混ぜた不整合な`Graph`を組み立てられた。回帰試験:
+`{個体名}Ref`・`{辺名}Ref`・`NodeRefs`・`EdgeRefs`の配線フィールド
+(`graph`、借用した`&'a Graph`) は非公開であり、利用者は構造体リテラルで
+直接作れない。`Graph`のフィールド (個体・積み荷を直接持つ) も同じ理由で
+非公開であり、読み出しは`node_refs()`/`edge_refs()`、個体名・辺名の
+メソッドを通す。非公開にする前は、親moduleから構造体リテラルで別の
+`Graph`を混ぜた不整合な参照や、個体・積み荷を直接差し替えた不整合な
+`Graph`を組み立てられた。回帰試験:
 `crates/graphite/tests/ui/static_ref_struct_literal_rejected.rs`・
 `static_graph_struct_literal_rejected.rs`・
-`static_graph_new_rejects_two_arguments.rs`。
+`static_graph_individual_field_is_private.rs`・
+`static_construct_rejects_extra_argument.rs`。
 
 これらの名前は英語である。マクロ名 (`static_graph_schema!`) と生成される固定名
 だけを英語化した方針 (issue #24 段階2、オーナー承認済み) であり、
@@ -274,6 +276,15 @@ A・Bのどちらも、F12は生成ファイルの中の人間が読める定義
 | `{種別}の辺` | `{種別}Edge` |
 | 参照の `実体()` | `entity()` |
 
+**旧版の記録 (PR #45で解消):** `Nodes`/`Edges`は、issue #41で「生成ファイル +
+指紋照合」方式へ移行した当初、`{instance名}::Nodes`/`{instance名}::Edges`
+という独立した公開型として存在した。PR #45は、`Edges`が端点個体への参照を
+持つ設計のままでは`Graph`が`Nodes`と`Edges`の両方を所有すると自己参照になる
+という制約を解消するため、個体実体・積み荷の所有者を独立型へ分けず
+`Graph`自身のフィールドへ統合した。この統合により`Nodes`/`Edges`という名前
+自体が公開契約から消え、上表の対応は`静的グラフ型!`・`{個体名}参照`/
+`{辺名}参照`・`{種別}の辺`・`実体()`の4行にだけ残る。
+
 ## 追跡の契約 (issue #41)
 
 生成APIを利用者が理解可能な範囲で追跡できることを、Graphiteは3つの経路で保証する。
@@ -289,7 +300,7 @@ A・Bのどちらも、F12は生成ファイルの中の人間が読める定義
 利用者は、A分類・B分類どちらの名前でもF12で人間が読める生成ファイルの定義へ着地し (schema側の役割アクセサ・積み荷アクセサはDSLトークンへも正確に着地する。上の「生成される名前の公開契約」参照)、意味カード (doc) の「宣言:」/「固定語彙:」段落が由来を、意味の箇条が契約を、それぞれ文脈として補う。
 実装追跡は生成ファイルそのものが正式経路であり、A分類・B分類どちらのF12も生成ファイルへ着地するため、実装追跡には追加の操作が要らない。
 
-構築の入口 (`construct::nodes!`・`construct::edges!`) も生成ファイルの中にあるため、この3経路の対象である (PR #45より前の組み立て関数は生成ファイルの外にあり例外だったが、構築の入口を生成ファイルへ移したことでこの例外は解消した)。
+構築の唯一の入口 (`construct!`) も生成ファイルの中にあるため、この3経路の対象である (PR #45より前の組み立て関数は生成ファイルの外にあり例外だったが、構築の入口を生成ファイルへ移したことでこの例外は解消した)。
 その場展開に残るのは値マクロ (`__graphite_values_{グラフ名}!`・`__graphite_payloads_{グラフ名}!`) だけであり、これはC分類の内部生成名であって公開契約に含まれない (意味カードもF12の対象名も持たない)。
 値マクロの本体を読みたい場合の補助として、`cargo expand` (`cargo install cargo-expand`が必要) を使う。
 
@@ -304,7 +315,7 @@ A・Bのどちらも、F12は生成ファイルの中の人間が読める定義
    `<宣言の形>`」、B分類は「固定語彙: `<名前>` (`docs/static_graph.md`
    「生成される名前の公開契約」)」。どちらも宣言元ファイルの行番号は含めない
    (行番号を意味カードへ入れると、宣言の行が動くだけで再生成が必要になる)
-4. schemaとinstanceの両方に由来する生成物 (role/payloadアクセサ・具体辺参照等) は、「関係する schema 宣言: `<...>`」または「関係する instance 宣言: `<...>`」を追加で持つ。1つのspanでは表現できない、2つの宣言から合成された意味を説明するためである。B分類でも、instanceが決めた具体的なgraph・個体と結び付く生成物 (`construct::nodes!`等) は同様に「関係する instance 宣言: `<...>`」を持つ (`examples/static-org/src/generated/開発チーム.rs`の`construct::nodes!`が実例)
+4. schemaとinstanceの両方に由来する生成物 (role/payloadアクセサ・具体辺参照等) は、「関係する schema 宣言: `<...>`」または「関係する instance 宣言: `<...>`」を追加で持つ。1つのspanでは表現できない、2つの宣言から合成された意味を説明するためである。B分類でも、instanceが決めた具体的なgraph・個体と結び付く生成物 (`construct!`等) は同様に「関係する instance 宣言: `<...>`」を持つ (`examples/static-org/src/generated/開発チーム.rs`の`construct!`が実例)
 
 実測例は `docs/development/ide_support_spec.md` §1.16「静的グラフの受理
 マトリクス」を参照する。
@@ -350,11 +361,11 @@ A・Bのどちらも、F12は生成ファイルの中の人間が読める定義
   `libとmainが同名schemaを持っても衝突しない`。
 - **instanceを他のマクロの入力の中に書いてはならない。** `println!("{}", 組織! { .. })`のように、名簿の名前を他のマクロの引数の中へ埋め込む書き方は生成器がエラーにする (`docs/code_generation.md`参照)。利用者は、instanceを文の位置 (または関数の中の文の位置) に直接書く。
 - **生成moduleを読み込む`mod`の置き場所は、instance宣言の置き場所と無関係である。** instance展開はimplを一切使わず、値の橋渡しを呼び出し位置に生成する値マクロ (`__graphite_values_{グラフ名}!`・`__graphite_payloads_{グラフ名}!`) だけで行うため、利用者が`mod`を最上位に置いたままinstance宣言だけを関数の中に置いても`non_local_definitions`警告は出ない。`examples/static-org/src/main.rs`の`mod 経理チーム`(最上位)と`経理チームの花子の所属先を求める`関数(instance宣言はこの中)が、この配置の実例である。
-- **`construct::nodes!`/`construct::edges!`を呼んでよいのは、instance宣言と同じテキスト順スコープ (同じmodule、またはinstanceを置いた同じ関数の中) だけである。** 束縛マクロ (`__graphite_bind_{名前}_{グラフ名}!`等) は意図的に`pub(crate) use`を持たず、`macro_rules!`の既定のテキスト順スコープだけに閉じる。別ファイル・別moduleから呼ぼうとすると束縛マクロの名前自体が解決できずコンパイルエラーになる (回帰試験: `crates/graphite/tests/ui/static_construct_from_different_module.rs`)。値の式の名前解決そのもの (instance宣言の位置へ固定する仕組み) は上の「値の式の名前解決」節を参照。instance と同じファイルでその後ろに書いたインラインの子module・instance より内側のスコープ (関数の中など) から呼ぼうとした場合も、値の式は宣言位置の意味を保つ (項目の位置なら宣言位置の`fn`が呼び出し位置から名前で見えず`cannot find function`になる。`in fn`の場合はクロージャの束縛名がmacro_rules!のローカル変数の衛生規則により保護される)。
+- **`construct!`を呼んでよいのは、instance宣言と同じテキスト順スコープ (同じmodule、またはinstanceを置いた同じ関数の中) だけである。** 束縛マクロ (`__graphite_bind_{名前}_{グラフ名}!`等) は意図的に`pub(crate) use`を持たず、`macro_rules!`の既定のテキスト順スコープだけに閉じる。別ファイル・別moduleから呼ぼうとすると束縛マクロの名前自体が解決できずコンパイルエラーになる (回帰試験: `crates/graphite/tests/ui/static_construct_from_different_module.rs`)。値の式の名前解決そのもの (instance宣言の位置へ固定する仕組み) は上の「値の式の名前解決」節を参照。instance と同じファイルでその後ろに書いたインラインの子module・instance より内側のスコープ (関数の中など) から呼ぼうとした場合も、値の式は宣言位置の意味を保つ (項目の位置なら宣言位置の`fn`が呼び出し位置から名前で見えず`cannot find function`になる。`in fn`の場合はクロージャの束縛名がmacro_rules!のローカル変数の衛生規則により保護される)。
 - **schemaとinstanceを別ファイルに分けるときは、instance側のファイルがschema moduleを`use`し、schema側の`mod`宣言に`#[macro_use]`を付けてinstance側の`mod`宣言より前に置く。** 例: instance側のファイルは`use crate::organization::組織;`のように、schemaを宣言したファイルのmoduleを`use`する。crateの入口ファイルは`#[macro_use] mod organization; mod dev_team;`のように、schema側の`mod`をinstance側の`mod`より前に置く (理由と実測は上の「2層マクロの使い方」節を参照)。
-- **同じスコープに、同名の値ありの個体・積み荷ありの辺を持つinstanceを複数置いてよい。** 値マクロの名前 (`__graphite_values_{グラフ名}!`等) はグラフ名を含むため、個体名・辺名が同じでもグラフ名が違えば衝突しない。回帰試験: `crates/graphite/tests/static_same_individual_name_multiple_instances.rs` (最上位)・`static_same_individual_name_inside_function.rs` (関数の中)。個体の値の式が`construct::nodes!`を呼ぶたびに1回だけ評価されることの回帰試験は `crates/graphite/tests/static_individual_value_evaluated_once_per_assembly.rs`。
-- **`__graphite_*`から始まる名前 (内部構築子`__graphite_internal_new`・値マクロ`__graphite_values_{グラフ名}!`等) はC分類の内部生成名であり、利用者が直接呼ぶことをGraphiteは支援しない。** `pub(crate)`はクレート内のどこからでも呼べてしまうため、stable Rustの可視性だけでは「呼べるのは`construct::nodes!`/`construct::edges!`だけ」という主張を強制できない。内部構築子には`#[deprecated]`を添えて直接呼び出しを警告にし (`#![deny(warnings)]`の下ではエラーになる)、`construct::nodes!`/`construct::edges!`の展開側だけが`#[allow(deprecated)]`で自分自身の呼び出しを許す。直接の呼び出しを禁止でなく警告にするのは、stableのマクロ衛生では呼び出し元をマクロ展開だけに限定できないため。回帰試験: `crates/graphite/tests/ui/static_internal_constructor_direct_call.rs`。
-- **`construct::nodes!`/`construct::edges!`の内部構築子呼び出し (`{グラフ名}::Nodes::__graphite_internal_new`等) は、`{グラフ名}`をそのまま冠した相対パスで書く。** `super::`は呼び出し位置 (instanceのmodと`construct::nodes!`の呼び出し位置の相対関係) 次第で深さが合わなくなり、`$crate::{グラフ名}::Nodes`はinstanceの`mod`が関数の中にあると解決できない (どちらも実測で確認済み、`file::instance_file::construct`のコメント参照)。`{グラフ名}::Nodes`という相対パスだけが、`mod`宣言がクレートルート直下にあっても関数の中にあっても、呼び出し位置から見える名前として解決される。同じ理由で値マクロの呼び出しも無修飾のまま書く。
+- **同じスコープに、同名の値ありの個体・積み荷ありの辺を持つinstanceを複数置いてよい。** 値マクロの名前 (`__graphite_values_{グラフ名}!`等) はグラフ名を含むため、個体名・辺名が同じでもグラフ名が違えば衝突しない。回帰試験: `crates/graphite/tests/static_same_individual_name_multiple_instances.rs` (最上位)・`static_same_individual_name_inside_function.rs` (関数の中)。個体の値の式が`construct!`を呼ぶたびに1回だけ評価されることの回帰試験は `crates/graphite/tests/static_individual_value_evaluated_once_per_assembly.rs`。
+- **`__graphite_*`から始まる名前 (内部構築子`__graphite_internal_new`・値マクロ`__graphite_values_{グラフ名}!`等) はC分類の内部生成名であり、利用者が直接呼ぶことをGraphiteは支援しない。** `pub(crate)`はクレート内のどこからでも呼べてしまうため、stable Rustの可視性だけでは「呼べるのは`construct!`だけ」という主張を強制できない。内部構築子には`#[deprecated]`を添えて直接呼び出しを警告にし (`#![deny(warnings)]`の下ではエラーになる)、`construct!`の展開側だけが`#[allow(deprecated)]`で自分自身の呼び出しを許す。直接の呼び出しを禁止でなく警告にするのは、stableのマクロ衛生では呼び出し元をマクロ展開だけに限定できないため。回帰試験: `crates/graphite/tests/ui/static_internal_constructor_direct_call.rs`。
+- **`construct!`の内部構築子呼び出し (`{グラフ名}::Graph::__graphite_internal_new`) は、`{グラフ名}`をそのまま冠した相対パスで書く。** `super::`は呼び出し位置 (instanceのmodと`construct!`の呼び出し位置の相対関係) 次第で深さが合わなくなり、`$crate::{グラフ名}::Graph`はinstanceの`mod`が関数の中にあると解決できない (どちらも実測で確認済み、`file::instance_file::construct`のコメント参照)。`{グラフ名}::Graph`という相対パスだけが、`mod`宣言がクレートルート直下にあっても関数の中にあっても、呼び出し位置から見える名前として解決される。同じ理由で値マクロの呼び出しも無修飾のまま書く。
 
 ### renameの手順
 
@@ -421,11 +432,12 @@ DSLの構文としては合法でも、脱糖後に生成するRust識別子が�
    してください」というE0080 (指紋照合のpanic) が出る。
    PR #45より前は、instance展開が呼び出し位置に組み立て関数を生成しており、
    その関数が古い`Nodes::new`/`Edges::new`を引数の個数不一致で呼び出す
-   E0061がE0080の後ろにもう1件続くことがあった。PR #45で構築の入口を
-   `construct::nodes!`/`construct::edges!`へ移したことで、instance宣言
-   だけでは内部構築子を呼ばなくなり (利用者が実際に`construct::nodes!`
-   等を呼んだ場合に限り関係する診断が出る)、このE0061は宣言だけの場面
-   では出なくなった (`crates/graphite/tests/ui/static_stale_generated_instance_with_individuals.rs`
+   E0061がE0080の後ろにもう1件続くことがあった。PR #45が構築の入口を
+   生成ファイルの中 (最初は`construct::nodes!`/`construct::edges!`、
+   後に単一の`construct!`へ統合) へ移したことで、instance宣言だけでは
+   内部構築子を呼ばなくなり (利用者が実際に`construct!`を呼んだ場合に
+   限り関係する診断が出る)、このE0061は宣言だけの場面では出なくなった
+   (`crates/graphite/tests/ui/static_stale_generated_instance_with_individuals.rs`
    に固定した回帰試験がある)。いずれにせよE0080は再生成を促す結論として
    一貫して現れ、この診断だけが実際に取るべき対処 (再生成) を示す。
 
@@ -453,7 +465,7 @@ Graphiteの開発者は、この並びを変えられないか2つの案を検�
 instance moduleの`mod`宣言そのものを書き忘れると (`crates/graphite/tests/ui/static_instance_missing_module.rs`)、`{instance名}::..`を参照するコード全てが解決に失敗しE0433が2件出る (指紋照合コードが参照する`{instance名}::__GRAPHITE_STATIC_INSTANCE_FINGERPRINT`と、DSLトークンの型参照が参照する`{instance名}::{個体名}Ref`)。
 
 **旧版の記録 (PR #45で解消):** issue #41当初の実装は、instance展開が呼び出し位置に組み立て関数 (`{グラフ名}の個体を組み立てる() -> {instance名}::Nodes`等) を生成していたため、この戻り値型の参照がE0433をさらに2件増やし、そのうち2件に`Nodes`・`Edges`という名前がpetgraphの複数の構造体名と一致することに由来する無関係なimport提案 (`use petgraph::graphmap::Nodes;`等) が付いていた。
-PR #45で構築の入口を`construct::nodes!`/`construct::edges!` (`{instance名}::Nodes`/`{instance名}::Edges`への参照は、生成ファイルの中の内部構築子呼び出しだけが持つ) へ移したことで、instance宣言だけでは`Nodes`・`Edges`型を一切参照しなくなり、この診断は自然に消えた。
+PR #45で構築の入口を生成ファイルの中 (`{instance名}::Graph`への参照は、生成ファイルの中の内部構築子呼び出しだけが持つ) へ移したことで、instance宣言だけでは`Graph`型を一切参照しなくなり、この診断は自然に消えた。個体実体・積み荷の所有者を独立型 (`Nodes`/`Edges`) へ分けない設計 (同PR、上の「生成される名前の公開契約」参照) へ移った後も、この性質は変わらない。
 利用者がこの2件のE0433に遭遇したら、`mod {instance名} { include!(..); }`宣言が無いことを疑うのが正しい対処である。
 
 ## macro_rules!転送の仕組みとテキスト順の制約
@@ -476,22 +488,23 @@ schemaとinstance両方の生トークンを束ねて `#[doc(hidden)]` の内部
 `macro_rules! {schema名}`、instance側が相互検証の診断・指紋照合・値マクロ
 (`__graphite_values_{グラフ名}!`・`__graphite_payloads_{グラフ名}!`)・
 DSLトークンの型参照だけである。
-公開生成物のうち `Nodes`・`Edges`・`{個体名}Ref`・`{辺名}Ref`・`Graph`・
-構築の入口 (`construct::nodes!`・`construct::edges!`) はすべて生成ファイル
-の中にあり、`cargo graphite generate`/`cargo xtask generate` の対象になる
-(issue #41)。
+公開生成物のうち `{個体名}Ref`・`{辺名}Ref`・`NodeRefs`・`EdgeRefs`・
+`Graph`・構築の唯一の入口 (`construct!`) はすべて生成ファイルの中にあり、
+`cargo graphite generate`/`cargo xtask generate` の対象になる (issue #41)。
+個体実体・積み荷の所有者 (旧`Nodes`/`Edges`) は独立型を持たず`Graph`自身の
+フィールドへ統合した (PR #45、上の「生成される名前の公開契約」参照)。
 
 ## 実装の配置
 
 - 構文解析・検証・意味モデル・生成: `crates/graphite-codegen/src/static_graph/`
   (`schema`/`literal` は構文解析、`internal` は相互検証、`semantic` は
   意味モデル、`trace`/`naming` は追跡情報と生成名
-  (`naming::construct_fixed_vocabulary`が`construct`module・
-  `construct::nodes!`・`construct::edges!`の意味カード、
+  (`naming::construct_fixed_vocabulary`が`construct!`の意味カード、
   `naming::internal_names`が値マクロ名・内部構築子名を持つ)、`file` は
-  生成ファイル本文 (`file::instance_file::construct`が`construct`moduleの
-  本体)、`inline` はその場展開に残す部分 (`inline::value_supply`が値マクロ
-  を組み立てる)、`tracked` は追跡対象のschema/instance宣言、
+  生成ファイル本文 (`file::instance_file::graph_struct`が`Graph`と内部
+  構築子の本体、`file::instance_file::construct`が`construct!`の本体)、
+  `inline` はその場展開に残す部分 (`inline::value_supply`が値マクロを
+  組み立てる)、`tracked` は追跡対象のschema/instance宣言、
   `schema_entry`/`instance_entry` はマクロ展開の入口)
 - doc属性の組み立て: `crates/graphite-codegen/src/static_graph/doc_render.rs`
   (`file`側の全生成物が使う)

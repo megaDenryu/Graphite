@@ -66,9 +66,7 @@ fn 太郎を関数の中で組み立てる(部署名: &str) -> String {
     let 名前 = "呼び出し位置の影".to_string();
     let _ = &名前;
 
-    let nodes = 関数内チーム::construct::nodes!();
-    let edges = 関数内チーム::construct::edges!(&nodes);
-    let g = 関数内チーム::Graph::new(&edges);
+    let g = 関数内チーム::construct!();
     g.node_refs().太郎().太郎の所属().team().entity().名前.clone()
 }
 

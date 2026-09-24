@@ -1,56 +1,56 @@
 error[E0433]: failed to resolve: could not find `__graphite_values_開発チーム` in `元`
-  --> tests/ui/static_construct_from_different_module.rs:64:28
+  --> tests/ui/static_construct_from_different_module.rs:63:28
    |
-64 |         let _v = super::元::__graphite_values_開発チーム!();
+63 |         let _v = super::元::__graphite_values_開発チーム!();
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ could not find `__graphite_values_開発チーム` in `元`
 
 error: cannot find macro `__graphite_values_開発チーム` in this scope
   --> tests/ui/../generated/static_multi_module_開発チーム.rs
    |
-   |             { let (太郎, 開発部,) = __graphite_values_開発チーム!();
-   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         { let (太郎, 開発部,) = __graphite_values_開発チーム!(); let () =
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-  ::: tests/ui/static_construct_from_different_module.rs:63:22
+  ::: tests/ui/static_construct_from_different_module.rs:62:18
    |
-63 |         let _nodes = super::元::開発チーム::construct::nodes!();
-   |                      ------------------------------------------ in this macro invocation
+62 |         let _g = super::元::開発チーム::construct!();
+   |                  ----------------------------------- in this macro invocation
    |
    = help: have you added the `#[macro_use]` on the module/import?
-   = note: this error originates in the macro `super::元::開発チーム::construct::nodes` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `super::元::開発チーム::construct` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: cannot find macro `__graphite_payloads_開発チーム` in this scope
+  --> tests/ui/../generated/static_multi_module_開発チーム.rs
+   |
+   |         __graphite_payloads_開発チーム!(); #[allow(deprecated)] {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+  ::: tests/ui/static_construct_from_different_module.rs:62:18
+   |
+62 |         let _g = super::元::開発チーム::construct!();
+   |                  ----------------------------------- in this macro invocation
+   |
+   = help: have you added the `#[macro_use]` on the module/import?
+   = note: this error originates in the macro `super::元::開発チーム::construct` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0433]: failed to resolve: use of unresolved module or unlinked crate `開発チーム`
   --> tests/ui/../generated/static_multi_module_開発チーム.rs
    |
-   |             開発チーム::Nodes::__graphite_internal_new(太郎, 開発部);
-   |             ^^^^^^^^^^ use of unresolved module or unlinked crate `開発チーム`
+   |         開発チーム::Graph::__graphite_internal_new(太郎, 開発部) } }
+   |         ^^^^^^^^^^ use of unresolved module or unlinked crate `開発チーム`
    |
-  ::: tests/ui/static_construct_from_different_module.rs:63:22
+  ::: tests/ui/static_construct_from_different_module.rs:62:18
    |
-63 |         let _nodes = super::元::開発チーム::construct::nodes!();
-   |                      ------------------------------------------ in this macro invocation
+62 |         let _g = super::元::開発チーム::construct!();
+   |                  ----------------------------------- in this macro invocation
    |
    = help: if you wanted to use a crate named `開発チーム`, use `cargo add 開発チーム` to add it to your `Cargo.toml`
-   = note: this error originates in the macro `super::元::開発チーム::construct::nodes` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `super::元::開発チーム::construct` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing one of these structs
-  --> tests/ui/static_construct_from_different_module.rs:62:5
+  --> tests/ui/static_construct_from_different_module.rs:61:5
    |
-62 +     use crate::元::開発チーム::Nodes;
+61 +     use crate::元::開発チーム::Graph;
    |
-62 +     use petgraph::graphmap::Nodes;
+61 +     use graphite::Graph;
    |
-
-warning: unused macro definition: `edges`
- --> tests/ui/../generated/static_multi_module_開発チーム.rs
-  |
-  |     macro_rules! edges {
-  |                  ^^^^^
-  |
-  = note: `#[warn(unused_macros)]` (part of `#[warn(unused)]`) on by default
-
-warning: unused import: `edges`
- --> tests/ui/../generated/static_multi_module_開発チーム.rs
-  |
-  |     pub(crate) use edges;
-  |                    ^^^^^
-  |
-  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+61 +     use petgraph::Graph;
+   |

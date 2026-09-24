@@ -1,20 +1,20 @@
 error[E0425]: cannot find type `三郎Ref` in module `開発チーム`
-  --> tests/ui/static_stale_generated_instance_with_individuals.rs:88:10
+  --> tests/ui/static_stale_generated_instance_with_individuals.rs:90:10
    |
-57 |     pub struct 一郎Ref<'a> {
+48 |     pub struct 一郎Ref<'a> {
    |     ---------------------- similarly named struct `一郎Ref` defined here
 ...
-88 |     node 三郎: 社員 = 社員;
+90 |     node 三郎: 社員 = 社員;
    |          ^^^^
    |
 help: a struct with a similar name exists
    |
-88 -     node 三郎: 社員 = 社員;
-88 +     node 一郎Ref: 社員 = 社員;
+90 -     node 三郎: 社員 = 社員;
+90 +     node 一郎Ref: 社員 = 社員;
    |
 
 error[E0080]: evaluation panicked: Graphite 静的グラフの instance `開発チーム` の生成ファイルが古いため、パッケージのディレクトリで cargo graphite generate を実行してください (Graphite リポジトリ自身の開発では cargo xtask generate)
-  --> tests/ui/static_stale_generated_instance_with_individuals.rs:85:17
+  --> tests/ui/static_stale_generated_instance_with_individuals.rs:87:17
    |
-85 |     generated = "generated/開発チーム.rs";
+87 |     generated = "generated/開発チーム.rs";
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_` failed here

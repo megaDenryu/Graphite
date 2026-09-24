@@ -51,8 +51,8 @@ static_graph_schema! {
 // ---------------- instance宣言 ----------------
 //
 // 開発部 だけを値なし宣言 (`node 開発部: 部署;`) にして、実行時供給
-// (`開発チーム::construct::nodes!` への引数) を示す。main() とテストの
-// 両方から呼ぶため、構築を ノードを組み立てる() へ切り出す。
+// (`開発チーム::construct!` への引数) を示す。main() とテストの両方から
+// 呼ぶため、構築を グラフを組み立てる() へ切り出す。
 
 #[allow(non_snake_case, dead_code, private_interfaces)]
 #[allow(clippy::needless_lifetimes, clippy::wrong_self_convention, clippy::clone_on_copy, clippy::write_literal)]
@@ -87,26 +87,21 @@ impl<'a> 開発チーム::太郎Ref<'a> {
 }
 
 // 値なし宣言 (`node 開発部: 部署;`) の実体は実行時にここで供給する。main()
-// とテストの両方から呼ぶ。`開発チーム::construct::nodes!` は生成ファイルが
-// 持つ構築の入口であり (`docs/static_graph.md` 「生成される名前の公開
+// とテストの両方から呼ぶ。`開発チーム::construct!` は生成ファイルが持つ
+// 構築の唯一の入口であり (`docs/static_graph.md` 「生成される名前の公開
 // 契約」)、値ありの個体 (太郎・次郎・一郎) はinstance宣言の式からこの
-// マクロが計算し、値なしの個体 (開発部) だけを引数で受け取る。
-pub(crate) fn ノードを組み立てる() -> 開発チーム::Nodes {
-    開発チーム::construct::nodes!(部署 { 名前: "開発部".into() })
-}
-
-// `construct::edges!`はmacro_rules!の既定のテキスト順スコープだけに閉じた
-// 値マクロを呼ぶため、instance宣言と同じスコープ (このファイル) でしか
-// 呼べない (`docs/static_graph.md`「制約」節)。`tests.rs`は別ファイルの
-// 別moduleなので直接は呼べず、この通常の関数を経由する。
-pub(crate) fn 辺を組み立てる(nodes: &開発チーム::Nodes) -> 開発チーム::Edges<'_> {
-    開発チーム::construct::edges!(nodes)
+// マクロが計算し、値なしの個体 (開発部) だけを引数で受け取り、完成した
+// `Graph` を1回で返す。`construct!`はmacro_rules!の既定のテキスト順
+// スコープだけに閉じた値マクロを呼ぶため、instance宣言と同じスコープ
+// (このファイル) でしか呼べない (`docs/static_graph.md`「制約」節)。
+// `tests.rs`は別ファイルの別moduleなので直接は呼べず、この通常の関数を
+// 経由する。
+pub(crate) fn グラフを組み立てる() -> 開発チーム::Graph {
+    開発チーム::construct!(部署 { 名前: "開発部".into() })
 }
 
 fn main() {
-    let nodes = ノードを組み立てる();
-    let edges = 辺を組み立てる(&nodes);
-    let g = 開発チーム::Graph::new(&edges);
+    let g = グラフを組み立てる();
 
     let 太郎の参照 = g.node_refs().太郎();
     println!("太郎の上司: {}", 太郎の参照.太郎の上司().superior().entity().名前());
@@ -185,8 +180,6 @@ fn 経理チームの所属先を求める(社員名: &str) -> String {
         edge 花子の所属 = 所属(花子 -> 総務部);
     }
 
-    let nodes = 経理チーム::construct::nodes!();
-    let edges = 経理チーム::construct::edges!(&nodes);
-    let g = 経理チーム::Graph::new(&edges);
+    let g = 経理チーム::construct!();
     g.node_refs().花子().花子の所属().team().entity().名前().to_string()
 }

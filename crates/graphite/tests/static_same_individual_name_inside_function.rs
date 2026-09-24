@@ -63,13 +63,9 @@ fn 関数内で同名個体を持つ2つのinstanceを組み立てる() -> (Stri
         edge 太郎の所属 = 所属(太郎 -[任命記録 { 任命日: 2023 }]-> 総務部);
     }
 
-    let nodes_c = 検証チームc::construct::nodes!();
-    let edges_c = 検証チームc::construct::edges!(&nodes_c);
-    let g_c = 検証チームc::Graph::new(&edges_c);
+    let g_c = 検証チームc::construct!();
 
-    let nodes_d = 検証チームd::construct::nodes!();
-    let edges_d = 検証チームd::construct::edges!(&nodes_d);
-    let g_d = 検証チームd::Graph::new(&edges_d);
+    let g_d = 検証チームd::construct!();
 
     (
         g_c.node_refs().太郎().太郎の所属().team().entity().名前.clone(),

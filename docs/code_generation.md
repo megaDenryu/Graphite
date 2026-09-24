@@ -38,7 +38,7 @@ graphite::dynamic_graph_schema! {
 
 1. **動的グラフのschema** (`dynamic_graph_schema!`)。1宣言につき生成ファイル1件。
 2. **静的グラフのschema** (`static_graph_schema!`)。1宣言につき生成ファイル1件 (種別ごとの辺値 `pub struct {種別}Edge<'a>` を持つ)。
-3. **静的グラフのinstance** (schema名そのものを名前にしたマクロ、例: `Org! { .. }`)。1宣言につき生成ファイル1件。`Nodes`・`Edges`・`{個体名}Ref`・`{辺名}Ref`・グラフ本体の型 `Graph` を持つ。利用者はこの`Graph`を、instance宣言と同じ名前のmoduleを介した修飾パス (`{instance名}::Graph`) で参照する。
+3. **静的グラフのinstance** (schema名そのものを名前にしたマクロ、例: `Org! { .. }`)。1宣言につき生成ファイル1件。`{個体名}Ref`・`{辺名}Ref`・`NodeRefs`・`EdgeRefs`・グラフ本体の型 `Graph`・実体化する唯一の入口 `construct!` を持つ (個体実体・積み荷の所有者は独立型を持たず`Graph`自身のフィールドへ統合してある)。利用者はこの`Graph`を、instance宣言と同じ名前のmoduleを介した修飾パス (`{instance名}::Graph`) で参照する。
 
 利用者は、静的グラフのschema・instanceも`generated = "..."`と生成moduleの配線を動的グラフと同じ形で書く (`docs/static_graph.md`「2層マクロの使い方」参照)。生成器は、生成の探索を2段階で行う: パッケージ内の全ファイルを1回ずつ構文解析して集めた `static_graph_schema!` の呼び出しから静的schema名簿を作り、名簿の名前と一致する残りのマクロ呼び出しをinstanceとみなして解決する。名簿の単位はパッケージ全体ではなくCargo target (`src/`配下はまとめて1つ、`tests/`配下はファイルの最初の1階層ごとに1つ) であり、schema名の重複検出とinstanceの照合はどちらも同じtargetの中だけで行う (裁定の理由は`docs/static_graph.md`「制約」節を参照)。生成器は、名簿に無い名前で始まるのに`generated = "...";`から始まる呼び出しを「schemaが見つからない」エラーにする。
 

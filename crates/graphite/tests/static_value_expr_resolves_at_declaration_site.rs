@@ -62,9 +62,7 @@ fn 呼び出し位置に同名の関数があっても宣言位置のままで�
     fn 名前を作る() -> String {
         "呼び出し位置の影".into()
     }
-    let nodes = 宣言位置チーム::construct::nodes!();
-    let edges = 宣言位置チーム::construct::edges!(&nodes);
-    let g = 宣言位置チーム::Graph::new(&edges);
+    let g = 宣言位置チーム::construct!();
     g.node_refs().太郎().entity().名前.clone()
 }
 
@@ -75,8 +73,6 @@ fn 呼び出し位置に同名の関数があっても値の式は宣言位置�
 
 #[test]
 fn 同じmoduleの別の関数から呼んでも宣言位置を指す() {
-    let nodes = 宣言位置チーム::construct::nodes!();
-    let edges = 宣言位置チーム::construct::edges!(&nodes);
-    let g = 宣言位置チーム::Graph::new(&edges);
+    let g = 宣言位置チーム::construct!();
     assert_eq!(g.node_refs().太郎().entity().名前, "宣言位置");
 }

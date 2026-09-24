@@ -6,51 +6,9 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_STATIC_INSTANCE_FINGERPRINT: [u64; 4] = [
-    1425055875158033499u64, 11393147076859398632u64, 6731803098214519973u64,
-    16424652155380796433u64,
+    12705922517661981447u64, 2958563183303530930u64, 14199491904976969041u64,
+    471205889506781013u64,
 ];
-/// Graphite 静的グラフの個体実体の所有者 `Nodes` (Graphite の固定語彙)。
-///
-/// - graph: `配置検証チーム`
-///
-/// 固定語彙: `Nodes` (`docs/static_graph.md` 「生成される名前の公開契約」)
-pub struct Nodes {
-    太郎: 社員,
-    開発部: 部署,
-}
-impl Nodes {
-    #[doc(hidden)]
-    #[deprecated(
-        note = "Graphite の内部構築子である。construct::nodes!/construct::edges! を使うこと"
-    )]
-    pub(crate) fn __graphite_internal_new(太郎: 社員, 開発部: 部署) -> Self {
-        Self { 太郎, 開発部 }
-    }
-}
-/// Graphite 静的グラフの辺実体の所有者 `Edges` (Graphite の固定語彙)。
-///
-/// - graph: `配置検証チーム`
-///
-/// 固定語彙: `Edges` (`docs/static_graph.md` 「生成される名前の公開契約」)
-pub struct Edges<'a> {
-    __graphite_nodes: &'a Nodes,
-    太郎の所属: 配置検証組織::所属Edge<'a>,
-}
-impl<'a> Edges<'a> {
-    #[doc(hidden)]
-    #[deprecated(
-        note = "Graphite の内部構築子である。construct::nodes!/construct::edges! を使うこと"
-    )]
-    pub(crate) fn __graphite_internal_new(nodes: &'a Nodes) -> Self {
-        Self {
-            __graphite_nodes: nodes,
-            太郎の所属: 配置検証組織::所属Edge {
-                member: &nodes.太郎,
-                team: &nodes.開発部,
-            },
-        }
-    }
-}
 /// Graphite 静的グラフの具体個体参照。
 ///
 /// - graph: `配置検証チーム`
@@ -60,9 +18,7 @@ impl<'a> Edges<'a> {
 /// 宣言: `tests/static_mod_outside_instance_inside_fn.rs` の `node 太郎: 社員 = ..`
 #[derive(Clone, Copy)]
 pub struct 太郎Ref<'a> {
-    entity: &'a 社員,
-    nodes: &'a Nodes,
-    edges: &'a Edges<'a>,
+    graph: &'a Graph,
 }
 impl<'a> 太郎Ref<'a> {
     /// Graphite 静的グラフの具体個体参照から実体を取り出す `entity` (Graphite の固定語彙)。
@@ -71,7 +27,7 @@ impl<'a> 太郎Ref<'a> {
     ///
     /// 固定語彙: `entity` (`docs/static_graph.md` 「生成される名前の公開契約」)
     pub fn entity(&self) -> &'a 社員 {
-        self.entity
+        &self.graph.太郎
     }
     /// Graphite 静的グラフの具体辺参照を返す。
     ///
@@ -87,9 +43,7 @@ impl<'a> 太郎Ref<'a> {
     /// 関係する schema 宣言: `tests/static_mod_outside_instance_inside_fn.rs` の `edge 所属 = (member: 社員) -> (team: 部署) where each member: 1`
     pub fn 太郎の所属(&self) -> 太郎の所属Ref<'a> {
         太郎の所属Ref {
-            entity: &self.edges.太郎の所属,
-            nodes: self.nodes,
-            edges: self.edges,
+            graph: self.graph,
         }
     }
 }
@@ -102,9 +56,7 @@ impl<'a> 太郎Ref<'a> {
 /// 宣言: `tests/static_mod_outside_instance_inside_fn.rs` の `node 開発部: 部署 = ..`
 #[derive(Clone, Copy)]
 pub struct 開発部Ref<'a> {
-    entity: &'a 部署,
-    nodes: &'a Nodes,
-    edges: &'a Edges<'a>,
+    graph: &'a Graph,
 }
 impl<'a> 開発部Ref<'a> {
     /// Graphite 静的グラフの具体個体参照から実体を取り出す `entity` (Graphite の固定語彙)。
@@ -113,7 +65,7 @@ impl<'a> 開発部Ref<'a> {
     ///
     /// 固定語彙: `entity` (`docs/static_graph.md` 「生成される名前の公開契約」)
     pub fn entity(&self) -> &'a 部署 {
-        self.entity
+        &self.graph.開発部
     }
     /// Graphite 静的グラフの具体辺参照を返す。
     ///
@@ -129,9 +81,7 @@ impl<'a> 開発部Ref<'a> {
     /// 関係する schema 宣言: `tests/static_mod_outside_instance_inside_fn.rs` の `edge 所属 = (member: 社員) -> (team: 部署) where each member: 1`
     pub fn 太郎の所属(&self) -> 太郎の所属Ref<'a> {
         太郎の所属Ref {
-            entity: &self.edges.太郎の所属,
-            nodes: self.nodes,
-            edges: self.edges,
+            graph: self.graph,
         }
     }
 }
@@ -146,9 +96,7 @@ impl<'a> 開発部Ref<'a> {
 /// 関係する schema 宣言: `tests/static_mod_outside_instance_inside_fn.rs` の `edge 所属 = (member: 社員) -> (team: 部署) where each member: 1`
 #[derive(Clone, Copy)]
 pub struct 太郎の所属Ref<'a> {
-    entity: &'a 配置検証組織::所属Edge<'a>,
-    nodes: &'a Nodes,
-    edges: &'a Edges<'a>,
+    graph: &'a Graph,
 }
 impl<'a> 太郎の所属Ref<'a> {
     /// Graphite 静的グラフの端点の役割アクセサ。
@@ -164,11 +112,7 @@ impl<'a> 太郎の所属Ref<'a> {
     ///
     /// 関係する instance 宣言: `tests/static_mod_outside_instance_inside_fn.rs` の `edge 太郎の所属 = 所属(太郎 -> 開発部)`
     pub fn member(&self) -> 太郎Ref<'a> {
-        太郎Ref {
-            entity: self.entity.member,
-            nodes: self.nodes,
-            edges: self.edges,
-        }
+        太郎Ref { graph: self.graph }
     }
     /// Graphite 静的グラフの端点の役割アクセサ。
     ///
@@ -183,11 +127,7 @@ impl<'a> 太郎の所属Ref<'a> {
     ///
     /// 関係する instance 宣言: `tests/static_mod_outside_instance_inside_fn.rs` の `edge 太郎の所属 = 所属(太郎 -> 開発部)`
     pub fn team(&self) -> 開発部Ref<'a> {
-        開発部Ref {
-            entity: self.entity.team,
-            nodes: self.nodes,
-            edges: self.edges,
-        }
+        開発部Ref { graph: self.graph }
     }
 }
 /// Graphite 静的グラフの個体参照の集まり `NodeRefs` (Graphite の固定語彙)。
@@ -196,24 +136,9 @@ impl<'a> 太郎の所属Ref<'a> {
 ///
 /// 固定語彙: `NodeRefs` (`docs/static_graph.md` 「生成される名前の公開契約」)
 pub struct NodeRefs<'a> {
-    太郎: 太郎Ref<'a>,
-    開発部: 開発部Ref<'a>,
+    graph: &'a Graph,
 }
 impl<'a> NodeRefs<'a> {
-    fn new(nodes: &'a Nodes, edges: &'a Edges<'a>) -> Self {
-        Self {
-            太郎: 太郎Ref {
-                entity: &nodes.太郎,
-                nodes,
-                edges,
-            },
-            開発部: 開発部Ref {
-                entity: &nodes.開発部,
-                nodes,
-                edges,
-            },
-        }
-    }
     /// Graphite 静的グラフの個体参照メソッド。`NodeRefs` がこのメソッドでこの個体の具体参照を返す。
     ///
     /// - graph: `配置検証チーム`
@@ -221,7 +146,7 @@ impl<'a> NodeRefs<'a> {
     ///
     /// 宣言: `tests/static_mod_outside_instance_inside_fn.rs` の `node 太郎: 社員 = ..`
     pub fn 太郎(&self) -> 太郎Ref<'a> {
-        self.太郎
+        太郎Ref { graph: self.graph }
     }
     /// Graphite 静的グラフの個体参照メソッド。`NodeRefs` がこのメソッドでこの個体の具体参照を返す。
     ///
@@ -230,7 +155,7 @@ impl<'a> NodeRefs<'a> {
     ///
     /// 宣言: `tests/static_mod_outside_instance_inside_fn.rs` の `node 開発部: 部署 = ..`
     pub fn 開発部(&self) -> 開発部Ref<'a> {
-        self.開発部
+        開発部Ref { graph: self.graph }
     }
 }
 /// Graphite 静的グラフの辺参照の集まり `EdgeRefs` (Graphite の固定語彙)。
@@ -239,18 +164,9 @@ impl<'a> NodeRefs<'a> {
 ///
 /// 固定語彙: `EdgeRefs` (`docs/static_graph.md` 「生成される名前の公開契約」)
 pub struct EdgeRefs<'a> {
-    太郎の所属: 太郎の所属Ref<'a>,
+    graph: &'a Graph,
 }
 impl<'a> EdgeRefs<'a> {
-    fn new(nodes: &'a Nodes, edges: &'a Edges<'a>) -> Self {
-        Self {
-            太郎の所属: 太郎の所属Ref {
-                entity: &edges.太郎の所属,
-                nodes,
-                edges,
-            },
-        }
-    }
     /// Graphite 静的グラフの辺参照メソッド。`EdgeRefs` がこのメソッドでこの具体辺の具体参照を返す。
     ///
     /// - graph: `配置検証チーム`
@@ -258,7 +174,9 @@ impl<'a> EdgeRefs<'a> {
     ///
     /// 宣言: `tests/static_mod_outside_instance_inside_fn.rs` の `edge 太郎の所属 = 所属(太郎 -> 開発部)`
     pub fn 太郎の所属(&self) -> 太郎の所属Ref<'a> {
-        self.太郎の所属
+        太郎の所属Ref {
+            graph: self.graph,
+        }
     }
 }
 /// Graphite 静的グラフの具体グラフ本体 `Graph` (Graphite の固定語彙)。
@@ -266,79 +184,48 @@ impl<'a> EdgeRefs<'a> {
 /// - graph: `配置検証チーム`
 ///
 /// 固定語彙: `Graph` (`docs/static_graph.md` 「生成される名前の公開契約」)
-pub struct Graph<'a> {
-    node_refs: NodeRefs<'a>,
-    edge_refs: EdgeRefs<'a>,
+pub struct Graph {
+    太郎: 社員,
+    開発部: 部署,
 }
-impl<'a> Graph<'a> {
-    /// Graphite 静的グラフの `Graph` を構築する (Graphite の固定語彙)。
-    ///
-    /// - graph: `配置検証チーム`
-    ///
-    /// 固定語彙: `Graph::new` (`docs/static_graph.md` 「生成される名前の公開契約」)
-    pub fn new(edges: &'a Edges<'a>) -> Self {
-        let nodes = edges.__graphite_nodes;
-        Self {
-            node_refs: NodeRefs::new(nodes, edges),
-            edge_refs: EdgeRefs::new(nodes, edges),
-        }
+impl Graph {
+    #[doc(hidden)]
+    #[deprecated(
+        note = "Graphite の内部構築子である。construct! を使うこと"
+    )]
+    pub(crate) fn __graphite_internal_new(太郎: 社員, 開発部: 部署) -> Self {
+        Self { 太郎, 開発部 }
     }
     /// Graphite 静的グラフの `Graph` が個体参照の集まりを返すメソッド `node_refs` (Graphite の固定語彙)。
     ///
     /// - graph: `配置検証チーム`
     ///
     /// 固定語彙: `node_refs` (`docs/static_graph.md` 「生成される名前の公開契約」)
-    pub fn node_refs(&self) -> &NodeRefs<'a> {
-        &self.node_refs
+    pub fn node_refs(&self) -> NodeRefs<'_> {
+        NodeRefs { graph: self }
     }
     /// Graphite 静的グラフの `Graph` が辺参照の集まりを返すメソッド `edge_refs` (Graphite の固定語彙)。
     ///
     /// - graph: `配置検証チーム`
     ///
     /// 固定語彙: `edge_refs` (`docs/static_graph.md` 「生成される名前の公開契約」)
-    pub fn edge_refs(&self) -> &EdgeRefs<'a> {
-        &self.edge_refs
+    pub fn edge_refs(&self) -> EdgeRefs<'_> {
+        EdgeRefs { graph: self }
     }
 }
-/// Graphite 静的グラフの構築の入口をまとめるmodule `construct` (Graphite の固定語彙)。
+/// Graphite 静的グラフの `Graph` を実体化するマクロ `construct` (Graphite の固定語彙)。値ありの個体・積み荷はinstance宣言の式からこのマクロが計算し、値なしの個体だけを宣言順の引数で受け取る。
 ///
 /// - graph: `配置検証チーム`
+/// - 戻り値: `Graph`
 ///
-/// 固定語彙: `construct` (`docs/static_graph.md` 「生成される名前の公開契約」)
-pub mod construct {
-    /// Graphite 静的グラフの個体実体の所有者 `Nodes` を構築するマクロ `nodes` (Graphite の固定語彙)。値ありの個体はinstance宣言の式からこのマクロが計算し、値なしの個体だけを引数で受け取る。
-    ///
-    /// - graph: `配置検証チーム`
-    /// - 戻り値: `Nodes`
-    ///
-    /// 固定語彙: `construct::nodes!` (`docs/static_graph.md` 「生成される名前の公開契約」)
-    ///
-    /// 関係する instance 宣言: `tests/static_mod_outside_instance_inside_fn.rs` の `graph 配置検証チーム`
-    macro_rules! nodes {
-        () => {
-            { let (太郎, 開発部,) = __graphite_values_配置検証チーム!();
-            #[allow(deprecated)] let __graphite_nodes =
-            配置検証チーム::Nodes::__graphite_internal_new(太郎, 開発部);
-            __graphite_nodes }
-        };
-    }
-    pub(crate) use nodes;
-    /// Graphite 静的グラフの辺実体の所有者 `Edges` を構築するマクロ `edges` (Graphite の固定語彙)。積み荷ありの具体辺はすべてinstance宣言の式からこのマクロが計算する。
-    ///
-    /// - graph: `配置検証チーム`
-    /// - 引数: `nodes: &Nodes`
-    /// - 戻り値: `Edges`
-    ///
-    /// 固定語彙: `construct::edges!` (`docs/static_graph.md` 「生成される名前の公開契約」)
-    ///
-    /// 関係する instance 宣言: `tests/static_mod_outside_instance_inside_fn.rs` の `graph 配置検証チーム`
-    macro_rules! edges {
-        ($nodes:expr) => {
-            { let () = __graphite_payloads_配置検証チーム!(); #[allow(deprecated)]
-            let __graphite_edges =
-            配置検証チーム::Edges::__graphite_internal_new($nodes,);
-            __graphite_edges }
-        };
-    }
-    pub(crate) use edges;
+/// 固定語彙: `construct!` (`docs/static_graph.md` 「生成される名前の公開契約」)
+///
+/// 関係する instance 宣言: `tests/static_mod_outside_instance_inside_fn.rs` の `graph 配置検証チーム`
+macro_rules! construct {
+    () => {
+        { let (太郎, 開発部,) = __graphite_values_配置検証チーム!(); let () =
+        __graphite_payloads_配置検証チーム!(); #[allow(deprecated)] {
+        配置検証チーム::Graph::__graphite_internal_new(太郎, 開発部) } }
+    };
 }
+pub(crate) use construct;

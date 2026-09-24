@@ -48,9 +48,8 @@ fn 二回構築を試みる() {
         edge 太郎の所属 = 所属(太郎 -> 開発部);
     }
 
-    let _1回目 = move二回チーム::construct::nodes!();
-    let _edges = move二回チーム::construct::edges!(&_1回目);
-    let _2回目 = move二回チーム::construct::nodes!();
+    let _1回目 = move二回チーム::construct!();
+    let _2回目 = move二回チーム::construct!();
 }
 
 fn main() {}

@@ -1,9 +1,9 @@
-// `Nodes` のフィールドが非公開であることを固定する (issue #41)。値ありの
-// 個体はinstance宣言の式からのみ供給され、利用者がフィールドへ直接
-// アクセスして迂回できない。手書きの模型ではなく、実際の生成ファイル
-// (`cargo xtask generate`が書いたもの) をそのまま`include!`して検査する
-// (schema・instanceの宣言は`static_multi_module.rs`と同じ内容にし、
-// fingerprintが一致する既存の生成ファイルを使う)。
+// `Graph` が個体・積み荷を直接持つフィールドが非公開であることを固定する
+// (issue #41、PR #45)。値ありの個体はinstance宣言の式からのみ供給され、
+// 利用者がフィールドへ直接アクセスして迂回できない。手書きの模型ではなく、
+// 実際の生成ファイル (`cargo xtask generate`が書いたもの) をそのまま
+// `include!`して検査する (schema・instanceの宣言は`static_multi_module.rs`
+// と同じ内容にし、fingerprintが一致する既存の生成ファイルを使う)。
 
 pub struct 社員 {
     pub 名前: String,
@@ -45,7 +45,7 @@ mod 開発チーム {
 }
 
 fn main() {
-    let nodes = 開発チーム::construct::nodes!();
+    let g = 開発チーム::construct!();
     // フィールドへの直接アクセスはできない (private field)。
-    let _ = nodes.太郎;
+    let _ = g.太郎;
 }

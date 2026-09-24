@@ -7,10 +7,9 @@
 // この断片は個体を持つ状態で古い生成ファイルを再現し、実際に出る
 // エラーの並びをそのまま固定する。
 //
-// instance宣言だけでは構築の入口 (`construct::nodes!`/`construct::edges!`)
-// の内部構築子を呼ばないため、このテストのようにinstance宣言だけを書いて
-// 構築を呼ばない場面ではE0061 (引数の個数不一致) は出ない。再生成を促す
-// 結論 (E0080) が最後に出る。
+// instance宣言だけでは構築の入口 (`construct!`) の内部構築子を呼ばない
+// ため、このテストのようにinstance宣言だけを書いて構築を呼ばない場面では
+// E0061 (引数の個数不一致) は出ない。再生成を促す結論 (E0080) が最後に出る。
 
 struct 社員;
 
@@ -33,51 +32,54 @@ graphite::static_graph_schema! {
 
 // `開発チーム` moduleは、個体 `一郎` だけを持つ古い生成ファイルを模する
 // (実際には `cargo graphite generate` が書く構造だが、このテストでは
-// 手で偽装する)。`Nodes`・`NodeRefs`・`Edges`・`EdgeRefs`・`Graph`・
-// `{個体名}Ref` を実物の生成ファイルと同じ形で揃え、`Nodes`が丸ごと
-// 見つからないという実物には起こらない誤りを固定しないようにする。
-// `new` も実物と同じ形 (全個体・全積み荷を引数に取る) で揃え、組み立て
-// 関数の呼び出しがこの誤りとは無関係な `no function new` を混ぜないように
-// する。
+// 手で偽装する)。`一郎Ref`・`NodeRefs`・`EdgeRefs`・`Graph`・内部構築子
+// `__graphite_internal_new` を実物の生成ファイルと同じ形 (個体・積み荷を
+// `Graph`自身のフィールドへ直接持つ、`graph_struct.rs`参照) で揃え、
+// `Graph`が丸ごと見つからないという実物には起こらない誤りを固定しない
+// ようにする。`__graphite_internal_new`も実物と同じ形 (全個体・全積み荷を
+// 引数に取る) で揃え、構築呼び出しがこの誤りとは無関係な
+// `no function __graphite_internal_new` を混ぜないようにする。
 // instance側のDSLは `一郎` に加えて新しい個体 `三郎` を足した状態にし、
 // 生成ファイルの再生成を忘れた状況を再現する。
 #[allow(non_snake_case, dead_code)]
 mod 開発チーム {
     pub(super) const __GRAPHITE_STATIC_INSTANCE_FINGERPRINT: [u64; 4] = [0, 0, 0, 0];
 
-    pub struct Nodes {
-        pub 一郎: super::社員,
+    pub struct 一郎Ref<'a> {
+        graph: &'a Graph,
     }
-    impl Nodes {
-        pub fn new(一郎: super::社員) -> Self {
-            Nodes { 一郎 }
+    impl<'a> 一郎Ref<'a> {
+        pub fn entity(&self) -> &'a super::社員 {
+            &self.graph.一郎
         }
     }
 
-    pub struct 一郎Ref<'a> {
-        pub(super) entity: &'a super::社員,
-    }
-
     pub struct NodeRefs<'a> {
-        pub 一郎: 一郎Ref<'a>,
+        graph: &'a Graph,
     }
-
-    pub struct Edges<'a> {
-        pub(super) _marker: std::marker::PhantomData<&'a ()>,
-    }
-    impl<'a> Edges<'a> {
-        pub fn new(_nodes: &'a Nodes) -> Self {
-            Edges { _marker: std::marker::PhantomData }
+    impl<'a> NodeRefs<'a> {
+        pub fn 一郎(&self) -> 一郎Ref<'a> {
+            一郎Ref { graph: self.graph }
         }
     }
 
     pub struct EdgeRefs<'a> {
-        pub(super) _marker: std::marker::PhantomData<&'a ()>,
+        graph: &'a Graph,
     }
 
-    pub struct Graph<'a> {
-        pub node_refs: NodeRefs<'a>,
-        pub edge_refs: EdgeRefs<'a>,
+    pub struct Graph {
+        一郎: super::社員,
+    }
+    impl Graph {
+        pub(crate) fn __graphite_internal_new(一郎: super::社員) -> Self {
+            Graph { 一郎 }
+        }
+        pub fn node_refs(&self) -> NodeRefs<'_> {
+            NodeRefs { graph: self }
+        }
+        pub fn edge_refs(&self) -> EdgeRefs<'_> {
+            EdgeRefs { graph: self }
+        }
     }
 }
 

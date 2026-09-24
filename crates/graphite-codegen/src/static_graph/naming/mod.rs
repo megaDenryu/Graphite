@@ -13,16 +13,16 @@
 //!   (辺アクセサメソッド・役割アクセサ・積み荷アクセサ)。
 //! - `accessor_card_names`: `NodeRefs`/`EdgeRefs`が個体・具体辺1件ごとに
 //!   持つ読み出しメソッドの意味カード。
-//! - `construct_fixed_vocabulary`: `construct::nodes!`/`construct::edges!`
-//!   (値ありの個体・積み荷を差し替えられない構築の入口。`Nodes::new`/
-//!   `Edges::new`は内部専用のC分類であり、
-//!   `naming::internal_names::内部構築子名` が名前を持つ)。
+//! - `construct_fixed_vocabulary`: `construct!` (値ありの個体・積み荷を
+//!   差し替えられない、`Graph`を実体化する唯一の入口。`Graph`の内部構築子は
+//!   内部専用のC分類であり、`naming::internal_names::内部構築子名` が
+//!   名前を持つ)。
 //! - `reference_paths`: instance側 (instanceファイルの本文・DSLトークンの
 //!   型参照) からの、別module越しの修飾パス参照 (`{schema名}::{種別}Edge`・
 //!   `{グラフ名}::{名前}Ref`)。doc を持たない生の `TokenStream` を返す。
 //! - `internal_names`: `inline/` が使う内部生成名。
-//! - `wiring_names`: `entity`/`nodes`/`edges` (配線用、docを持たない
-//!   `pub(super)` のフィールド・引数の名前)。
+//! - `wiring_names`: `graph` (配線用、docを持たない非公開フィールド・
+//!   引数の名前)。
 //! - `fingerprint_anchor`: `schema_entry.rs`・`instance_entry.rs` が指紋照合
 //!   コードのmoduleパスに使う、`generated = "..."` リテラルのspanを持つ
 //!   識別子 (doc を持たない。C分類でもない: 実在するschema名/instance名の
@@ -45,10 +45,9 @@ mod tests;
 
 pub(crate) use accessor_card_names::{edge_refsメソッドの追跡情報を作る, node_refsメソッドの追跡情報を作る};
 pub(crate) use card_names::{役割アクセサの追跡情報を作る, 積み荷アクセサの追跡情報を作る, 辺アクセサメソッドの追跡情報を作る};
-pub(crate) use construct_fixed_vocabulary::{個体構築マクロ名, 構築モジュール名, 辺構築マクロ名};
+pub(crate) use construct_fixed_vocabulary::構築マクロ名;
 pub(crate) use fixed_vocabulary::{
-    個体実体所有者型名, 個体参照メソッド名, 個体参照集合型名, 構築メソッド名, 実体アクセサメソッド名, 辺実体所有者型名,
-    辺参照メソッド名, 辺参照集合型名, グラフ型名,
+    個体参照メソッド名, 個体参照集合型名, 実体アクセサメソッド名, 辺参照メソッド名, 辺参照集合型名, グラフ型名,
 };
 pub(crate) use fingerprint_anchor::指紋照合パスの起点;
 pub(crate) use internal_names::{
@@ -56,4 +55,4 @@ pub(crate) use internal_names::{
 };
 pub(crate) use reference_paths::{個体参照パス, 辺値参照パス, 辺参照パス};
 pub(crate) use type_names::{個体参照型名, 辺値型名, 辺参照型名};
-pub(crate) use wiring_names::{edges変数名, entityフィールド名, nodes変数名};
+pub(crate) use wiring_names::graphフィールド名;

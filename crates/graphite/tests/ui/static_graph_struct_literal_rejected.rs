@@ -1,11 +1,10 @@
-// `Graph`・`NodeRefs`・`EdgeRefs` の配線フィールド (node_refs/edge_refs、
-// 個体名・辺名のフィールド) が非公開であり、利用者が構造体リテラルで
-// 直接作れないことを固定する回帰試験。非公開にする前は、
-// `Graph { node_refs: NodeRefs { 戊: g1.node_refs.戊, .. }, edge_refs:
-// g2.edge_refs }` のように、2つのグラフの部品を構造体リテラルで混ぜた
-// 不整合な `Graph` を組み立てられた。schemaの宣言は
-// `static_multi_module.rs`と同じ内容にし、fingerprintが一致する既存の
-// 生成ファイルをそのまま`include!`する。
+// `Graph`・`NodeRefs`・`EdgeRefs` の配線フィールド (個体名・辺名を直接持つ
+// フィールド、`graph`) が非公開であり、利用者が構造体リテラルで直接作れ
+// ないことを固定する回帰試験。非公開にする前は、
+// `Graph { 太郎: g1.node_refs().太郎().entity()..、.. }` のように、2つの
+// グラフの部品を構造体リテラルで混ぜた不整合な `Graph` を組み立てられた。
+// schemaの宣言は`static_multi_module.rs`と同じ内容にし、fingerprintが
+// 一致する既存の生成ファイルをそのまま`include!`する。
 
 pub struct 社員 {
     pub 名前: String,
@@ -47,18 +46,12 @@ mod 開発チーム {
 }
 
 fn main() {
-    let nodes1 = 開発チーム::construct::nodes!();
-    let edges1 = 開発チーム::construct::edges!(&nodes1);
-    let g1 = 開発チーム::Graph::new(&edges1);
-    let nodes2 = 開発チーム::construct::nodes!();
-    let edges2 = 開発チーム::construct::edges!(&nodes2);
-    let g2 = 開発チーム::Graph::new(&edges2);
+    let _g = 開発チーム::construct!();
 
-    // 2つの由来が異なる`g1`・`g2`の部品を構造体リテラルで混ぜようとする
-    // 迂回はコンパイルエラーになる (`Graph`・`NodeRefs`・`EdgeRefs`の
-    // フィールドが非公開のため)。
+    // 構造体リテラルで直接`Graph`を組み立てようとする迂回はコンパイル
+    // エラーになる (`Graph`のフィールドが個体を直接持ち、非公開のため)。
     let _迂回 = 開発チーム::Graph {
-        node_refs: 開発チーム::NodeRefs { 太郎: g1.node_refs().太郎(), 開発部: g2.node_refs().開発部() },
-        edge_refs: 開発チーム::EdgeRefs { 太郎の所属: g2.edge_refs().太郎の所属() },
+        太郎: 社員 { 名前: "差し替え".into() },
+        開発部: 部署 { 名前: "差し替え".into() },
     };
 }

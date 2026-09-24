@@ -67,13 +67,9 @@ mod 検証チームb {
 
 #[test]
 fn 最上位に同名個体を持つ複数instanceを置いてもビルドでき値は独立している() {
-    let nodes_a = 検証チームa::construct::nodes!();
-    let edges_a = 検証チームa::construct::edges!(&nodes_a);
-    let g_a = 検証チームa::Graph::new(&edges_a);
+    let g_a = 検証チームa::construct!();
 
-    let nodes_b = 検証チームb::construct::nodes!();
-    let edges_b = 検証チームb::construct::edges!(&nodes_b);
-    let g_b = 検証チームb::Graph::new(&edges_b);
+    let g_b = 検証チームb::construct!();
 
     assert_eq!(g_a.node_refs().太郎().entity().名前, "太郎(A)");
     assert_eq!(g_b.node_refs().太郎().entity().名前, "太郎(B)");

@@ -56,7 +56,7 @@ mod tests {
 
     #[test]
     fn 固定語彙由来はb分類である() {
-        let 由来 = 名前の由来::GraphiteLanguage(固定語彙::GraphNew);
+        let 由来 = 名前の由来::GraphiteLanguage(固定語彙::Graph);
         assert!(!由来.利用者語彙由来か());
         // proc_macro2::Span は PartialEq を持たないため、spanが取得できる
         // (panicしない) ことだけを確かめる。

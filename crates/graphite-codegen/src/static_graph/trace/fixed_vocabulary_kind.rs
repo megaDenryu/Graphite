@@ -10,41 +10,29 @@ use crate::static_graph::reserved_words::実体アクセサ名;
 
 #[derive(Clone, Copy)]
 pub(crate) enum 固定語彙 {
-    Nodes,
-    Edges,
     NodeRefs,
     EdgeRefs,
     Graph,
-    // `Graph::new` だけの固定語彙。`Nodes`/`Edges`/`NodeRefs`/`EdgeRefs`の
-    // `new`はC分類の内部専用構築子 (`naming::internal_names::内部構築子名`
-    // 等) であり、`Graph::new`だけが公開契約として残る。
-    GraphNew,
     Entity,
     NodeRefsMethod,
     EdgeRefsMethod,
-    // instance展開が呼び出し位置から辿れる構築の入口。
-    // `{instance名}::construct::nodes!`/`{instance名}::construct::edges!`と
-    // いう修飾パスの、それぞれの区間の固定語彙。
-    ConstructModule,
-    ConstructNodes,
-    ConstructEdges,
+    // instance展開が呼び出し位置から辿れる構築の唯一の入口
+    // `{instance名}::construct!`。個体実体・積み荷の所有者 (旧`Nodes`/
+    // `Edges`) は`Graph`自身のフィールドへ統合したため、この1語だけが
+    // 構築の固定語彙になる。
+    Construct,
 }
 
 impl 固定語彙 {
     pub(crate) fn 識別子文字列(self) -> &'static str {
         match self {
-            Self::Nodes => "Nodes",
-            Self::Edges => "Edges",
             Self::NodeRefs => "NodeRefs",
             Self::EdgeRefs => "EdgeRefs",
             Self::Graph => "Graph",
-            Self::GraphNew => "new",
             Self::Entity => 実体アクセサ名,
             Self::NodeRefsMethod => "node_refs",
             Self::EdgeRefsMethod => "edge_refs",
-            Self::ConstructModule => "construct",
-            Self::ConstructNodes => "nodes",
-            Self::ConstructEdges => "edges",
+            Self::Construct => "construct",
         }
     }
 }
@@ -55,12 +43,9 @@ mod tests {
 
     #[test]
     fn 固定語彙の識別子文字列を返す() {
-        assert_eq!(固定語彙::GraphNew.識別子文字列(), "new");
         assert_eq!(固定語彙::Entity.識別子文字列(), "entity");
         assert_eq!(固定語彙::NodeRefsMethod.識別子文字列(), "node_refs");
         assert_eq!(固定語彙::EdgeRefsMethod.識別子文字列(), "edge_refs");
-        assert_eq!(固定語彙::ConstructModule.識別子文字列(), "construct");
-        assert_eq!(固定語彙::ConstructNodes.識別子文字列(), "nodes");
-        assert_eq!(固定語彙::ConstructEdges.識別子文字列(), "edges");
+        assert_eq!(固定語彙::Construct.識別子文字列(), "construct");
     }
 }

@@ -65,9 +65,7 @@ mod dev_team {
     }
 
     pub fn 太郎の所属先を求める() -> String {
-        let nodes = 開発チーム::construct::nodes!();
-        let edges = 開発チーム::construct::edges!(&nodes);
-        let g = 開発チーム::Graph::new(&edges);
+        let g = 開発チーム::construct!();
         g.node_refs().太郎().太郎の所属().team().entity().名前.clone()
     }
 }

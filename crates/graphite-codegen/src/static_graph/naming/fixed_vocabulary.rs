@@ -1,11 +1,12 @@
 // Graphiteが定義する固定語彙の生成名 (issue #41 のB分類)。型そのもの
-// (Nodes/Edges/NodeRefs/EdgeRefs/Graph)・`Graph::new`・`entity()`・
-// `Graph` の `node_refs`/`edge_refs` フィールドを対象にする。いずれも
-// 利用者のDSLに同名のトークンが無いため、由来は
-// `名前の由来::GraphiteLanguage` になる。構築の入口
-// (`construct::nodes!`/`construct::edges!`) は
-// `naming::construct_fixed_vocabulary` が別に持つ (instance固有の実行時
-// 個体列を意味カードへ組み込む関心事がここと異なるため)。
+// (NodeRefs/EdgeRefs/Graph)・`entity()`・`Graph` の `node_refs`/
+// `edge_refs` メソッドを対象にする。いずれも利用者のDSLに同名のトークンが
+// 無いため、由来は `名前の由来::GraphiteLanguage` になる。構築の唯一の
+// 入口 (`construct!`) は `naming::construct_fixed_vocabulary` が別に持つ
+// (instance固有の実行時個体列を意味カードへ組み込む関心事がここと
+// 異なるため)。個体実体・積み荷の所有者 (旧`Nodes`/`Edges`) は`Graph`
+// 自身のフィールドへ統合し、公開契約からも型としても消えたため、この
+// ファイルには対応する関数が無い (`graph_struct.rs`冒頭コメント参照)。
 
 use proc_macro2::{Ident, Span};
 
@@ -14,16 +15,12 @@ use crate::static_graph::trace::{固定語彙, 名前の由来, 意味項目, �
 
 use super::tracked_name::追跡付きの名前;
 
-// 固定語彙の意味カードに書く「公開契約」段落の表示テキスト。`GraphNew` は
-// 型名を冠して `Graph::new` のように表す。`ConstructNodes`/
-// `ConstructEdges` はmodule越しの修飾パス `construct::nodes`/
-// `construct::edges` で表す。それ以外は識別子文字列そのもの。全ての固定
-// 語彙のカードに `固定語彙:` 行を付ける。
+// 固定語彙の意味カードに書く「公開契約」段落の表示テキスト。`Construct` は
+// マクロであることが分かるよう `construct!` と表す。それ以外は識別子
+// 文字列そのもの。全ての固定語彙のカードに `固定語彙:` 行を付ける。
 fn 固定語彙の宣言表示(語彙: 固定語彙) -> String {
     match 語彙 {
-        固定語彙::GraphNew => "Graph::new".to_string(),
-        固定語彙::ConstructNodes => "construct::nodes".to_string(),
-        固定語彙::ConstructEdges => "construct::edges".to_string(),
+        固定語彙::Construct => "construct!".to_string(),
         _ => 語彙.識別子文字列().to_string(),
     }
 }
@@ -36,22 +33,6 @@ pub(super) fn 固定語彙の名前を作る(語彙: 固定語彙, 意味モデ�
         .固定語彙の宣言を添える(format!("`{表示}` (`docs/static_graph.md` 「生成される名前の公開契約」)"))
         .完成する();
     追跡付きの名前::new(ident, 追跡)
-}
-
-pub(crate) fn 個体実体所有者型名(意味モデル: &意味モデル) -> 追跡付きの名前 {
-    固定語彙の名前を作る(
-        固定語彙::Nodes,
-        意味モデル,
-        "Graphite 静的グラフの個体実体の所有者 `Nodes` (Graphite の固定語彙)。",
-    )
-}
-
-pub(crate) fn 辺実体所有者型名(意味モデル: &意味モデル) -> 追跡付きの名前 {
-    固定語彙の名前を作る(
-        固定語彙::Edges,
-        意味モデル,
-        "Graphite 静的グラフの辺実体の所有者 `Edges` (Graphite の固定語彙)。",
-    )
 }
 
 pub(crate) fn 個体参照集合型名(意味モデル: &意味モデル) -> 追跡付きの名前 {
@@ -75,17 +56,6 @@ pub(crate) fn グラフ型名(意味モデル: &意味モデル) -> 追跡付き
         固定語彙::Graph,
         意味モデル,
         "Graphite 静的グラフの具体グラフ本体 `Graph` (Graphite の固定語彙)。",
-    )
-}
-
-// `Graph::new`。`Nodes`/`Edges`/`NodeRefs`/`EdgeRefs`の`new`はC分類の
-// 内部専用構築子 (`naming::internal_names::内部構築子名`) であり、
-// `Graph::new`だけが公開契約として残る。
-pub(crate) fn 構築メソッド名(意味モデル: &意味モデル) -> 追跡付きの名前 {
-    固定語彙の名前を作る(
-        固定語彙::GraphNew,
-        意味モデル,
-        "Graphite 静的グラフの `Graph` を構築する (Graphite の固定語彙)。",
     )
 }
 

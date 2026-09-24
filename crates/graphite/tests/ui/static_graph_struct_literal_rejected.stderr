@@ -1,21 +1,9 @@
-error[E0451]: fields `node_refs` and `edge_refs` of struct `開発チーム::Graph` are private
-  --> tests/ui/static_graph_struct_literal_rejected.rs:61:9
+error[E0451]: fields `太郎` and `開発部` of struct `開発チーム::Graph` are private
+  --> tests/ui/static_graph_struct_literal_rejected.rs:54:9
    |
-60 |     let _迂回 = 開発チーム::Graph {
+53 |     let _迂回 = 開発チーム::Graph {
    |                 ----------------- in this type
-61 |         node_refs: 開発チーム::NodeRefs { 太郎: g1.node_refs().太郎(), 開発部: g2.node_refs().開発部() },
-   |         ^^^^^^^^^ private field
-62 |         edge_refs: 開発チーム::EdgeRefs { 太郎の所属: g2.edge_refs().太郎の所属() },
-   |         ^^^^^^^^^ private field
-
-error[E0451]: fields `太郎` and `開発部` of struct `NodeRefs` are private
-  --> tests/ui/static_graph_struct_literal_rejected.rs:61:38
-   |
-61 |         node_refs: 開発チーム::NodeRefs { 太郎: g1.node_refs().太郎(), 開発部: g2.node_refs().開発部() },
-   |                                           ^^^^ private field           ^^^^^^ private field
-
-error[E0451]: field `太郎の所属` of struct `EdgeRefs` is private
-  --> tests/ui/static_graph_struct_literal_rejected.rs:62:38
-   |
-62 |         edge_refs: 開発チーム::EdgeRefs { 太郎の所属: g2.edge_refs().太郎の所属() },
-   |                                           ^^^^^^^^^^ private field
+54 |         太郎: 社員 { 名前: "差し替え".into() },
+   |         ^^^^ private field
+55 |         開発部: 部署 { 名前: "差し替え".into() },
+   |         ^^^^^^ private field

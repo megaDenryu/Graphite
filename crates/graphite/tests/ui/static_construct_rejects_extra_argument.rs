@@ -1,10 +1,14 @@
-// `Graph::new` が `&Edges` だけを引数に取り、`&Nodes` を別途渡す経路が
-// 無いことを固定する回帰試験。`Edges` が構築時に使った `&'a Nodes` を
-// 自分の中に保持しているため (`__graphite_nodes`)、`Graph::new`は常に
-// 1組の`(Nodes, Edges)`に由来する値しか受け取れず、別の`Nodes`から作った
-// `Edges`と組み合わせる (`Graph::new(&他のnodes, &edges)`のような旧API)
-// ことができない。schemaの宣言は`static_multi_module.rs`と同じ内容にし、
-// fingerprintが一致する既存の生成ファイルをそのまま`include!`する。
+// `construct!` が、値なし宣言 (`node <名前>: <型>;`) の個体の数を超える
+// 引数を渡すと拒否することを固定する回帰試験。この生成物の全ての個体は
+// instance宣言の式から値を持つため (`static_multi_module.rs`と同じ内容)、
+// `construct!` は引数を1つも取らない。単一の構築入口へ統合した後も、
+// 利用者が値ありの個体の実体をこの入口から差し替えられないことを
+// macro_rules!の展開失敗として確かめる (由来の異なる`Nodes`/`Edges`を
+// 組み合わせる旧来の懸念は、`Nodes`/`Edges`という型自体が公開契約から
+// 消えたことで構造的に成立しなくなった。詳細は`docs/static_graph.md`
+// 「生成される名前の公開契約」参照)。schemaの宣言は`static_multi_module.rs`
+// と同じ内容にし、fingerprintが一致する既存の生成ファイルをそのまま
+// `include!`する。
 
 pub struct 社員 {
     pub 名前: String,
@@ -46,9 +50,6 @@ mod 開発チーム {
 }
 
 fn main() {
-    let nodes = 開発チーム::construct::nodes!();
-    let edges = 開発チーム::construct::edges!(&nodes);
-    // 旧API (`Graph::new(&nodes, &edges)`) はもう無い。`Graph::new`は
-    // `&Edges`だけを取る1引数であり、これはコンパイルエラーになる。
-    let _g = 開発チーム::Graph::new(&nodes, &edges);
+    // 値なし宣言が0件なので `construct!` は引数を取らない。
+    let _g = 開発チーム::construct!(社員 { 名前: "差し替え".into() });
 }

@@ -1,7 +1,5 @@
-error[E0451]: fields `entity`, `nodes` and `edges` of struct `太郎Ref` are private
-  --> tests/ui/static_ref_struct_literal_rejected.rs:54:30
+error[E0451]: field `graph` of struct `太郎Ref` is private
+  --> tests/ui/static_ref_struct_literal_rejected.rs:52:30
    |
-54 |     let _迂回 = 開発チーム::太郎Ref { entity: g.node_refs().太郎().entity(), nodes: &nodes, edges: &edges };
-   |                                       ^^^^^^                                 ^^^^^          ^^^^^ private field
-   |                                       |                                      |
-   |                                       private field                          private field
+52 |     let _迂回 = 開発チーム::太郎Ref { graph: &g };
+   |                                       ^^^^^ private field
