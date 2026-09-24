@@ -62,13 +62,11 @@ pub fn expand_static_graph_internal(input: TokenStream) -> TokenStream {
     let 型参照 = inline::dslトークンの型参照を組み立てる(意味モデル);
 
     // 値マクロ (`__graphite_values_*`/`__graphite_payloads_*`) はC分類の
-    // 内部生成名でありdocを持たないため、このその場展開が呼び出し元の
-    // ソースファイルパスを取得できないこと (旧・組み立て関数が「宣言:」
-    // 段落を省いていた理由) はもう問題にならない。公開契約
-    // (`construct::nodes!`/`construct::edges!`) の意味カードは
+    // 内部生成名でありdocを持たない。公開契約 (`construct!`) の意味カードは
     // `file::instance_file::construct` が生成ファイル側で組み立てる。
-    let 個体値マクロ = inline::個体値マクロを組み立てる(意味モデル);
-    let 積み荷値マクロ = inline::積み荷値マクロを組み立てる(意味モデル);
+    let generated_path = tracked.generated_path().value();
+    let 個体値マクロ = inline::個体値マクロを組み立てる(意味モデル, &generated_path);
+    let 積み荷値マクロ = inline::積み荷値マクロを組み立てる(意味モデル, &generated_path);
 
     quote! {
         #指紋照合

@@ -1,15 +1,15 @@
 // このファイルは Graphite が生成したため手編集しないこと。
-// 生成元: tests/static_value_expr_resolves_at_declaration_site.rs:24
+// 生成元: tests/static_value_expr_resolves_at_declaration_site.rs:20
 // 再生成: パッケージのディレクトリで cargo graphite generate を実行してください (Graphite リポジトリ自身の開発では cargo xtask generate)
 
 #[allow(unused_imports)]
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_STATIC_SCHEMA_FINGERPRINT: [u64; 4] = [
-    11045066515708047059u64, 17721401320311778572u64, 15914628530983561413u64,
-    4636914056246156641u64,
+    4421775019708927184u64, 340112779670601345u64, 15318163847124339158u64,
+    5350094770823592770u64,
 ];
-/// Graphite 静的グラフの辺値。端点への参照を保持する。
+/// Graphite 静的グラフの辺種別を表す型アンカー。端点の役割の形を示す (どのinstanceもこの型を構築しない)。
 ///
 /// - 辺種別: `所属`
 ///

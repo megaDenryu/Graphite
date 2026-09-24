@@ -85,7 +85,7 @@ fn 意味カード3_自己ループ辺の役割アクセサは第一役割と第
 
     // 本番の生成経路: instanceファイル本文に両方の役割アクセサ (`subordinate()`・
     // `superior()`) のdocが並ぶこと。
-    let 本文 = crate::static_graph::file::instance本体を組み立てる(&意味モデル, &src_main())
+    let 本文 = crate::static_graph::file::instance本体を組み立てる(&意味モデル, &src_main(), "generated/テスト.rs")
         .to_string();
     assert!(本文.contains("役割: `subordinate: 社員`"), "本文: {本文}");
     assert!(本文.contains("役割: `superior: 社員`"), "本文: {本文}");

@@ -1,13 +1,13 @@
 // このファイルは Graphite が生成したため手編集しないこと。
-// 生成元: tests/static_value_expr_resolves_at_declaration_site.rs:46
+// 生成元: tests/static_value_expr_resolves_at_declaration_site.rs:42
 // 再生成: パッケージのディレクトリで cargo graphite generate を実行してください (Graphite リポジトリ自身の開発では cargo xtask generate)
 
 #[allow(unused_imports)]
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_STATIC_INSTANCE_FINGERPRINT: [u64; 4] = [
-    10069365549602033291u64, 16040067257589281228u64, 13389474510111978721u64,
-    4580835437585784085u64,
+    1085397169345348599u64, 9513072064738849420u64, 18358564351970036949u64,
+    5981369754723669241u64,
 ];
 /// Graphite 静的グラフの具体個体参照。
 ///
@@ -223,8 +223,10 @@ impl Graph {
 /// 関係する instance 宣言: `tests/static_value_expr_resolves_at_declaration_site.rs` の `graph 宣言位置チーム`
 macro_rules! construct {
     () => {
-        { let (太郎, 開発部,) = __graphite_values_宣言位置チーム!(); let () =
-        __graphite_payloads_宣言位置チーム!(); #[allow(deprecated)] {
+        { let (太郎, 開発部,) =
+        __graphite_values_宣言位置チーム_95c64ebe1905c551!(); let () =
+        __graphite_payloads_宣言位置チーム_95c64ebe1905c551!();
+        #[allow(deprecated)] {
         宣言位置チーム::Graph::__graphite_internal_new(太郎, 開発部) } }
     };
 }

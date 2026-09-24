@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_STATIC_INSTANCE_FINGERPRINT: [u64; 4] = [
-    9455543018840172031u64, 16480593162548366298u64, 13859960276608235485u64,
-    2118569567969234289u64,
+    13502672415092840725u64, 6409088999736536332u64, 9007310629765208211u64,
+    18261846804022559207u64,
 ];
 /// Graphite 静的グラフの具体個体参照。
 ///
@@ -244,8 +244,10 @@ impl Graph {
 /// 関係する instance 宣言: `tests/static_value_expr_captures_local.rs` の `graph 検証チーム型引数`
 macro_rules! construct {
     () => {
-        { let (太郎, 次郎,) = __graphite_values_検証チーム型引数!(); let
-        (太郎の上司,) = __graphite_payloads_検証チーム型引数!();
+        { let (太郎, 次郎,) =
+        __graphite_values_検証チーム型引数_79e829f4106b6b7f!(); let
+        (太郎の上司,) =
+        __graphite_payloads_検証チーム型引数_79e829f4106b6b7f!();
         #[allow(deprecated)] {
         検証チーム型引数::Graph::__graphite_internal_new(太郎, 次郎,
         太郎の上司) } }

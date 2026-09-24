@@ -18,7 +18,7 @@ fn schema本文は同じ入力からバイト単位で一致する() {
     assert_eq!(本文, 二回目.render_module_source(&site).unwrap());
     // 固定値は生成物の意図しない変化を検出するための錨である
     // (`crate::tests::同じ入力の生成結果はバイト単位で一致する` と同じ方針)。
-    assert_eq!(fnv1a(本文.as_bytes(), 0xcbf29ce484222325), 3817827616307333065);
+    assert_eq!(fnv1a(本文.as_bytes(), 0xcbf29ce484222325), 11426292115700224459);
 }
 
 #[test]
@@ -29,7 +29,7 @@ fn instance本文は同じschema参照からバイト単位で一致する() {
     let site = DeclarationSite::new("src/main.rs".to_string(), 12);
     let 本文 = 一回目.render_module_source(&site, &site).unwrap();
     assert_eq!(本文, 二回目.render_module_source(&site, &site).unwrap());
-    assert_eq!(fnv1a(本文.as_bytes(), 0xcbf29ce484222325), 2979124824309930549);
+    assert_eq!(fnv1a(本文.as_bytes(), 0xcbf29ce484222325), 14382902918527045870);
 }
 
 #[test]

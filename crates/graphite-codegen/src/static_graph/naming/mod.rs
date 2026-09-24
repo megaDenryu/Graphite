@@ -6,9 +6,9 @@
 //! - `type_names`: `{個体名}Ref`・`{辺名}Ref`・`{種別}Edge` (issue #41 分類A)。
 //!   定義箇所 (schemaファイル・instanceファイル自身のmodule内) からの参照
 //!   であり、doc付きの `追跡付きの名前` を返す。
-//! - `fixed_vocabulary`: `Nodes`/`Edges`/`NodeRefs`/`EdgeRefs`/`Graph`・
-//!   `Graph::new`・`entity`・`node_refs`/`edge_refs` (分類B、簡潔な意味
-//!   カード。`node_refs`/`edge_refs`は`Graph`が持つメソッドの名前である)。
+//! - `fixed_vocabulary`: `NodeRefs`/`EdgeRefs`/`Graph`・`entity`・
+//!   `node_refs`/`edge_refs` (分類B、簡潔な意味カード。`node_refs`/
+//!   `edge_refs`は`Graph`が持つメソッドの名前である)。
 //! - `card_names`: 意味カードの書式を §5.2 の例そのままで固定した3件
 //!   (辺アクセサメソッド・役割アクセサ・積み荷アクセサ)。
 //! - `accessor_card_names`: `NodeRefs`/`EdgeRefs`が個体・具体辺1件ごとに

@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_STATIC_INSTANCE_FINGERPRINT: [u64; 4] = [
-    513823903825558297u64, 9072238419513306554u64, 15951945842291022875u64,
-    12405579734201045591u64,
+    13803613588806687893u64, 13117745434980602318u64, 2953249923876830299u64,
+    11849602062178977111u64,
 ];
 /// Graphite 静的グラフの具体個体参照。
 ///
@@ -223,9 +223,10 @@ impl Graph {
 /// 関係する instance 宣言: `tests/static_value_expr_move_constructs_once.rs` の `graph move二回チーム`
 macro_rules! construct {
     () => {
-        { let (太郎, 開発部,) = __graphite_values_move二回チーム!(); let () =
-        __graphite_payloads_move二回チーム!(); #[allow(deprecated)] {
-        move二回チーム::Graph::__graphite_internal_new(太郎, 開発部) } }
+        { let (太郎, 開発部,) =
+        __graphite_values_move二回チーム_9fe28489a4822cee!(); let () =
+        __graphite_payloads_move二回チーム_9fe28489a4822cee!(); #[allow(deprecated)]
+        { move二回チーム::Graph::__graphite_internal_new(太郎, 開発部) } }
     };
 }
 pub(crate) use construct;

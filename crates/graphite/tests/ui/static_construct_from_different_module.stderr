@@ -4,11 +4,11 @@ error[E0433]: failed to resolve: could not find `__graphite_values_開発チー�
 63 |         let _v = super::元::__graphite_values_開発チーム!();
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ could not find `__graphite_values_開発チーム` in `元`
 
-error: cannot find macro `__graphite_values_開発チーム` in this scope
+error: cannot find macro `__graphite_values_開発チーム_74affc48978331c5` in this scope
   --> tests/ui/../generated/static_multi_module_開発チーム.rs
    |
-   |         { let (太郎, 開発部,) = __graphite_values_開発チーム!(); let () =
-   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         __graphite_values_開発チーム_74affc48978331c5!(); let () =
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
   ::: tests/ui/static_construct_from_different_module.rs:62:18
    |
@@ -18,11 +18,11 @@ error: cannot find macro `__graphite_values_開発チーム` in this scope
    = help: have you added the `#[macro_use]` on the module/import?
    = note: this error originates in the macro `super::元::開発チーム::construct` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: cannot find macro `__graphite_payloads_開発チーム` in this scope
+error: cannot find macro `__graphite_payloads_開発チーム_74affc48978331c5` in this scope
   --> tests/ui/../generated/static_multi_module_開発チーム.rs
    |
-   |         __graphite_payloads_開発チーム!(); #[allow(deprecated)] {
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         __graphite_payloads_開発チーム_74affc48978331c5!(); #[allow(deprecated)] {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
   ::: tests/ui/static_construct_from_different_module.rs:62:18
    |

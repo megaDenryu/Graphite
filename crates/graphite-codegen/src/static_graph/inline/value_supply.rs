@@ -1,10 +1,11 @@
-// instanceの値をまとめて返すマクロ (issue #41 §3、PR #45で名前解決を
-// 宣言位置へ固定する形に作り直した)。値ありの個体・積み荷それぞれについて、
-// 宣言順の式をタプルにして返す `macro_rules!` を1個ずつ (グラフあたり2個)
-// instanceの宣言位置に置く。生成ファイル側の `construct::nodes!`/
-// `construct::edges!` (`file::instance_file::construct`) が無修飾の名前で
-// このマクロを呼び、内部構築子 (`Nodes::__graphite_internal_new`等) へ
-// 渡す。式は生成ファイルへ一切写さない。
+// instanceの値をまとめて返すマクロ (issue #41 §3)。値ありの個体・積み荷
+// それぞれについて、宣言順の式をタプルにして返す `macro_rules!` を1個ずつ
+// (グラフあたり2個) instanceの宣言位置に置く。生成ファイル側の `construct!`
+// (`file::instance_file::construct`) が無修飾の名前でこのマクロを呼び、
+// 内部構築子 (`{グラフ名}::Graph::__graphite_internal_new`) へ渡す。式は
+// 生成ファイルへ一切写さない。マクロ名は`グラフ名`と`generated`文字列から
+// 計算する印を含むため、別moduleが同じグラフ名を選んでも衝突しない
+// (`naming::internal_names::個体値マクロ名`参照)。
 //
 // 本体は個々の値を1件ずつ計算する束縛マクロ (`value_binding::値束縛を組み立てる`)
 // を呼ぶだけであり、式そのものはここには現れない。名前解決を宣言位置へ
@@ -19,8 +20,9 @@ use crate::static_graph::naming::{個体値マクロ名, 積み荷値マクロ�
 use crate::static_graph::semantic::{個体, 具体辺, 意味モデル};
 
 // 値ありの個体すべての式を宣言順のタプルで返すマクロ定義。値ありの個体が
-// 1件も無ければ空タプルを返す。
-pub(crate) fn 個体値マクロを組み立てる(意味モデル: &意味モデル) -> TokenStream {
+// 1件も無ければ空タプルを返す。`generated_path`はinstanceの
+// `generated = "..."`文字列そのもの (呼び出し側 `instance_entry.rs`が持つ)。
+pub(crate) fn 個体値マクロを組み立てる(意味モデル: &意味モデル, generated_path: &str) -> TokenStream {
     let 値あり個体列: Vec<&個体> =
         意味モデル.個体列().iter().filter(|個体| !個体.値なし宣言か()).collect();
     let 束縛定義列: Vec<TokenStream> = 値あり個体列
@@ -41,14 +43,14 @@ pub(crate) fn 個体値マクロを組み立てる(意味モデル: &意味モ�
         .collect();
 
     束縛定義列と呼び出し列をまとめるマクロを組み立てる(
-        個体値マクロ名(意味モデル.グラフ名()).ident(),
+        個体値マクロ名(意味モデル.グラフ名(), generated_path).ident(),
         &束縛定義列,
         &呼び出し列,
     )
 }
 
 // 積み荷ありの具体辺すべての式を宣言順のタプルで返すマクロ定義。
-pub(crate) fn 積み荷値マクロを組み立てる(意味モデル: &意味モデル) -> TokenStream {
+pub(crate) fn 積み荷値マクロを組み立てる(意味モデル: &意味モデル, generated_path: &str) -> TokenStream {
     let 積み荷あり辺列: Vec<&具体辺> =
         意味モデル.具体辺列().iter().filter(|辺| 辺.積み荷式().is_some()).collect();
     let 束縛定義列: Vec<TokenStream> = 積み荷あり辺列
@@ -68,7 +70,7 @@ pub(crate) fn 積み荷値マクロを組み立てる(意味モデル: &意味�
         積み荷あり辺列.iter().map(|辺| 束縛呼び出しを組み立てる(意味モデル.グラフ名(), 辺.名前())).collect();
 
     束縛定義列と呼び出し列をまとめるマクロを組み立てる(
-        積み荷値マクロ名(意味モデル.グラフ名()).ident(),
+        積み荷値マクロ名(意味モデル.グラフ名(), generated_path).ident(),
         &束縛定義列,
         &呼び出し列,
     )

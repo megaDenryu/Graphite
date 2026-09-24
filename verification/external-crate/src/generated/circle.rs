@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_STATIC_INSTANCE_FINGERPRINT: [u64; 4] = [
-    17630003181652789665u64, 15758893793904200678u64, 6889931029814137659u64,
-    6456474353047029223u64,
+    8280421238214578031u64, 15170349764766456336u64, 14068980191178634777u64,
+    12746725877975084965u64,
 ];
 /// Graphite 静的グラフの具体個体参照。
 ///
@@ -223,8 +223,8 @@ impl Graph {
 /// 関係する instance 宣言: `src/lib.rs` の `graph Circle`
 macro_rules! construct {
     () => {
-        { let (本, 読者,) = __graphite_values_Circle!(); let () =
-        __graphite_payloads_Circle!(); #[allow(deprecated)] {
+        { let (本, 読者,) = __graphite_values_Circle_93ad335dee0a2ff0!(); let () =
+        __graphite_payloads_Circle_93ad335dee0a2ff0!(); #[allow(deprecated)] {
         Circle::Graph::__graphite_internal_new(本, 読者) } }
     };
 }

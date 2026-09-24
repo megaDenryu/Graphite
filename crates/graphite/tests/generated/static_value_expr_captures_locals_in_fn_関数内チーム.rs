@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_STATIC_INSTANCE_FINGERPRINT: [u64; 4] = [
-    8813840087942532276u64, 13563371959724670217u64, 4739249401580902042u64,
-    11315648045812701614u64,
+    8909766103262666870u64, 632936844185860155u64, 13297747050323290472u64,
+    4350449475176445148u64,
 ];
 /// Graphite 静的グラフの具体個体参照。
 ///
@@ -223,9 +223,10 @@ impl Graph {
 /// 関係する instance 宣言: `tests/static_value_expr_captures_locals_in_fn.rs` の `graph 関数内チーム`
 macro_rules! construct {
     () => {
-        { let (太郎, 開発部,) = __graphite_values_関数内チーム!(); let () =
-        __graphite_payloads_関数内チーム!(); #[allow(deprecated)] {
-        関数内チーム::Graph::__graphite_internal_new(太郎, 開発部) } }
+        { let (太郎, 開発部,) =
+        __graphite_values_関数内チーム_4b71a868ecd4223a!(); let () =
+        __graphite_payloads_関数内チーム_4b71a868ecd4223a!(); #[allow(deprecated)]
+        { 関数内チーム::Graph::__graphite_internal_new(太郎, 開発部) } }
     };
 }
 pub(crate) use construct;

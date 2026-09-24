@@ -1,8 +1,10 @@
 // このファイルはschemaファイル本文 (issue #41 §2) を組み立て、種別ごとの
-// 辺値 `pub struct {種別}Edge<'a>` を並べる。instanceファイル
-// (`instance_file.rs`) が `use super::*;` 越しに構築するため、役割・積み荷
-// のフィールドは `pub(crate)` にする (§5.3、型自体は `pub` で公開契約)。
-// 呼び出し側 (`static_graph::tracked::schema`) が、schemaの指紋定数を
+// 型アンカー `pub struct {種別}Edge<'a>` を並べる。DSLの種別トークン
+// (`所属(太郎 -> 開発部)`の`所属`等) がF12で着地する先であり、どのinstance
+// もこの型を構築しない (`docs/static_graph.md`「生成される名前の公開契約」)。
+// 役割・積み荷のフィールドは端点の役割・積み荷の形を示すだけの情報であり
+// `pub(crate)` にする (型自体は `pub` で公開契約)。呼び出し側
+// (`static_graph::tracked::schema`) が、schemaの指紋定数を
 // `crate::generated_source::生成ファイルの本文` 経由で別途足す。
 
 use proc_macro2::TokenStream;

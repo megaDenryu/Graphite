@@ -29,13 +29,14 @@ pub(super) const 内部構築子の非推奨NOTE: &str = "Graphite の内部構�
 pub(crate) fn instance本体を組み立てる(
     意味モデル: &意味モデル,
     宣言元: &宣言元の対,
+    generated_path: &str,
 ) -> TokenStream {
     let 個体参照列 = node_ref::個体参照列を組み立てる(意味モデル, 宣言元);
     let 辺インスタンス参照列 = edge_ref::辺インスタンス参照列を組み立てる(意味モデル, 宣言元);
     let node_refs = ref_collections::node_refs本体を組み立てる(意味モデル, 宣言元);
     let edge_refs = ref_collections::edge_refs本体を組み立てる(意味モデル, 宣言元);
     let graph = graph_struct::graph本体を組み立てる(意味モデル);
-    let construct = construct::construct本体を組み立てる(意味モデル, 宣言元);
+    let construct = construct::construct本体を組み立てる(意味モデル, 宣言元, generated_path);
 
     quote! {
         #個体参照列

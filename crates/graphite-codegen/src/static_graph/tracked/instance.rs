@@ -68,7 +68,7 @@ impl TrackedStaticInstance {
                 schema_site.宣言ファイルの綴り().to_string(),
             ),
         );
-        let body = instance本体を組み立てる(&self.意味モデル, &宣言元);
+        let body = instance本体を組み立てる(&self.意味モデル, &宣言元, &self.generated_path.value());
         生成ファイルの本文(&body, self.fingerprint, site, &静的instance指紋定数名())
     }
 }
@@ -107,7 +107,7 @@ pub(crate) fn instance展開用に解析する(
     let 意味モデル = 検証済み.意味モデルを組み立てる();
 
     let 宣言元不明の対 = 宣言元の対::new(宣言元ファイルの綴り::分かっていない, 宣言元ファイルの綴り::分かっていない);
-    let body = instance本体を組み立てる(&意味モデル, &宣言元不明の対);
+    let body = instance本体を組み立てる(&意味モデル, &宣言元不明の対, &tracked.generated_path.value());
     let 整形済み本文 = 指紋の材料になる整形済み本文(&body).map_err(|error| vec![error])?;
     let fingerprint = fingerprint(&tracked.generated_path.value(), &整形済み本文);
 
