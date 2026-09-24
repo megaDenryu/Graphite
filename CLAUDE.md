@@ -130,9 +130,9 @@ cargo graphite generate [--check]
   オーナーも他のセッションも読めないためである。Claude Code は、引き継ぎを
   `_doc/開発スレッド/` の遺言 (`YYYY-MM-DD-<作業名>-遺言.md`) に、決定の経緯を
   issue・PR のコメントに、恒久的な規約をこの CLAUDE.md か `docs/development/` に書く
-- 親 (Claude Code のオーケストレータ) は、検収 (検査員の並行派遣、自己申告の扱い、
-  命名の裁定、examples の検証の落とし穴、GitHub への記録) を
-  `docs/development/review_workflow.md` に従って行う
+- 親 (Claude Code のオーケストレータ) は、検収 (検査役の並行派遣、自己申告の扱い、
+  IDE の診断の扱い、命名の裁定、examples の検証の落とし穴、GitHub への記録と
+  リンクの使い分け) を `docs/development/review_workflow.md` に従って行う
 - DSL は日本語の識別子 (schema 名・node/edge 名・役割名・束縛名) を受理する
   (恒久要件)。確立した訳語は、役割名 (role)・辺 (edge)・多重度 (cardinality)
   である。Graphite の実装は、DSL の診断メッセージを日本語で書く

@@ -45,7 +45,7 @@
 | `docs/development/ide_support_spec.md` | Development document | rust-analyzer 対応の仕様と、スパン継承の規範 |
 | `docs/development/generated_vs_handwritten.md` | Development document | 生成コードが手書きテンプレートと分かれた7点の設計判断 |
 | `docs/development/testing.md` | Development document | テストファイルの役割と実行手順、`.vscode` の運用ルール |
-| `docs/development/review_workflow.md` | Development document | 検収における検査員の並行派遣・自己申告の扱い・命名裁定・examplesの検証・GitHubへの記録という運用 |
+| `docs/development/review_workflow.md` | Development document | 検収における検査役の並行派遣・自己申告の扱い・IDEの診断の扱い・命名裁定・examplesの検証・GitHubへの記録とリンクの使い分けという運用 |
 
 ## 設計史 (`docs/history/`)
 
