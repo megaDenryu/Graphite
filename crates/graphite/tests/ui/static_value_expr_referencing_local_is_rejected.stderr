@@ -1,21 +1,21 @@
 error[E0434]: can't capture dynamic environment in a fn item
-  --> tests/ui/static_value_expr_referencing_local_is_rejected.rs:55:28
+  --> tests/ui/static_value_expr_referencing_local_is_rejected.rs:56:28
    |
-55 |         node 太郎 = 社員 { 名前: 社員名 };
+56 |         node 太郎 = 社員 { 名前: 社員名 };
    |                                  ^^^^^^
    |
    = help: use the `|| { ... }` closure form instead
 
 error[E0425]: cannot find type `太郎Ref` in module `ローカル参照チーム`
-  --> tests/ui/static_value_expr_referencing_local_is_rejected.rs:55:14
+  --> tests/ui/static_value_expr_referencing_local_is_rejected.rs:56:14
    |
-55 |         node 太郎 = 社員 { 名前: 社員名 };
+56 |         node 太郎 = 社員 { 名前: 社員名 };
    |              ^^^^ not found in `ローカル参照チーム`
 
 warning: unused variable: `社員名`
-  --> tests/ui/static_value_expr_referencing_local_is_rejected.rs:50:21
+  --> tests/ui/static_value_expr_referencing_local_is_rejected.rs:51:21
    |
-50 | fn 関数のローカルを値の式が参照する(社員名: String) {
+51 | fn 関数のローカルを値の式が参照する(社員名: String) {
    |                                     ^^^^^^ help: if this is intentional, prefix it with an underscore: `_社員名`
    |
    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default

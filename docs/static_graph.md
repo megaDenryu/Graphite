@@ -163,15 +163,16 @@ DSLの構文自体は位置を区別する印を持たない。Graphiteは、Rus
 **値の式が関数のローカル変数・引数を参照すると、入れ子の`fn`は外側を
 捕捉できないため、通常のRustのE0434
 (``can't capture dynamic environment in a fn item; use the `||` closure
-form instead``) になる。** rustcのヘルプは「クロージャ形式を使う」と
-案内するが、利用者は値の式をクロージャに変えられない。値の式が外側の
-関数のジェネリックの型引数を参照した場合は、入れ子の`fn`が外側の型引数を
-使えないという通常のRustのE0401
-(``can't use generic parameters from outer item``) になる。対処は、
-その個体を値なし宣言 (`node 名前: 型;`) にして、実体を
-`{instance名}::construct!(..)` の引数として実行時に渡すことである
-(compile-fail実測:
+form instead``) になる**(compile-fail実測:
 `crates/graphite/tests/ui/static_value_expr_referencing_local_is_rejected.rs`)。
+rustcのヘルプは「クロージャ形式を使う」と案内するが、利用者は値の式を
+クロージャに変えられない。値の式が外側の関数のジェネリックの型引数を
+参照した場合は、入れ子の`fn`が外側の型引数を使えないという通常のRustの
+E0401 (``can't use generic parameters from outer item``) になる
+(compile-fail実測:
+`crates/graphite/tests/ui/static_value_expr_referencing_outer_type_param_is_rejected.rs`)。
+どちらの場合も対処は、その個体を値なし宣言 (`node 名前: 型;`) にして、
+実体を`{instance名}::construct!(..)` の引数として実行時に渡すことである。
 積み荷の式にはこの対処が無い。積み荷 (`edge 名前 = 種別(始点 -[積み荷式]->
 終点);`の`積み荷式`) は個体と違って値なし宣言の形を持たず、instance宣言の
 位置で決まる式でしか与えられない (詳細は下の「制約」節)。
@@ -202,9 +203,10 @@ instanceの宣言と同じテキスト順スコープに繋がらない場所 (�
   (モジュール直下)・
   `static_value_expr_in_fn_body_resolves_and_evaluates_once.rs`
   (関数の中、同じブロックの入れ子の項目を宣言位置の意味で解決する側)
-- 値の式が関数のローカル変数・引数を参照するとE0434に、外側の型引数を
-  参照するとE0401になる (compile-fail):
-  `crates/graphite/tests/ui/static_value_expr_referencing_local_is_rejected.rs`
+- 値の式が関数のローカル変数・引数を参照するとE0434になる (compile-fail):
+  `crates/graphite/tests/ui/static_value_expr_referencing_local_is_rejected.rs`。
+  外側のジェネリックの型引数を参照するとE0401になる (compile-fail):
+  `crates/graphite/tests/ui/static_value_expr_referencing_outer_type_param_is_rejected.rs`
 - 値の式そのもの (利用者が書いたRust式) は生成ファイルへ複製されない
   (モジュール直下・関数の中の両方):
   `crates/graphite/tests/static_value_expr_not_duplicated_into_generated_file.rs`
@@ -376,12 +378,12 @@ A・Bのどちらも、F12は生成ファイルの中の人間が読める定義
 - **instanceを他のマクロの入力の中に書いてはならない。** `println!("{}", 組織! { .. })`のように、名簿の名前を他のマクロの引数の中へ埋め込む書き方は生成器がエラーにする (`docs/code_generation.md`参照)。利用者は、instanceを文の位置 (または関数の中の文の位置) に直接書く。
 - **積み荷の式は、instance宣言の位置で決まる式でしか与えられない。** 個体 (`node`) には値なし宣言 (`node 名前: 型;`) があり、実体を`construct!`の引数として実行時に渡せるが、積み荷 (`edge 名前 = 種別(始点 -[積み荷式]-> 終点);`の`積み荷式`) には値なし宣言の形が無い。積み荷の式が関数のローカル変数・引数を参照した場合も個体と同じくE0434 (外側の型引数を参照した場合はE0401) になるが、個体のように値なし宣言へ逃がして実行時の値を渡す手段は無い。
 - **生成moduleを読み込む`mod`の置き場所は、instance宣言の置き場所と無関係である。** instance展開はimplを一切使わず、値の橋渡しを宣言位置に生成する値マクロ (`__graphite_values_{グラフ名}_{instance印}!`・`__graphite_payloads_{グラフ名}_{instance印}!`) だけで行うため、利用者が`mod`を最上位に置いたままinstance宣言だけを関数の中に置いても`non_local_definitions`警告は出ない。`examples/static-org/src/main.rs`の`mod 経理チーム`(最上位)と`経理チームの所属先を求める`関数(instance宣言はこの中)が、この配置の実例である。
-- **`construct!`を呼んでよいのは、instance宣言と同じテキスト順スコープ (同じmodule、またはinstanceを置いた同じ関数の中) だけである。** 束縛マクロ (`__graphite_bind_{名前}_{グラフ名}!`等) は意図的に`pub(crate) use`を持たず、`macro_rules!`の既定のテキスト順スコープだけに閉じる。別ファイル・別moduleから呼ぼうとすると束縛マクロの名前自体が解決できずコンパイルエラーになる (回帰試験: `crates/graphite/tests/ui/static_construct_from_different_module.rs`)。値の式の名前解決そのもの (instance宣言の位置へ固定する仕組み) は上の「値の式の名前解決」節を参照。instance宣言と同じmodule内 (instanceの後ろに書いた別の関数など) から呼ぶ場合は、値の式は宣言位置の意味を保ったまま構築できる (値の式は宣言位置の`fn`本体に閉じている。呼び出し位置で解決されるのはC分類の内部名`__graphite_value_*`だけであり、利用者がこの名前を定義しない前提で宣言位置の関数を指す)。同じテキスト順スコープに繋がらない場所から呼ぼうとした場合は、束縛マクロの名前自体が見えず`cannot find macro`になる。
+- **`construct!`を呼んでよいのは、instance宣言と同じテキスト順スコープ (同じmodule、またはinstanceを置いた同じ関数の中) だけである。** 束縛マクロ (`__graphite_bind_{名前}_{グラフ名}!`等) は意図的に`pub(crate) use`を持たず、`macro_rules!`の既定のテキスト順スコープだけに閉じる。別ファイル・別moduleから呼ぼうとすると束縛マクロの名前自体が解決できずコンパイルエラーになる (回帰試験: `crates/graphite/tests/ui/static_construct_from_different_module.rs`)。値の式の名前解決そのもの (instance宣言の位置へ固定する仕組み) は上の「値の式の名前解決」節を参照。instance宣言と同じmodule内 (instanceの後ろに書いた別の関数など) から呼ぶ場合は、値の式は宣言位置の意味を保ったまま構築できる (値の式は宣言位置の`fn`本体に閉じている。呼び出し位置で解決されるのはC分類の内部名`__graphite_value_*`だけである。利用者がこの名前を定義しなければ、この内部名は宣言位置の関数を指す)。同じテキスト順スコープに繋がらない場所から呼ぼうとした場合は、束縛マクロの名前自体が見えず`cannot find macro`になる。
 - **schemaとinstanceを別ファイルに分けるときは、instance側のファイルがschema moduleを`use`し、schema側の`mod`宣言に`#[macro_use]`を付けてinstance側の`mod`宣言より前に置く。** 例: instance側のファイルは`use crate::organization::組織;`のように、schemaを宣言したファイルのmoduleを`use`する。crateの入口ファイルは`#[macro_use] mod organization; mod dev_team;`のように、schema側の`mod`をinstance側の`mod`より前に置く (理由と実測は上の「2層マクロの使い方」節を参照)。
 - **同じスコープに、同名の値ありの個体・積み荷ありの辺を持つinstanceを複数置いてよい。** 値マクロの名前 (`__graphite_values_{グラフ名}_{instance印}!`等) はグラフ名を含むため、個体名・辺名が同じでもグラフ名が違えば衝突しない。回帰試験: `crates/graphite/tests/static_same_individual_name_multiple_instances.rs` (最上位)・`static_same_individual_name_inside_function.rs` (関数の中)。個体の値の式が`construct!`を呼ぶたびに1回だけ評価されることの回帰試験は `crates/graphite/tests/static_individual_value_evaluated_once_per_assembly.rs`。
 - **別moduleが同じグラフ名を選んでも、値マクロは衝突しない。** 値マクロの名前は`generated = "..."`文字列から計算する`instance印`を含むため、2つのmoduleが同じグラフ名のinstanceを作っても、`generated`文字列が違えば、それぞれの値マクロ・`construct!`の内部参照は別の名前になる。`construct!`を誤って別moduleの同名グラフへ向けて呼んでも、その別instanceの値マクロの名前は見えないため`cannot find macro`になり、エラーにせず取り違えて使うことはない。回帰試験: `crates/graphite/tests/static_same_graph_name_different_modules.rs` (同じ名前でも各moduleの中で完結した呼び出しは正しく動く側)・`crates/graphite/tests/ui/static_construct_same_graph_name_different_module_rejected.rs` (別moduleの同名グラフを誤って呼ぶとコンパイルエラーになる側、compile-fail)。
 - **同じCargo targetの中で、同じグラフ名のinstanceが同じ`generated`文字列を持つことを生成器が拒否する。** 前項が成り立つ前提は「別moduleの同名グラフのinstanceは`generated`文字列も別である」ことであり、これはinstance宣言のマクロ自身では検査できない。コンパイル時のマクロ (`static_graph_schema!`・`{schema名}!`) は、自分が書かれた宣言元ファイルのパッケージ相対パスをstable Rustから知る手段を持たないため、`generated`文字列だけから計算する`instance印`が実際にinstanceごとに一意であることを、マクロ自身の展開時には保証できない。パッケージ全体を1回ずつ構文解析して回る生成器 (`graphite-cli`) だけが、この一意性を機械的に保証できる立場にある。生成器は、同じCargo targetに属する2つ以上のinstance宣言が同じグラフ名と同じ`generated`文字列を持つ場合、両者の宣言元 (`パス:行`) と`generated`の文字列を示し、`generated`をどちらかで変えるよう促すエラーで生成を止める (`src/a/mod.rs`と`src/b/mod.rs`が同じグラフ名で同じ`generated = "generated/T.rs";`を書き、`b`の中から`crate::a::T::construct!()`を呼ぶと、`construct!`の展開内部が無修飾の名前で呼ぶ値マクロが`b`自身の同名の値マクロへ解決され、`a`のグラフではなく`b`のグラフを構築してしまう事故が、この検査の対象である)。回帰試験: `crates/graphite-cli/src/static_resolution/instance_duplication.rs`の`tests`、`crates/graphite-cli/src/static_resolution/tests/instance_resolution.rs`の`同じグラフ名で同じgenerated文字列を持つ2つのinstanceは重複エラーになる`。
-- **`__graphite_*`から始まる名前 (内部構築子`__graphite_internal_new`・値マクロ`__graphite_values_{グラフ名}_{instance印}!`等) はC分類の内部生成名であり、利用者が直接呼ぶことをGraphiteは支援しない。** `pub(crate)`はクレート内のどこからでも呼べてしまうため、stable Rustの可視性だけでは「呼べるのは`construct!`だけ」という主張を強制できない。内部構築子には`#[deprecated]`を添えて直接呼び出しを警告にし (`#![deny(warnings)]`の下ではエラーになる)、`construct!`の展開側だけが`#[allow(deprecated)]`で自分自身の呼び出しを許す。直接の呼び出しを禁止でなく警告にするのは、stableのマクロ衛生では呼び出し元をマクロ展開だけに限定できないため。回帰試験: `crates/graphite/tests/ui/static_internal_constructor_direct_call.rs`。
+- **`__graphite_*`から始まる名前 (内部構築子`__graphite_internal_new`・値マクロ`__graphite_values_{グラフ名}_{instance印}!`等) はC分類の内部生成名であり、利用者がこの名前を定義すること、または直接呼ぶことをGraphiteは支援しない。** `pub(crate)`はクレート内のどこからでも呼べてしまうため、stable Rustの可視性だけでは「呼べるのは`construct!`だけ」という主張を強制できない。内部構築子には`#[deprecated]`を添えて直接呼び出しを警告にし (`#![deny(warnings)]`の下ではエラーになる)、`construct!`の展開側だけが`#[allow(deprecated)]`で自分自身の呼び出しを許す。直接の呼び出しを禁止でなく警告にするのは、stableのマクロ衛生では呼び出し元をマクロ展開だけに限定できないため。回帰試験: `crates/graphite/tests/ui/static_internal_constructor_direct_call.rs`。
 - **`construct!`の内部構築子呼び出し (`{グラフ名}::Graph::__graphite_internal_new`) は、`{グラフ名}`をそのまま冠した相対パスで書く。** `super::`は呼び出し位置 (instanceのmodと`construct!`の呼び出し位置の相対関係) 次第で深さが合わなくなり、`$crate::{グラフ名}::Graph`はinstanceの`mod`が関数の中にあると解決できない (どちらも実測で確認済み、`file::instance_file::construct`のコメント参照)。`{グラフ名}::Graph`という相対パスだけが、`mod`宣言がクレートルート直下にあっても関数の中にあっても、呼び出し位置から見える名前として解決される。同じ理由で値マクロの呼び出しも無修飾のまま書く。
 
 ### renameの手順
