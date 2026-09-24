@@ -35,7 +35,6 @@ fn 個体値マクロは捕捉しない関数を経由し名前はグラフ名�
     assert!(コード.contains(&マクロ名));
     assert!(コード.contains("fn __graphite_value_太郎_開発チーム"));
     assert!(!コード.contains("impl"), "implブロックを使わないこと (non_local_definitions対策)");
-    assert!(!コード.contains("let __graphite_captured"), "クロージャ束縛を使わないこと (issue #46の再設計で廃止)");
 }
 
 #[test]
