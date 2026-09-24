@@ -5,9 +5,9 @@
 //! 固定する試験は`static_value_expr_resolves_at_declaration_site.rs`・
 //! `static_individual_value_evaluated_once_per_assembly.rs`が持つ。instance
 //! を関数の中に置いても、値の式は依然として宣言位置に置いた捕捉しない`fn`
-//! の本体として固定されるため (`docs/static_graph.md`「値の式の名前解決」
-//! 節)、コード生成の経路はモジュール直下と同じだが、実際に関数の中に
-//! 置いた配置でも同じ性質が成り立つことを別に確かめる。
+//! の本体として生成器が固定するため (`docs/static_graph.md`「値の式の
+//! 名前解決」節)、コード生成の経路はモジュール直下と同じだが、実際に
+//! 関数の中に置いた配置でも同じ性質が成り立つことを別に確かめる。
 //! `non_local_definitions`が出ないことの固定は
 //! `static_mod_outside_instance_inside_fn.rs`が別に持つ。
 
