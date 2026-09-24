@@ -1,0 +1,234 @@
+// このファイルは Graphite が生成したため手編集しないこと。
+// 生成元: tests/static_value_expr_not_duplicated_into_generated_file.rs:74
+// 再生成: パッケージのディレクトリで cargo graphite generate を実行してください (Graphite リポジトリ自身の開発では cargo xtask generate)
+
+#[allow(unused_imports)]
+use super::*;
+#[doc(hidden)]
+pub(super) const __GRAPHITE_STATIC_INSTANCE_FINGERPRINT: [u64; 4] = [
+    677840222805298712u64, 14672897489288403515u64, 11310531699282306506u64,
+    16128613196926821366u64,
+];
+/// Graphite 静的グラフの具体個体参照。
+///
+/// - graph: `複製検査関数内チーム`
+/// - 個体: `次郎`
+/// - 実体型: `社員`
+///
+/// 宣言: `tests/static_value_expr_not_duplicated_into_generated_file.rs` の `node 次郎: 社員 = ..`
+#[derive(Clone, Copy)]
+pub struct 次郎Ref<'a> {
+    graph: &'a Graph,
+}
+impl<'a> 次郎Ref<'a> {
+    /// Graphite 静的グラフの具体個体参照から実体を取り出す `entity` (Graphite の固定語彙)。
+    ///
+    /// - graph: `複製検査関数内チーム`
+    ///
+    /// 固定語彙: `entity` (`docs/static_graph.md` 「生成される名前の公開契約」)
+    pub fn entity(&self) -> &'a 社員 {
+        &self.graph.次郎
+    }
+    /// Graphite 静的グラフの具体辺参照を返す。
+    ///
+    /// - graph: `複製検査関数内チーム`
+    /// - 個体: `次郎`
+    /// - 具体辺: `次郎の所属`
+    /// - 辺種別: `所属`
+    /// - この個体の役割: `member`
+    /// - 戻り値: `次郎の所属Ref`
+    ///
+    /// 宣言: `tests/static_value_expr_not_duplicated_into_generated_file.rs` の `edge 次郎の所属 = 所属(次郎 -> 総務部)`
+    ///
+    /// 関係する schema 宣言: `tests/static_value_expr_not_duplicated_into_generated_file.rs` の `edge 所属 = (member: 社員) -> (team: 部署) where each member: 1`
+    pub fn 次郎の所属(&self) -> 次郎の所属Ref<'a> {
+        次郎の所属Ref {
+            graph: self.graph,
+        }
+    }
+}
+/// Graphite 静的グラフの具体個体参照。
+///
+/// - graph: `複製検査関数内チーム`
+/// - 個体: `総務部`
+/// - 実体型: `部署`
+///
+/// 宣言: `tests/static_value_expr_not_duplicated_into_generated_file.rs` の `node 総務部: 部署 = ..`
+#[derive(Clone, Copy)]
+pub struct 総務部Ref<'a> {
+    graph: &'a Graph,
+}
+impl<'a> 総務部Ref<'a> {
+    /// Graphite 静的グラフの具体個体参照から実体を取り出す `entity` (Graphite の固定語彙)。
+    ///
+    /// - graph: `複製検査関数内チーム`
+    ///
+    /// 固定語彙: `entity` (`docs/static_graph.md` 「生成される名前の公開契約」)
+    pub fn entity(&self) -> &'a 部署 {
+        &self.graph.総務部
+    }
+    /// Graphite 静的グラフの具体辺参照を返す。
+    ///
+    /// - graph: `複製検査関数内チーム`
+    /// - 個体: `総務部`
+    /// - 具体辺: `次郎の所属`
+    /// - 辺種別: `所属`
+    /// - この個体の役割: `team`
+    /// - 戻り値: `次郎の所属Ref`
+    ///
+    /// 宣言: `tests/static_value_expr_not_duplicated_into_generated_file.rs` の `edge 次郎の所属 = 所属(次郎 -> 総務部)`
+    ///
+    /// 関係する schema 宣言: `tests/static_value_expr_not_duplicated_into_generated_file.rs` の `edge 所属 = (member: 社員) -> (team: 部署) where each member: 1`
+    pub fn 次郎の所属(&self) -> 次郎の所属Ref<'a> {
+        次郎の所属Ref {
+            graph: self.graph,
+        }
+    }
+}
+/// Graphite 静的グラフの具体辺参照。
+///
+/// - graph: `複製検査関数内チーム`
+/// - 具体辺: `次郎の所属`
+/// - 辺種別: `所属`
+///
+/// 宣言: `tests/static_value_expr_not_duplicated_into_generated_file.rs` の `edge 次郎の所属 = 所属(次郎 -> 総務部)`
+///
+/// 関係する schema 宣言: `tests/static_value_expr_not_duplicated_into_generated_file.rs` の `edge 所属 = (member: 社員) -> (team: 部署) where each member: 1`
+#[derive(Clone, Copy)]
+pub struct 次郎の所属Ref<'a> {
+    graph: &'a Graph,
+}
+impl<'a> 次郎の所属Ref<'a> {
+    /// Graphite 静的グラフの端点の役割アクセサ。
+    ///
+    /// - 辺種別: `所属`
+    /// - 役割: `member: 社員`
+    /// - 具体辺: `次郎の所属`
+    /// - 具体端点: `次郎`
+    /// - 戻り値: `次郎Ref`
+    /// - 検証制約: `each member: 1` (instance の辺の集合が満たすことを展開時に検査済み。戻り値の型は制約ではなく具体辺の宣言が決める)
+    ///
+    /// 宣言: `tests/static_value_expr_not_duplicated_into_generated_file.rs` の `edge 所属 = (member: 社員) -> (team: 部署) where each member: 1`
+    ///
+    /// 関係する instance 宣言: `tests/static_value_expr_not_duplicated_into_generated_file.rs` の `edge 次郎の所属 = 所属(次郎 -> 総務部)`
+    pub fn member(&self) -> 次郎Ref<'a> {
+        次郎Ref { graph: self.graph }
+    }
+    /// Graphite 静的グラフの端点の役割アクセサ。
+    ///
+    /// - 辺種別: `所属`
+    /// - 役割: `team: 部署`
+    /// - 具体辺: `次郎の所属`
+    /// - 具体端点: `総務部`
+    /// - 戻り値: `総務部Ref`
+    /// - 検証制約: `each member: 1` (instance の辺の集合が満たすことを展開時に検査済み。戻り値の型は制約ではなく具体辺の宣言が決める)
+    ///
+    /// 宣言: `tests/static_value_expr_not_duplicated_into_generated_file.rs` の `edge 所属 = (member: 社員) -> (team: 部署) where each member: 1`
+    ///
+    /// 関係する instance 宣言: `tests/static_value_expr_not_duplicated_into_generated_file.rs` の `edge 次郎の所属 = 所属(次郎 -> 総務部)`
+    pub fn team(&self) -> 総務部Ref<'a> {
+        総務部Ref { graph: self.graph }
+    }
+}
+/// Graphite 静的グラフの個体参照の集まり `NodeRefs` (Graphite の固定語彙)。
+///
+/// - graph: `複製検査関数内チーム`
+///
+/// 固定語彙: `NodeRefs` (`docs/static_graph.md` 「生成される名前の公開契約」)
+pub struct NodeRefs<'a> {
+    graph: &'a Graph,
+}
+impl<'a> NodeRefs<'a> {
+    /// Graphite 静的グラフの個体参照メソッド。`NodeRefs` がこのメソッドでこの個体の具体参照を返す。
+    ///
+    /// - graph: `複製検査関数内チーム`
+    /// - 個体: `次郎`
+    ///
+    /// 宣言: `tests/static_value_expr_not_duplicated_into_generated_file.rs` の `node 次郎: 社員 = ..`
+    pub fn 次郎(&self) -> 次郎Ref<'a> {
+        次郎Ref { graph: self.graph }
+    }
+    /// Graphite 静的グラフの個体参照メソッド。`NodeRefs` がこのメソッドでこの個体の具体参照を返す。
+    ///
+    /// - graph: `複製検査関数内チーム`
+    /// - 個体: `総務部`
+    ///
+    /// 宣言: `tests/static_value_expr_not_duplicated_into_generated_file.rs` の `node 総務部: 部署 = ..`
+    pub fn 総務部(&self) -> 総務部Ref<'a> {
+        総務部Ref { graph: self.graph }
+    }
+}
+/// Graphite 静的グラフの辺参照の集まり `EdgeRefs` (Graphite の固定語彙)。
+///
+/// - graph: `複製検査関数内チーム`
+///
+/// 固定語彙: `EdgeRefs` (`docs/static_graph.md` 「生成される名前の公開契約」)
+pub struct EdgeRefs<'a> {
+    graph: &'a Graph,
+}
+impl<'a> EdgeRefs<'a> {
+    /// Graphite 静的グラフの辺参照メソッド。`EdgeRefs` がこのメソッドでこの具体辺の具体参照を返す。
+    ///
+    /// - graph: `複製検査関数内チーム`
+    /// - 具体辺: `次郎の所属`
+    ///
+    /// 宣言: `tests/static_value_expr_not_duplicated_into_generated_file.rs` の `edge 次郎の所属 = 所属(次郎 -> 総務部)`
+    pub fn 次郎の所属(&self) -> 次郎の所属Ref<'a> {
+        次郎の所属Ref {
+            graph: self.graph,
+        }
+    }
+}
+/// Graphite 静的グラフの具体グラフ本体 `Graph` (Graphite の固定語彙)。
+///
+/// - graph: `複製検査関数内チーム`
+///
+/// 固定語彙: `Graph` (`docs/static_graph.md` 「生成される名前の公開契約」)
+pub struct Graph {
+    次郎: 社員,
+    総務部: 部署,
+}
+impl Graph {
+    #[doc(hidden)]
+    #[deprecated(
+        note = "Graphite の内部構築子である。construct! を使うこと"
+    )]
+    pub(crate) fn __graphite_internal_new(次郎: 社員, 総務部: 部署) -> Self {
+        Self { 次郎, 総務部 }
+    }
+    /// Graphite 静的グラフの `Graph` が個体参照の集まりを返すメソッド `node_refs` (Graphite の固定語彙)。
+    ///
+    /// - graph: `複製検査関数内チーム`
+    ///
+    /// 固定語彙: `node_refs` (`docs/static_graph.md` 「生成される名前の公開契約」)
+    pub fn node_refs(&self) -> NodeRefs<'_> {
+        NodeRefs { graph: self }
+    }
+    /// Graphite 静的グラフの `Graph` が辺参照の集まりを返すメソッド `edge_refs` (Graphite の固定語彙)。
+    ///
+    /// - graph: `複製検査関数内チーム`
+    ///
+    /// 固定語彙: `edge_refs` (`docs/static_graph.md` 「生成される名前の公開契約」)
+    pub fn edge_refs(&self) -> EdgeRefs<'_> {
+        EdgeRefs { graph: self }
+    }
+}
+/// Graphite 静的グラフの `Graph` を実体化するマクロ `construct` (Graphite の固定語彙)。値ありの個体・積み荷はinstance宣言の式からこのマクロが計算し、値なしの個体だけを宣言順の引数で受け取る。
+///
+/// - graph: `複製検査関数内チーム`
+/// - 戻り値: `Graph`
+///
+/// 固定語彙: `construct!` (`docs/static_graph.md` 「生成される名前の公開契約」)
+///
+/// 関係する instance 宣言: `tests/static_value_expr_not_duplicated_into_generated_file.rs` の `graph 複製検査関数内チーム`
+macro_rules! construct {
+    () => {
+        { let (次郎, 総務部,) =
+        __graphite_values_複製検査関数内チーム_e22bb7ceffbba9db!(); let () =
+        __graphite_payloads_複製検査関数内チーム_e22bb7ceffbba9db!();
+        #[allow(deprecated)] {
+        複製検査関数内チーム::Graph::__graphite_internal_new(次郎, 総務部)
+        } }
+    };
+}
+pub(crate) use construct;
