@@ -1,5 +1,5 @@
 // `Graph` が個体・積み荷を直接持つフィールドが非公開であることを固定する
-// (issue #41、PR #45)。値ありの個体はinstance宣言の式からのみ供給され、
+// (issue #41)。値ありの個体はinstance宣言の式からのみ供給され、
 // 利用者がフィールドへ直接アクセスして迂回できない。手書きの模型ではなく、
 // 実際の生成ファイル (`cargo xtask generate`が書いたもの) をそのまま
 // `include!`して検査する (schema・instanceの宣言は`static_multi_module.rs`

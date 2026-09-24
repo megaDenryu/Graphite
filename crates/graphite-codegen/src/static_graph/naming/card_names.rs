@@ -2,8 +2,8 @@
 // は既にinstanceの宣言をそのまま写しただけの識別子 (辺アクセサメソッド名は
 // `具体辺.名前()` そのもの) なので `format_ident!` は使わない。
 // `static_graph::file::instance_file` (edge_ref・node_ref) が doc属性へ
-// 変換して生成ファイルへ出す。`Nodes::new`/`Edges::new` の意味カードは
-// 別の関心事 (`construction_card_names`) へ分けてある。
+// 変換して生成ファイルへ出す。構築の唯一の入口 `construct!` の意味カードは
+// 別の関心事 (`naming::construct_fixed_vocabulary`) へ分けてある。
 
 use proc_macro2::Ident;
 
