@@ -7,3 +7,9 @@ publish = false
 
 [dependencies]
 graphite = { path = "../../crates/graphite" }
+
+# 生成物を読み込む利用側の crate が `.expect()`・`.unwrap()` を禁じていても、生成物が
+# clippy を通ることを `cargo xtask check-external` で固定する (issue #48)。
+[lints.clippy]
+expect_used = "deny"
+unwrap_used = "deny"

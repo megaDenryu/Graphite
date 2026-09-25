@@ -65,15 +65,17 @@ graphite::dynamic_graph_schema! {
 // ビルドが見逃す。組み立てから読み出しまで通すことで、生成した型・辺の役割
 // アクセサ・多重度検査が外部 crate でも働くことを確かめる。
 pub fn 貸出中の蔵書を1件持つ図書グラフを組み立てる() -> Library::Graph {
-    graphite::graph!(Library {
+    let 構築の結果 = graphite::graph!(Library {
         本 = Book { title: "型で守るグラフ".to_string() },
         利用者 = Reader { name: "検証".to_string() },
         感想相手 = Reader { name: "検証2".to_string() },
         貸出 = Borrowed(本 -[Loan { day: 1 }]-> 利用者),
         推薦 = Recommended(利用者 -[Impression { text: "面白い".to_string() }]- 感想相手),
-    })
-    .expect("多重度を満たすグラフは構築に成功する")
-    .into_graph()
+    });
+    let Ok(構築済み) = 構築の結果 else {
+        panic!("多重度を満たすグラフは構築に成功する")
+    };
+    構築済み.into_graph()
 }
 
 // static_graph_schema! (issue #24、全個体がコンパイル時に確定するグラフ) が外部
