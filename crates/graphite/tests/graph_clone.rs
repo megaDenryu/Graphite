@@ -54,28 +54,40 @@ macro_rules! 世界を構築する {
     };
 }
 
+fn 太郎の購入の金額を書き換える(グラフ: &mut 複製世界::Graph, 金額: u64) {
+    let 購入 = 購入Id("太郎の購入".into());
+    グラフ.購入_payload_mut(&購入).expect("購入").金額 = 金額;
+}
+
+fn 太郎の購入の金額(グラフ: &複製世界::Graph) -> u64 {
+    let 購入 = 購入Id("太郎の購入".into());
+    グラフ.購入_by_id(&購入).expect("購入").取引().金額
+}
+
 #[test]
 fn 複製したグラフは元と同じ個体と辺と索引を持ち元から独立している() {
     let 元 = 世界を構築する!().into_graph();
     let mut 複製 = 元.clone();
+    let 太郎Id = 人物Id("太郎".into());
 
-    let 太郎 = 複製.人物_by_id(&人物Id("太郎".into())).expect("太郎がいるはず");
-    let 本 = 太郎.購入_between(複製.商品_iter().next().expect("本があるはず"));
-    assert_eq!(本.expect("購入が複製されているはず").取引().金額, 1200);
-    assert_eq!(複製.商品_iter().next().expect("本").担当_as_担当商品().担当者().名前, "花子");
+    let 太郎 = 複製.人物_by_id(&太郎Id).expect("太郎がいるはず");
+    let 本 = 複製.商品_iter().next().expect("本があるはず");
+    let 購入 = 太郎.購入_between(本).expect("購入が複製されているはず");
+    assert_eq!(購入.取引().金額, 1200);
+    assert_eq!(本.担当_as_担当商品().担当者().名前, "花子");
     assert_eq!(太郎.友人_incident().count(), 1);
 
-    複製.購入_payload_mut(&購入Id("太郎の購入".into())).expect("購入").金額 = 1;
-    複製.人物_value_mut(&人物Id("太郎".into())).expect("太郎").名前 = "複製の太郎".into();
-    assert_eq!(元.購入_by_id(&購入Id("太郎の購入".into())).expect("購入").取引().金額, 1200);
-    assert_eq!(元.人物_by_id(&人物Id("太郎".into())).expect("太郎").名前, "太郎");
+    太郎の購入の金額を書き換える(&mut 複製, 1);
+    複製.人物_value_mut(&太郎Id).expect("太郎").名前 = "複製の太郎".into();
+    assert_eq!(太郎の購入の金額(&元), 1200);
+    assert_eq!(元.人物_by_id(&太郎Id).expect("太郎").名前, "太郎");
 }
 
 #[test]
 fn 名前付きラッパーの複製は静的アクセサで複製したグラフを指す() {
     let 元 = 世界を構築する!();
     let mut 複製 = 元.clone();
-    複製.購入_payload_mut(&購入Id("太郎の購入".into())).expect("購入").金額 = 1;
+    太郎の購入の金額を書き換える(&mut 複製, 1);
 
     assert_eq!(複製.太郎の購入().取引().金額, 1);
     assert_eq!(元.太郎の購入().取引().金額, 1200);
@@ -86,7 +98,7 @@ fn 名前付きラッパーの複製は静的アクセサで複製したグラ�
 fn 複製は構築印を引き継ぐので元と複製の参照の組は不一致にならず受け手のグラフに束縛される() {
     let 元 = 世界を構築する!();
     let mut 複製 = 元.clone();
-    複製.購入_payload_mut(&購入Id("太郎の購入".into())).expect("購入").金額 = 1;
+    太郎の購入の金額を書き換える(&mut 複製, 1);
 
     let 辺 = 元
         .太郎()

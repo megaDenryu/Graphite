@@ -15,8 +15,7 @@ pub enum CloneDerive {
     Declared,
 }
 
-const ACCEPTED_ATTRIBUTE: &str =
-    "schema 宣言の前に書ける属性は `#[derive(Clone)]` だけです";
+const ACCEPTED_ATTRIBUTE: &str = "schema 宣言の前に書ける属性は `#[derive(Clone)]` だけです";
 
 impl CloneDerive {
     // `schema` の前に並んだ外側属性の列を読む。受理しない属性と、

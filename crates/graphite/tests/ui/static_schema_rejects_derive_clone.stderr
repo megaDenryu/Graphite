@@ -1,0 +1,5 @@
+error: expected `schema`
+ --> tests/ui/static_schema_rejects_derive_clone.rs:8:5
+  |
+8 |     #[derive(Clone)]
+  |     ^
