@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    1291174686737951902u64, 9003208429607694951u64, 5909228486761345120u64,
-    384723375791785164u64,
+    6252893699210983437u64, 4548556947374083726u64, 5116241171979801263u64,
+    11965815574758482347u64,
 ];
 /// `Scene` ノードの公開ID。
 ///
@@ -486,25 +486,23 @@ pub struct ChoiceRef<'graph> {
 }
 impl<'graph> ChoiceRef<'graph> {
     fn record(self) -> &'graph __ChoiceRecord {
-        self.graph
-            .choice
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+        let Some((_, record)) = self.graph.choice.get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        record
     }
     /// この辺個体の公開IDを借用する。
     ///
     /// 宣言: `src/schema.rs` の `edge Choice = (scene: Scene) -[choice: ChoiceEdge]-> (next: Scene)`
     pub fn id(self) -> &'graph ChoiceId {
-        self.graph
-            .choice
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+        let Some((id, _)) = self.graph.choice.get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .0
+        };
+        id
     }
     /// この辺個体の始点側の端点を役割名で返す。
     ///
@@ -578,25 +576,23 @@ pub struct FinaleRef<'graph> {
 }
 impl<'graph> FinaleRef<'graph> {
     fn record(self) -> &'graph __FinaleRecord {
-        self.graph
-            .finale
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+        let Some((_, record)) = self.graph.finale.get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        record
     }
     /// この辺個体の公開IDを借用する。
     ///
     /// 宣言: `src/schema.rs` の `edge Finale = (scene: Scene) -> (ending: Ending) where each scene: 0..1`
     pub fn id(self) -> &'graph FinaleId {
-        self.graph
-            .finale
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+        let Some((id, _)) = self.graph.finale.get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .0
+        };
+        id
     }
     /// この辺個体の始点側の端点を役割名で返す。
     ///
@@ -773,25 +769,29 @@ impl<'graph> SceneRef<'graph> {
     ///
     /// 宣言: `src/schema.rs` の `node Scene`
     pub fn id(self) -> &'graph SceneId {
-        self.graph
+        let Some((id, _)) = self
+            .graph
             .__graphite_node_scene
-            .get_at(self.internal_position.0)
-            .expect(
-                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .0
+        };
+        id
     }
     /// このノード個体のノード値を借用する。
     ///
     /// 宣言: `src/schema.rs` の `node Scene`
     pub fn value(self) -> &'graph super::Scene {
-        self.graph
+        let Some((_, value)) = self
+            .graph
             .__graphite_node_scene
-            .get_at(self.internal_position.0)
-            .expect(
-                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        value
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
@@ -932,13 +932,15 @@ impl<'graph> SceneRef<'graph> {
 impl<'graph> std::ops::Deref for SceneRef<'graph> {
     type Target = super::Scene;
     fn deref(&self) -> &Self::Target {
-        self.graph
+        let Some((_, value)) = self
+            .graph
             .__graphite_node_scene
-            .get_at(self.internal_position.0)
-            .expect(
-                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        value
     }
 }
 impl<'graph> std::fmt::Debug for SceneRef<'graph> {
@@ -1014,25 +1016,29 @@ impl<'graph> EndingRef<'graph> {
     ///
     /// 宣言: `src/schema.rs` の `node Ending`
     pub fn id(self) -> &'graph EndingId {
-        self.graph
+        let Some((id, _)) = self
+            .graph
             .__graphite_node_ending
-            .get_at(self.internal_position.0)
-            .expect(
-                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .0
+        };
+        id
     }
     /// このノード個体のノード値を借用する。
     ///
     /// 宣言: `src/schema.rs` の `node Ending`
     pub fn value(self) -> &'graph super::Ending {
-        self.graph
+        let Some((_, value)) = self
+            .graph
             .__graphite_node_ending
-            .get_at(self.internal_position.0)
-            .expect(
-                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        value
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
@@ -1052,13 +1058,15 @@ impl<'graph> EndingRef<'graph> {
 impl<'graph> std::ops::Deref for EndingRef<'graph> {
     type Target = super::Ending;
     fn deref(&self) -> &Self::Target {
-        self.graph
+        let Some((_, value)) = self
+            .graph
             .__graphite_node_ending
-            .get_at(self.internal_position.0)
-            .expect(
-                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        value
     }
 }
 impl<'graph> std::fmt::Debug for EndingRef<'graph> {
@@ -1487,10 +1495,9 @@ impl Builder {
         };
         for position in __graphite_node_scene.positions() {
             let internal_position = __SceneInternalPosition(position);
-            let key = __graphite_node_scene
-                .get_at(position)
-                .expect("列挙した内部位置はノード表に存在する")
-                .0;
+            let Some((key, _)) = __graphite_node_scene.get_at(position) else {
+                panic!("列挙した内部位置はノード表に存在する")
+            };
             let count = finale_from_index
                 .get(&internal_position)
                 .map(Vec::len)

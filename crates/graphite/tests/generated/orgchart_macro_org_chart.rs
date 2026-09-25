@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    4007966473764014254u64, 3780664326141556203u64, 13836150246136371456u64,
-    2170104503845331756u64,
+    11870866092744501079u64, 8707300432953632152u64, 2759775096046148405u64,
+    8151115718460102801u64,
 ];
 /// `Employee` ノードの公開ID。
 ///
@@ -804,25 +804,24 @@ pub struct BelongsToRef<'graph> {
 }
 impl<'graph> BelongsToRef<'graph> {
     fn record(self) -> &'graph __BelongsToRecord {
-        self.graph
-            .belongs_to
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+        let Some((_, record)) = self.graph.belongs_to.get_at(self.internal_position.0)
+        else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        record
     }
     /// この辺個体の公開IDを借用する。
     ///
     /// 宣言: `tests/orgchart_macro.rs` の `edge BelongsTo = (employee: Employee) -> (department: Department) where each employee: 1`
     pub fn id(self) -> &'graph BelongsToId {
-        self.graph
-            .belongs_to
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+        let Some((id, _)) = self.graph.belongs_to.get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .0
+        };
+        id
     }
     /// この辺個体の始点側の端点を役割名で返す。
     ///
@@ -884,25 +883,23 @@ pub struct BossRef<'graph> {
 }
 impl<'graph> BossRef<'graph> {
     fn record(self) -> &'graph __BossRecord {
-        self.graph
-            .boss
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+        let Some((_, record)) = self.graph.boss.get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        record
     }
     /// この辺個体の公開IDを借用する。
     ///
     /// 宣言: `tests/orgchart_macro.rs` の `edge Boss = (subordinate: Employee) -[appointment: BossEdge]-> (superior: Employee) where each subordinate: 0..1`
     pub fn id(self) -> &'graph BossId {
-        self.graph
-            .boss
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+        let Some((id, _)) = self.graph.boss.get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .0
+        };
+        id
     }
     /// この辺個体の始点側の端点を役割名で返す。
     ///
@@ -976,25 +973,23 @@ pub struct ReportsRef<'graph> {
 }
 impl<'graph> ReportsRef<'graph> {
     fn record(self) -> &'graph __ReportsRecord {
-        self.graph
-            .reports
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+        let Some((_, record)) = self.graph.reports.get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        record
     }
     /// この辺個体の公開IDを借用する。
     ///
     /// 宣言: `tests/orgchart_macro.rs` の `edge Reports = (reporter: Employee) -> (recipient: Employee) where unique pair`
     pub fn id(self) -> &'graph ReportsId {
-        self.graph
-            .reports
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+        let Some((id, _)) = self.graph.reports.get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .0
+        };
+        id
     }
     /// この辺個体の始点側の端点を役割名で返す。
     ///
@@ -1056,25 +1051,23 @@ pub struct LeadsRef<'graph> {
 }
 impl<'graph> LeadsRef<'graph> {
     fn record(self) -> &'graph __LeadsRecord {
-        self.graph
-            .leads
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+        let Some((_, record)) = self.graph.leads.get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        record
     }
     /// この辺個体の公開IDを借用する。
     ///
     /// 宣言: `tests/orgchart_macro.rs` の `edge Leads = (leader: Employee) -> (department: Department) where each department: 0..1`
     pub fn id(self) -> &'graph LeadsId {
-        self.graph
-            .leads
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+        let Some((id, _)) = self.graph.leads.get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .0
+        };
+        id
     }
     /// この辺個体の始点側の端点を役割名で返す。
     ///
@@ -1253,25 +1246,29 @@ impl<'graph> EmployeeRef<'graph> {
     ///
     /// 宣言: `tests/orgchart_macro.rs` の `node Employee`
     pub fn id(self) -> &'graph EmployeeId {
-        self.graph
+        let Some((id, _)) = self
+            .graph
             .__graphite_node_employee
-            .get_at(self.internal_position.0)
-            .expect(
-                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .0
+        };
+        id
     }
     /// このノード個体のノード値を借用する。
     ///
     /// 宣言: `tests/orgchart_macro.rs` の `node Employee`
     pub fn value(self) -> &'graph super::Employee {
-        self.graph
+        let Some((_, value)) = self
+            .graph
             .__graphite_node_employee
-            .get_at(self.internal_position.0)
-            .expect(
-                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        value
     }
     /// この役割に接続する唯一の辺を O(1)、追加確保なしで返す。
     ///
@@ -1546,13 +1543,15 @@ impl<'graph> EmployeeRef<'graph> {
 impl<'graph> std::ops::Deref for EmployeeRef<'graph> {
     type Target = super::Employee;
     fn deref(&self) -> &Self::Target {
-        self.graph
+        let Some((_, value)) = self
+            .graph
             .__graphite_node_employee
-            .get_at(self.internal_position.0)
-            .expect(
-                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        value
     }
 }
 impl<'graph> std::fmt::Debug for EmployeeRef<'graph> {
@@ -1628,25 +1627,29 @@ impl<'graph> DepartmentRef<'graph> {
     ///
     /// 宣言: `tests/orgchart_macro.rs` の `node Department`
     pub fn id(self) -> &'graph DepartmentId {
-        self.graph
+        let Some((id, _)) = self
+            .graph
             .__graphite_node_department
-            .get_at(self.internal_position.0)
-            .expect(
-                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .0
+        };
+        id
     }
     /// このノード個体のノード値を借用する。
     ///
     /// 宣言: `tests/orgchart_macro.rs` の `node Department`
     pub fn value(self) -> &'graph super::Department {
-        self.graph
+        let Some((_, value)) = self
+            .graph
             .__graphite_node_department
-            .get_at(self.internal_position.0)
-            .expect(
-                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        value
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
@@ -1681,13 +1684,15 @@ impl<'graph> DepartmentRef<'graph> {
 impl<'graph> std::ops::Deref for DepartmentRef<'graph> {
     type Target = super::Department;
     fn deref(&self) -> &Self::Target {
-        self.graph
+        let Some((_, value)) = self
+            .graph
             .__graphite_node_department
-            .get_at(self.internal_position.0)
-            .expect(
-                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        value
     }
 }
 impl<'graph> std::fmt::Debug for DepartmentRef<'graph> {
@@ -2169,10 +2174,9 @@ impl Builder {
         };
         for position in __graphite_node_employee.positions() {
             let internal_position = __EmployeeInternalPosition(position);
-            let key = __graphite_node_employee
-                .get_at(position)
-                .expect("列挙した内部位置はノード表に存在する")
-                .0;
+            let Some((key, _)) = __graphite_node_employee.get_at(position) else {
+                panic!("列挙した内部位置はノード表に存在する")
+            };
             let count = belongs_to_from_index
                 .get(&internal_position)
                 .map(Vec::len)
@@ -2255,10 +2259,9 @@ impl Builder {
         };
         for position in __graphite_node_employee.positions() {
             let internal_position = __EmployeeInternalPosition(position);
-            let key = __graphite_node_employee
-                .get_at(position)
-                .expect("列挙した内部位置はノード表に存在する")
-                .0;
+            let Some((key, _)) = __graphite_node_employee.get_at(position) else {
+                panic!("列挙した内部位置はノード表に存在する")
+            };
             let count = boss_from_index
                 .get(&internal_position)
                 .map(Vec::len)
@@ -2410,10 +2413,9 @@ impl Builder {
         };
         for position in __graphite_node_department.positions() {
             let internal_position = __DepartmentInternalPosition(position);
-            let key = __graphite_node_department
-                .get_at(position)
-                .expect("列挙した内部位置はノード表に存在する")
-                .0;
+            let Some((key, _)) = __graphite_node_department.get_at(position) else {
+                panic!("列挙した内部位置はノード表に存在する")
+            };
             let count = leads_to_index
                 .get(&internal_position)
                 .map(Vec::len)

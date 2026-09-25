@@ -113,7 +113,9 @@ pub(crate) fn gen_directed_edge_freeze_block(
             EachSide::Source => quote! {
                 for position in #from_field.positions() {
                     let internal_position = #from_position_type(position);
-                    let key = #from_field.get_at(position).expect("列挙した内部位置はノード表に存在する").0;
+                    let Some((key, _)) = #from_field.get_at(position) else {
+                        panic!("列挙した内部位置はノード表に存在する")
+                    };
                     let count = #from_index.get(&internal_position).map(Vec::len).unwrap_or(0);
                     if #invalid_count {
                         __violations.push(#violation_ident::#v { source: key.clone(), count });
@@ -123,7 +125,9 @@ pub(crate) fn gen_directed_edge_freeze_block(
             EachSide::Target => quote! {
                 for position in #to_field.positions() {
                     let internal_position = #to_position_type(position);
-                    let key = #to_field.get_at(position).expect("列挙した内部位置はノード表に存在する").0;
+                    let Some((key, _)) = #to_field.get_at(position) else {
+                        panic!("列挙した内部位置はノード表に存在する")
+                    };
                     let count = #to_index.get(&internal_position).map(Vec::len).unwrap_or(0);
                     if #invalid_count {
                         __violations.push(#violation_ident::#v { target: key.clone(), count });

@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    15397718404118703806u64, 15312728290419656571u64, 10145035769590580292u64,
-    15335529134125925104u64,
+    10818448316614940054u64, 11227557225281186817u64, 1553473355868102000u64,
+    3075806181343456764u64,
 ];
 /// `BelongsTo` 辺の公開ID。
 ///
@@ -347,25 +347,24 @@ pub struct BelongsToRef<'graph> {
 }
 impl<'graph> BelongsToRef<'graph> {
     fn record(self) -> &'graph __BelongsToRecord {
-        self.graph
-            .belongs_to
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+        let Some((_, record)) = self.graph.belongs_to.get_at(self.internal_position.0)
+        else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        record
     }
     /// この辺個体の公開IDを借用する。
     ///
     /// 宣言: `tests/node_id_shared_across_schemas.rs` の `edge BelongsTo = (person: Person) -> (department: Department) where each person: 0..1`
     pub fn id(self) -> &'graph BelongsToId {
-        self.graph
-            .belongs_to
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+        let Some((id, _)) = self.graph.belongs_to.get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .0
+        };
+        id
     }
     /// この辺個体の始点側の端点を役割名で返す。
     ///
@@ -528,25 +527,29 @@ impl<'graph> PersonRef<'graph> {
     ///
     /// 宣言: `tests/node_id_shared_across_schemas.rs` の `node Person(id: PersonId)`
     pub fn id(self) -> &'graph PersonId {
-        self.graph
+        let Some((id, _)) = self
+            .graph
             .__graphite_node_person
-            .get_at(self.internal_position.0)
-            .expect(
-                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .0
+        };
+        id
     }
     /// このノード個体のノード値を借用する。
     ///
     /// 宣言: `tests/node_id_shared_across_schemas.rs` の `node Person(id: PersonId)`
     pub fn value(self) -> &'graph super::Person {
-        self.graph
+        let Some((_, value)) = self
+            .graph
             .__graphite_node_person
-            .get_at(self.internal_position.0)
-            .expect(
-                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        value
     }
     /// この役割に接続する高々1本の辺を O(1)、追加確保なしで返す。
     ///
@@ -613,13 +616,15 @@ impl<'graph> PersonRef<'graph> {
 impl<'graph> std::ops::Deref for PersonRef<'graph> {
     type Target = super::Person;
     fn deref(&self) -> &Self::Target {
-        self.graph
+        let Some((_, value)) = self
+            .graph
             .__graphite_node_person
-            .get_at(self.internal_position.0)
-            .expect(
-                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        value
     }
 }
 impl<'graph> std::fmt::Debug for PersonRef<'graph> {
@@ -680,25 +685,29 @@ impl<'graph> DepartmentRef<'graph> {
     ///
     /// 宣言: `tests/node_id_shared_across_schemas.rs` の `node Department(id: DepartmentId)`
     pub fn id(self) -> &'graph DepartmentId {
-        self.graph
+        let Some((id, _)) = self
+            .graph
             .__graphite_node_department
-            .get_at(self.internal_position.0)
-            .expect(
-                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .0
+        };
+        id
     }
     /// このノード個体のノード値を借用する。
     ///
     /// 宣言: `tests/node_id_shared_across_schemas.rs` の `node Department(id: DepartmentId)`
     pub fn value(self) -> &'graph super::Department {
-        self.graph
+        let Some((_, value)) = self
+            .graph
             .__graphite_node_department
-            .get_at(self.internal_position.0)
-            .expect(
-                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        value
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
@@ -720,13 +729,15 @@ impl<'graph> DepartmentRef<'graph> {
 impl<'graph> std::ops::Deref for DepartmentRef<'graph> {
     type Target = super::Department;
     fn deref(&self) -> &Self::Target {
-        self.graph
+        let Some((_, value)) = self
+            .graph
             .__graphite_node_department
-            .get_at(self.internal_position.0)
-            .expect(
-                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        value
     }
 }
 impl<'graph> std::fmt::Debug for DepartmentRef<'graph> {
@@ -1027,10 +1038,9 @@ impl Builder {
         };
         for position in __graphite_node_person.positions() {
             let internal_position = __PersonInternalPosition(position);
-            let key = __graphite_node_person
-                .get_at(position)
-                .expect("列挙した内部位置はノード表に存在する")
-                .0;
+            let Some((key, _)) = __graphite_node_person.get_at(position) else {
+                panic!("列挙した内部位置はノード表に存在する")
+            };
             let count = belongs_to_from_index
                 .get(&internal_position)
                 .map(Vec::len)
