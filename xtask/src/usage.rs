@@ -8,7 +8,7 @@ pub(crate) const USAGE: &str = "\
 使い方: リポジトリルートで次のいずれかを実行してください
   cargo xtask generate            生成ファイルを更新する
   cargo xtask generate --check    生成ファイルの差分と孤児 (どの schema 宣言からも参照されなくなった生成ファイル) をエラーにする
-  cargo xtask check-external      ワークスペースの外の検証用パッケージで、生成の差分検査とビルドとテストを実行する
+  cargo xtask check-external      ワークスペースの外の検証用パッケージで、生成の差分検査とビルドと clippy とテストを実行する
   cargo xtask check-docs          文書参照とリポジトリ内Rustソース参照の綴りの実在・行数範囲、docs/README.md 索引の網羅を検査する
   cargo xtask check-doc-comments  doc コメントが公開面に網羅され、内部領域に1件も無いことを検査する
   cargo xtask check-line-counts   1ファイル100行の原則と、例外台帳の登録の過不足を検査する

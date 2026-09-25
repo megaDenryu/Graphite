@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    17752325934838978623u64, 18239146010406936072u64, 15858303005667012445u64,
-    5910039165347818745u64,
+    1717792019394541273u64, 9505206909505788086u64, 10138524649675098215u64,
+    16117612194126988787u64,
 ];
 /// `生成キーの地点` ノードの公開ID。
 ///
@@ -2401,25 +2401,29 @@ pub struct 生成キーの経路Ref<'graph> {
 }
 impl<'graph> 生成キーの経路Ref<'graph> {
     fn record(self) -> &'graph __生成キーの経路Record {
-        self.graph
+        let Some((_, record)) = self
+            .graph
             .生成キーの経路
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        record
     }
     /// この辺個体の公開IDを借用する。
     ///
     /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 生成キーの経路 = (始点: 生成キーの地点) -> (終点: 生成キーの地点)`
     pub fn id(self) -> &'graph 生成キーの経路Id {
-        self.graph
+        let Some((id, _)) = self
+            .graph
             .生成キーの経路
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .0
+        };
+        id
     }
     /// この辺個体の始点側の端点を役割名で返す。
     ///
@@ -2485,25 +2489,29 @@ pub struct 宣言キーの経路Ref<'graph> {
 }
 impl<'graph> 宣言キーの経路Ref<'graph> {
     fn record(self) -> &'graph __宣言キーの経路Record {
-        self.graph
+        let Some((_, record)) = self
+            .graph
             .宣言キーの経路
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        record
     }
     /// この辺個体の公開IDを借用する。
     ///
     /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 宣言キーの経路(id: 利用者が宣言した経路キー) = (始点: 生成キーの地点) -> (終点: 生成キーの地点)`
     pub fn id(self) -> &'graph 利用者が宣言した経路キー {
-        self.graph
+        let Some((id, _)) = self
+            .graph
             .宣言キーの経路
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .0
+        };
+        id
     }
     /// この辺個体の始点側の端点を役割名で返す。
     ///
@@ -2567,25 +2575,29 @@ pub struct 生成キーの連絡Ref<'graph> {
 }
 impl<'graph> 生成キーの連絡Ref<'graph> {
     fn record(self) -> &'graph __生成キーの連絡Record {
-        self.graph
+        let Some((_, record)) = self
+            .graph
             .生成キーの連絡
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        record
     }
     /// この辺個体の公開IDを借用する。
     ///
     /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 生成キーの連絡 = (始点: 宣言キーの地点) -> (終点: 宣言キーの地点)`
     pub fn id(self) -> &'graph 生成キーの連絡Id {
-        self.graph
+        let Some((id, _)) = self
+            .graph
             .生成キーの連絡
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .0
+        };
+        id
     }
     /// この辺個体の始点側の端点を役割名で返す。
     ///
@@ -2651,25 +2663,29 @@ pub struct 宣言キーの連絡Ref<'graph> {
 }
 impl<'graph> 宣言キーの連絡Ref<'graph> {
     fn record(self) -> &'graph __宣言キーの連絡Record {
-        self.graph
+        let Some((_, record)) = self
+            .graph
             .宣言キーの連絡
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        record
     }
     /// この辺個体の公開IDを借用する。
     ///
     /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 宣言キーの連絡(id: 利用者が宣言した経路キー) = (始点: 宣言キーの地点) -> (終点: 宣言キーの地点)`
     pub fn id(self) -> &'graph 利用者が宣言した経路キー {
-        self.graph
+        let Some((id, _)) = self
+            .graph
             .宣言キーの連絡
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .0
+        };
+        id
     }
     /// この辺個体の始点側の端点を役割名で返す。
     ///
@@ -2733,25 +2749,29 @@ pub struct 生成キーの交友Ref<'graph> {
 }
 impl<'graph> 生成キーの交友Ref<'graph> {
     fn record(self) -> &'graph __生成キーの交友Record {
-        self.graph
+        let Some((_, record)) = self
+            .graph
             .生成キーの交友
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        record
     }
     /// この辺個体の公開IDを借用する。
     ///
     /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 生成キーの交友 = 生成キーの地点 -- 生成キーの地点`
     pub fn id(self) -> &'graph 生成キーの交友Id {
-        self.graph
+        let Some((id, _)) = self
+            .graph
             .生成キーの交友
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .0
+        };
+        id
     }
     /// この辺個体の両端を順序なし対として返す。
     ///
@@ -2789,25 +2809,29 @@ pub struct 宣言キーの交友Ref<'graph> {
 }
 impl<'graph> 宣言キーの交友Ref<'graph> {
     fn record(self) -> &'graph __宣言キーの交友Record {
-        self.graph
+        let Some((_, record)) = self
+            .graph
             .宣言キーの交友
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        record
     }
     /// この辺個体の公開IDを借用する。
     ///
     /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 宣言キーの交友(id: 利用者が宣言した経路キー) = 生成キーの地点 -- 生成キーの地点`
     pub fn id(self) -> &'graph 利用者が宣言した経路キー {
-        self.graph
+        let Some((id, _)) = self
+            .graph
             .宣言キーの交友
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .0
+        };
+        id
     }
     /// この辺個体の両端を順序なし対として返す。
     ///
@@ -2843,25 +2867,29 @@ pub struct 生成キーの親交Ref<'graph> {
 }
 impl<'graph> 生成キーの親交Ref<'graph> {
     fn record(self) -> &'graph __生成キーの親交Record {
-        self.graph
+        let Some((_, record)) = self
+            .graph
             .生成キーの親交
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        record
     }
     /// この辺個体の公開IDを借用する。
     ///
     /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 生成キーの親交 = 宣言キーの地点 -- 宣言キーの地点`
     pub fn id(self) -> &'graph 生成キーの親交Id {
-        self.graph
+        let Some((id, _)) = self
+            .graph
             .生成キーの親交
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .0
+        };
+        id
     }
     /// この辺個体の両端を順序なし対として返す。
     ///
@@ -2899,25 +2927,29 @@ pub struct 宣言キーの親交Ref<'graph> {
 }
 impl<'graph> 宣言キーの親交Ref<'graph> {
     fn record(self) -> &'graph __宣言キーの親交Record {
-        self.graph
+        let Some((_, record)) = self
+            .graph
             .宣言キーの親交
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        record
     }
     /// この辺個体の公開IDを借用する。
     ///
     /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 宣言キーの親交(id: 利用者が宣言した経路キー) = 宣言キーの地点 -- 宣言キーの地点`
     pub fn id(self) -> &'graph 利用者が宣言した経路キー {
-        self.graph
+        let Some((id, _)) = self
+            .graph
             .宣言キーの親交
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .0
+        };
+        id
     }
     /// この辺個体の両端を順序なし対として返す。
     ///
@@ -2953,25 +2985,29 @@ pub struct 両端が生成キーの専有経路Ref<'graph> {
 }
 impl<'graph> 両端が生成キーの専有経路Ref<'graph> {
     fn record(self) -> &'graph __両端が生成キーの専有経路Record {
-        self.graph
+        let Some((_, record)) = self
+            .graph
             .両端が生成キーの専有経路
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        record
     }
     /// この辺個体の公開IDを借用する。
     ///
     /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が生成キーの専有経路 = (始点: 生成キーの地点) -> (終点: 生成キーの地点) where unique pair`
     pub fn id(self) -> &'graph 両端が生成キーの専有経路Id {
-        self.graph
+        let Some((id, _)) = self
+            .graph
             .両端が生成キーの専有経路
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .0
+        };
+        id
     }
     /// この辺個体の始点側の端点を役割名で返す。
     ///
@@ -3037,25 +3073,29 @@ pub struct 終点が宣言キーの専有経路Ref<'graph> {
 }
 impl<'graph> 終点が宣言キーの専有経路Ref<'graph> {
     fn record(self) -> &'graph __終点が宣言キーの専有経路Record {
-        self.graph
+        let Some((_, record)) = self
+            .graph
             .終点が宣言キーの専有経路
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        record
     }
     /// この辺個体の公開IDを借用する。
     ///
     /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 終点が宣言キーの専有経路 = (始点: 生成キーの地点) -> (終点: 宣言キーの地点) where unique pair`
     pub fn id(self) -> &'graph 終点が宣言キーの専有経路Id {
-        self.graph
+        let Some((id, _)) = self
+            .graph
             .終点が宣言キーの専有経路
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .0
+        };
+        id
     }
     /// この辺個体の始点側の端点を役割名で返す。
     ///
@@ -3121,25 +3161,29 @@ pub struct 始点が宣言キーの専有経路Ref<'graph> {
 }
 impl<'graph> 始点が宣言キーの専有経路Ref<'graph> {
     fn record(self) -> &'graph __始点が宣言キーの専有経路Record {
-        self.graph
+        let Some((_, record)) = self
+            .graph
             .始点が宣言キーの専有経路
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        record
     }
     /// この辺個体の公開IDを借用する。
     ///
     /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 始点が宣言キーの専有経路 = (始点: 宣言キーの地点) -> (終点: 生成キーの地点) where unique pair`
     pub fn id(self) -> &'graph 始点が宣言キーの専有経路Id {
-        self.graph
+        let Some((id, _)) = self
+            .graph
             .始点が宣言キーの専有経路
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .0
+        };
+        id
     }
     /// この辺個体の始点側の端点を役割名で返す。
     ///
@@ -3205,25 +3249,29 @@ pub struct 両端が宣言キーの専有経路Ref<'graph> {
 }
 impl<'graph> 両端が宣言キーの専有経路Ref<'graph> {
     fn record(self) -> &'graph __両端が宣言キーの専有経路Record {
-        self.graph
+        let Some((_, record)) = self
+            .graph
             .両端が宣言キーの専有経路
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        record
     }
     /// この辺個体の公開IDを借用する。
     ///
     /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が宣言キーの専有経路 = (始点: 宣言キーの地点) -> (終点: 宣言キーの地点) where unique pair`
     pub fn id(self) -> &'graph 両端が宣言キーの専有経路Id {
-        self.graph
+        let Some((id, _)) = self
+            .graph
             .両端が宣言キーの専有経路
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .0
+        };
+        id
     }
     /// この辺個体の始点側の端点を役割名で返す。
     ///
@@ -3289,25 +3337,29 @@ pub struct 両端が生成キーの専有交友Ref<'graph> {
 }
 impl<'graph> 両端が生成キーの専有交友Ref<'graph> {
     fn record(self) -> &'graph __両端が生成キーの専有交友Record {
-        self.graph
+        let Some((_, record)) = self
+            .graph
             .両端が生成キーの専有交友
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        record
     }
     /// この辺個体の公開IDを借用する。
     ///
     /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が生成キーの専有交友 = 生成キーの地点 -- 生成キーの地点 where unique pair`
     pub fn id(self) -> &'graph 両端が生成キーの専有交友Id {
-        self.graph
+        let Some((id, _)) = self
+            .graph
             .両端が生成キーの専有交友
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .0
+        };
+        id
     }
     /// この辺個体の両端を順序なし対として返す。
     ///
@@ -3345,25 +3397,29 @@ pub struct 両端が宣言キーの専有親交Ref<'graph> {
 }
 impl<'graph> 両端が宣言キーの専有親交Ref<'graph> {
     fn record(self) -> &'graph __両端が宣言キーの専有親交Record {
-        self.graph
+        let Some((_, record)) = self
+            .graph
             .両端が宣言キーの専有親交
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        record
     }
     /// この辺個体の公開IDを借用する。
     ///
     /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `edge 両端が宣言キーの専有親交 = 宣言キーの地点 -- 宣言キーの地点 where unique pair`
     pub fn id(self) -> &'graph 両端が宣言キーの専有親交Id {
-        self.graph
+        let Some((id, _)) = self
+            .graph
             .両端が宣言キーの専有親交
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .0
+        };
+        id
     }
     /// この辺個体の両端を順序なし対として返す。
     ///
@@ -3559,25 +3615,29 @@ impl<'graph> 生成キーの地点Ref<'graph> {
     ///
     /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `node 生成キーの地点`
     pub fn id(self) -> &'graph 生成キーの地点Id {
-        self.graph
+        let Some((id, _)) = self
+            .graph
             .__graphite_node_生成キーの地点
-            .get_at(self.internal_position.0)
-            .expect(
-                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .0
+        };
+        id
     }
     /// このノード個体のノード値を借用する。
     ///
     /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `node 生成キーの地点`
     pub fn value(self) -> &'graph super::生成キーの地点 {
-        self.graph
+        let Some((_, value)) = self
+            .graph
             .__graphite_node_生成キーの地点
-            .get_at(self.internal_position.0)
-            .expect(
-                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        value
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
@@ -4131,13 +4191,15 @@ impl<'graph> 生成キーの地点Ref<'graph> {
 impl<'graph> std::ops::Deref for 生成キーの地点Ref<'graph> {
     type Target = super::生成キーの地点;
     fn deref(&self) -> &Self::Target {
-        self.graph
+        let Some((_, value)) = self
+            .graph
             .__graphite_node_生成キーの地点
-            .get_at(self.internal_position.0)
-            .expect(
-                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        value
     }
 }
 impl<'graph> std::fmt::Debug for 生成キーの地点Ref<'graph> {
@@ -4202,25 +4264,29 @@ impl<'graph> 宣言キーの地点Ref<'graph> {
     ///
     /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `node 宣言キーの地点(id: 利用者が宣言した地点キー)`
     pub fn id(self) -> &'graph 利用者が宣言した地点キー {
-        self.graph
+        let Some((id, _)) = self
+            .graph
             .__graphite_node_宣言キーの地点
-            .get_at(self.internal_position.0)
-            .expect(
-                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .0
+        };
+        id
     }
     /// このノード個体のノード値を借用する。
     ///
     /// 宣言: `tests/unknown_endpoint_diagnostics.rs` の `node 宣言キーの地点(id: 利用者が宣言した地点キー)`
     pub fn value(self) -> &'graph super::宣言キーの地点 {
-        self.graph
+        let Some((_, value)) = self
+            .graph
             .__graphite_node_宣言キーの地点
-            .get_at(self.internal_position.0)
-            .expect(
-                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        value
     }
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
     /// 問い合わせ時に結果 `Vec` を確保しない。
@@ -4774,13 +4840,15 @@ impl<'graph> 宣言キーの地点Ref<'graph> {
 impl<'graph> std::ops::Deref for 宣言キーの地点Ref<'graph> {
     type Target = super::宣言キーの地点;
     fn deref(&self) -> &Self::Target {
-        self.graph
+        let Some((_, value)) = self
+            .graph
             .__graphite_node_宣言キーの地点
-            .get_at(self.internal_position.0)
-            .expect(
-                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        value
     }
 }
 impl<'graph> std::fmt::Debug for 宣言キーの地点Ref<'graph> {

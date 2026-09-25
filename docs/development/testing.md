@@ -27,7 +27,10 @@ cargo xtask check-external
 `verification/external-crate` もワークスペースの外にある。こちらは外部 crate から
 の生成経路 (`cargo graphite generate` → `cargo build`) が壊れていないことを確かめる
 ためのパッケージであり、`cargo xtask check-external` が生成の差分検査とビルドと
-テストをまとめて実行する。
+clippy とテストをまとめて実行する。検証用パッケージは `Cargo.toml` で
+`clippy::expect_used`・`clippy::unwrap_used` を deny にしており、clippy は
+`-D warnings` で走る。生成物がこの2つを禁じる利用側の crate でも clippy を
+通ることを、この検査が固定する。
 
 ## テストファイルの役割
 

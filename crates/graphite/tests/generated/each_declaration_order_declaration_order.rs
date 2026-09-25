@@ -6,8 +6,8 @@
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    13931799164366306425u64, 3211192133502914272u64, 10366990758092770007u64,
-    852573736333127067u64,
+    4513873582430908094u64, 11394651662442856595u64, 8274026763872025196u64,
+    6931878453861139616u64,
 ];
 /// `Author` ノードの公開ID。
 ///
@@ -376,25 +376,23 @@ pub struct WroteRef<'graph> {
 }
 impl<'graph> WroteRef<'graph> {
     fn record(self) -> &'graph __WroteRecord {
-        self.graph
-            .wrote
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+        let Some((_, record)) = self.graph.wrote.get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        record
     }
     /// この辺個体の公開IDを借用する。
     ///
     /// 宣言: `tests/each_declaration_order.rs` の `edge Wrote = (writer: Author) -[byline: Byline]-> (article: Article) where each article: 1, each writer: 0..1`
     pub fn id(self) -> &'graph WroteId {
-        self.graph
-            .wrote
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+        let Some((id, _)) = self.graph.wrote.get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .0
+        };
+        id
     }
     /// この辺個体の始点側の端点を役割名で返す。
     ///
@@ -587,25 +585,29 @@ impl<'graph> AuthorRef<'graph> {
     ///
     /// 宣言: `tests/each_declaration_order.rs` の `node Author`
     pub fn id(self) -> &'graph AuthorId {
-        self.graph
+        let Some((id, _)) = self
+            .graph
             .__graphite_node_author
-            .get_at(self.internal_position.0)
-            .expect(
-                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .0
+        };
+        id
     }
     /// このノード個体のノード値を借用する。
     ///
     /// 宣言: `tests/each_declaration_order.rs` の `node Author`
     pub fn value(self) -> &'graph super::Author {
-        self.graph
+        let Some((_, value)) = self
+            .graph
             .__graphite_node_author
-            .get_at(self.internal_position.0)
-            .expect(
-                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        value
     }
     /// この役割に接続する高々1本の辺を O(1)、追加確保なしで返す。
     ///
@@ -671,13 +673,15 @@ impl<'graph> AuthorRef<'graph> {
 impl<'graph> std::ops::Deref for AuthorRef<'graph> {
     type Target = super::Author;
     fn deref(&self) -> &Self::Target {
-        self.graph
+        let Some((_, value)) = self
+            .graph
             .__graphite_node_author
-            .get_at(self.internal_position.0)
-            .expect(
-                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        value
     }
 }
 impl<'graph> std::fmt::Debug for AuthorRef<'graph> {
@@ -758,25 +762,29 @@ impl<'graph> ArticleRef<'graph> {
     ///
     /// 宣言: `tests/each_declaration_order.rs` の `node Article`
     pub fn id(self) -> &'graph ArticleId {
-        self.graph
+        let Some((id, _)) = self
+            .graph
             .__graphite_node_article
-            .get_at(self.internal_position.0)
-            .expect(
-                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .0
+        };
+        id
     }
     /// このノード個体のノード値を借用する。
     ///
     /// 宣言: `tests/each_declaration_order.rs` の `node Article`
     pub fn value(self) -> &'graph super::Article {
-        self.graph
+        let Some((_, value)) = self
+            .graph
             .__graphite_node_article
-            .get_at(self.internal_position.0)
-            .expect(
-                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        value
     }
     /// この役割に接続する唯一の辺を O(1)、追加確保なしで返す。
     ///
@@ -791,13 +799,15 @@ impl<'graph> ArticleRef<'graph> {
 impl<'graph> std::ops::Deref for ArticleRef<'graph> {
     type Target = super::Article;
     fn deref(&self) -> &Self::Target {
-        self.graph
+        let Some((_, value)) = self
+            .graph
             .__graphite_node_article
-            .get_at(self.internal_position.0)
-            .expect(
-                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        value
     }
 }
 impl<'graph> std::fmt::Debug for ArticleRef<'graph> {
@@ -1111,10 +1121,9 @@ impl Builder {
         };
         for position in __graphite_node_article.positions() {
             let internal_position = __ArticleInternalPosition(position);
-            let key = __graphite_node_article
-                .get_at(position)
-                .expect("列挙した内部位置はノード表に存在する")
-                .0;
+            let Some((key, _)) = __graphite_node_article.get_at(position) else {
+                panic!("列挙した内部位置はノード表に存在する")
+            };
             let count = wrote_to_index
                 .get(&internal_position)
                 .map(Vec::len)
@@ -1129,10 +1138,9 @@ impl Builder {
         }
         for position in __graphite_node_author.positions() {
             let internal_position = __AuthorInternalPosition(position);
-            let key = __graphite_node_author
-                .get_at(position)
-                .expect("列挙した内部位置はノード表に存在する")
-                .0;
+            let Some((key, _)) = __graphite_node_author.get_at(position) else {
+                panic!("列挙した内部位置はノード表に存在する")
+            };
             let count = wrote_from_index
                 .get(&internal_position)
                 .map(Vec::len)
