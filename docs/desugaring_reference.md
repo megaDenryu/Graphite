@@ -211,8 +211,8 @@ moduleは利用者が書いた `pub mod Commerce { include!(...); }` そのも�
 use super::*;
 #[doc(hidden)]
 pub(super) const __GRAPHITE_SCHEMA_FINGERPRINT: [u64; 4] = [
-    12915499301625855134u64, 11205147218086213387u64, 12208822815129686076u64,
-    4098736115415589360u64,
+    16180433103664140677u64, 18374092448019823346u64, 13270948032441293255u64,
+    12970048397743723419u64,
 ];
 ```
 
@@ -330,7 +330,7 @@ struct __PersonInternalPosition(graphite::TablePosition);
 **5. 構築時の処理**
 
 `Builder` は種別ごとの `Vec<(PersonId, super::Person)>` へ末尾追加するだけで、検査は
-一切行わない (`crates/graphite/tests/generated/edge_roles_commerce.rs:1265-1268`)。
+一切行わない (`crates/graphite/tests/generated/edge_roles_commerce.rs:1276-1279`)。
 
 ```rust
 pub fn person(&mut self, id: PersonId, value: super::Person) -> &mut Self {
@@ -433,7 +433,7 @@ pub fn external_node_by_id<'graph>(
 明示ID型を持つ種別は、束縛名の文字列からIDを作る経路を持たない。同ファイルに
 `impl MixedIdsDefaultId for super::ExternalNode` は無く、生成ファイルは
 `MixedIdsInsertable` だけを実装する
-(`crates/graphite/tests/generated/schema_ids_mixed_ids.rs:1155-1157`)。
+(`crates/graphite/tests/generated/schema_ids_mixed_ids.rs:1161-1163`)。
 
 ```rust
 impl MixedIdsInsertable for super::ExternalNode {
@@ -602,7 +602,7 @@ struct __PurchaseRecord {
 **5. 構築時の処理**
 
 `Builder` は辺値をそのまま `Vec<(PurchaseId, Purchase)>` へ末尾追加する
-(`crates/graphite/tests/generated/edge_roles_commerce.rs:1261-1267`)。端点の存在検査も多重度検査も
+(`crates/graphite/tests/generated/edge_roles_commerce.rs:1272-1278`)。端点の存在検査も多重度検査も
 凍結まで行わない。
 
 **6. 完成済みGraphの内部保存**
@@ -668,7 +668,7 @@ edge ExactlyOne = (src: NodeA) -[weight: Weight]-> (dst: NodeB) where each dst: 
 **3. 公開生成物**
 
 多重度は戻り型を決める。役割クエリの戻り型は次の3つである
-(`crates/graphite/tests/generated/role_query_rev_query.rs:1656-1713`)。
+(`crates/graphite/tests/generated/role_query_rev_query.rs:1667-1725`)。
 
 ```rust
     pub fn unconstrained_as_target(
@@ -987,7 +987,7 @@ struct __WireRecord {
 **7. 公開API**
 
 `EdgeRef` は `from()` / `to()` / `from_id()` / `to_id()` を持たず、`endpoints()` で
-両端を返す (`crates/graphite/tests/generated/undirected_edges_social.rs:424-439`)。
+両端を返す (`crates/graphite/tests/generated/undirected_edges_social.rs:422-437`)。
 
 ```rust
     pub fn endpoints(self) -> (PersonRef<'graph>, PersonRef<'graph>) {
@@ -1006,7 +1006,7 @@ struct __WireRecord {
 ```
 
 `NodeRef` 側の探索は役割名を捏造せず `{kind}_incident()` になる
-(`crates/graphite/tests/generated/undirected_edges_social.rs:655-667`)。
+(`crates/graphite/tests/generated/undirected_edges_social.rs:654-667`)。
 
 ```rust
     /// 接続辺を O(1) で参照し、追加確保なしで挿入順に走査する。
@@ -1187,7 +1187,7 @@ fn 辺値はgraph外で名前付きフィールドから構築できる() {
 **3. 公開生成物**
 
 `NodeRef` は `&Graph` と内部位置だけを持つ
-(`crates/graphite/tests/generated/edge_roles_commerce.rs:824-856`)。
+(`crates/graphite/tests/generated/edge_roles_commerce.rs:823-858`)。
 
 ```rust
 /// 完成済みグラフ上の `Person` ノード個体。
@@ -1198,38 +1198,44 @@ pub struct PersonRef<'graph> {
 }
 impl<'graph> PersonRef<'graph> {
     pub fn id(self) -> &'graph PersonId {
-        self.graph
+        let Some((id, _)) = self
+            .graph
             .__graphite_node_person
-            .get_at(self.internal_position.0)
-            .expect(
-                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .0
+        };
+        id
     }
     pub fn value(self) -> &'graph super::Person {
-        self.graph
+        let Some((_, value)) = self
+            .graph
             .__graphite_node_person
-            .get_at(self.internal_position.0)
-            .expect(
-                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        value
     }
 ```
 
-`Deref` と `Debug` も生成する (`crates/graphite/tests/generated/edge_roles_commerce.rs:980-998`)。
+`Deref` と `Debug` も生成する (`crates/graphite/tests/generated/edge_roles_commerce.rs:983-1003`)。
 
 ```rust
 impl<'graph> std::ops::Deref for PersonRef<'graph> {
     type Target = super::Person;
     fn deref(&self) -> &Self::Target {
-        self.graph
+        let Some((_, value)) = self
+            .graph
             .__graphite_node_person
-            .get_at(self.internal_position.0)
-            .expect(
-                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+            .get_at(self.internal_position.0) else {
+            panic!(
+                "NodeRefの内部位置は凍結後に不変のノード表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        value
     }
 }
 impl<'graph> std::fmt::Debug for PersonRef<'graph> {
@@ -1291,7 +1297,7 @@ impl<'graph> std::fmt::Debug for PersonRef<'graph> {
 **3. 公開生成物**
 
 `EdgeRef` も `&Graph` と内部位置だけを持つ
-(`crates/graphite/tests/generated/edge_roles_commerce.rs:543-627`)。
+(`crates/graphite/tests/generated/edge_roles_commerce.rs:543-626`)。
 
 ```rust
 /// 完成済みグラフ上の有向辺個体。
@@ -1302,22 +1308,21 @@ pub struct PurchaseRef<'graph> {
 }
 impl<'graph> PurchaseRef<'graph> {
     fn record(self) -> &'graph __PurchaseRecord {
-        self.graph
-            .purchase
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+        let Some((_, record)) = self.graph.purchase.get_at(self.internal_position.0)
+        else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .1
+        };
+        record
     }
     pub fn id(self) -> &'graph PurchaseId {
-        self.graph
-            .purchase
-            .get_at(self.internal_position.0)
-            .expect(
-                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)",
+        let Some((id, _)) = self.graph.purchase.get_at(self.internal_position.0) else {
+            panic!(
+                "EdgeRefの内部位置は凍結後に不変の辺表を指す(生成元と異なるGraphへの束縛はbindの構築印照合で防いでいるため、ここに到達する場合は内部位置の不変条件が別の原因で破れている)"
             )
-            .0
+        };
+        id
     }
     pub fn buyer(self) -> PersonRef<'graph> {
         PersonRef {
@@ -1507,7 +1512,7 @@ schemaに無いKind名を書いた場合も、脱糖後の `__graphite_b.{label}
 呼び出しに安全側の慣習として `#[rustfmt::skip]` を付ける。
 
 **短縮形の正確な脱糖**。`alice = Person { .. }` は `insert_named("alice", ..)` へ
-脱糖する (`crates/graphite/tests/generated/edge_roles_commerce.rs:1314-1324`)。
+脱糖する (`crates/graphite/tests/generated/edge_roles_commerce.rs:1325-1335`)。
 
 ```rust
     pub fn insert_named<N>(
@@ -1524,7 +1529,7 @@ schemaに無いKind名を書いた場合も、脱糖後の `__graphite_b.{label}
 ```
 
 `insert_named` が呼ぶ `insert_named_with_binding` が、束縛名の文字列から既定IDを
-作る (`crates/graphite/tests/generated/edge_roles_commerce.rs:813-825`)。
+作る (`crates/graphite/tests/generated/edge_roles_commerce.rs:812-824`)。
 
 ```rust
 impl CommerceDefaultId for super::Person {
@@ -1683,7 +1688,7 @@ pub struct __SubscriptionNamedPosition(__SubscriptionInternalPosition, u64);
 第1要素が内部位置、第2要素が構築印である。
 
 名前付き位置から参照を作る実装も生成ファイルにある
-(`crates/graphite/tests/generated/edge_roles_commerce.rs:796-809`)。
+(`crates/graphite/tests/generated/edge_roles_commerce.rs:795-808`)。
 
 ```rust
 impl graphite::NamedGraphElement<Graph> for __PersonNamedPosition {
@@ -1767,7 +1772,7 @@ impl graphite::NamedGraphElement<Graph> for __PersonNamedPosition {
 **5. 構築時の処理**
 
 名前付き位置は、その種別の `Builder` 内部の `Vec` へ追加する直前の長さを記録する
-(`crates/graphite/tests/generated/edge_roles_commerce.rs:777-792`)。
+(`crates/graphite/tests/generated/edge_roles_commerce.rs:776-791`)。
 
 ```rust
     fn insert_named_with_id(
@@ -2043,10 +2048,10 @@ struct へ固有 `impl` を書かない (複数のschemaが同じ値型を共有
 `create` は最初の1件の違反で `Err(Violation)` になり、`create_collecting` は全違反を
 `Err(Vec<Violation>)` で返す。検証ロジックは `freeze_collecting` の1つだけで、
 `freeze` はその先頭を取り出す薄い包みである
-(`crates/graphite/tests/generated/edge_roles_commerce.rs:1670-1674`)。
+(`crates/graphite/tests/generated/edge_roles_commerce.rs:1678-1682`)。
 
 `Builder` の公開メソッドは次のとおりである
-(`crates/graphite/tests/generated/edge_roles_commerce.rs:1253-1398`)。
+(`crates/graphite/tests/generated/edge_roles_commerce.rs:1264-1409`)。
 
 | メソッド | 用途 |
 |---|---|
@@ -2060,7 +2065,7 @@ struct へ固有 `impl` を書かない (複数のschemaが同じ値型を共有
 `insert` / `add` / `extend` の振り分けは値の型のトレイト実装で決まる。トレイトは
 schemaごとに名前が異なる (`{Schema}Insertable` / `{Schema}DefaultId` /
 `{Schema}Node` / `{Schema}Edge`) ため、ランタイムクレートではなく生成ファイルに
-置く (`crates/graphite/tests/generated/edge_roles_commerce.rs:741-755`)。
+置く (`crates/graphite/tests/generated/edge_roles_commerce.rs:740-754`)。
 
 ```rust
 pub trait CommerceInsertable: Sized {
@@ -2081,7 +2086,7 @@ pub trait CommerceInsertable: Sized {
 **4. private生成物**
 
 `Builder` の種別ごとの `Vec` フィールドと構築印
-(`crates/graphite/tests/generated/edge_roles_commerce.rs:716-727`)。`Builder::new` も非公開であり、
+(`crates/graphite/tests/generated/edge_roles_commerce.rs:715-726`)。`Builder::new` も非公開であり、
 `create` / `create_collecting` / `create_named` を経由しないと作れない。
 
 **5. 構築時の処理**
@@ -2123,13 +2128,13 @@ edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) wh
 | `Purchase` の役割 `product` | `ProductRef::purchase_as_product` |
 | 無向の `Friends` | `PersonRef::friends_incident` |
 | `Purchase` の端点対 | `PersonRef::purchase_between` / `PersonRef::purchase_try_between` |
-| 日本語の種別 `関係` と役割 `始点` | `PersonRef::関係_as_始点` (`crates/graphite/tests/generated/traversal_api_traversal.rs:1324`) |
+| 日本語の種別 `関係` と役割 `始点` | `PersonRef::関係_as_始点` (`crates/graphite/tests/generated/traversal_api_traversal.rs:1321`) |
 
 `{kind}_between` / `{kind}_try_between` の主語は位置0側 (有向辺は始点側、無向辺は
 唯一の端点型) の `NodeRef` である。
 
 これらは手続き型マクロの展開の中に隠れておらず、生成ファイルに実在する
-(`crates/graphite/tests/generated/edge_roles_commerce.rs:857-872`)。
+(`crates/graphite/tests/generated/edge_roles_commerce.rs:859-875`)。
 
 ```rust
     /// この役割に接続する辺を O(1) で参照し、挿入順に走査する。
@@ -2149,7 +2154,7 @@ edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) wh
 ```
 
 終点側は `each product: 0..1` により `Option` を返す
-(`crates/graphite/tests/generated/edge_roles_commerce.rs:1083-1095`)。
+(`crates/graphite/tests/generated/edge_roles_commerce.rs:1090-1104`)。
 
 ```rust
     /// この役割に接続する高々1本の辺を O(1)、追加確保なしで返す。
@@ -2166,7 +2171,7 @@ edge Purchase = (buyer: Person) -[info: TransactionInfo]-> (product: Product) wh
 ```
 
 端点対検索は非パニック版が本体で、パニック版がそれを包む
-(`crates/graphite/tests/generated/edge_roles_commerce.rs:873-914`)。
+(`crates/graphite/tests/generated/edge_roles_commerce.rs:876-917`)。
 
 ```rust
     /// 順序付き端点対を平均 O(1)、追加確保なしで検索する。
@@ -2352,10 +2357,10 @@ pub enum Violation {
 **4. private生成物**
 
 `Builder::freeze_collecting` と `Builder::freeze` はどちらも非公開である
-(`crates/graphite/tests/generated/edge_roles_commerce.rs:1403, 1672`)。凍結を外から呼ぶ入口は
+(`crates/graphite/tests/generated/edge_roles_commerce.rs:1414, 1672`)。凍結を外から呼ぶ入口は
 `Graph::create` 系だけである。`graphite::build_named_graph` から具体型を知らずに
 凍結を呼ぶための橋渡しだけが公開されている
-(`crates/graphite/tests/generated/edge_roles_commerce.rs:1692-1698`)。
+(`crates/graphite/tests/generated/edge_roles_commerce.rs:1700-1706`)。
 
 ```rust
 impl graphite::FreezableBuilder for Builder {
@@ -2370,7 +2375,7 @@ impl graphite::FreezableBuilder for Builder {
 **5. 構築時の処理**
 
 凍結の手順は次のとおりである。生成コードは
-`crates/graphite/tests/generated/edge_roles_commerce.rs:1403-1669` にある。
+`crates/graphite/tests/generated/edge_roles_commerce.rs:1414-1677` にある。
 
 1. ノード種別ごとに、`Builder` の `Vec` を `KeyedTable` へ順に挿入する。既に同じ公開IDが
    あれば挿入せず `Duplicate{Node}` を記録する。**この時点でノードの公開IDから内部
@@ -2394,7 +2399,7 @@ impl graphite::FreezableBuilder for Builder {
 5. `Graph` を組み立てる。構築印は `Builder` からそのまま引き継ぐ。
 
 辺の内部位置は「辺表へ挿入する直前の長さ」であり、未知端点で捨てた辺の分は詰まる
-(`crates/graphite/tests/generated/edge_roles_commerce.rs:1474-1476`)。
+(`crates/graphite/tests/generated/edge_roles_commerce.rs:1485-1487`)。
 
 ```rust
                 let internal_edge_position = __PurchaseInternalPosition(
@@ -2402,7 +2407,7 @@ impl graphite::FreezableBuilder for Builder {
                 );
 ```
 
-確定形への変換は次の形である (`crates/graphite/tests/generated/edge_roles_commerce.rs:1629-1648`)。
+確定形への変換は次の形である (`crates/graphite/tests/generated/edge_roles_commerce.rs:1637-1656`)。
 
 ```rust
         let purchase_from_index = graphite::MultipleRoleIndex::from_buckets(
@@ -2428,7 +2433,7 @@ impl graphite::FreezableBuilder for Builder {
 ```
 
 生成コードには、IDE支援のためだけのゼロコストな型検査文も混ざる
-(`crates/graphite/tests/generated/edge_roles_commerce.rs:1499-1501`)。`where each <役割名>` の役割名
+(`crates/graphite/tests/generated/edge_roles_commerce.rs:1510-1512`)。`where each <役割名>` の役割名
 トークンを辺値型のフィールドへ結び付けるためのものであり、実行時の意味はない。
 
 ```rust
