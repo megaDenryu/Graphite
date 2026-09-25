@@ -6,6 +6,7 @@ mod tests;
 use proc_macro2::Ident;
 
 use super::edge_definition::辺定義;
+use super::graph_duplication::完成したグラフの複製可否;
 use super::node_definition::{ノード定義, ノード定義番号};
 use super::traversal_plan::ノードの探索計画;
 use super::violation_catalog::{違反定義, 違反定義の目録};
@@ -13,6 +14,7 @@ use super::violation_catalog::{違反定義, 違反定義の目録};
 // `schema Name { .. }` 1つ分の確定した意味。コード生成層はこの値だけを読む。
 pub struct スキーマ定義 {
     スキーマ名: Ident,
+    複製可否: 完成したグラフの複製可否,
     ノード定義の列: Vec<ノード定義>,
     辺定義の列: Vec<辺定義>,
     違反定義の目録: 違反定義の目録,
@@ -22,6 +24,7 @@ pub struct スキーマ定義 {
 impl スキーマ定義 {
     pub(super) fn 定義の列から作る(
         スキーマ名: Ident,
+        複製可否: 完成したグラフの複製可否,
         ノード定義の列: Vec<ノード定義>,
         辺定義の列: Vec<辺定義>,
     ) -> Self {
@@ -39,6 +42,7 @@ impl スキーマ定義 {
             .collect();
         Self {
             スキーマ名,
+            複製可否,
             ノード定義の列,
             辺定義の列,
             違反定義の目録,
@@ -48,6 +52,10 @@ impl スキーマ定義 {
 
     pub fn スキーマ名(&self) -> &Ident {
         &self.スキーマ名
+    }
+
+    pub fn 複製可否(&self) -> &完成したグラフの複製可否 {
+        &self.複製可否
     }
 
     // ノード定義を宣言順で返す。添字は `ノード定義番号` と一致する。

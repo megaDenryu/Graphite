@@ -84,6 +84,8 @@ module から参照できない。
   宣言の両方に現れて初めて同一のノード種別と判定するためである。修飾したい型は
   `use` でこのスコープへ名前を持ち込む。積み荷型はこの照合に関わらないため、
   `edges::BossEdge` のようなモジュール修飾付きのパスを書ける。
+- `schema` の前に `#[derive(Clone)]` を書くと、完成した `Graph` を複製できる
+  schema になる。書ける属性はこの1つだけである (§3.1.3)。
 
 ## 2. graph! リテラル
 
@@ -175,7 +177,7 @@ let lead_ref = g.lead();   // AssignedRef<'_>
 - **名前付き位置型**とは、`graph!` が要素ごとに生成する、`Graph` 内部の
   格納位置と、生成元を識別する構築印を保持する型のことである。凍結を
   またいで運ばれ、静的アクセサが公開IDの検索なしに参照を作るために使う。
-  生成元以外の `Graph` へ渡すと、保持している構築印の不一致が実行時に
+  生成元とその複製 (§3.1.3) 以外の `Graph` へ渡すと、保持している構築印の不一致が実行時に
   検出されて `panic!` する (`crates/graphite/src/schema_runtime/construction_stamp.rs` の構築印発行関数と
   `NamedGraphElement::bind` の生成実装を参照)。
 - **呼び出し箇所**とは、`graph!` を1回呼んだ場所のことである。
@@ -193,6 +195,9 @@ let lead_ref = g.lead();   // AssignedRef<'_>
 生成コードは、Graphite 自身の意味論・実装が必要としないトレイトを、生成コードの利便性
 だけを理由に利用者定義型へ要求しない。`Debug`・`PartialEq`・`Clone` はいずれもこの1つの
 原則で説明できる。schema を書く前に利用者が備えるべき実装は次の2種類だけである。
+利用者が `#[derive(Clone)]` で複製を選んだ schema だけは、ノード値型と積み荷の型に
+`Clone` を要求する (§3.1.3)。この要求は利用者の選択から生じるものであり、この原則の
+例外ではない。
 
 - **ノード値型** (`Person` 等) は何も実装しなくてよい。builder が値を受け取り、凍結が値を
   移動し、`NodeRef` が参照を返すだけであり、生成コードは値を複製も比較も表示もしない。
@@ -225,6 +230,80 @@ Graphite が使わない複製可能性・比較可能性を積み荷の型へ�
 
 この要求は `verification/external-crate` が機械で確かめている。同パッケージのノード値型・
 積み荷型はどちらもどのトレイトも導出しておらず、開発者が導出を足すと保証が消える。
+
+### 3.1.3 完成したグラフの複製 (`#[derive(Clone)]`)
+
+利用者は、`schema` の前に `#[derive(Clone)]` を書くことで、完成した `Graph` を
+`clone()` できる schema を選ぶ (issue #50)。
+
+```rust
+graphite::dynamic_graph_schema! {
+    generated = "generated/world.rs";
+    #[derive(Clone)]
+    schema World {
+        node Place;
+        edge Route = (from_place: Place) -[route: RouteInfo]-> (to_place: Place);
+    }
+}
+```
+
+schema の前に書ける属性はこの1つだけである。生成器は、他の属性、`Clone` 以外の導出、
+同じ属性の重複を構文エラーにする。受理しない属性を読み飛ばすと、利用者は書いた属性が
+効いたと誤解するためである。
+
+**生成物の違い。** この属性を書いた schema では、生成器が `Graph` と非公開の辺レコード
+(`__{Kind}Record`) へ `#[derive(Clone)]` を付ける。ランタイムの索引型
+(`MultipleRoleIndex`・`ExactlyOneRoleIndex`・`OptionalRoleIndex`) と `KeyedTable` は、
+要素の型が `Clone` のときだけ効く `Clone` を常に導出している。生成器は `Clone` を手で
+実装しない。したがって複製の意味は、利用者が同じ struct へ `#[derive(Clone)]` を手で
+書いた場合と同じである (`docs/development/design_principles.md` 原則5・原則6)。
+`graph!` の名前付きラッパーは、型引数がすべて `Clone` のときだけ効く `Clone` を常に
+導出する。そのため、複製を選んだ schema では名前付きラッパーも `clone()` できる。
+
+**利用者の型への要求。** 複製を選んだ schema は、ノード値型と積み荷の型に `Clone` を
+要求する。ID型は §3.1.2 のとおり既に `Clone` を要求されている。要求を満たさない型が
+あると、rustc が生成物の `Graph` の導出の箇所で E0277 を報告する
+(`crates/graphite/tests/ui/schema_derive_clone_requires_clone_values.rs`)。
+
+**複製を属性で選ばせる理由。** 生成される `Graph` は型引数を持たない具体的な型である。
+そのため生成器は `impl Clone for Graph where Person: Clone` のような条件付きの実装を
+生成できない。rustc は、型引数を含まない where 節が満たされないとき、その実装を
+無効にするのではなくコンパイルエラーにするためである (trivial bounds、安定版では
+使えない)。無条件に `Clone` を生やすと、`Clone` でない型を使う schema がコンパイル
+できなくなる。何も生やさないと、利用者は非公開の索引を持つ `Graph` へ自分で `Clone` を
+実装できない。属性による選択は、この2つのどちらも起こさない。
+
+**複製と構築印と参照。** 複製した `Graph` は、元の `Graph` と同じ構築印を持つ。構築印が
+守る不変条件は「ある構築印を持つ内部位置は、同じ構築印を持つどの `Graph` の中でも同じ
+個体を指す」ことである。凍結後の構造は不変であり
+(`docs/desugaring_reference.md` §21)、複製は構造と内部位置の配置をそのまま写すため、
+複製もこの不変条件を満たす。この決定から次の3つが従う。
+
+- 名前付きラッパーを複製すると、複製の静的アクセサ (`copy.alice()`) は複製した `Graph`
+  を指す。元の名前付き位置を複製した `Graph` へ束縛しても `panic!` しない。
+- 元の `Graph` から得た `NodeRef` と複製から得た `NodeRef` を `{kind}_try_between` に
+  渡しても、`GraphMismatch` にならない。返る `EdgeRef` は受け手 (`self`) の `Graph` に
+  束縛される。複製の後で値や積み荷を書き換えていれば、返る `EdgeRef` が読むのは受け手の
+  `Graph` の値である。
+- 同じ内容を別々に構築した2つの `Graph` は構築印が異なる。この2つの `NodeRef` を
+  `{kind}_try_between` に渡すと `GraphMismatch` が返る。
+
+複製に新しい構築印を発行する案は採らなかった。この案では、生成器が `Clone` を手で実装し、
+クレート全体の構築印のカウンタを進める副作用を複製へ持ち込むことになる (原則5・原則6)。
+さらに、名前付きラッパーを複製するたびに全ての名前付き位置の構築印を書き換える生成コードが
+要り、書き換えを省くと複製したラッパーの静的アクセサが必ず `panic!` する。構築印は、
+取り違えによって内部位置が別の個体を指す事故を検出するための印である。複製ではこの事故が
+起きないため、新しい印を発行する理由が無い。
+
+この関係は `crates/graphite/tests/graph_clone.rs` が固定している。複製を選ばない schema の
+生成物が利用者の型に `Clone` を要求しないことは
+`crates/graphite/tests/graph_clone_not_required.rs` が固定している。
+
+**静的グラフ。** `static_graph_schema!` はこの属性を受理しない。静的グラフの `Graph` は
+構築印も索引も持たず、個体の値だけをフィールドに持つ (`docs/static_graph.md`)。そのため
+複製と構築印の関係という問いは静的グラフには生じない。一方、個体の値の型が利用者の型で
+あるため、`Graph` へ無条件に `Clone` を生やせない事情は同じである。静的グラフで複製を
+選べるようにする機能は、現時点では提供しない。
 
 ### 3.2 アクセス (種別APIは Graph、探索は Ref、静的な名前は名前付きラッパーのメソッド)
 

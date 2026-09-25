@@ -2,14 +2,16 @@
 
 use proc_macro2::TokenTree;
 use syn::parse::ParseStream;
-use syn::{braced, Ident};
+use syn::{braced, Attribute, Ident};
 
 use super::edge_declaration::EdgeDecl;
 use super::keywords as kw;
 use super::node_declaration::NodeDecl;
+use super::schema_attribute::CloneDerive;
 
-// `schema Org { ... }` 全体。
+// `#[derive(Clone)] schema Org { ... }` 全体 (属性は省略可)。
 pub struct SchemaInput {
+    pub clone_derive: CloneDerive,
     pub schema_name: Ident,
     pub nodes: Vec<NodeDecl>,
     pub edges: Vec<EdgeDecl>,
@@ -27,8 +29,8 @@ impl SchemaInput {
     //
     // `parse_recovering` は次の戦略で回復する。
     //
-    // - ヘッダ (`schema Name {`) 自体が壊れている場合は回復せず `Err` を
-    //   返す (`schema` キーワード・スキーマ名・開きブレースが揃わないと
+    // - ヘッダ (属性の列と `schema Name {`) 自体が壊れている場合は回復せず
+    //   `Err` を返す (`schema` キーワード・スキーマ名・開きブレースが揃わないと
     //   ボディの走査自体を始められないため)。
     // - ボディ内は `node`/`edge` 宣言単位でパースする。1宣言のパースに
     //   失敗したら、その `syn::Error` を `errors` に蓄積し、次の宣言境界
@@ -43,6 +45,7 @@ impl SchemaInput {
     //   うえ、両宣言に共通して使え実装も単純で誤爆しにくいためこちらを
     //   採用した。
     pub fn parse_recovering(input: ParseStream) -> syn::Result<SchemaParse> {
+        let clone_derive = CloneDerive::from_attributes(input.call(Attribute::parse_outer)?)?;
         input.parse::<kw::schema>()?;
         let schema_name: Ident = input.parse()?;
         let content;
@@ -77,6 +80,7 @@ impl SchemaInput {
 
         Ok(SchemaParse {
             schema: SchemaInput {
+                clone_derive,
                 schema_name,
                 nodes,
                 edges,

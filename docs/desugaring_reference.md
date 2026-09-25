@@ -67,6 +67,7 @@
 | [25](#25-3つのアクセス経路) | 3つのアクセス経路 |
 | [26](#26-生成コードの配置と追跡性) | 生成コードの配置と追跡性 |
 | [27](#27-検証方法) | 検証方法 |
+| [28](#28-完成したグラフの複製-deriveclone) | 完成したグラフの複製 (`#[derive(Clone)]`) |
 
 ## 0. 読み方
 
@@ -118,7 +119,8 @@
 - **種別API**とは、ある種別に属する個体の全体を対象にする読み取り・可変操作のこと
   である。所有者は完成済み `Graph` なので `Graph` のメソッドになる。
 - **構築印**とは、1回の構築を識別する `u64` の値のことである。名前付き位置が生成元
-  以外の `Graph` へ束縛されたことを実行時に検出するために使う。
+  以外の `Graph` へ束縛されたことを実行時に検出するために使う。完成した `Graph` の
+  複製は元と同じ構築印を持つ (§28)。
 - **スプライス**とは、`graph!` の項の先頭に `..式` と書き、名前を持たない要素を
   まとめて追加する項のことである。
 - **許可証**とは、`Builder` の名前付き挿入メソッドを呼べることを示す値のことで
@@ -768,7 +770,7 @@ variant名は辺種別名と役割名から機械的に導出する
 ```
 
 3種の索引はいずれもノードの内部位置を添字にする配列である
-(`crates/graphite/src/schema_runtime/role_index.rs:9-91`)。`MultipleRoleIndex` は範囲の配列と連続した
+(`crates/graphite/src/schema_runtime/role_index.rs:13-98`)。`MultipleRoleIndex` は範囲の配列と連続した
 辺位置列の組であり、問い合わせでスライスを借用して返す。`OptionalRoleIndex` は
 `Vec<Option<P>>`、`ExactlyOneRoleIndex` は `Vec<P>` である。
 
@@ -1712,11 +1714,12 @@ impl graphite::NamedGraphElement<Graph> for __PersonNamedPosition {
 名前付きラッパーは呼び出し箇所ローカルの型であり、生成ファイルには置かない。左辺名の
 集合が呼び出し箇所ごとに異なり、安定したモジュールのファイルへ事前生成できないためで
 ある。マクロが呼び出し箇所のブロックスコープへ展開する
-(`crates/graphite-macros/src/instance_codegen.rs:271-294`)。
+(`crates/graphite-macros/src/instance_codegen.rs:281-305`)。
 
 ```rust
     quote! {{
         #[allow(non_snake_case)]
+        #[derive(Clone)]
         struct #wrapper_ident<__GraphiteGraph #(, #wrapper_parameters)*> {
             __graphite_graph: __GraphiteGraph,
             #(#named_positions: #wrapper_parameters,)*
@@ -1909,7 +1912,8 @@ where
 (`crates/graphite/src/schema_runtime/construction_stamp.rs:5-29`)。`Builder::new()` が1つ発行し、その `Builder`
 から生まれる `Graph` と全ての名前付き位置へ同じ値を刻む。`bind` は不一致を
 `panic!` にする。これは呼び出し規約の違反であり通常のドメインエラーではないため、
-パニックにしている (`docs/development/design_principles.md` 原則2)。
+パニックにしている (`docs/development/design_principles.md` 原則2)。完成した `Graph` の
+複製は構築印を値のまま写すため、元の名前付き位置は複製した `Graph` へ束縛できる (§28)。
 
 **6. 完成済みGraphの内部保存**
 
@@ -2859,6 +2863,95 @@ pub struct PersonRef<'graph> {
 | IDE導線 | 誤った引数数で呼び出して `E0061` を起こし、rustcの「note: method defined here」の着地行を確認する | `docs/development/ide_support_spec.md` §1.15 の記録 |
 
 時間を計るベンチマークは意図的に置いていない。理由は §24.3 に書いた。
+
+## 28. 完成したグラフの複製 (`#[derive(Clone)]`)
+
+設計決定の正本は `docs/schema_v4.md` §3.1.3 である。ここでは脱糖の観点で要点を示す。
+
+**1. Graphite構文**
+
+```rust
+graphite::dynamic_graph_schema! {
+    generated = "generated/graph_clone_複製世界.rs";
+    #[derive(Clone)]
+    schema 複製世界 {
+        node 人物;
+        node 商品;
+        edge 購入 = (購入者: 人物) -[取引: 取引情報]-> (対象商品: 商品) where unique pair;
+        edge 担当 = (担当者: 人物) -> (担当商品: 商品) where each 担当商品: 1, each 担当者: 0..1;
+        edge 友人 = 人物 -- 人物 where unique pair;
+    }
+}
+```
+
+`schema` の前に書ける属性は `#[derive(Clone)]` だけである
+(`crates/graphite-codegen/src/schema/syntax/schema_attribute.rs`)。
+
+**2. 利用者定義**
+
+ノード値型と積み荷の型が `Clone` を実装する。この属性を書かない schema では要求しない
+(`docs/schema_v4.md` §3.1.2)。
+
+**3. 公開生成物**
+
+`Graph` が `#[derive(Clone)]` を持つ
+(`crates/graphite/tests/generated/graph_clone_複製世界.rs:362-367`)。
+
+```rust
+/// 凍結済み図式グラフ。構築後の構造は不変で、ノード値と辺の積み荷だけを
+/// `&mut Graph` を要求する種別APIから更新できる。
+///
+/// 宣言: `tests/graph_clone.rs` の `schema 複製世界`
+#[derive(Clone)]
+pub struct Graph {
+```
+
+**4. private生成物**
+
+辺レコードが `#[derive(Clone)]` を持つ
+(`crates/graphite/tests/generated/graph_clone_複製世界.rs:171-177`)。
+
+```rust
+#[allow(dead_code)]
+#[derive(Clone)]
+struct __購入Record {
+    購入者: __人物InternalPosition,
+    対象商品: __商品InternalPosition,
+    取引: 取引情報,
+}
+```
+
+ランタイムの索引型3種と `KeyedTable` は、要素の型が `Clone` のときだけ効く `Clone` を
+属性の有無によらず導出している (`crates/graphite/src/schema_runtime/role_index.rs:16-18`)。
+
+```rust
+#[doc(hidden)]
+#[derive(Clone)]
+pub struct MultipleRoleIndex<P> {
+```
+
+`graph!` の名前付きラッパーも同じ形の導出を常に持つ (§14)。
+
+**5. 構築時の処理**
+
+なし。構築と凍結は属性の有無で変わらない。
+
+**6. 完成済みGraphの内部保存**
+
+なし。保存の形は属性の有無で変わらない。複製は構築印
+(`Graph::__graphite_construction_stamp`) を値のまま写す。
+
+**7. 公開API**
+
+`Graph::clone()` と、名前付きラッパーの `clone()` である。複製した `Graph` の参照と
+元の `Graph` の参照の組は `{kind}_try_between` で `GraphMismatch` にならず、返る
+`EdgeRef` は受け手の `Graph` に束縛される。別々に構築した2つの `Graph` の参照の組は
+`GraphMismatch` になる (`crates/graphite/tests/graph_clone.rs`)。
+
+**8. 計算量**
+
+複製は全ノード値・全辺レコード・全索引の複製であり、O(ノード数 + 辺数)。ヒープ確保は
+表と索引ごとに行う。構築印の発行は行わない。
 
 ## 関連文書
 

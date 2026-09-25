@@ -22,7 +22,12 @@ pub(crate) fn edge_record_payload_fields(payload: Option<&積み荷>) -> Vec<Tok
 
 // 辺値は構築時の公開IDを保持するが、完成後のレコードは端点を内部位置で
 // 保持する。積み荷だけを辺値から移して保持し、探索時のID検索を不要にする。
-pub(crate) fn gen_edge_record_structs(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream> {
+// 複製できる schema では `Graph` の導出がレコードの複製を要するため、
+// 同じ導出属性をレコードにも付ける。
+pub(crate) fn gen_edge_record_structs(
+    edges: &[EdgeInfo<'_>],
+    複製の導出属性: &TokenStream,
+) -> Vec<TokenStream> {
     edges
         .iter()
         .map(|edge| {
@@ -36,6 +41,7 @@ pub(crate) fn gen_edge_record_structs(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream
                     let to_role = 終点.役割名();
                     quote! {
                         #[allow(dead_code)]
+                        #複製の導出属性
                         struct #record {
                             #from_role: #from_position,
                             #to_role: #to_position,
@@ -46,6 +52,7 @@ pub(crate) fn gen_edge_record_structs(edges: &[EdgeInfo<'_>]) -> Vec<TokenStream
                 辺の向き::無向 { .. } => {
                     quote! {
                         #[allow(dead_code)]
+                        #複製の導出属性
                         struct #record {
                             endpoints: graphite::UnorderedPair<#from_position>,
                             #(#payload_field,)*

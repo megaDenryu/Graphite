@@ -176,6 +176,8 @@ ID・凍結・`Violation` が無く、個体はソースコードの時点で確
 
 - **ノードの値は普通の Rust の型です。** Graphite は値型を生成せず、宣言に書かれた
   型を参照するだけです。`Clone` ・ `Debug` ・ `PartialEq` などを要求しません。
+  完成したグラフを複製したい schema だけは、`schema` の前に `#[derive(Clone)]` を書き、
+  ノード値型と積み荷の型に `Clone` を実装します。詳細は `docs/schema_v4.md` §3.1.3 にあります。
 - **ノードと辺は ID による同一性を持ちます。** `node Person;` は `PersonId(pub String)`
   を schema module 内に生成します。自分で用意した型を使いたい場合は
   `node Person(id: EmployeeNumber);` と書きます。IDは内部位置ではありません。詳細は

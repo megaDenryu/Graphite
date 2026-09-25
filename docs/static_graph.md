@@ -111,6 +111,13 @@ where unique pair
 無向辺は役割名を左右対称に持つため `each` を付けられない (`schema::validate`
 が拒否する)。
 
+`dynamic_graph_schema!` が受理する `#[derive(Clone)]` (完成したグラフの複製。
+`docs/schema_v4.md` §3.1.3) を、`static_graph_schema!` は受理しない。静的グラフの
+`Graph` は構築印も索引も持たないため、複製と構築印の関係という問いは生じない。
+個体の値の型が利用者の型であるため、`Graph` へ無条件に `Clone` を生やせない事情は
+動的グラフと同じであり、静的グラフで複製を選べるようにする機能は現時点では提供しない
+(`crates/graphite/tests/ui/static_schema_rejects_derive_clone.rs`)。
+
 ### instance宣言
 
 schema名がそのままマクロ名になるため、instance宣言はschema名を書かない。

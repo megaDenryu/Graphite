@@ -9,9 +9,10 @@ mod tests;
 use proc_macro2::Ident;
 
 use super::edge_definition::{有向端点, 辺の向き, 辺定義};
+use super::graph_duplication::完成したグラフの複製可否;
 use super::node_definition::{ノード定義, ノード定義番号};
 use super::schema_definition::スキーマ定義;
-use crate::schema::syntax::{EdgeDecl, EdgeShape, NodeDecl, SchemaInput};
+use crate::schema::syntax::{CloneDerive, EdgeDecl, EdgeShape, NodeDecl, SchemaInput};
 
 // 検証済みの `schema` 宣言からスキーマ定義を組み立てる。
 pub fn 検証済み構文からスキーマ定義を組み立てる(
@@ -25,8 +26,13 @@ pub fn 検証済み構文からスキーマ定義を組み立てる(
             辺定義::宣言と向きから作る(宣言, 辺の向きを組み立てる(宣言, &構文.nodes))
         })
         .collect();
+    let 複製可否 = match 構文.clone_derive {
+        CloneDerive::Declared => 完成したグラフの複製可否::複製できる,
+        CloneDerive::NotDeclared => 完成したグラフの複製可否::複製できない,
+    };
     スキーマ定義::定義の列から作る(
         構文.schema_name.clone(),
+        複製可否,
         ノード定義の列,
         辺定義の列,
     )
