@@ -3,6 +3,10 @@
 //! 多重度なし・多重度1・多重度0..1 の3型は「バケット列から作り、内部位置で読み出す」という
 //! 同じ契約の3実装であり、多重度の違いが返り値の形 (`&[P]` / `&P` / `Option<&P>`) に
 //! そのまま現れる。1画面で見比べられるように1ファイルへ置く。
+//!
+//! 3型とも `Clone` を導出する。導出は `P: Clone` のときだけ効くため、複製を
+//! 選ばない schema に要求を足さない。複製を選んだ schema の `Graph` の導出が
+//! 索引の複製を要する (`docs/schema_v4.md` §3.1.3)。
 
 use std::ops::Range;
 
@@ -10,6 +14,7 @@ use crate::keyed_table::TablePosition;
 
 /// 多重度制約のない役割索引を、役割ごとの範囲と連続した辺位置列で保持する。
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct MultipleRoleIndex<P> {
     ranges: Vec<Range<usize>>,
     positions: Vec<P>,
@@ -40,6 +45,7 @@ impl<P> MultipleRoleIndex<P> {
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct ExactlyOneRoleIndex<P>(Vec<P>);
 
 impl<P> ExactlyOneRoleIndex<P> {
@@ -67,6 +73,7 @@ impl<P> ExactlyOneRoleIndex<P> {
 }
 
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct OptionalRoleIndex<P>(Vec<Option<P>>);
 
 impl<P> OptionalRoleIndex<P> {

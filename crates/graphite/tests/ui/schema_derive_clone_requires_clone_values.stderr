@@ -1,0 +1,17 @@
+error[E0277]: the trait bound `Person: Clone` is not satisfied
+  --> tests/ui/schema_derive_clone_requires_clone_values.rs:8:5
+   |
+ 8 | /     graphite::__dynamic_graph_schema_inline_for_test! {
+ 9 | |         #[derive(Clone)]
+10 | |         schema Cloneable {
+11 | |             node Person;
+12 | |         }
+13 | |     }
+   | |_____^ the trait `Clone` is not implemented for `Person`
+   |
+   = note: required for `KeyedTable<PersonId, Person>` to implement `Clone`
+help: consider annotating `Person` with `#[derive(Clone)]`
+   |
+ 3 + #[derive(Clone)]
+ 4 | pub struct Person {
+   |

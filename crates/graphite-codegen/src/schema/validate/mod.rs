@@ -103,6 +103,7 @@ pub(crate) fn validate_recovering(parsed: SchemaParse) -> ValidationResult {
     }
     ValidationResult::Generated {
         schema: SchemaInput {
+            clone_derive: schema.clone_derive,
             schema_name: schema.schema_name,
             nodes: schema.nodes,
             edges,

@@ -1,0 +1,5 @@
+error: schema 宣言の前に書ける属性は `#[derive(Clone)]` だけです
+ --> tests/ui/schema_attribute_other_than_derive_clone.rs:9:9
+  |
+9 |         #[derive(Clone, Debug)]
+  |         ^^^^^^^^^^^^^^^^^^^^^^^

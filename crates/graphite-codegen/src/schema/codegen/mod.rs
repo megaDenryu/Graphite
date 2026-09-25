@@ -86,6 +86,7 @@
 //! (参照: `docs/reverse_query.md`)。
 
 mod builder;
+mod clone_derivation;
 mod declaration_doc;
 mod edge_names;
 mod edge_record;
@@ -111,6 +112,7 @@ use crate::naming::固定生成名の予約表;
 use crate::schema::semantic::スキーマ定義;
 use builder::gen_builder_impl;
 use builder::struct_definition::gen_builder_struct;
+use clone_derivation::複製の導出属性を組み立てる;
 pub(crate) use declaration_doc::宣言元ファイルの綴り;
 use edge_names::{build_edge_info, EdgeInfo};
 use edge_record::gen_edge_record_structs;
@@ -167,7 +169,8 @@ pub(crate) fn generate_module_body(
     let internal_position_defs = gen_internal_position_types(&node_infos, &edge_infos);
     let named_position_defs = gen_named_position_types(&node_infos, &edge_infos);
     let edge_value_struct_defs = gen_edge_value_structs(&edge_infos);
-    let edge_record_defs = gen_edge_record_structs(&edge_infos);
+    let 複製の導出属性 = 複製の導出属性を組み立てる(schema.複製可否());
+    let edge_record_defs = gen_edge_record_structs(&edge_infos, &複製の導出属性);
     let edge_reference_defs = gen_edge_reference_types(&graph_ident, &edge_infos);
     let violation_def = gen_violation_enum(
         &violation_ident,
@@ -181,6 +184,7 @@ pub(crate) fn generate_module_body(
         &node_infos,
         &edge_infos,
         &スキーマ宣言元への参照,
+        &複製の導出属性,
     );
     let schema_impl = gen_schema_impl(
         &graph_ident,

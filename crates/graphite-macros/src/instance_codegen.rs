@@ -274,8 +274,13 @@ pub fn generate(model: &検証済みグラフリテラル) -> TokenStream {
         }
     };
 
+    // 名前付きラッパーの `Clone` は型引数の全部が `Clone` のときだけ効く導出で
+    // あり、複製を選ばない schema の `Graph` では実装されない。複製は構築印を
+    // 値のまま写すため、複製したラッパーの名前付き位置は複製した `Graph` へ
+    // そのまま束縛できる (`docs/schema_v4.md` §3.1.3)。
     quote! {{
         #[allow(non_snake_case)]
+        #[derive(Clone)]
         struct #wrapper_ident<__GraphiteGraph #(, #wrapper_parameters)*> {
             __graphite_graph: __GraphiteGraph,
             #(#named_positions: #wrapper_parameters,)*
